@@ -37,18 +37,20 @@ export function ImportSpreadsheet({ onImport }: ImportSpreadsheetProps) {
       
       const importedSales: Omit<Sale, 'id'>[] = dataLines
         .map(line => {
-          const [customerName, salesRep, date, revenue, commission, status] = line.split(',').map(s => s.trim());
+          const [customerName, setter, salesRep, date, revenue, setterCommission, commission, status] = line.split(',').map(s => s.trim());
           
           return {
             customerName,
+            setter,
             salesRep,
             date,
             revenue: parseFloat(revenue) || 0,
+            setterCommission: parseFloat(setterCommission) || 0,
             commission: parseFloat(commission) || 0,
             status: (status as Sale['status']) || 'pending',
           };
         })
-        .filter(sale => sale.customerName && sale.salesRep);
+        .filter(sale => sale.customerName && sale.setter && sale.salesRep);
 
       if (importedSales.length > 0) {
         onImport(importedSales);
@@ -91,7 +93,7 @@ export function ImportSpreadsheet({ onImport }: ImportSpreadsheetProps) {
           <DialogTitle>Import Sales Data</DialogTitle>
           <DialogDescription>
             Upload a CSV file with your sales data. The file should have the following columns:
-            Customer Name, Sales Rep, Date, Revenue, Commission, Status
+            Customer Name, Setter, Closer, Date, Revenue, Setter Commission, Closer Commission, Status
           </DialogDescription>
         </DialogHeader>
         
@@ -123,10 +125,10 @@ export function ImportSpreadsheet({ onImport }: ImportSpreadsheetProps) {
 
           <div className="bg-secondary/50 p-4 rounded-lg">
             <p className="text-sm font-medium mb-2">Expected CSV Format:</p>
-            <code className="text-xs block bg-card p-2 rounded">
-              Customer Name, Sales Rep, Date, Revenue, Commission, Status<br />
-              Acme Corp, John Doe, 2025-10-10, 15000, 1500, closed<br />
-              TechStart Inc, Jane Smith, 2025-10-12, 8500, 850, closed
+            <code className="text-xs block bg-card p-2 rounded overflow-x-auto">
+              Customer Name, Setter, Closer, Date, Revenue, Setter Commission, Closer Commission, Status<br />
+              Acme Corp, Sarah Lee, John Doe, 2025-10-10, 15000, 300, 1500, closed<br />
+              TechStart Inc, Mike Ross, Jane Smith, 2025-10-12, 8500, 170, 850, closed
             </code>
           </div>
         </div>

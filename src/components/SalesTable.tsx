@@ -11,9 +11,11 @@ import { Badge } from "@/components/ui/badge";
 export interface Sale {
   id: string;
   customerName: string;
+  setter: string;
   salesRep: string;
   date: string;
   revenue: number;
+  setterCommission: number;
   commission: number;
   status: 'closed' | 'pending' | 'no-show';
 }
@@ -49,10 +51,12 @@ export function SalesTable({ sales }: SalesTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Customer</TableHead>
-            <TableHead>Sales Rep</TableHead>
+            <TableHead>Setter</TableHead>
+            <TableHead>Closer</TableHead>
             <TableHead>Date</TableHead>
             <TableHead>Revenue</TableHead>
-            <TableHead>Commission</TableHead>
+            <TableHead>Setter Commission</TableHead>
+            <TableHead>Closer Commission</TableHead>
             <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>
@@ -60,9 +64,13 @@ export function SalesTable({ sales }: SalesTableProps) {
           {sales.map((sale) => (
             <TableRow key={sale.id}>
               <TableCell className="font-medium">{sale.customerName}</TableCell>
+              <TableCell>{sale.setter}</TableCell>
               <TableCell>{sale.salesRep}</TableCell>
               <TableCell>{new Date(sale.date).toLocaleDateString()}</TableCell>
               <TableCell>${sale.revenue.toLocaleString()}</TableCell>
+              <TableCell className="text-primary font-semibold">
+                ${sale.setterCommission.toLocaleString()}
+              </TableCell>
               <TableCell className="text-accent font-semibold">
                 ${sale.commission.toLocaleString()}
               </TableCell>

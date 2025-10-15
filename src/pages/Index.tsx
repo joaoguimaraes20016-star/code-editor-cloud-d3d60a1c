@@ -19,45 +19,55 @@ const initialSales: Sale[] = [
   {
     id: '1',
     customerName: 'Acme Corp',
+    setter: 'Sarah Lee',
     salesRep: 'John Doe',
     date: '2025-10-10',
     revenue: 15000,
+    setterCommission: 300,
     commission: 1500,
     status: 'closed',
   },
   {
     id: '2',
     customerName: 'TechStart Inc',
+    setter: 'Mike Ross',
     salesRep: 'Jane Smith',
     date: '2025-10-12',
     revenue: 8500,
+    setterCommission: 170,
     commission: 850,
     status: 'closed',
   },
   {
     id: '3',
     customerName: 'GlobalSoft',
+    setter: 'Sarah Lee',
     salesRep: 'Mike Johnson',
     date: '2025-10-14',
     revenue: 12000,
+    setterCommission: 240,
     commission: 1200,
     status: 'pending',
   },
   {
     id: '4',
     customerName: 'DataFlow Ltd',
+    setter: 'Mike Ross',
     salesRep: 'Jane Smith',
     date: '2025-10-13',
     revenue: 0,
+    setterCommission: 0,
     commission: 0,
     status: 'no-show',
   },
   {
     id: '5',
     customerName: 'CloudNine Systems',
+    setter: 'Tom Brady',
     salesRep: 'John Doe',
     date: '2025-10-11',
     revenue: 22000,
+    setterCommission: 440,
     commission: 2200,
     status: 'closed',
   },
@@ -108,7 +118,7 @@ const Index = () => {
   
   const totalCommissions = filteredSales
     .filter(s => s.status === 'closed')
-    .reduce((sum, sale) => sum + sale.commission, 0);
+    .reduce((sum, sale) => sum + sale.commission + sale.setterCommission, 0);
   
   const closeRate = filteredSales.length > 0 
     ? ((filteredSales.filter(s => s.status === 'closed').length / filteredSales.length) * 100).toFixed(1)

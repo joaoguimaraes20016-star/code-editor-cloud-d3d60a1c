@@ -28,9 +28,11 @@ interface AddSaleDialogProps {
 export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
   const [open, setOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
+  const [setter, setSetter] = useState("");
   const [salesRep, setSalesRep] = useState("");
   const [date, setDate] = useState("");
   const [revenue, setRevenue] = useState("");
+  const [setterCommission, setSetterCommission] = useState("");
   const [commission, setCommission] = useState("");
   const [status, setStatus] = useState<Sale['status']>("pending");
 
@@ -38,16 +40,20 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
     e.preventDefault();
     onAddSale({
       customerName,
+      setter,
       salesRep,
       date,
       revenue: parseFloat(revenue),
+      setterCommission: parseFloat(setterCommission),
       commission: parseFloat(commission),
       status,
     });
     setCustomerName("");
+    setSetter("");
     setSalesRep("");
     setDate("");
     setRevenue("");
+    setSetterCommission("");
     setCommission("");
     setStatus("pending");
     setOpen(false);
@@ -80,7 +86,16 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="salesRep">Sales Rep</Label>
+              <Label htmlFor="setter">Setter</Label>
+              <Input
+                id="setter"
+                value={setter}
+                onChange={(e) => setSetter(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="salesRep">Closer</Label>
               <Input
                 id="salesRep"
                 value={salesRep}
@@ -110,7 +125,18 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="commission">Commission</Label>
+              <Label htmlFor="setterCommission">Setter Commission</Label>
+              <Input
+                id="setterCommission"
+                type="number"
+                step="0.01"
+                value={setterCommission}
+                onChange={(e) => setSetterCommission(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="commission">Closer Commission</Label>
               <Input
                 id="commission"
                 type="number"
