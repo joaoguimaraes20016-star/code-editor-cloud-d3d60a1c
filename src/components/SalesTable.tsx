@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 export interface Sale {
   id: string;
   customerName: string;
+  salesRep: string;
   date: string;
   revenue: number;
   commission: number;
@@ -48,6 +49,7 @@ export function SalesTable({ sales }: SalesTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Customer</TableHead>
+            <TableHead>Sales Rep</TableHead>
             <TableHead>Date</TableHead>
             <TableHead>Revenue</TableHead>
             <TableHead>Commission</TableHead>
@@ -58,6 +60,7 @@ export function SalesTable({ sales }: SalesTableProps) {
           {sales.map((sale) => (
             <TableRow key={sale.id}>
               <TableCell className="font-medium">{sale.customerName}</TableCell>
+              <TableCell>{sale.salesRep}</TableCell>
               <TableCell>{new Date(sale.date).toLocaleDateString()}</TableCell>
               <TableCell>${sale.revenue.toLocaleString()}</TableCell>
               <TableCell className="text-accent font-semibold">

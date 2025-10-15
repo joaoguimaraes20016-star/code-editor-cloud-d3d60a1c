@@ -28,6 +28,7 @@ interface AddSaleDialogProps {
 export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
   const [open, setOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
+  const [salesRep, setSalesRep] = useState("");
   const [date, setDate] = useState("");
   const [revenue, setRevenue] = useState("");
   const [commission, setCommission] = useState("");
@@ -37,12 +38,14 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
     e.preventDefault();
     onAddSale({
       customerName,
+      salesRep,
       date,
       revenue: parseFloat(revenue),
       commission: parseFloat(commission),
       status,
     });
     setCustomerName("");
+    setSalesRep("");
     setDate("");
     setRevenue("");
     setCommission("");
@@ -73,6 +76,15 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
                 id="customer"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="salesRep">Sales Rep</Label>
+              <Input
+                id="salesRep"
+                value={salesRep}
+                onChange={(e) => setSalesRep(e.target.value)}
                 required
               />
             </div>
