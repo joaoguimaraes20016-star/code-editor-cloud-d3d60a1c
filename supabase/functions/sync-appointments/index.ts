@@ -139,24 +139,62 @@ serve(async (req) => {
           return null;
         }
 
-        // Find closer by name match
+        // Find closer by name match (with fuzzy matching)
         let closerId = null;
         let closerFullName = null;
         
-        if (closerName && teamMembers) {
+        if (closerName && teamMembers && teamMembers.length > 0) {
           console.log('Looking for closer:', closerName);
           console.log('Available team members:', teamMembers.map((m: any) => {
             const profiles = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
             return profiles?.full_name;
           }));
           
-          const closerMember = teamMembers.find((m: any) => {
+          // Normalize and split names into words for comparison
+          const closerWords = closerName.toLowerCase().trim().split(/\s+/);
+          
+          // Try exact match first
+          let closerMember = teamMembers.find((m: any) => {
             const profiles = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
             const memberName = profiles?.full_name;
-            const matches = memberName?.toLowerCase().trim() === closerName.toLowerCase().trim();
-            console.log(`Comparing "${memberName}" with "${closerName}": ${matches}`);
-            return matches;
+            return memberName?.toLowerCase().trim() === closerName.toLowerCase().trim();
           });
+          
+          // If no exact match, try fuzzy matching
+          if (!closerMember) {
+            let bestMatch = null;
+            let highestScore = 0;
+            
+            for (const member of teamMembers) {
+              const profiles = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles;
+              const memberName = profiles?.full_name;
+              if (!memberName) continue;
+              
+              const memberWords = memberName.toLowerCase().trim().split(/\s+/);
+              
+              // Calculate match score based on word overlap
+              let matchedWords = 0;
+              for (const closerWord of closerWords) {
+                if (memberWords.some((mw: string) => mw.includes(closerWord) || closerWord.includes(mw))) {
+                  matchedWords++;
+                }
+              }
+              
+              const score = matchedWords / closerWords.length;
+              console.log(`Similarity between "${closerName}" and "${memberName}": ${score.toFixed(2)} (${matchedWords}/${closerWords.length} words matched)`);
+              
+              // If at least 50% of closer name words match, consider it
+              if (score > highestScore && score >= 0.5) {
+                highestScore = score;
+                bestMatch = member;
+              }
+            }
+            
+            if (bestMatch) {
+              closerMember = bestMatch;
+              console.log(`Fuzzy matched closer with ${(highestScore * 100).toFixed(0)}% confidence`);
+            }
+          }
           
           if (closerMember) {
             closerId = closerMember.user_id;
