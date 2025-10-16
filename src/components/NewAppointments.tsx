@@ -37,6 +37,7 @@ interface Appointment {
   lead_name: string;
   lead_email: string;
   status: string;
+  closer_name: string | null;
 }
 
 interface TeamMember {
@@ -201,6 +202,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
             <TableHead>Start Time</TableHead>
             <TableHead>Lead Name</TableHead>
             <TableHead>Email</TableHead>
+            <TableHead>Closer</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Action</TableHead>
           </TableRow>
@@ -211,6 +213,13 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
               <TableCell>{formatLocalTime(apt.start_at_utc)}</TableCell>
               <TableCell className="font-medium">{apt.lead_name}</TableCell>
               <TableCell>{apt.lead_email}</TableCell>
+              <TableCell>
+                {apt.closer_name ? (
+                  <span className="text-sm">{apt.closer_name}</span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Not assigned</span>
+                )}
+              </TableCell>
               <TableCell>
                 <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                   {apt.status}
