@@ -11,6 +11,23 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { Hand } from "lucide-react";
 
@@ -22,6 +39,13 @@ interface Appointment {
   status: string;
 }
 
+interface TeamMember {
+  user_id: string;
+  profiles: {
+    full_name: string;
+  };
+}
+
 interface NewAppointmentsProps {
   teamId: string;
 }
@@ -31,27 +55,29 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   const { toast } = useToast();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<{ full_name: string } | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [selectedSetter, setSelectedSetter] = useState<string>("");
+  const [notes, setNotes] = useState("");
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
-    loadUserProfile();
+    loadTeamMembers();
     loadAppointments();
   }, [teamId, user]);
 
-  const loadUserProfile = async () => {
-    if (!user) return;
-
+  const loadTeamMembers = async () => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .single();
+        .from('team_members')
+        .select('user_id, profiles!inner(full_name)')
+        .eq('team_id', teamId);
 
       if (error) throw error;
-      setUserProfile(data);
+      setTeamMembers(data || []);
     } catch (error: any) {
-      console.error('Error loading profile:', error);
+      console.error('Error loading team members:', error);
     }
   };
 
@@ -77,25 +103,37 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
     }
   };
 
-  const handleClaim = async (appointmentId: string) => {
-    if (!user || !userProfile) return;
+  const handleOpenAssignDialog = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setSelectedSetter("");
+    setNotes("");
+    setAssignDialogOpen(true);
+  };
 
+  const handleAssign = async () => {
+    if (!selectedAppointment || !selectedSetter) return;
+
+    setAssigning(true);
     try {
+      const selectedMember = teamMembers.find(m => m.user_id === selectedSetter);
+      
       const { error } = await supabase
         .from('appointments')
         .update({
-          setter_id: user.id,
-          setter_name: userProfile.full_name,
+          setter_id: selectedSetter,
+          setter_name: selectedMember?.profiles.full_name || "",
+          setter_notes: notes || null,
         })
-        .eq('id', appointmentId);
+        .eq('id', selectedAppointment.id);
 
       if (error) throw error;
 
       toast({
         title: 'Appointment assigned',
-        description: 'This appointment has been added to your assigned list',
+        description: `Assigned to ${selectedMember?.profiles.full_name}`,
       });
 
+      setAssignDialogOpen(false);
       loadAppointments();
     } catch (error: any) {
       toast({
@@ -103,6 +141,8 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -148,7 +188,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
               <TableCell>
                 <Button
                   size="sm"
-                  onClick={() => handleClaim(apt.id)}
+                  onClick={() => handleOpenAssignDialog(apt)}
                   className="flex items-center gap-1"
                 >
                   <Hand className="h-3 w-3" />
@@ -159,6 +199,70 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           ))}
         </TableBody>
       </Table>
+
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Appointment</DialogTitle>
+            <DialogDescription>
+              Assign this appointment to a setter and add notes
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedAppointment && (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-4 space-y-2">
+                <p className="text-sm"><strong>Lead:</strong> {selectedAppointment.lead_name}</p>
+                <p className="text-sm"><strong>Email:</strong> {selectedAppointment.lead_email}</p>
+                <p className="text-sm"><strong>Time:</strong> {formatLocalTime(selectedAppointment.start_at_utc)}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="setter">Select Setter</Label>
+                <Select value={selectedSetter} onValueChange={setSelectedSetter}>
+                  <SelectTrigger id="setter">
+                    <SelectValue placeholder="Choose a setter..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers.map((member) => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        {member.profiles.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Add any notes about this appointment..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAssignDialogOpen(false)}
+              disabled={assigning}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssign}
+              disabled={!selectedSetter || assigning}
+            >
+              {assigning ? "Assigning..." : "Assign Appointment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
