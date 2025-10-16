@@ -15,7 +15,7 @@ import { AllClaimed } from "@/components/AllClaimed";
 import { MyClaimed } from "@/components/MyClaimed";
 import { CloserView } from "@/components/CloserView";
 import { MRRDashboard } from "@/components/MRRDashboard";
-import { ImportAppointments } from "@/components/ImportAppointments";
+import { GoogleSheetsConfig } from "@/components/GoogleSheetsConfig";
 import {
   Select,
   SelectContent,
@@ -40,6 +40,7 @@ const Index = () => {
   const [selectedRep, setSelectedRep] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [teamName, setTeamName] = useState("");
+  const [googleSheetsUrl, setGoogleSheetsUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dateRange, setDateRange] = useState<{ from: Date | null; to: Date | null; preset: DateRangePreset }>({
     from: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
@@ -60,12 +61,13 @@ const Index = () => {
     try {
       const { data, error } = await supabase
         .from('teams')
-        .select('name')
+        .select('name, google_sheets_url')
         .eq('id', teamId)
         .single();
 
       if (error) throw error;
       setTeamName(data.name);
+      setGoogleSheetsUrl(data.google_sheets_url);
     } catch (error: any) {
       toast({
         title: 'Error loading team',
@@ -416,15 +418,13 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="scheduling" className="space-y-6 mt-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-semibold">Appointments Database</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Import daily CSV to add new appointments
-                </p>
-              </div>
-              <ImportAppointments teamId={teamId!} onImport={loadSales} />
-            </div>
+            {(userRole === "owner" || userRole === "admin") && (
+              <GoogleSheetsConfig 
+                teamId={teamId!} 
+                currentUrl={googleSheetsUrl}
+                onUpdate={loadTeamData}
+              />
+            )}
             
             <Tabs defaultValue={canViewSetterScheduling ? "new" : "closer"} className="w-full">
               <TabsList>
