@@ -142,10 +142,22 @@ export default function TeamSettings() {
 
       if (error) throw error;
 
-      toast({
-        title: 'Invitation sent',
-        description: `An invitation email has been sent to ${newMemberEmail}`,
-      });
+      // Show the invitation link for manual sharing
+      if (data?.inviteUrl) {
+        if (data?.emailSent) {
+          toast({
+            title: 'Invitation sent',
+            description: `An invitation email has been sent to ${newMemberEmail}`,
+          });
+        } else {
+          // Copy to clipboard
+          navigator.clipboard.writeText(data.inviteUrl);
+          toast({
+            title: 'Invitation created!',
+            description: 'Link copied to clipboard. Share it with the new member to join.',
+          });
+        }
+      }
 
       setNewMemberEmail('');
       setNewMemberRole('member');

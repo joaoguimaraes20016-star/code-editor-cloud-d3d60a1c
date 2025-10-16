@@ -56,43 +56,51 @@ const handler = async (req: Request): Promise<Response> => {
       throw inviteError;
     }
 
-    // Send email with Resend (requires RESEND_API_KEY to be set)
+    // Generate invitation URL
+    const inviteUrl = `${req.headers.get("origin")}/auth?invite=${inviteToken}`;
+    
+    // Optional: Send email with Resend if API key is configured
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     
     if (resendApiKey) {
-      const inviteUrl = `${req.headers.get("origin")}/auth?invite=${inviteToken}`;
-      
-      const emailResponse = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "Team Invites <onboarding@resend.dev>",
-          to: [email],
-          subject: `You've been invited to join ${teamName}`,
-          html: `
-            <h1>You've been invited to join ${teamName}</h1>
-            <p>You've been invited to join the team "${teamName}" as a ${role}.</p>
-            <p>Click the link below to accept the invitation and create your account:</p>
-            <a href="${inviteUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px; margin: 16px 0;">Accept Invitation</a>
-            <p>Or copy and paste this link into your browser:</p>
-            <p>${inviteUrl}</p>
-            <p>This invitation will expire in 7 days.</p>
-          `,
-        }),
-      });
+      try {
+        const emailResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "Team Invites <onboarding@resend.dev>",
+            to: [email],
+            subject: `You've been invited to join ${teamName}`,
+            html: `
+              <h1>You've been invited to join ${teamName}</h1>
+              <p>You've been invited to join the team "${teamName}" as a ${role}.</p>
+              <p>Click the link below to accept the invitation and create your account:</p>
+              <a href="${inviteUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px; margin: 16px 0;">Accept Invitation</a>
+              <p>Or copy and paste this link into your browser:</p>
+              <p>${inviteUrl}</p>
+              <p>This invitation will expire in 7 days.</p>
+            `,
+          }),
+        });
 
-      if (!emailResponse.ok) {
-        console.error("Error sending email:", await emailResponse.text());
+        if (!emailResponse.ok) {
+          console.error("Error sending email:", await emailResponse.text());
+        }
+      } catch (error) {
+        console.error("Failed to send email:", error);
       }
-    } else {
-      console.warn("RESEND_API_KEY not set, email not sent. Add it in backend settings.");
     }
 
     return new Response(
-      JSON.stringify({ success: true, token: inviteToken }),
+      JSON.stringify({ 
+        success: true, 
+        token: inviteToken,
+        inviteUrl: inviteUrl,
+        emailSent: !!resendApiKey
+      }),
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
