@@ -25,20 +25,43 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [linkExpired, setLinkExpired] = useState(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
 
 
 
   useEffect(() => {
-    console.log('=== AUTH PAGE MOUNTED ===');
-    console.log('URL:', window.location.href);
+    // Check for invitation token in URL
+    const params = new URLSearchParams(location.search);
+    const token = params.get('invite');
     
+    if (token) {
+      // Load invitation details
+      supabase
+        .from('team_invitations')
+        .select('email, team_id, role')
+        .eq('token', token)
+        .is('accepted_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .single()
+        .then(({ data, error }) => {
+          if (data) {
+            setInviteToken(token);
+            setInviteEmail(data.email);
+            setSignUpData(prev => ({ ...prev, email: data.email }));
+          } else {
+            toast({
+              title: 'Invalid or expired invitation',
+              description: 'This invitation link is not valid.',
+              variant: 'destructive',
+            });
+          }
+        });
+    }
+
     // Set up auth state listener to catch PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔔 Auth State Change:', event);
-      console.log('Session:', session?.user?.email);
-      
       if (event === 'PASSWORD_RECOVERY') {
-        console.log('✅ PASSWORD_RECOVERY EVENT - Activating reset form!');
         setIsResettingPassword(true);
         setUserEmail(session?.user?.email || '');
         setNewPassword('');
@@ -49,26 +72,19 @@ const Auth = () => {
     // Also check current state on mount
     const checkCurrentState = async () => {
       const hash = window.location.hash;
-      console.log('Current hash:', hash);
       
       if (hash.includes('type=recovery')) {
-        console.log('Recovery type in hash detected');
-        // Give Supabase time to process the session
         setTimeout(async () => {
           const { data: { session } } = await supabase.auth.getSession();
-          console.log('Session check:', session?.user?.email);
           
           if (session?.user?.email) {
-            console.log('✅ Activating password reset form');
             setIsResettingPassword(true);
             setUserEmail(session.user.email);
           }
         }, 1000);
       }
       
-      // Check for errors
       if (hash.includes('error=access_denied')) {
-        console.log('⚠️ Link expired or invalid');
         setShowResetForm(true);
         toast({
           title: 'Link expired',
@@ -84,7 +100,7 @@ const Auth = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [toast]);
+  }, [toast, location]);
 
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -114,15 +130,17 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
     
-    // Validate signup code (trim whitespace and compare case-insensitively)
-    if (signUpData.signupCode.trim().toUpperCase() !== 'GRWTHCO25') {
-      toast({
-        title: 'Invalid signup code',
-        description: 'Please enter a valid signup code to create an account.',
-        variant: 'destructive',
-      });
-      setLoading(false);
-      return;
+    // Skip signup code validation if user has an invitation
+    if (!inviteToken) {
+      if (signUpData.signupCode.trim().toUpperCase() !== 'GRWTHCO25') {
+        toast({
+          title: 'Invalid signup code',
+          description: 'Please enter a valid signup code to create an account.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
     }
     
     const { error } = await signUp(signUpData.email, signUpData.password, signUpData.fullName);
@@ -133,6 +151,45 @@ const Auth = () => {
         description: error.message,
         variant: 'destructive',
       });
+      setLoading(false);
+      return;
+    }
+
+    // If user signed up with an invitation, add them to the team
+    if (inviteToken) {
+      try {
+        const { data: invitation } = await supabase
+          .from('team_invitations')
+          .select('team_id, role, id')
+          .eq('token', inviteToken)
+          .single();
+
+        if (invitation) {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            await supabase.from('team_members').insert({
+              team_id: invitation.team_id,
+              user_id: user.id,
+              role: invitation.role,
+            });
+
+            await supabase
+              .from('team_invitations')
+              .update({ accepted_at: new Date().toISOString() })
+              .eq('id', invitation.id);
+
+            toast({
+              title: 'Welcome!',
+              description: 'You have been added to the team.',
+            });
+            
+            navigate(`/team/${invitation.team_id}`);
+          }
+        }
+      } catch (err) {
+        console.error('Error processing invitation:', err);
+      }
     } else {
       toast({
         title: 'Check your email!',
@@ -334,17 +391,24 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-code">Signup Code</Label>
-                  <Input
-                    id="signup-code"
-                    type="text"
-                    placeholder="Enter your signup code"
-                    value={signUpData.signupCode}
-                    onChange={(e) => setSignUpData({ ...signUpData, signupCode: e.target.value })}
-                    required
-                  />
-                </div>
+                {inviteToken && (
+                  <div className="p-3 bg-primary/10 rounded-lg text-sm">
+                    You've been invited! Complete signup to join the team.
+                  </div>
+                )}
+                {!inviteToken && (
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-code">Signup Code</Label>
+                    <Input
+                      id="signup-code"
+                      type="text"
+                      placeholder="Enter your signup code"
+                      value={signUpData.signupCode}
+                      onChange={(e) => setSignUpData({ ...signUpData, signupCode: e.target.value })}
+                      required
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Full Name</Label>
                   <Input
@@ -362,6 +426,7 @@ const Auth = () => {
                     type="email"
                     value={signUpData.email}
                     onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
+                    disabled={!!inviteToken}
                     required
                   />
                 </div>

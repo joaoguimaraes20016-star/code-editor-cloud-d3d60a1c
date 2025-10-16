@@ -39,9 +39,14 @@ const Dashboard = () => {
   const checkUserRole = async () => {
     if (!user) return;
     
-    // Since anyone who signs up with the code can create teams,
-    // all authenticated users can create teams
-    setCanCreateTeams(true);
+    // Only allow creating teams if user is a team owner or has no teams yet
+    const { data: memberships } = await supabase
+      .from('team_members')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'owner');
+    
+    setCanCreateTeams(teams.length === 0 || (memberships && memberships.length > 0));
   };
 
   const loadTeams = async () => {

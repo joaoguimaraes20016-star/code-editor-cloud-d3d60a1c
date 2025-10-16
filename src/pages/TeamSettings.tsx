@@ -128,49 +128,35 @@ export default function TeamSettings() {
 
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
     try {
-      // First, check if user exists by email
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', newMemberEmail)
-        .single();
-
-      if (profileError || !profile) {
-        toast({
-          title: 'User not found',
-          description: 'Please ask the user to sign up first',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Add user to team
-      const { error } = await supabase
-        .from('team_members')
-        .insert({
-          team_id: teamId,
-          user_id: profile.id,
+      const { data, error } = await supabase.functions.invoke('send-team-invite', {
+        body: {
+          teamId: teamId,
+          email: newMemberEmail.toLowerCase(),
           role: newMemberRole,
-        });
+          teamName: teamName,
+        },
+      });
 
       if (error) throw error;
 
       toast({
-        title: 'Member added',
-        description: 'Team member has been added successfully',
+        title: 'Invitation sent',
+        description: `An invitation email has been sent to ${newMemberEmail}`,
       });
 
       setNewMemberEmail('');
       setNewMemberRole('member');
-      loadMembers();
     } catch (error: any) {
       toast({
-        title: 'Error adding member',
+        title: 'Error sending invitation',
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
