@@ -415,8 +415,8 @@ const Index = () => {
             <Tabs defaultValue={canViewSetterScheduling ? "new" : "closer"} className="w-full">
               <TabsList>
                 {canViewSetterScheduling && <TabsTrigger value="new">New Appointments</TabsTrigger>}
-                {canViewSetterScheduling && <TabsTrigger value="claimed">All Claimed</TabsTrigger>}
-                {canViewSetterScheduling && <TabsTrigger value="my-claimed">My Claimed</TabsTrigger>}
+                {canViewSetterScheduling && <TabsTrigger value="claimed">All Assigned</TabsTrigger>}
+                {canViewSetterScheduling && <TabsTrigger value="my-claimed">My Assigned</TabsTrigger>}
                 {canViewCloserScheduling && <TabsTrigger value="closer">Closer View</TabsTrigger>}
               </TabsList>
 
@@ -426,7 +426,7 @@ const Index = () => {
                     <div>
                       <h2 className="text-2xl font-semibold mb-4">New Appointments</h2>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Click "Claim" to add an appointment to your list
+                        Click "Assign" to add an appointment to your list
                       </p>
                       <NewAppointments teamId={teamId!} />
                     </div>
@@ -434,9 +434,9 @@ const Index = () => {
 
                   <TabsContent value="claimed" className="mt-6">
                     <div>
-                      <h2 className="text-2xl font-semibold mb-4">All Claimed Appointments</h2>
+                      <h2 className="text-2xl font-semibold mb-4">All Assigned Appointments</h2>
                       <p className="text-sm text-muted-foreground mb-4">
-                        View all appointments claimed by setters
+                        View all appointments assigned to setters
                       </p>
                       <AllClaimed teamId={teamId!} />
                     </div>
@@ -444,9 +444,9 @@ const Index = () => {
 
                   <TabsContent value="my-claimed" className="mt-6">
                     <div>
-                      <h2 className="text-2xl font-semibold mb-4">My Claimed Appointments</h2>
+                      <h2 className="text-2xl font-semibold mb-4">My Assigned Appointments</h2>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Manage your claimed appointments and add notes
+                        Manage your assigned appointments and add notes
                       </p>
                       <MyClaimed teamId={teamId!} />
                     </div>

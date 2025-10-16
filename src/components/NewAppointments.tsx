@@ -92,14 +92,14 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
       if (error) throw error;
 
       toast({
-        title: 'Appointment claimed',
-        description: 'This appointment has been added to your claimed list',
+        title: 'Appointment assigned',
+        description: 'This appointment has been added to your assigned list',
       });
 
       loadAppointments();
     } catch (error: any) {
       toast({
-        title: 'Error claiming appointment',
+        title: 'Error assigning appointment',
         description: error.message,
         variant: 'destructive',
       });
@@ -117,7 +117,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   if (appointments.length === 0) {
     return (
       <div className="p-8 text-center text-muted-foreground">
-        No unclaimed appointments available
+        No unassigned appointments available
       </div>
     );
   }
@@ -152,7 +152,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
                   className="flex items-center gap-1"
                 >
                   <Hand className="h-3 w-3" />
-                  Claim
+                  Assign
                 </Button>
               </TableCell>
             </TableRow>

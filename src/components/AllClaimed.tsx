@@ -67,7 +67,7 @@ export function AllClaimed({ teamId }: AllClaimedProps) {
   if (appointments.length === 0) {
     return (
       <div className="p-8 text-center text-muted-foreground">
-        No claimed appointments yet
+        No assigned appointments yet
       </div>
     );
   }
