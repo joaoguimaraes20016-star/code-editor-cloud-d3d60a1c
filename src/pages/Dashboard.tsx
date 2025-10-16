@@ -39,19 +39,9 @@ const Dashboard = () => {
   const checkUserRole = async () => {
     if (!user) return;
     
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) throw error;
-      setCanCreateTeams(data?.role === 'super_admin');
-    } catch (error: any) {
-      console.error('Error checking user role:', error);
-      setCanCreateTeams(false);
-    }
+    // Since anyone who signs up with the code can create teams,
+    // all authenticated users can create teams
+    setCanCreateTeams(true);
   };
 
   const loadTeams = async () => {
