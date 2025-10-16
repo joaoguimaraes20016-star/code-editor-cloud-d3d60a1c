@@ -23,6 +23,7 @@ const Auth = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [linkExpired, setLinkExpired] = useState(false);
 
 
   useEffect(() => {
@@ -35,12 +36,30 @@ const Auth = () => {
       const hashParams = new URLSearchParams(window.location.hash.slice(1));
       const type = hashParams.get('type');
       const accessToken = hashParams.get('access_token');
+      const error = hashParams.get('error');
+      const errorCode = hashParams.get('error_code');
       
       console.log('Parsed hash params:', { 
         type, 
         hasAccessToken: !!accessToken,
+        error,
+        errorCode,
         allParams: Object.fromEntries(hashParams.entries())
       });
+      
+      // Check for expired link error
+      if (error === 'access_denied' && errorCode === 'otp_expired') {
+        setLinkExpired(true);
+        setShowResetForm(true);
+        toast({
+          title: 'Password reset link expired',
+          description: 'Please request a new password reset link.',
+          variant: 'destructive',
+        });
+        // Clear the error from URL
+        window.history.replaceState({}, '', '/auth');
+        return;
+      }
       
       if (type === 'recovery' && accessToken) {
         console.log('Recovery mode detected, showing password reset form');
@@ -57,7 +76,7 @@ const Auth = () => {
     };
     
     checkPasswordReset();
-  }, []);
+  }, [toast]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
