@@ -31,6 +31,7 @@ interface Appointment {
   setter_id: string | null;
   revenue: number;
   closer_name: string | null;
+  closer_id: string | null;
   cc_collected?: number;
   mrr_amount?: number;
   mrr_months?: number;
@@ -423,6 +424,30 @@ export function CloserView({ teamId }: CloserViewProps) {
     }
   };
 
+  const handleMarkNoShow = async (appointmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: 'NO_SHOW' })
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Marked as No Show',
+        description: 'Appointment has been marked as no show',
+      });
+
+      loadAppointments();
+    } catch (error: any) {
+      toast({
+        title: 'Error updating status',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatLocalTime = (utcTime: string) => {
     return format(new Date(utcTime), 'MMM d, yyyy h:mm a');
   };
@@ -528,8 +553,9 @@ export function CloserView({ teamId }: CloserViewProps) {
                     <TableHead>Setter</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Setter Notes</TableHead>
-                    <TableHead>Action</TableHead>
-                  </TableRow>
+                      <TableHead>Action</TableHead>
+                      <TableHead>No Show</TableHead>
+                    </TableRow>
                 </TableHeader>
                 <TableBody>
                   {myNewAppointments.map((apt) => (
@@ -580,6 +606,15 @@ export function CloserView({ teamId }: CloserViewProps) {
                         >
                           <DollarSign className="h-3 w-3" />
                           Close Deal
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleMarkNoShow(apt.id)}
+                        >
+                          No Show
                         </Button>
                       </TableCell>
                     </TableRow>
