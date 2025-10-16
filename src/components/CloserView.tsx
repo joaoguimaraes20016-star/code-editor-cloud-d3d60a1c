@@ -47,6 +47,8 @@ export function CloserView({ teamId }: CloserViewProps) {
   const [ccCollected, setCcCollected] = useState("");
   const [mrrAmount, setMrrAmount] = useState("");
   const [mrrMonths, setMrrMonths] = useState("");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
   useEffect(() => {
     loadUserProfile();
@@ -263,6 +265,134 @@ export function CloserView({ teamId }: CloserViewProps) {
     }
   };
 
+  const openEditDialog = (appointment: Appointment) => {
+    setEditingAppointment(appointment);
+    const apt = appointment as any;
+    setCcCollected(String(apt.cc_collected || 0));
+    setMrrAmount(String(apt.mrr_amount || 0));
+    setMrrMonths(String(apt.mrr_months || 0));
+    setEditDialogOpen(true);
+  };
+
+  const handleEdit = async () => {
+    if (!user || !userProfile || !editingAppointment) return;
+
+    const cc = parseFloat(ccCollected);
+    const mrr = parseFloat(mrrAmount);
+    const months = parseInt(mrrMonths);
+
+    if (isNaN(cc) || cc < 0) {
+      toast({
+        title: 'Invalid CC amount',
+        description: 'Please enter a valid cash collected amount',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (mrr > 0 && (isNaN(months) || months <= 0)) {
+      toast({
+        title: 'Invalid MRR months',
+        description: 'Please enter valid months for MRR',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const totalRevenue = cc + (mrr * (months || 0));
+      const closerCommission = cc * 0.10;
+      const setterCommission = editingAppointment.setter_id ? cc * 0.05 : 0;
+
+      // Update appointment
+      const { error: updateError } = await supabase
+        .from('appointments')
+        .update({
+          revenue: totalRevenue,
+          cc_collected: cc,
+          mrr_amount: mrr || 0,
+          mrr_months: months || 0,
+        })
+        .eq('id', editingAppointment.id);
+
+      if (updateError) throw updateError;
+
+      // Update sale record
+      const { error: saleError } = await supabase
+        .from('sales')
+        .update({
+          revenue: totalRevenue,
+          commission: closerCommission,
+          setter_commission: setterCommission,
+        })
+        .eq('customer_name', editingAppointment.lead_name)
+        .eq('team_id', teamId);
+
+      if (saleError) throw saleError;
+
+      // Delete old MRR commissions
+      await supabase
+        .from('mrr_commissions')
+        .delete()
+        .eq('appointment_id', editingAppointment.id);
+
+      // Create new MRR commission records if MRR exists
+      if (mrr > 0 && months > 0) {
+        const mrrCommissions = [];
+        
+        for (let i = 1; i <= months; i++) {
+          const monthDate = startOfMonth(addMonths(new Date(), i));
+          
+          mrrCommissions.push({
+            team_id: teamId,
+            appointment_id: editingAppointment.id,
+            team_member_id: user.id,
+            team_member_name: userProfile.full_name,
+            role: 'closer',
+            prospect_name: editingAppointment.lead_name,
+            prospect_email: editingAppointment.lead_email,
+            month_date: format(monthDate, 'yyyy-MM-dd'),
+            mrr_amount: mrr,
+            commission_amount: mrr * 0.10,
+            commission_percentage: 10,
+          });
+
+          if (editingAppointment.setter_id && editingAppointment.setter_name) {
+            mrrCommissions.push({
+              team_id: teamId,
+              appointment_id: editingAppointment.id,
+              team_member_id: editingAppointment.setter_id,
+              team_member_name: editingAppointment.setter_name,
+              role: 'setter',
+              prospect_name: editingAppointment.lead_name,
+              prospect_email: editingAppointment.lead_email,
+              month_date: format(monthDate, 'yyyy-MM-dd'),
+              mrr_amount: mrr,
+              commission_amount: mrr * 0.05,
+              commission_percentage: 5,
+            });
+          }
+        }
+
+        await supabase.from('mrr_commissions').insert(mrrCommissions);
+      }
+
+      toast({
+        title: 'Deal updated',
+        description: `Successfully updated - CC: $${cc.toLocaleString()}, Total: $${totalRevenue.toLocaleString()}`,
+      });
+
+      setEditDialogOpen(false);
+      loadAppointments();
+    } catch (error: any) {
+      toast({
+        title: 'Error updating deal',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatLocalTime = (utcTime: string) => {
     return format(new Date(utcTime), 'MMM d, yyyy h:mm a');
   };
@@ -350,6 +480,7 @@ export function CloserView({ teamId }: CloserViewProps) {
                     <TableHead>Setter</TableHead>
                     <TableHead>Closer</TableHead>
                     <TableHead>Revenue</TableHead>
+                    <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -364,6 +495,15 @@ export function CloserView({ teamId }: CloserViewProps) {
                       <TableCell>{apt.closer_name || '-'}</TableCell>
                       <TableCell className="font-semibold text-green-600">
                         ${apt.revenue?.toLocaleString() || 0}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEditDialog(apt)}
+                        >
+                          Edit
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -442,6 +582,68 @@ export function CloserView({ teamId }: CloserViewProps) {
             </Button>
             <Button onClick={handleClose}>
               Close Deal
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Deal</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Lead Name</Label>
+              <p className="text-sm font-medium">{editingAppointment?.lead_name}</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Setter</Label>
+              <p className="text-sm font-medium text-primary">{editingAppointment?.setter_name || 'No Setter'}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-cc">Cash Collected (CC) ($)</Label>
+              <Input
+                id="edit-cc"
+                type="number"
+                value={ccCollected}
+                onChange={(e) => setCcCollected(e.target.value)}
+                placeholder="2000.00"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-mrr">Monthly Recurring Revenue (MRR) ($)</Label>
+              <Input
+                id="edit-mrr"
+                type="number"
+                value={mrrAmount}
+                onChange={(e) => setMrrAmount(e.target.value)}
+                placeholder="200.00"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-months">Number of MRR Months</Label>
+              <Input
+                id="edit-months"
+                type="number"
+                value={mrrMonths}
+                onChange={(e) => setMrrMonths(e.target.value)}
+                placeholder="5"
+                min="0"
+                step="1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEdit}>
+              Update Deal
             </Button>
           </DialogFooter>
         </DialogContent>
