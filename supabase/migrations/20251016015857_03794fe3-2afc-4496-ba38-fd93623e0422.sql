@@ -1,0 +1,5 @@
+-- Enable leaked password protection for better security
+-- This is configured at the project level in Supabase Auth settings
+-- The warning can be resolved by enabling this in the Supabase dashboard under Authentication > Policies
+-- Since this requires project-level configuration that cannot be done via SQL,
+-- we acknowledge this warning and recommend enabling it in the dashboard
