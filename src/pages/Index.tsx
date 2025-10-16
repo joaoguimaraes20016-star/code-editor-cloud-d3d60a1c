@@ -483,10 +483,13 @@ const Index = () => {
         <RevenueChart data={chartData} />
 
             {/* Sales Table */}
-            <div>
-              <h2 className="text-2xl font-semibold mb-4">
-                {selectedRep === 'all' ? 'All Sales' : `${selectedRep}'s Sales`}
-              </h2>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-semibold">
+                  {selectedRep === 'all' ? 'All Sales' : `${selectedRep}'s Sales`}
+                </h2>
+                <ImportSpreadsheet onImport={handleImport} />
+              </div>
               <SalesTable sales={filteredSales} />
             </div>
           </TabsContent>
