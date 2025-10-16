@@ -15,7 +15,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   const [signInData, setSignInData] = useState({ email: '', password: '' });
-  const [signUpData, setSignUpData] = useState({ email: '', password: '', fullName: '' });
+  const [signUpData, setSignUpData] = useState({ email: '', password: '', fullName: '', signupCode: '' });
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +43,17 @@ const Auth = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Validate signup code
+    if (signUpData.signupCode !== 'GRWTHCO25') {
+      toast({
+        title: 'Invalid signup code',
+        description: 'Please enter a valid signup code to create an account.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
     
     const { error } = await signUp(signUpData.email, signUpData.password, signUpData.fullName);
     
@@ -106,6 +117,17 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-code">Signup Code</Label>
+                  <Input
+                    id="signup-code"
+                    type="text"
+                    placeholder="Enter your signup code"
+                    value={signUpData.signupCode}
+                    onChange={(e) => setSignUpData({ ...signUpData, signupCode: e.target.value })}
+                    required
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Full Name</Label>
                   <Input
