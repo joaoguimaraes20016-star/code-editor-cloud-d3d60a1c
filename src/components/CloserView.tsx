@@ -41,8 +41,10 @@ interface CloserViewProps {
 export function CloserView({ teamId }: CloserViewProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [newAppointments, setNewAppointments] = useState<Appointment[]>([]);
-  const [closedAppointments, setClosedAppointments] = useState<Appointment[]>([]);
+  const [allNewAppointments, setAllNewAppointments] = useState<Appointment[]>([]);
+  const [myNewAppointments, setMyNewAppointments] = useState<Appointment[]>([]);
+  const [allClosedAppointments, setAllClosedAppointments] = useState<Appointment[]>([]);
+  const [myClosedAppointments, setMyClosedAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<{ full_name: string } | null>(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
@@ -100,8 +102,19 @@ export function CloserView({ teamId }: CloserViewProps) {
     if (!user) return;
     
     try {
-      // Load appointments assigned to this closer only (NEW, CONFIRMED, etc - not CLOSED)
-      const { data: newData, error: newError } = await supabase
+      // Load ALL new appointments (not closed) for the team
+      const { data: allNewData, error: allNewError } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('team_id', teamId)
+        .neq('status', 'CLOSED')
+        .order('start_at_utc', { ascending: true });
+
+      if (allNewError) throw allNewError;
+      setAllNewAppointments(allNewData || []);
+
+      // Load MY new appointments (assigned to this closer, not closed)
+      const { data: myNewData, error: myNewError } = await supabase
         .from('appointments')
         .select('*')
         .eq('team_id', teamId)
@@ -109,11 +122,23 @@ export function CloserView({ teamId }: CloserViewProps) {
         .neq('status', 'CLOSED')
         .order('start_at_utc', { ascending: true });
 
-      if (newError) throw newError;
-      setNewAppointments(newData || []);
+      if (myNewError) throw myNewError;
+      setMyNewAppointments(myNewData || []);
 
-      // Load closed appointments for this closer only
-      const { data: closedData, error: closedError } = await supabase
+      // Load ALL closed appointments for the team
+      const { data: allClosedData, error: allClosedError } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('team_id', teamId)
+        .eq('status', 'CLOSED')
+        .gt('revenue', 0)
+        .order('start_at_utc', { ascending: false });
+
+      if (allClosedError) throw allClosedError;
+      setAllClosedAppointments(allClosedData || []);
+
+      // Load MY closed appointments (assigned to this closer)
+      const { data: myClosedData, error: myClosedError } = await supabase
         .from('appointments')
         .select('*')
         .eq('team_id', teamId)
@@ -122,8 +147,8 @@ export function CloserView({ teamId }: CloserViewProps) {
         .gt('revenue', 0)
         .order('start_at_utc', { ascending: false });
 
-      if (closedError) throw closedError;
-      setClosedAppointments(closedData || []);
+      if (myClosedError) throw myClosedError;
+      setMyClosedAppointments(myClosedData || []);
     } catch (error: any) {
       toast({
         title: 'Error loading appointments',
@@ -406,16 +431,66 @@ export function CloserView({ teamId }: CloserViewProps) {
 
   return (
     <>
-      <Tabs defaultValue="new" className="w-full">
+      <Tabs defaultValue="all-new" className="w-full">
         <TabsList>
-          <TabsTrigger value="new">New Appointments ({newAppointments.length})</TabsTrigger>
-          <TabsTrigger value="closed">Closed ({closedAppointments.length})</TabsTrigger>
+          <TabsTrigger value="all-new">All Appointments ({allNewAppointments.length})</TabsTrigger>
+          <TabsTrigger value="my-new">My Meetings ({myNewAppointments.length})</TabsTrigger>
+          <TabsTrigger value="all-closed">All Closed ({allClosedAppointments.length})</TabsTrigger>
+          <TabsTrigger value="my-closed">My Closed ({myClosedAppointments.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="new" className="mt-6">
-          {newAppointments.length === 0 ? (
+        <TabsContent value="all-new" className="mt-6">
+          {allNewAppointments.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
-              No new appointments to close
+              No new appointments
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Start Time</TableHead>
+                    <TableHead>Lead Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Closer</TableHead>
+                    <TableHead>Setter</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Setter Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allNewAppointments.map((apt) => (
+                    <TableRow key={apt.id}>
+                      <TableCell>{formatLocalTime(apt.start_at_utc)}</TableCell>
+                      <TableCell className="font-medium">{apt.lead_name}</TableCell>
+                      <TableCell>{apt.lead_email}</TableCell>
+                      <TableCell>
+                        <span className="font-medium text-primary">{apt.closer_name || '-'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium text-primary">{apt.setter_name || '-'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                          apt.status === 'SHOWED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                          'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                        }`}>
+                          {apt.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">{apt.setter_notes || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="my-new" className="mt-6">
+          {myNewAppointments.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              No meetings assigned to you
             </div>
           ) : (
             <div className="rounded-md border">
@@ -432,7 +507,7 @@ export function CloserView({ teamId }: CloserViewProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {newAppointments.map((apt) => (
+                  {myNewAppointments.map((apt) => (
                     <TableRow key={apt.id}>
                       <TableCell>{formatLocalTime(apt.start_at_utc)}</TableCell>
                       <TableCell className="font-medium">{apt.lead_name}</TableCell>
@@ -467,8 +542,51 @@ export function CloserView({ teamId }: CloserViewProps) {
           )}
         </TabsContent>
 
-        <TabsContent value="closed" className="mt-6">
-          {closedAppointments.length === 0 ? (
+        <TabsContent value="all-closed" className="mt-6">
+          {allClosedAppointments.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              No closed deals yet
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Start Time</TableHead>
+                    <TableHead>Lead Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Setter</TableHead>
+                    <TableHead>Closer</TableHead>
+                    <TableHead>CC Revenue</TableHead>
+                    <TableHead>MRR</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allClosedAppointments.map((apt) => (
+                    <TableRow key={apt.id}>
+                      <TableCell>{formatLocalTime(apt.start_at_utc)}</TableCell>
+                      <TableCell className="font-medium">{apt.lead_name}</TableCell>
+                      <TableCell>{apt.lead_email}</TableCell>
+                      <TableCell>
+                        <span className="font-medium text-primary">{apt.setter_name || '-'}</span>
+                      </TableCell>
+                      <TableCell>{apt.closer_name || '-'}</TableCell>
+                      <TableCell className="font-semibold text-green-600">${apt.revenue?.toLocaleString() || '0'}</TableCell>
+                      <TableCell className="font-medium text-blue-600">
+                        {apt.mrr_amount && apt.mrr_amount > 0 
+                          ? `$${apt.mrr_amount.toLocaleString()}/mo × ${apt.mrr_months}` 
+                          : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="my-closed" className="mt-6">
+          {myClosedAppointments.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               No closed deals yet
             </div>
@@ -488,7 +606,7 @@ export function CloserView({ teamId }: CloserViewProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {closedAppointments.map((apt) => (
+                  {myClosedAppointments.map((apt) => (
                     <TableRow key={apt.id}>
                       <TableCell>{formatLocalTime(apt.start_at_utc)}</TableCell>
                       <TableCell className="font-medium">{apt.lead_name}</TableCell>
