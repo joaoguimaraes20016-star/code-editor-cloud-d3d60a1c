@@ -43,6 +43,7 @@ const Index = () => {
   const [teamName, setTeamName] = useState("");
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ from: Date | null; to: Date | null; preset: DateRangePreset }>({
     from: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
     to: new Date(),
@@ -54,10 +55,26 @@ const Index = () => {
       navigate('/');
       return;
     }
+    loadUserProfile();
     loadTeamData();
     loadSales();
     loadAppointments();
   }, [user, teamId, navigate]);
+
+  const loadUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id)
+        .single();
+
+      if (error) throw error;
+      setCurrentUserName(data?.full_name || null);
+    } catch (error: any) {
+      console.error('Error loading user profile:', error);
+    }
+  };
 
   const loadTeamData = async () => {
     try {
@@ -496,7 +513,15 @@ const Index = () => {
                 </h2>
                 <ImportSpreadsheet onImport={handleImport} />
               </div>
-              <SalesTable sales={filteredSales} />
+              <SalesTable 
+                sales={filteredSales} 
+                userRole={userRole}
+                currentUserName={currentUserName}
+                onSaleDeleted={() => {
+                  loadSales();
+                  loadAppointments();
+                }}
+              />
             </div>
           </TabsContent>
 
