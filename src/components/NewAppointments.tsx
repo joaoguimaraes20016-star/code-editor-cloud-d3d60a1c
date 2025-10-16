@@ -77,11 +77,14 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           table: 'appointments',
           filter: `team_id=eq.${teamId}`
         },
-        () => {
+        (payload) => {
+          console.log('New appointments realtime event:', payload);
           loadAppointments();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('New appointments subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);

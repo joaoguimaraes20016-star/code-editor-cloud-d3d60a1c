@@ -445,7 +445,7 @@ const Index = () => {
                       <p className="text-sm text-muted-foreground mb-4">
                         Click "Assign" to add an appointment to your list
                       </p>
-                      <NewAppointments teamId={teamId!} />
+                      <NewAppointments teamId={teamId!} key={`new-${Date.now()}`} />
                     </div>
                   </TabsContent>
 
