@@ -147,15 +147,22 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
         ? teamMembers.find(m => m.user_id === selectedCloser) 
         : null;
       
+      // Build update object - only include closer fields if explicitly changing
+      const updateData: any = {
+        setter_id: selectedSetter,
+        setter_name: selectedSetterMember?.profiles.full_name || "",
+        setter_notes: notes || null,
+      };
+
+      // Only update closer if one was selected (not "none")
+      if (selectedCloser && selectedCloser !== "none") {
+        updateData.closer_id = selectedCloser;
+        updateData.closer_name = selectedCloserMember?.profiles.full_name || null;
+      }
+      
       const { error } = await supabase
         .from('appointments')
-        .update({
-          setter_id: selectedSetter,
-          setter_name: selectedSetterMember?.profiles.full_name || "",
-          closer_id: selectedCloser && selectedCloser !== "none" ? selectedCloser : null,
-          closer_name: selectedCloserMember?.profiles.full_name || null,
-          setter_notes: notes || null,
-        })
+        .update(updateData)
         .eq('id', selectedAppointment.id);
 
       if (error) throw error;
