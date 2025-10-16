@@ -181,6 +181,9 @@ const Auth = () => {
     // If user signed up with an invitation, add them to the team
     if (inviteToken) {
       try {
+        // Wait a moment for the session to be established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const { data: invitation } = await supabase
           .from('team_invitations')
           .select('team_id, role, id')
