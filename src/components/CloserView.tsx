@@ -15,8 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { format, addMonths, startOfMonth } from "date-fns";
-import { DollarSign } from "lucide-react";
+import { DollarSign, MessageSquare } from "lucide-react";
 
 interface Appointment {
   id: string;
@@ -478,7 +480,30 @@ export function CloserView({ teamId }: CloserViewProps) {
                           {apt.status}
                         </span>
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">{apt.setter_notes || '-'}</TableCell>
+                      <TableCell>
+                        {apt.setter_notes ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="sm" className="max-w-xs truncate justify-start">
+                                <MessageSquare className="h-4 w-4 mr-2 shrink-0" />
+                                <span className="truncate">{apt.setter_notes}</span>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-96">
+                              <div className="space-y-2">
+                                <h4 className="font-medium">Setter Notes</h4>
+                                <Textarea
+                                  value={apt.setter_notes}
+                                  readOnly
+                                  className="min-h-[120px]"
+                                />
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -523,7 +548,30 @@ export function CloserView({ teamId }: CloserViewProps) {
                           {apt.status}
                         </span>
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">{apt.setter_notes || '-'}</TableCell>
+                      <TableCell>
+                        {apt.setter_notes ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="sm" className="max-w-xs truncate justify-start">
+                                <MessageSquare className="h-4 w-4 mr-2 shrink-0" />
+                                <span className="truncate">{apt.setter_notes}</span>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-96">
+                              <div className="space-y-2">
+                                <h4 className="font-medium">Setter Notes</h4>
+                                <Textarea
+                                  value={apt.setter_notes}
+                                  readOnly
+                                  className="min-h-[120px]"
+                                />
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Button
                           size="sm"

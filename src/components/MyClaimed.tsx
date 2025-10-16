@@ -18,6 +18,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 
 interface Appointment {
@@ -209,13 +213,35 @@ export function MyClaimed({ teamId }: MyClaimedProps) {
                 </Select>
               </TableCell>
               <TableCell>
-                <Input
-                  value={editingNotes[apt.id] !== undefined ? editingNotes[apt.id] : (apt.setter_notes || '')}
-                  onChange={(e) => handleNotesChange(apt.id, e.target.value)}
-                  onBlur={() => handleNotesBlur(apt.id)}
-                  placeholder="Add notes..."
-                  className="max-w-md"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={editingNotes[apt.id] !== undefined ? editingNotes[apt.id] : (apt.setter_notes || '')}
+                    onChange={(e) => handleNotesChange(apt.id, e.target.value)}
+                    onBlur={() => handleNotesBlur(apt.id)}
+                    placeholder="Add notes..."
+                    className="max-w-md"
+                  />
+                  {apt.setter_notes && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-96">
+                        <div className="space-y-2">
+                          <h4 className="font-medium">Setter Notes</h4>
+                          <Textarea
+                            value={editingNotes[apt.id] !== undefined ? editingNotes[apt.id] : apt.setter_notes}
+                            onChange={(e) => handleNotesChange(apt.id, e.target.value)}
+                            onBlur={() => handleNotesBlur(apt.id)}
+                            className="min-h-[120px]"
+                          />
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}
