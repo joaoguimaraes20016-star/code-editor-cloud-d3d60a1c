@@ -15,6 +15,7 @@ import { AllClaimed } from "@/components/AllClaimed";
 import { MyClaimed } from "@/components/MyClaimed";
 import { CloserView } from "@/components/CloserView";
 import { MRRDashboard } from "@/components/MRRDashboard";
+import { ImportAppointments } from "@/components/ImportAppointments";
 import {
   Select,
   SelectContent,
@@ -313,7 +314,6 @@ const Index = () => {
                 Settings
               </Button>
             )}
-            <ImportSpreadsheet onImport={handleImport} />
             <AddSaleDialog onAddSale={handleAddSale} />
           </div>
         </div>
@@ -428,10 +428,15 @@ const Index = () => {
                 <>
                   <TabsContent value="new" className="mt-6">
                     <div>
-                      <h2 className="text-2xl font-semibold mb-4">New Appointments</h2>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Click "Assign" to add an appointment to your list
-                      </p>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h2 className="text-2xl font-semibold">New Appointments</h2>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Import daily CSV or click "Assign" to add appointments to your list
+                          </p>
+                        </div>
+                        <ImportAppointments teamId={teamId!} onImport={loadSales} />
+                      </div>
                       <NewAppointments teamId={teamId!} />
                     </div>
                   </TabsContent>
