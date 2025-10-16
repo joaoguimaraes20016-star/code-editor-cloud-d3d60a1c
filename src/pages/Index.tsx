@@ -9,6 +9,7 @@ import { RevenueChart } from "@/components/RevenueChart";
 import { CommissionBreakdown } from "@/components/CommissionBreakdown";
 import { Leaderboard } from "@/components/Leaderboard";
 import { ImportSpreadsheet } from "@/components/ImportSpreadsheet";
+import { DateRangeFilter, DateRangePreset } from "@/components/DateRangeFilter";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,11 @@ const Index = () => {
   const [selectedClient, setSelectedClient] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [teamName, setTeamName] = useState("");
+  const [dateRange, setDateRange] = useState<{ from: Date | null; to: Date | null; preset: DateRangePreset }>({
+    from: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+    to: new Date(),
+    preset: "last7days"
+  });
 
   useEffect(() => {
     if (!user || !teamId) {
@@ -190,11 +196,27 @@ const Index = () => {
   // Get unique sales reps
   const salesReps = ['all', ...new Set(sales.map(s => s.salesRep))];
 
-  // Filter sales by selected rep and client
+  // Filter sales by selected rep, client, and date range
   const filteredSales = sales.filter(s => {
     const repMatch = selectedRep === 'all' || s.salesRep === selectedRep;
     const clientMatch = selectedClient === 'all' || s.clientId === selectedClient;
-    return repMatch && clientMatch;
+    
+    // Date range filtering
+    let dateMatch = true;
+    if (dateRange.from || dateRange.to) {
+      const saleDate = new Date(s.date);
+      saleDate.setHours(0, 0, 0, 0);
+      
+      if (dateRange.from && dateRange.to) {
+        dateMatch = saleDate >= dateRange.from && saleDate <= dateRange.to;
+      } else if (dateRange.from) {
+        dateMatch = saleDate >= dateRange.from;
+      } else if (dateRange.to) {
+        dateMatch = saleDate <= dateRange.to;
+      }
+    }
+    
+    return repMatch && clientMatch && dateMatch;
   });
 
   // Calculate metrics
@@ -300,6 +322,11 @@ const Index = () => {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Date Range:</label>
+            <DateRangeFilter onRangeChange={setDateRange} />
+          </div>
+
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium">Sales Rep:</label>
             <Select value={selectedRep} onValueChange={setSelectedRep}>
