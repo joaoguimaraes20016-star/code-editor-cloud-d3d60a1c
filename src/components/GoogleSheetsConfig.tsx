@@ -46,10 +46,10 @@ export function GoogleSheetsConfig({ teamId, currentUrl, onUpdate }: GoogleSheet
   };
 
   const handleSync = async () => {
-    if (!url) {
+    if (!currentUrl) {
       toast({
         title: "Error",
-        description: "Please save a Google Sheets URL first",
+        description: "Please save a Google Sheets URL first before syncing",
         variant: "destructive",
       });
       return;
@@ -57,21 +57,28 @@ export function GoogleSheetsConfig({ teamId, currentUrl, onUpdate }: GoogleSheet
 
     setSyncing(true);
     try {
-      const { error } = await supabase.functions.invoke("sync-appointments", {
+      const { data, error } = await supabase.functions.invoke("sync-appointments", {
         body: { teamId },
       });
 
       if (error) throw error;
 
+      const response = data as { success?: boolean; count?: number; message?: string; error?: string };
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
       toast({
         title: "Success",
-        description: "Appointments synced successfully",
+        description: response.message || "Appointments synced successfully",
       });
       onUpdate();
     } catch (error: any) {
+      console.error('Sync error:', error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Sync Failed",
+        description: error.message || "Failed to sync appointments. Please check your Google Sheets URL.",
         variant: "destructive",
       });
     } finally {
@@ -102,13 +109,18 @@ export function GoogleSheetsConfig({ teamId, currentUrl, onUpdate }: GoogleSheet
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving || !url}>
             <Save className="w-4 h-4 mr-2" />
-            Save URL
+            {saving ? "Saving..." : "Save URL"}
           </Button>
-          <Button onClick={handleSync} disabled={syncing || !url} variant="secondary">
+          <Button 
+            onClick={handleSync} 
+            disabled={syncing || !currentUrl} 
+            variant="secondary"
+            title={!currentUrl ? "Please save a URL first" : "Sync appointments from Google Sheets"}
+          >
             <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
-            Sync Now
+            {syncing ? "Syncing..." : "Sync Now"}
           </Button>
         </div>
       </CardContent>
