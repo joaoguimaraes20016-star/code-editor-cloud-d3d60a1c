@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          closer_id: string | null
+          closer_name: string | null
+          created_at: string | null
+          id: string
+          lead_email: string
+          lead_name: string
+          setter_id: string | null
+          setter_name: string | null
+          setter_notes: string | null
+          start_at_utc: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          team_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          closer_id?: string | null
+          closer_name?: string | null
+          created_at?: string | null
+          id?: string
+          lead_email: string
+          lead_name: string
+          setter_id?: string | null
+          setter_name?: string | null
+          setter_notes?: string | null
+          start_at_utc: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          team_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          closer_id?: string | null
+          closer_name?: string | null
+          created_at?: string | null
+          id?: string
+          lead_email?: string
+          lead_name?: string
+          setter_id?: string | null
+          setter_name?: string | null
+          setter_notes?: string | null
+          start_at_utc?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          team_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           created_at: string | null
@@ -230,7 +286,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      appointment_status: "NEW" | "SHOWED" | "NO_SHOW" | "CANCELLED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -357,6 +413,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      appointment_status: ["NEW", "SHOWED", "NO_SHOW", "CANCELLED"],
+    },
   },
 } as const

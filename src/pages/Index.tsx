@@ -10,6 +10,8 @@ import { CommissionBreakdown } from "@/components/CommissionBreakdown";
 import { Leaderboard } from "@/components/Leaderboard";
 import { ImportSpreadsheet } from "@/components/ImportSpreadsheet";
 import { DateRangeFilter, DateRangePreset } from "@/components/DateRangeFilter";
+import { MyClaimed } from "@/components/MyClaimed";
+import { Attendance } from "@/components/Attendance";
 import {
   Select,
   SelectContent,
@@ -17,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { DollarSign, TrendingUp, Users, Calendar, ArrowLeft, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +36,7 @@ const Index = () => {
   const [selectedRep, setSelectedRep] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [teamName, setTeamName] = useState("");
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [dateRange, setDateRange] = useState<{ from: Date | null; to: Date | null; preset: DateRangePreset }>({
     from: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
     to: new Date(),
@@ -279,6 +283,9 @@ const Index = () => {
     );
   }
 
+  const canViewSetterScheduling = userRole === 'setter' || userRole === 'admin' || isOwner;
+  const canViewCloserScheduling = userRole === 'closer' || userRole === 'admin' || isOwner;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">
@@ -307,6 +314,17 @@ const Index = () => {
             <AddSaleDialog onAddSale={handleAddSale} />
           </div>
         </div>
+
+        {/* Navigation Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            {(canViewSetterScheduling || canViewCloserScheduling) && (
+              <TabsTrigger value="scheduling">Scheduling</TabsTrigger>
+            )}
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-6 mt-6">
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4">
@@ -382,13 +400,45 @@ const Index = () => {
         {/* Chart */}
         <RevenueChart data={chartData} />
 
-        {/* Sales Table */}
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">
-            {selectedRep === 'all' ? 'All Sales' : `${selectedRep}'s Sales`}
-          </h2>
-          <SalesTable sales={filteredSales} />
-        </div>
+            {/* Sales Table */}
+            <div>
+              <h2 className="text-2xl font-semibold mb-4">
+                {selectedRep === 'all' ? 'All Sales' : `${selectedRep}'s Sales`}
+              </h2>
+              <SalesTable sales={filteredSales} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="scheduling" className="space-y-6 mt-6">
+            <Tabs defaultValue={canViewSetterScheduling ? "my-claimed" : "attendance"} className="w-full">
+              <TabsList>
+                {canViewSetterScheduling && <TabsTrigger value="my-claimed">My Claimed</TabsTrigger>}
+                {canViewCloserScheduling && <TabsTrigger value="attendance">Attendance</TabsTrigger>}
+              </TabsList>
+
+              {canViewSetterScheduling && (
+                <TabsContent value="my-claimed" className="mt-6">
+                  <div>
+                    <h2 className="text-2xl font-semibold mb-4">My Claimed Appointments</h2>
+                    <MyClaimed teamId={teamId!} />
+                  </div>
+                </TabsContent>
+              )}
+
+              {canViewCloserScheduling && (
+                <TabsContent value="attendance" className="mt-6">
+                  <div>
+                    <h2 className="text-2xl font-semibold mb-4">Attendance</h2>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Showing appointments with NEW, SHOWED, or NO_SHOW status in the next 7 days
+                    </p>
+                    <Attendance teamId={teamId!} />
+                  </div>
+                </TabsContent>
+              )}
+            </Tabs>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
