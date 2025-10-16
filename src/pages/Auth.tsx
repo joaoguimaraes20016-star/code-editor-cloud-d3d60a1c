@@ -169,6 +169,91 @@ const Auth = () => {
     const { data: signUpResult, error } = await signUp(signUpData.email, signUpData.password, signUpData.fullName);
     
     if (error) {
+      // If user already exists and has an invitation, sign them in instead
+      if (error.message?.includes('already registered') && inviteToken) {
+        const { error: signInError } = await signIn(signUpData.email, signUpData.password);
+        
+        if (signInError) {
+          toast({
+            title: 'Error signing in',
+            description: 'Account exists but password is incorrect. Please reset your password or contact support.',
+            variant: 'destructive',
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Get current user session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          toast({
+            title: 'Error',
+            description: 'Could not get user session. Please try again.',
+            variant: 'destructive',
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Process invitation for existing user
+        try {
+          const { data: invitation } = await supabase
+            .from('team_invitations')
+            .select('team_id, role, id')
+            .eq('token', inviteToken)
+            .maybeSingle();
+
+          if (invitation) {
+            // Check if user is already a team member
+            const { data: existingMember } = await supabase
+              .from('team_members')
+              .select('id')
+              .eq('team_id', invitation.team_id)
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+
+            if (!existingMember) {
+              // Insert team member
+              const { error: insertError } = await supabase.from('team_members').insert({
+                team_id: invitation.team_id,
+                user_id: session.user.id,
+                role: invitation.role,
+              });
+
+              if (insertError) {
+                console.error('Error inserting team member:', insertError);
+                throw insertError;
+              }
+
+              // Mark invitation as accepted
+              await supabase
+                .from('team_invitations')
+                .update({ accepted_at: new Date().toISOString() })
+                .eq('id', invitation.id);
+            }
+
+            toast({
+              title: 'Welcome to the team!',
+              description: 'You have been added to the team successfully.',
+            });
+            
+            setTimeout(() => {
+              navigate(`/team/${invitation.team_id}`);
+            }, 500);
+          }
+        } catch (err) {
+          console.error('Error processing invitation:', err);
+          toast({
+            title: 'Error joining team',
+            description: 'There was a problem adding you to the team. Please contact support.',
+            variant: 'destructive',
+          });
+        }
+        
+        setLoading(false);
+        return;
+      }
+
       toast({
         title: 'Error signing up',
         description: error.message,
@@ -185,7 +270,7 @@ const Auth = () => {
           .from('team_invitations')
           .select('team_id, role, id')
           .eq('token', inviteToken)
-          .single();
+          .maybeSingle();
 
         if (invitation) {
           // Insert team member
@@ -197,9 +282,6 @@ const Auth = () => {
 
           if (insertError) {
             console.error('Error inserting team member:', insertError);
-            console.error('Team ID:', invitation.team_id);
-            console.error('User ID:', signUpResult.user.id);
-            console.error('Role:', invitation.role);
             throw insertError;
           }
 
