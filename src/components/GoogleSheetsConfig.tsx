@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,11 +47,6 @@ export function GoogleSheetsConfig({ teamId, currentUrl, onUpdate }: GoogleSheet
 
   const handleSync = async () => {
     if (!currentUrl) {
-      toast({
-        title: "Error",
-        description: "Please save a Google Sheets URL first before syncing",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -69,22 +64,24 @@ export function GoogleSheetsConfig({ teamId, currentUrl, onUpdate }: GoogleSheet
         throw new Error(response.error);
       }
 
-      toast({
-        title: "Success",
-        description: response.message || "Appointments synced successfully",
-      });
       onUpdate();
     } catch (error: any) {
       console.error('Sync error:', error);
-      toast({
-        title: "Sync Failed",
-        description: error.message || "Failed to sync appointments. Please check your Google Sheets URL.",
-        variant: "destructive",
-      });
     } finally {
       setSyncing(false);
     }
   };
+
+  // Auto-sync every 5 seconds
+  useEffect(() => {
+    if (!currentUrl) return;
+
+    const intervalId = setInterval(() => {
+      handleSync();
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [currentUrl, teamId]);
 
   return (
     <Card>
