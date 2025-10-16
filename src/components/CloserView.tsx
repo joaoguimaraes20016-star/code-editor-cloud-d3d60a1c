@@ -51,6 +51,27 @@ export function CloserView({ teamId }: CloserViewProps) {
   useEffect(() => {
     loadUserProfile();
     loadAppointments();
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('closer-view-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `team_id=eq.${teamId}`
+        },
+        () => {
+          loadAppointments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [teamId, user]);
 
   const loadUserProfile = async () => {

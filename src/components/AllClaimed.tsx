@@ -32,6 +32,27 @@ export function AllClaimed({ teamId }: AllClaimedProps) {
 
   useEffect(() => {
     loadAppointments();
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('all-claimed-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `team_id=eq.${teamId}`
+        },
+        () => {
+          loadAppointments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [teamId]);
 
   const loadAppointments = async () => {

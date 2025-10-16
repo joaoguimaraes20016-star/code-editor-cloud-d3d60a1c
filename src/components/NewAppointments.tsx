@@ -65,6 +65,27 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   useEffect(() => {
     loadTeamMembers();
     loadAppointments();
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('new-appointments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `team_id=eq.${teamId}`
+        },
+        () => {
+          loadAppointments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [teamId, user]);
 
   const loadTeamMembers = async () => {
