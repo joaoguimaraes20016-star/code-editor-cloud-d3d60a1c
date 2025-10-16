@@ -10,6 +10,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -424,18 +431,18 @@ export function CloserView({ teamId }: CloserViewProps) {
     }
   };
 
-  const handleMarkNoShow = async (appointmentId: string) => {
+  const handleStatusChange = async (appointmentId: string, newStatus: 'NEW' | 'CONFIRMED' | 'SHOWED' | 'NO_SHOW' | 'CANCELLED' | 'RESCHEDULED' | 'CLOSED') => {
     try {
       const { error } = await supabase
         .from('appointments')
-        .update({ status: 'NO_SHOW' })
+        .update({ status: newStatus })
         .eq('id', appointmentId);
 
       if (error) throw error;
 
       toast({
-        title: 'Marked as No Show',
-        description: 'Appointment has been marked as no show',
+        title: 'Status updated',
+        description: `Appointment status changed to ${newStatus}`,
       });
 
       loadAppointments();
@@ -550,11 +557,10 @@ export function CloserView({ teamId }: CloserViewProps) {
                     <TableHead>Start Time</TableHead>
                     <TableHead>Lead Name</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Setter</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Setter Notes</TableHead>
+                      <TableHead>Setter</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Setter Notes</TableHead>
                       <TableHead>Action</TableHead>
-                      <TableHead>No Show</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -567,12 +573,22 @@ export function CloserView({ teamId }: CloserViewProps) {
                         <span className="font-medium text-primary">{apt.setter_name || '-'}</span>
                       </TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                          apt.status === 'SHOWED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                          'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                        }`}>
-                          {apt.status}
-                        </span>
+                        <Select
+                          value={apt.status}
+                          onValueChange={(value: 'NEW' | 'CONFIRMED' | 'SHOWED' | 'NO_SHOW' | 'CANCELLED' | 'RESCHEDULED' | 'CLOSED') => handleStatusChange(apt.id, value)}
+                        >
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NEW">NEW</SelectItem>
+                            <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
+                            <SelectItem value="SHOWED">SHOWED</SelectItem>
+                            <SelectItem value="NO_SHOW">NO SHOW</SelectItem>
+                            <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                            <SelectItem value="RESCHEDULED">RESCHEDULED</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         {apt.setter_notes ? (
@@ -606,15 +622,6 @@ export function CloserView({ teamId }: CloserViewProps) {
                         >
                           <DollarSign className="h-3 w-3" />
                           Close Deal
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleMarkNoShow(apt.id)}
-                        >
-                          No Show
                         </Button>
                       </TableCell>
                     </TableRow>
