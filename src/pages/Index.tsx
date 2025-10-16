@@ -16,14 +16,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { DollarSign, TrendingUp, Users, Calendar, ArrowLeft } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Calendar, ArrowLeft, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTeamRole } from "@/hooks/useTeamRole";
 
 const Index = () => {
   const { teamId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { role: userRole, isOwner } = useTeamRole(teamId);
   
   const [sales, setSales] = useState<Sale[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -253,6 +255,12 @@ const Index = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            {isOwner && (
+              <Button variant="outline" onClick={() => navigate(`/team/${teamId}/settings`)}>
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            )}
             <ImportSpreadsheet onImport={handleImport} />
             <AddSaleDialog onAddSale={handleAddSale} clients={clients} />
           </div>
@@ -303,13 +311,15 @@ const Index = () => {
             trend="+12.5% from last month"
             trendUp
           />
-          <MetricCard
-            title="Total Commissions"
-            value={`$${totalCommissions.toLocaleString()}`}
-            icon={TrendingUp}
-            trend="+8.2% from last month"
-            trendUp
-          />
+          {userRole === 'owner' && (
+            <MetricCard
+              title="Total Commissions"
+              value={`$${totalCommissions.toLocaleString()}`}
+              icon={TrendingUp}
+              trend="+8.2% from last month"
+              trendUp
+            />
+          )}
           <MetricCard
             title="Close Rate"
             value={`${closeRate}%`}
@@ -326,8 +336,8 @@ const Index = () => {
           />
         </div>
 
-        {/* Commission Breakdown */}
-        <CommissionBreakdown sales={filteredSales} />
+        {/* Commission Breakdown - Only for owners */}
+        {userRole === 'owner' && <CommissionBreakdown sales={filteredSales} />}
 
         {/* Chart */}
         <RevenueChart data={chartData} />
@@ -338,7 +348,7 @@ const Index = () => {
             {selectedRep === 'all' ? 'All Sales' : `${selectedRep}'s Sales`}
             {selectedClient !== 'all' && ` - ${clients.find(c => c.id === selectedClient)?.name}`}
           </h2>
-          <SalesTable sales={filteredSales} />
+          <SalesTable sales={filteredSales} userRole={userRole} />
         </div>
       </div>
     </div>

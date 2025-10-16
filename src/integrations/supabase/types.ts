@@ -209,6 +209,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_team_role: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: string
+      }
+      has_team_role: {
+        Args: { _role: string; _team_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_team_member: {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
