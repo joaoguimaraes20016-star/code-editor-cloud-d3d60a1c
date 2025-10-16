@@ -45,8 +45,21 @@ serve(async (req) => {
 
     console.log('Fetching data from:', team.google_sheets_url);
 
+    // Convert edit URL to CSV export URL if needed
+    let csvUrl = team.google_sheets_url;
+    if (csvUrl.includes('/edit')) {
+      const match = csvUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      const gidMatch = csvUrl.match(/[#&]gid=(\d+)/);
+      if (match) {
+        const spreadsheetId = match[1];
+        const gid = gidMatch ? gidMatch[1] : '0';
+        csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+        console.log('Converted to CSV URL:', csvUrl);
+      }
+    }
+
     // Fetch data from Google Sheets published CSV
-    const sheetsResponse = await fetch(team.google_sheets_url);
+    const sheetsResponse = await fetch(csvUrl);
     console.log('Sheets response status:', sheetsResponse.status);
     
     if (!sheetsResponse.ok) {
@@ -70,11 +83,18 @@ serve(async (req) => {
           return null;
         }
         
+        // Parse and validate the date
+        const parsedDate = new Date(startAtUtc);
+        if (isNaN(parsedDate.getTime())) {
+          console.warn('Invalid date in row:', row, 'Date value:', startAtUtc);
+          return null;
+        }
+        
         return {
           team_id: teamId,
           lead_name: leadName,
           lead_email: leadEmail,
-          start_at_utc: new Date(startAtUtc).toISOString(),
+          start_at_utc: parsedDate.toISOString(),
           status: 'NEW',
         };
       })

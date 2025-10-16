@@ -105,7 +105,9 @@ export function GoogleSheetsConfig({ teamId, currentUrl, onUpdate }: GoogleSheet
             onChange={(e) => setUrl(e.target.value)}
           />
           <p className="text-sm text-muted-foreground">
-            Publish your Google Sheet as CSV and paste the URL here. The sheet should have columns: Lead Name, Lead Email, Start At UTC
+            Paste your Google Sheets URL (can be the edit link). The sheet should have columns: <strong>Lead Name, Lead Email, Start At UTC</strong>
+            <br />
+            <span className="text-xs">Date format example: 2025-10-16 14:30:00 or 2025-10-16T14:30:00Z</span>
           </p>
         </div>
         <div className="flex gap-2">
