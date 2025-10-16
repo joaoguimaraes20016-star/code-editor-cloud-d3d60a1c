@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signIn, signUp, resetPassword } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -28,42 +29,40 @@ const Auth = () => {
 
   useEffect(() => {
     const checkPasswordReset = async () => {
-      console.log('=== Auth Page Loaded ===');
+      console.log('=== Auth Check ===');
       console.log('URL:', window.location.href);
       
-      // Check for reset mode from query parameter (set by AuthCallback)
-      const queryParams = new URLSearchParams(window.location.search);
-      const mode = queryParams.get('mode');
-      
-      console.log('Mode:', mode);
-      
-      if (mode === 'reset') {
-        console.log('Reset mode detected');
-        
-        // Get the current session
-        const { data: { session } } = await supabase.auth.getSession();
+      // Listen for auth state changes from password reset link
+      const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('Auth event:', event);
         console.log('Session user:', session?.user?.email);
         
+        if (event === 'PASSWORD_RECOVERY' && session) {
+          console.log('PASSWORD_RECOVERY event detected!');
+          setIsResettingPassword(true);
+          setUserEmail(session.user.email || '');
+        }
+      });
+      
+      // Also check URL parameters
+      const queryParams = new URLSearchParams(location.search);
+      const mode = queryParams.get('mode');
+      
+      if (mode === 'reset') {
+        const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.email) {
-          console.log('Setting up password reset form');
           setIsResettingPassword(true);
           setUserEmail(session.user.email);
-          // Clean URL
           window.history.replaceState({}, '', '/auth');
-        } else {
-          console.log('No session found');
-          navigate('/auth');
         }
-        return;
       }
       
-      // Check for error in hash
-      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      // Check hash for errors
+      const hashParams = new URLSearchParams(location.hash.slice(1));
       const error = hashParams.get('error');
       const errorCode = hashParams.get('error_code');
       
       if (error === 'access_denied' && errorCode === 'otp_expired') {
-        console.log('Expired link detected');
         setShowResetForm(true);
         toast({
           title: 'Link expired',
@@ -72,10 +71,14 @@ const Auth = () => {
         });
         window.history.replaceState({}, '', '/auth');
       }
+      
+      return () => {
+        authListener.subscription.unsubscribe();
+      };
     };
     
     checkPasswordReset();
-  }, [navigate, toast]);
+  }, [location, navigate, toast]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
