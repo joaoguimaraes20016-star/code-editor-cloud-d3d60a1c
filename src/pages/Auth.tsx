@@ -660,15 +660,15 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 {inviteToken && (
-                  <div className="space-y-3">
-                    <div className="p-4 bg-primary/10 rounded-lg">
-                      <h3 className="font-semibold mb-1">Welcome!</h3>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                      <h3 className="font-semibold text-lg mb-2">🎉 You're Invited!</h3>
                       <p className="text-sm text-muted-foreground">
-                        You've been invited to join a team. Complete your profile to get started.
+                        Complete your profile below to join the team.
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="invite-email">Email</Label>
+                      <Label htmlFor="invite-email">Email Address</Label>
                       <Input
                         id="invite-email"
                         type="email"
@@ -676,6 +676,7 @@ const Auth = () => {
                         disabled
                         className="bg-muted"
                       />
+                      <p className="text-xs text-muted-foreground">Your invitation email</p>
                     </div>
                   </div>
                 )}
@@ -693,15 +694,18 @@ const Auth = () => {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name</Label>
+                  <Label htmlFor="signup-name">Full Name *</Label>
                   <Input
                     id="signup-name"
                     type="text"
-                    placeholder="Enter your full name"
+                    placeholder="John Doe"
                     value={signUpData.fullName}
                     onChange={(e) => setSignUpData({ ...signUpData, fullName: e.target.value })}
                     required
                   />
+                  {inviteToken && (
+                    <p className="text-xs text-muted-foreground">This will be your display name on the team</p>
+                  )}
                 </div>
                 {!inviteToken && (
                   <div className="space-y-2">
@@ -717,19 +721,29 @@ const Auth = () => {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Set Password</Label>
+                  <Label htmlFor="signup-password">Create Password *</Label>
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="Create a password (min 6 characters)"
+                    placeholder="Minimum 6 characters"
                     value={signUpData.password}
                     onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
                     required
                     minLength={6}
                   />
+                  <p className="text-xs text-muted-foreground">Use at least 6 characters for your password</p>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Creating account...' : inviteToken ? 'Join Team' : 'Sign Up'}
+                <Button type="submit" className="w-full" disabled={loading} size="lg">
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin">⏳</span> 
+                      Creating account...
+                    </span>
+                  ) : inviteToken ? (
+                    '✨ Join Team'
+                  ) : (
+                    'Sign Up'
+                  )}
                 </Button>
               </form>
             </TabsContent>
