@@ -10,29 +10,31 @@ const AuthCallback = () => {
       const params = new URLSearchParams(window.location.search);
       const tokenHash = params.get('token_hash');
       const type = params.get('type');
-      const next = params.get('next') || '/auth';
       
-      console.log('Auth callback params:', { tokenHash, type, next });
+      console.log('=== Auth Callback Triggered ===');
+      console.log('URL:', window.location.href);
+      console.log('Params:', { tokenHash: !!tokenHash, type });
       
       if (type === 'recovery' && tokenHash) {
-        // Exchange the token_hash for a session
-        const { data, error } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: 'recovery',
-        });
+        console.log('Processing recovery token...');
         
-        console.log('Verify OTP result:', { data, error });
-        
-        if (error) {
-          console.error('Error verifying recovery token:', error);
-          navigate('/auth#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired');
-        } else {
-          // Redirect to password reset form with session established
-          navigate('/auth#type=recovery&access_token=verified');
-        }
+        // The session is automatically established by clicking the link
+        // We just need to wait a moment for Supabase to process it
+        setTimeout(async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          console.log('Session after recovery:', session?.user?.email);
+          
+          if (session) {
+            // Redirect with a flag to show the password reset form
+            navigate('/auth?reset=true');
+          } else {
+            console.error('No session found after recovery');
+            navigate('/auth');
+          }
+        }, 500);
       } else {
-        // Redirect to the next URL or default to auth page
-        navigate(next);
+        console.log('No recovery type, redirecting to auth');
+        navigate('/auth');
       }
     };
 
