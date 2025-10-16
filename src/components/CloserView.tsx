@@ -29,6 +29,9 @@ interface Appointment {
   setter_id: string | null;
   revenue: number;
   closer_name: string | null;
+  cc_collected?: number;
+  mrr_amount?: number;
+  mrr_months?: number;
 }
 
 interface CloserViewProps {
@@ -163,20 +166,18 @@ export function CloserView({ teamId }: CloserViewProps) {
     }
 
     try {
-      const totalRevenue = cc + (mrr * (months || 0));
-      
       // Calculate commissions on CC
       const closerCommission = cc * 0.10; // 10% for closer
       const setterCommission = selectedAppointment.setter_id ? cc * 0.05 : 0; // 5% for setter if assigned
 
-      // Update appointment to closed
+      // Update appointment to closed - revenue is just CC, MRR tracked separately
       const { error: updateError } = await supabase
         .from('appointments')
         .update({
           status: 'CANCELLED', // Using CANCELLED to track closed deals
           closer_id: user.id,
           closer_name: userProfile.full_name,
-          revenue: totalRevenue,
+          revenue: cc, // Revenue is just CC
           cc_collected: cc,
           mrr_amount: mrr || 0,
           mrr_months: months || 0,
@@ -194,7 +195,7 @@ export function CloserView({ teamId }: CloserViewProps) {
           setter: selectedAppointment.setter_name || 'No Setter',
           sales_rep: userProfile.full_name,
           date: new Date().toISOString().split('T')[0],
-          revenue: totalRevenue,
+          revenue: cc, // Revenue is just CC
           commission: closerCommission,
           setter_commission: setterCommission,
           status: 'closed',
@@ -251,7 +252,7 @@ export function CloserView({ teamId }: CloserViewProps) {
 
       toast({
         title: 'Deal closed',
-        description: `Successfully closed deal - CC: $${cc.toLocaleString()}, Total: $${totalRevenue.toLocaleString()}`,
+        description: `Successfully closed deal - CC: $${cc.toLocaleString()}${mrr > 0 ? `, MRR: $${mrr.toLocaleString()}/mo for ${months} months` : ''}`,
       });
 
       setCloseDialogOpen(false);
@@ -300,15 +301,14 @@ export function CloserView({ teamId }: CloserViewProps) {
     }
 
     try {
-      const totalRevenue = cc + (mrr * (months || 0));
       const closerCommission = cc * 0.10;
       const setterCommission = editingAppointment.setter_id ? cc * 0.05 : 0;
 
-      // Update appointment
+      // Update appointment - revenue is just CC
       const { error: updateError } = await supabase
         .from('appointments')
         .update({
-          revenue: totalRevenue,
+          revenue: cc, // Revenue is just CC
           cc_collected: cc,
           mrr_amount: mrr || 0,
           mrr_months: months || 0,
@@ -321,7 +321,7 @@ export function CloserView({ teamId }: CloserViewProps) {
       const { error: saleError } = await supabase
         .from('sales')
         .update({
-          revenue: totalRevenue,
+          revenue: cc, // Revenue is just CC
           commission: closerCommission,
           setter_commission: setterCommission,
         })
@@ -379,7 +379,7 @@ export function CloserView({ teamId }: CloserViewProps) {
 
       toast({
         title: 'Deal updated',
-        description: `Successfully updated - CC: $${cc.toLocaleString()}, Total: $${totalRevenue.toLocaleString()}`,
+        description: `Successfully updated - CC: $${cc.toLocaleString()}${mrr > 0 ? `, MRR: $${mrr.toLocaleString()}/mo for ${months} months` : ''}`,
       });
 
       setEditDialogOpen(false);
@@ -479,7 +479,8 @@ export function CloserView({ teamId }: CloserViewProps) {
                     <TableHead>Email</TableHead>
                     <TableHead>Setter</TableHead>
                     <TableHead>Closer</TableHead>
-                    <TableHead>Revenue</TableHead>
+                    <TableHead>CC Revenue</TableHead>
+                    <TableHead>MRR</TableHead>
                     <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -495,6 +496,16 @@ export function CloserView({ teamId }: CloserViewProps) {
                       <TableCell>{apt.closer_name || '-'}</TableCell>
                       <TableCell className="font-semibold text-green-600">
                         ${apt.revenue?.toLocaleString() || 0}
+                      </TableCell>
+                      <TableCell>
+                        {apt.mrr_amount && apt.mrr_amount > 0 ? (
+                          <div className="text-sm">
+                            <div className="font-medium">${apt.mrr_amount.toLocaleString()}/mo</div>
+                            <div className="text-muted-foreground">{apt.mrr_months} months</div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Button
