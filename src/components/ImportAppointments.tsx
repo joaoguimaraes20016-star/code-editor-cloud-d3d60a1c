@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,11 +25,37 @@ interface AppointmentRow {
   closer_name?: string;
 }
 
+interface TeamMember {
+  user_id: string;
+  profiles: {
+    full_name: string;
+  };
+}
+
 export function ImportAppointments({ teamId, onImport }: ImportAppointmentsProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    loadTeamMembers();
+  }, [teamId]);
+
+  const loadTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('user_id, profiles!inner(full_name)')
+        .eq('team_id', teamId);
+
+      if (error) throw error;
+      setTeamMembers(data || []);
+    } catch (error: any) {
+      console.error('Error loading team members:', error);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -120,14 +146,22 @@ export function ImportAppointments({ teamId, onImport }: ImportAppointmentsProps
       }
 
       // Insert appointments into database
-      const appointmentsToInsert = appointments.map(apt => ({
-        team_id: teamId,
-        lead_name: apt.lead_name,
-        lead_email: apt.lead_email,
-        start_at_utc: apt.start_at_utc,
-        closer_name: apt.closer_name || null,
-        status: 'NEW' as const,
-      }));
+      const appointmentsToInsert = appointments.map(apt => {
+        // Find closer by name match
+        const closerMember = apt.closer_name 
+          ? teamMembers.find(m => m.profiles.full_name.toLowerCase() === apt.closer_name?.toLowerCase())
+          : null;
+
+        return {
+          team_id: teamId,
+          lead_name: apt.lead_name,
+          lead_email: apt.lead_email,
+          start_at_utc: apt.start_at_utc,
+          closer_id: closerMember?.user_id || null,
+          closer_name: closerMember?.profiles.full_name || null,
+          status: 'NEW' as const,
+        };
+      });
 
       const { error } = await supabase
         .from('appointments')
