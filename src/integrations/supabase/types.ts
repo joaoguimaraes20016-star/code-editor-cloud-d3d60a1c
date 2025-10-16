@@ -334,14 +334,46 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["global_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["global_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["global_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      can_create_teams: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       get_team_role: {
         Args: { _team_id: string; _user_id: string }
         Returns: string
+      }
+      has_global_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["global_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       has_team_role: {
         Args: { _role: string; _team_id: string; _user_id: string }
@@ -365,6 +397,7 @@ export type Database = {
         | "CLOSED"
         | "RESCHEDULED"
         | "CONFIRMED"
+      global_role: "super_admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -501,6 +534,7 @@ export const Constants = {
         "RESCHEDULED",
         "CONFIRMED",
       ],
+      global_role: ["super_admin", "member"],
     },
   },
 } as const

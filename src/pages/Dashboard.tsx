@@ -25,6 +25,7 @@ const Dashboard = () => {
   const [newTeamName, setNewTeamName] = useState('');
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [canCreateTeams, setCanCreateTeams] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -32,7 +33,26 @@ const Dashboard = () => {
       return;
     }
     loadTeams();
+    checkUserRole();
   }, [user, navigate]);
+
+  const checkUserRole = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      setCanCreateTeams(data?.role === 'super_admin');
+    } catch (error: any) {
+      console.error('Error checking user role:', error);
+      setCanCreateTeams(false);
+    }
+  };
 
   const loadTeams = async () => {
     try {
@@ -156,15 +176,16 @@ const Dashboard = () => {
             </Card>
           ))}
 
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Card className="cursor-pointer hover:border-primary transition-colors border-dashed">
-                <CardContent className="flex flex-col items-center justify-center h-full min-h-[120px]">
-                  <Plus className="h-12 w-12 mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Create New Team</p>
-                </CardContent>
-              </Card>
-            </DialogTrigger>
+          {canCreateTeams && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Card className="cursor-pointer hover:border-primary transition-colors border-dashed">
+                  <CardContent className="flex flex-col items-center justify-center h-full min-h-[120px]">
+                    <Plus className="h-12 w-12 mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Create New Team</p>
+                  </CardContent>
+                </Card>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create New Team</DialogTitle>
@@ -186,7 +207,18 @@ const Dashboard = () => {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
+
+        {teams.length === 0 && !canCreateTeams && (
+          <Card className="mt-4">
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground">
+                You haven't been invited to any teams yet. Contact your administrator to be added to a team.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

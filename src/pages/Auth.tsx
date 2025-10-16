@@ -54,10 +54,9 @@ const Auth = () => {
       });
     } else {
       toast({
-        title: 'Account created!',
-        description: 'Successfully signed up. Redirecting...',
+        title: 'Check your email!',
+        description: 'We sent you a confirmation link. Please verify your email to continue.',
       });
-      navigate('/');
     }
     
     setLoading(false);
