@@ -111,22 +111,37 @@ serve(async (req) => {
     console.log('Inserting appointments:', appointments.length);
 
     // Get existing appointments to prevent duplicates
-    const { data: existingAppointments } = await supabase
+    const { data: existingAppointments, error: fetchError } = await supabase
       .from('appointments')
       .select('lead_email, start_at_utc')
       .eq('team_id', teamId);
 
+    if (fetchError) {
+      console.error('Error fetching existing appointments:', fetchError);
+    }
+
+    console.log('Existing appointments count:', existingAppointments?.length || 0);
+
+    // Create a set of existing appointment keys (email + normalized time)
     const existingSet = new Set(
-      (existingAppointments || []).map(apt => 
-        `${apt.lead_email}|${apt.start_at_utc}`
-      )
+      (existingAppointments || []).map(apt => {
+        const normalizedTime = new Date(apt.start_at_utc).toISOString();
+        const key = `${apt.lead_email.toLowerCase().trim()}|${normalizedTime}`;
+        console.log('Existing key:', key);
+        return key;
+      })
     );
 
     // Filter out duplicates
     const newAppointments = appointments.filter(apt => {
-      const key = `${apt.lead_email}|${apt.start_at_utc}`;
-      return !existingSet.has(key);
+      const normalizedTime = new Date(apt.start_at_utc).toISOString();
+      const key = `${apt.lead_email.toLowerCase().trim()}|${normalizedTime}`;
+      const isDuplicate = existingSet.has(key);
+      console.log('Checking appointment:', key, 'Duplicate:', isDuplicate);
+      return !isDuplicate;
     });
+
+    console.log('New appointments after filtering:', newAppointments.length);
 
     if (newAppointments.length === 0) {
       console.log('All appointments already exist, no new ones to insert');
