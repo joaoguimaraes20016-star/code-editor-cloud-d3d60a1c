@@ -166,7 +166,7 @@ const Auth = () => {
       }
     }
     
-    const { error } = await signUp(signUpData.email, signUpData.password, signUpData.fullName);
+    const { data: signUpResult, error } = await signUp(signUpData.email, signUpData.password, signUpData.fullName);
     
     if (error) {
       toast({
@@ -179,11 +179,8 @@ const Auth = () => {
     }
 
     // If user signed up with an invitation, add them to the team
-    if (inviteToken) {
+    if (inviteToken && signUpResult?.user) {
       try {
-        // Wait a moment for the session to be established
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
         const { data: invitation } = await supabase
           .from('team_invitations')
           .select('team_id, role, id')
@@ -191,28 +188,33 @@ const Auth = () => {
           .single();
 
         if (invitation) {
-          const { data: { user } } = await supabase.auth.getUser();
-          
-          if (user) {
-            await supabase.from('team_members').insert({
-              team_id: invitation.team_id,
-              user_id: user.id,
-              role: invitation.role,
-            });
+          // Insert team member
+          const { error: insertError } = await supabase.from('team_members').insert({
+            team_id: invitation.team_id,
+            user_id: signUpResult.user.id,
+            role: invitation.role,
+          });
 
-            await supabase
-              .from('team_invitations')
-              .update({ accepted_at: new Date().toISOString() })
-              .eq('id', invitation.id);
-
-            toast({
-              title: 'Welcome to the team!',
-              description: 'Your account has been created successfully.',
-            });
-            
-            // Redirect to the team dashboard
-            navigate(`/team/${invitation.team_id}`);
+          if (insertError) {
+            console.error('Error inserting team member:', insertError);
+            throw insertError;
           }
+
+          // Mark invitation as accepted
+          await supabase
+            .from('team_invitations')
+            .update({ accepted_at: new Date().toISOString() })
+            .eq('id', invitation.id);
+
+          toast({
+            title: 'Welcome to the team!',
+            description: 'Your account has been created successfully.',
+          });
+          
+          // Redirect to the team dashboard
+          setTimeout(() => {
+            navigate(`/team/${invitation.team_id}`);
+          }, 500);
         }
       } catch (err) {
         console.error('Error processing invitation:', err);
