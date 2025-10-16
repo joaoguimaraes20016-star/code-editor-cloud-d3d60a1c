@@ -27,72 +27,55 @@ const Auth = () => {
 
 
   useEffect(() => {
-    // Check if this is a password reset callback
     const checkPasswordReset = async () => {
-      const fullUrl = window.location.href;
-      const hash = window.location.hash;
-      const search = window.location.search;
+      console.log('=== Auth Page Loaded ===');
+      console.log('URL:', window.location.href);
       
-      console.log('=== Password Reset Check ===');
-      console.log('Full URL:', fullUrl);
-      console.log('Hash:', hash);
-      console.log('Search:', search);
+      // Check for reset mode from query parameter (set by AuthCallback)
+      const queryParams = new URLSearchParams(window.location.search);
+      const mode = queryParams.get('mode');
       
-      // Check for query parameter (from AuthCallback)
-      const queryParams = new URLSearchParams(search);
-      const isResetMode = queryParams.get('reset') === 'true';
+      console.log('Mode:', mode);
       
-      if (isResetMode) {
-        console.log('✓ Reset mode from query param');
+      if (mode === 'reset') {
+        console.log('Reset mode detected');
+        
+        // Get the current session
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('Session:', session?.user?.email);
+        console.log('Session user:', session?.user?.email);
         
         if (session?.user?.email) {
+          console.log('Setting up password reset form');
           setIsResettingPassword(true);
           setUserEmail(session.user.email);
-          // Clean up URL
+          // Clean URL
           window.history.replaceState({}, '', '/auth');
-          return;
+        } else {
+          console.log('No session found');
+          navigate('/auth');
         }
+        return;
       }
       
-      // Parse hash parameters from URL
-      const hashParams = new URLSearchParams(hash.slice(1));
-      const type = hashParams.get('type');
-      const accessToken = hashParams.get('access_token');
+      // Check for error in hash
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
       const error = hashParams.get('error');
       const errorCode = hashParams.get('error_code');
       
-      console.log('Hash params:', { type, hasAccessToken: !!accessToken, error, errorCode });
-      
-      // Check for expired link error
       if (error === 'access_denied' && errorCode === 'otp_expired') {
-        console.log('Link expired');
-        setLinkExpired(true);
+        console.log('Expired link detected');
         setShowResetForm(true);
         toast({
-          title: 'Password reset link expired',
+          title: 'Link expired',
           description: 'Please request a new password reset link.',
           variant: 'destructive',
         });
         window.history.replaceState({}, '', '/auth');
-        return;
-      }
-      
-      if (type === 'recovery' && accessToken) {
-        console.log('✓ Recovery mode from hash');
-        setIsResettingPassword(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.email) {
-          setUserEmail(session.user.email);
-        }
-      } else {
-        console.log('✗ Normal auth mode');
       }
     };
     
     checkPasswordReset();
-  }, [toast]);
+  }, [navigate, toast]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
