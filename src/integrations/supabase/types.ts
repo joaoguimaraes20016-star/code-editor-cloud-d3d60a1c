@@ -22,6 +22,7 @@ export type Database = {
           id: string
           lead_email: string
           lead_name: string
+          revenue: number | null
           setter_id: string | null
           setter_name: string | null
           setter_notes: string | null
@@ -37,6 +38,7 @@ export type Database = {
           id?: string
           lead_email: string
           lead_name: string
+          revenue?: number | null
           setter_id?: string | null
           setter_name?: string | null
           setter_notes?: string | null
@@ -52,6 +54,7 @@ export type Database = {
           id?: string
           lead_email?: string
           lead_name?: string
+          revenue?: number | null
           setter_id?: string | null
           setter_name?: string | null
           setter_notes?: string | null

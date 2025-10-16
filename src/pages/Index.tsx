@@ -10,8 +10,10 @@ import { CommissionBreakdown } from "@/components/CommissionBreakdown";
 import { Leaderboard } from "@/components/Leaderboard";
 import { ImportSpreadsheet } from "@/components/ImportSpreadsheet";
 import { DateRangeFilter, DateRangePreset } from "@/components/DateRangeFilter";
+import { NewAppointments } from "@/components/NewAppointments";
+import { AllClaimed } from "@/components/AllClaimed";
 import { MyClaimed } from "@/components/MyClaimed";
-import { Attendance } from "@/components/Attendance";
+import { CloserView } from "@/components/CloserView";
 import {
   Select,
   SelectContent,
@@ -410,29 +412,56 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="scheduling" className="space-y-6 mt-6">
-            <Tabs defaultValue={canViewSetterScheduling ? "my-claimed" : "attendance"} className="w-full">
+            <Tabs defaultValue={canViewSetterScheduling ? "new" : "closer"} className="w-full">
               <TabsList>
+                {canViewSetterScheduling && <TabsTrigger value="new">New Appointments</TabsTrigger>}
+                {canViewSetterScheduling && <TabsTrigger value="claimed">All Claimed</TabsTrigger>}
                 {canViewSetterScheduling && <TabsTrigger value="my-claimed">My Claimed</TabsTrigger>}
-                {canViewCloserScheduling && <TabsTrigger value="attendance">Attendance</TabsTrigger>}
+                {canViewCloserScheduling && <TabsTrigger value="closer">Closer View</TabsTrigger>}
               </TabsList>
 
               {canViewSetterScheduling && (
-                <TabsContent value="my-claimed" className="mt-6">
-                  <div>
-                    <h2 className="text-2xl font-semibold mb-4">My Claimed Appointments</h2>
-                    <MyClaimed teamId={teamId!} />
-                  </div>
-                </TabsContent>
+                <>
+                  <TabsContent value="new" className="mt-6">
+                    <div>
+                      <h2 className="text-2xl font-semibold mb-4">New Appointments</h2>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Click "Claim" to add an appointment to your list
+                      </p>
+                      <NewAppointments teamId={teamId!} />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="claimed" className="mt-6">
+                    <div>
+                      <h2 className="text-2xl font-semibold mb-4">All Claimed Appointments</h2>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        View all appointments claimed by setters
+                      </p>
+                      <AllClaimed teamId={teamId!} />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="my-claimed" className="mt-6">
+                    <div>
+                      <h2 className="text-2xl font-semibold mb-4">My Claimed Appointments</h2>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Manage your claimed appointments and add notes
+                      </p>
+                      <MyClaimed teamId={teamId!} />
+                    </div>
+                  </TabsContent>
+                </>
               )}
 
               {canViewCloserScheduling && (
-                <TabsContent value="attendance" className="mt-6">
+                <TabsContent value="closer" className="mt-6">
                   <div>
-                    <h2 className="text-2xl font-semibold mb-4">Attendance</h2>
+                    <h2 className="text-2xl font-semibold mb-4">Closer Dashboard</h2>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Showing appointments with NEW, SHOWED, or NO_SHOW status in the next 7 days
+                      Close deals and track your closed appointments
                     </p>
-                    <Attendance teamId={teamId!} />
+                    <CloserView teamId={teamId!} />
                   </div>
                 </TabsContent>
               )}
