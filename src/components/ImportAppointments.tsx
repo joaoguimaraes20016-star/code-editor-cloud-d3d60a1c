@@ -22,6 +22,7 @@ interface AppointmentRow {
   lead_name: string;
   lead_email: string;
   start_at_utc: string;
+  closer_name?: string;
 }
 
 export function ImportAppointments({ teamId, onImport }: ImportAppointmentsProps) {
@@ -55,6 +56,7 @@ export function ImportAppointments({ teamId, onImport }: ImportAppointmentsProps
     const nameIndex = headers.findIndex(h => h.includes('name') || h.includes('lead'));
     const emailIndex = headers.findIndex(h => h.includes('email'));
     const dateIndex = headers.findIndex(h => h.includes('date') || h.includes('time') || h.includes('start'));
+    const closerIndex = headers.findIndex(h => h.includes('closer') || h.includes('meeting with'));
 
     if (nameIndex === -1 || emailIndex === -1 || dateIndex === -1) {
       throw new Error('CSV must have columns for name, email, and date/time');
@@ -69,6 +71,7 @@ export function ImportAppointments({ teamId, onImport }: ImportAppointmentsProps
       const name = values[nameIndex];
       const email = values[emailIndex];
       const dateStr = values[dateIndex];
+      const closerName = closerIndex !== -1 ? values[closerIndex] : undefined;
 
       if (!name || !email || !dateStr) continue;
 
@@ -89,6 +92,7 @@ export function ImportAppointments({ teamId, onImport }: ImportAppointmentsProps
         lead_name: name,
         lead_email: email,
         start_at_utc: date.toISOString(),
+        closer_name: closerName?.trim() || undefined,
       });
     }
 
@@ -121,6 +125,7 @@ export function ImportAppointments({ teamId, onImport }: ImportAppointmentsProps
         lead_name: apt.lead_name,
         lead_email: apt.lead_email,
         start_at_utc: apt.start_at_utc,
+        closer_name: apt.closer_name || null,
         status: 'NEW' as const,
       }));
 
@@ -161,7 +166,7 @@ export function ImportAppointments({ teamId, onImport }: ImportAppointmentsProps
         <DialogHeader>
           <DialogTitle>Import New Appointments</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with appointment data. Required columns: Lead Name, Email, Date/Time
+            Upload a CSV file with appointment data. Required: Lead Name, Email, Date/Time. Optional: Meeting With (closer name)
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -185,12 +190,14 @@ export function ImportAppointments({ teamId, onImport }: ImportAppointmentsProps
           <div className="bg-muted p-4 rounded-lg space-y-2">
             <p className="text-sm font-medium">CSV Format Example:</p>
             <pre className="text-xs bg-background p-2 rounded overflow-x-auto">
-              Lead Name,Email,Date/Time{'\n'}
-              John Doe,john@example.com,2025-10-20 14:00{'\n'}
-              Jane Smith,jane@example.com,2025-10-20 15:30
+              Lead Name,Email,Date/Time,Meeting With{'\n'}
+              John Doe,john@example.com,2025-10-20 14:00,Jane Smith{'\n'}
+              Jane Smith,jane@example.com,2025-10-20 15:30,John Doe
             </pre>
             <p className="text-xs text-muted-foreground">
               Date formats supported: ISO 8601, MM/DD/YYYY HH:MM, YYYY-MM-DD HH:MM
+              <br />
+              "Meeting With" column is optional for closer assignment
             </p>
           </div>
         </div>

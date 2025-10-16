@@ -59,6 +59,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [selectedSetter, setSelectedSetter] = useState<string>("");
+  const [selectedCloser, setSelectedCloser] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [assigning, setAssigning] = useState(false);
 
@@ -130,6 +131,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   const handleOpenAssignDialog = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setSelectedSetter("");
+    setSelectedCloser("");
     setNotes("");
     setAssignDialogOpen(true);
   };
@@ -139,13 +141,16 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
 
     setAssigning(true);
     try {
-      const selectedMember = teamMembers.find(m => m.user_id === selectedSetter);
+      const selectedSetterMember = teamMembers.find(m => m.user_id === selectedSetter);
+      const selectedCloserMember = selectedCloser ? teamMembers.find(m => m.user_id === selectedCloser) : null;
       
       const { error } = await supabase
         .from('appointments')
         .update({
           setter_id: selectedSetter,
-          setter_name: selectedMember?.profiles.full_name || "",
+          setter_name: selectedSetterMember?.profiles.full_name || "",
+          closer_id: selectedCloser || null,
+          closer_name: selectedCloserMember?.profiles.full_name || null,
           setter_notes: notes || null,
         })
         .eq('id', selectedAppointment.id);
@@ -154,7 +159,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
 
       toast({
         title: 'Appointment assigned',
-        description: `Assigned to ${selectedMember?.profiles.full_name}`,
+        description: `Assigned to setter: ${selectedSetterMember?.profiles.full_name}${selectedCloserMember ? `, closer: ${selectedCloserMember.profiles.full_name}` : ''}`,
       });
 
       setAssignDialogOpen(false);
@@ -248,6 +253,23 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
                     <SelectValue placeholder="Choose a setter..." />
                   </SelectTrigger>
                   <SelectContent>
+                    {teamMembers.map((member) => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        {member.profiles.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="closer">Select Closer (Optional)</Label>
+                <Select value={selectedCloser} onValueChange={setSelectedCloser}>
+                  <SelectTrigger id="closer">
+                    <SelectValue placeholder="Choose a closer..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
                     {teamMembers.map((member) => (
                       <SelectItem key={member.user_id} value={member.user_id}>
                         {member.profiles.full_name}

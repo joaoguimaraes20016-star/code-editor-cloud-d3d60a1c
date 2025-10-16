@@ -97,25 +97,28 @@ export function CloserView({ teamId }: CloserViewProps) {
   };
 
   const loadAppointments = async () => {
+    if (!user) return;
+    
     try {
-      // Load all appointments with setters (except closed)
+      // Load appointments assigned to this closer only (NEW, CONFIRMED, etc - not CLOSED)
       const { data: newData, error: newError } = await supabase
         .from('appointments')
         .select('*')
         .eq('team_id', teamId)
+        .eq('closer_id', user.id)
         .neq('status', 'CLOSED')
-        .not('setter_id', 'is', null)
         .order('start_at_utc', { ascending: true });
 
       if (newError) throw newError;
       setNewAppointments(newData || []);
 
-      // Load closed appointments
+      // Load closed appointments for this closer only
       const { data: closedData, error: closedError } = await supabase
         .from('appointments')
         .select('*')
         .eq('team_id', teamId)
-        .eq('status', 'CLOSED') // Query for CLOSED status
+        .eq('closer_id', user.id)
+        .eq('status', 'CLOSED')
         .gt('revenue', 0)
         .order('start_at_utc', { ascending: false });
 
