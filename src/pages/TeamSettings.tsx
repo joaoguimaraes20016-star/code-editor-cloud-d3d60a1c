@@ -70,6 +70,27 @@ export default function TeamSettings() {
 
     loadTeamData();
     loadMembers();
+
+    // Subscribe to real-time updates for team members
+    const channel = supabase
+      .channel('team_members_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_members',
+          filter: `team_id=eq.${teamId}`,
+        },
+        () => {
+          loadMembers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, teamId, isOwner, roleLoading, navigate]);
 
   const loadTeamData = async () => {
