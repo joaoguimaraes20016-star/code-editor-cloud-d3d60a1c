@@ -110,23 +110,55 @@ serve(async (req) => {
 
     console.log('Inserting appointments:', appointments.length);
 
+    // Get existing appointments to prevent duplicates
+    const { data: existingAppointments } = await supabase
+      .from('appointments')
+      .select('lead_email, start_at_utc')
+      .eq('team_id', teamId);
+
+    const existingSet = new Set(
+      (existingAppointments || []).map(apt => 
+        `${apt.lead_email}|${apt.start_at_utc}`
+      )
+    );
+
+    // Filter out duplicates
+    const newAppointments = appointments.filter(apt => {
+      const key = `${apt.lead_email}|${apt.start_at_utc}`;
+      return !existingSet.has(key);
+    });
+
+    if (newAppointments.length === 0) {
+      console.log('All appointments already exist, no new ones to insert');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          count: 0, 
+          message: 'All appointments already synced. No new appointments added.' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('New appointments to insert:', newAppointments.length);
+
     // Insert appointments
     const { error: insertError } = await supabase
       .from('appointments')
-      .insert(appointments);
+      .insert(newAppointments);
 
     if (insertError) {
       console.error('Error inserting appointments:', insertError);
       throw insertError;
     }
 
-    console.log(`Successfully synced ${appointments.length} appointments for team ${teamId}`);
+    console.log(`Successfully synced ${newAppointments.length} new appointments for team ${teamId}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        count: appointments.length,
-        message: `Successfully synced ${appointments.length} appointments` 
+        count: newAppointments.length,
+        message: `Successfully synced ${newAppointments.length} new appointment${newAppointments.length === 1 ? '' : 's'}` 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
