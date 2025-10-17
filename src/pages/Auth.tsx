@@ -28,16 +28,31 @@ const Auth = () => {
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [activeTab, setActiveTab] = useState('signin');
+  const [isCreatorUpgrade, setIsCreatorUpgrade] = useState(false);
+  const [creatorCode, setCreatorCode] = useState('');
 
 
 
   useEffect(() => {
-    // Check for invitation token in URL
+    // Check for invitation token or creator upgrade in URL
     const params = new URLSearchParams(location.search);
     const token = params.get('invite');
+    const creatorParam = params.get('creator');
     
     console.log('Checking for invitation token:', token);
     console.log('Full URL:', window.location.href);
+    
+    // Check if this is a creator upgrade request
+    if (creatorParam === 'true') {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          setSignUpData({ email: session.user.email || '', password: '', fullName: '', signupCode: '' });
+          setIsCreatorUpgrade(true);
+          setActiveTab('signup');
+        }
+      });
+      return;
+    }
     
     if (token) {
       // Check if user is already logged in
@@ -302,6 +317,45 @@ const Auth = () => {
     e.preventDefault();
     console.log('handleSignUp called, inviteToken:', inviteToken);
     setLoading(true);
+    
+    // Handle creator upgrade
+    if (isCreatorUpgrade) {
+      if (creatorCode.trim().toUpperCase() !== 'CREATOR2025') {
+        toast({
+          title: 'Invalid creator code',
+          description: 'Please enter a valid creator code.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ account_type: 'creator' })
+          .eq('id', user.id);
+
+        if (updateError) {
+          toast({
+            title: 'Error upgrading account',
+            description: updateError.message,
+            variant: 'destructive',
+          });
+          setLoading(false);
+          return;
+        }
+
+        toast({
+          title: 'Success!',
+          description: 'You are now a creator. You can create teams.',
+        });
+        navigate('/dashboard');
+        setLoading(false);
+        return;
+      }
+    }
     
     // Show initial feedback
     if (inviteToken) {
@@ -655,7 +709,48 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
-                {inviteToken && (
+                {isCreatorUpgrade && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                      <h3 className="font-semibold text-lg mb-2">🚀 Upgrade to Creator</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Enter your creator code to unlock the ability to create teams.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="upgrade-email">Email Address</Label>
+                      <Input
+                        id="upgrade-email"
+                        type="email"
+                        value={signUpData.email}
+                        disabled
+                        className="bg-muted"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="creator-code">Creator Code</Label>
+                      <Input
+                        id="creator-code"
+                        type="text"
+                        placeholder="Enter your creator code"
+                        value={creatorCode}
+                        onChange={(e) => setCreatorCode(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={loading} size="lg">
+                      {loading ? (
+                        <span className="flex items-center gap-2">
+                          <span className="animate-spin">⏳</span> 
+                          Upgrading...
+                        </span>
+                      ) : (
+                        '✨ Upgrade to Creator'
+                      )}
+                    </Button>
+                  </div>
+                )}
+                {!isCreatorUpgrade && inviteToken && (
                   <div className="space-y-4">
                     <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
                       <h3 className="font-semibold text-lg mb-2">🎉 You're Invited!</h3>
@@ -676,7 +771,7 @@ const Auth = () => {
                     </div>
                   </div>
                 )}
-                {!inviteToken && (
+                {!isCreatorUpgrade && !inviteToken && (
                   <div className="space-y-2">
                     <Label htmlFor="signup-code">Signup Code</Label>
                     <Input
@@ -689,58 +784,62 @@ const Auth = () => {
                     />
                   </div>
                 )}
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name *</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="John Doe"
-                    value={signUpData.fullName}
-                    onChange={(e) => setSignUpData({ ...signUpData, fullName: e.target.value })}
-                    required
-                  />
-                  {inviteToken && (
-                    <p className="text-xs text-muted-foreground">This will be your display name on the team</p>
-                  )}
-                </div>
-                {!inviteToken && (
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={signUpData.email}
-                      onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
-                      required
-                    />
-                  </div>
+                {!isCreatorUpgrade && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-name">Full Name *</Label>
+                      <Input
+                        id="signup-name"
+                        type="text"
+                        placeholder="John Doe"
+                        value={signUpData.fullName}
+                        onChange={(e) => setSignUpData({ ...signUpData, fullName: e.target.value })}
+                        required
+                      />
+                      {inviteToken && (
+                        <p className="text-xs text-muted-foreground">This will be your display name on the team</p>
+                      )}
+                    </div>
+                    {!inviteToken && (
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-email">Email</Label>
+                        <Input
+                          id="signup-email"
+                          type="email"
+                          placeholder="Enter your email"
+                          value={signUpData.email}
+                          onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
+                          required
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Create Password *</Label>
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        placeholder="Minimum 6 characters"
+                        value={signUpData.password}
+                        onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
+                        required
+                        minLength={6}
+                      />
+                      <p className="text-xs text-muted-foreground">Use at least 6 characters for your password</p>
+                    </div>
+                    <Button type="submit" className="w-full" disabled={loading} size="lg">
+                      {loading ? (
+                        <span className="flex items-center gap-2">
+                          <span className="animate-spin">⏳</span> 
+                          Creating account...
+                        </span>
+                      ) : inviteToken ? (
+                        '✨ Join Team'
+                      ) : (
+                        'Sign Up'
+                      )}
+                    </Button>
+                  </>
                 )}
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Create Password *</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="Minimum 6 characters"
-                    value={signUpData.password}
-                    onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
-                    required
-                    minLength={6}
-                  />
-                  <p className="text-xs text-muted-foreground">Use at least 6 characters for your password</p>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading} size="lg">
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="animate-spin">⏳</span> 
-                      Creating account...
-                    </span>
-                  ) : inviteToken ? (
-                    '✨ Join Team'
-                  ) : (
-                    'Sign Up'
-                  )}
-                </Button>
               </form>
             </TabsContent>
           </Tabs>
