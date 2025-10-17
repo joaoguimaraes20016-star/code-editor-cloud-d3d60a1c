@@ -29,6 +29,7 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
+  DrawerTrigger,
 } from "@/components/ui/drawer";
 import {
   Select,
@@ -400,48 +401,107 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           </Tabs>
           
           {dateFilter === "custom" && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "justify-start text-left font-normal",
-                    !customDateRange.from && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {customDateRange.from ? (
-                    customDateRange.to ? (
-                      <>
-                        {format(customDateRange.from, "LLL dd, y")} -{" "}
-                        {format(customDateRange.to, "LLL dd, y")}
-                      </>
-                    ) : (
-                      format(customDateRange.from, "LLL dd, y")
-                    )
-                  ) : (
-                    <span>Pick a date range</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="range"
-                  selected={{
-                    from: customDateRange.from,
-                    to: customDateRange.to,
-                  }}
-                  onSelect={(range) =>
-                    setCustomDateRange({
-                      from: range?.from,
-                      to: range?.to,
-                    })
-                  }
-                  numberOfMonths={2}
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <>
+              {isMobile ? (
+                <Drawer>
+                  <DrawerTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "justify-start text-left font-normal text-sm",
+                        !customDateRange.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customDateRange.from ? (
+                        customDateRange.to ? (
+                          <>
+                            {format(customDateRange.from, "MMM dd")} - {format(customDateRange.to, "MMM dd")}
+                          </>
+                        ) : (
+                          format(customDateRange.from, "MMM dd, y")
+                        )
+                      ) : (
+                        <span>Pick dates</span>
+                      )}
+                    </Button>
+                  </DrawerTrigger>
+                  <DrawerContent>
+                    <DrawerHeader>
+                      <DrawerTitle>Select Date Range</DrawerTitle>
+                      <DrawerDescription>
+                        Choose a custom date range to filter appointments
+                      </DrawerDescription>
+                    </DrawerHeader>
+                    <div className="px-4 pb-4 flex justify-center">
+                      <Calendar
+                        mode="range"
+                        selected={{
+                          from: customDateRange.from,
+                          to: customDateRange.to,
+                        }}
+                        onSelect={(range) =>
+                          setCustomDateRange({
+                            from: range?.from,
+                            to: range?.to,
+                          })
+                        }
+                        numberOfMonths={1}
+                        className={cn("pointer-events-auto")}
+                      />
+                    </div>
+                    <DrawerFooter>
+                      <DrawerClose asChild>
+                        <Button variant="outline">Done</Button>
+                      </DrawerClose>
+                    </DrawerFooter>
+                  </DrawerContent>
+                </Drawer>
+              ) : (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "justify-start text-left font-normal",
+                        !customDateRange.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customDateRange.from ? (
+                        customDateRange.to ? (
+                          <>
+                            {format(customDateRange.from, "LLL dd, y")} -{" "}
+                            {format(customDateRange.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(customDateRange.from, "LLL dd, y")
+                        )
+                      ) : (
+                        <span>Pick a date range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={{
+                        from: customDateRange.from,
+                        to: customDateRange.to,
+                      }}
+                      onSelect={(range) =>
+                        setCustomDateRange({
+                          from: range?.from,
+                          to: range?.to,
+                        })
+                      }
+                      numberOfMonths={2}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+            </>
           )}
         </div>
       </div>
