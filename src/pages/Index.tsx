@@ -112,8 +112,8 @@ const Index = () => {
 
       if (error) throw error;
       if (data) {
-        setTeamName(data.name);
-        setGoogleSheetsUrl(data.google_sheets_url);
+        setTeamName(prev => prev !== data.name ? data.name : prev);
+        setGoogleSheetsUrl(prev => prev !== data.google_sheets_url ? data.google_sheets_url : prev);
       }
     } catch (error: any) {
       console.error('Error loading team:', error);
@@ -148,7 +148,12 @@ const Index = () => {
         status: sale.status,
       }));
 
-      setSales(formattedSales);
+      setSales(prev => {
+        if (JSON.stringify(prev) !== JSON.stringify(formattedSales)) {
+          return formattedSales;
+        }
+        return prev;
+      });
     } catch (error: any) {
       toast({
         title: 'Error loading sales',
@@ -170,8 +175,13 @@ const Index = () => {
 
       if (error) throw error;
       
-      // Set all appointments for metric calculations
-      setAppointments(data || []);
+      // Only update if data has changed
+      setAppointments(prev => {
+        if (JSON.stringify(prev) !== JSON.stringify(data || [])) {
+          return data || [];
+        }
+        return prev;
+      });
     } catch (error: any) {
       console.error('Error loading appointments:', error);
     }
