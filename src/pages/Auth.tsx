@@ -665,6 +665,15 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-3 md:p-4">
+      {/* Debug info - remove after testing */}
+      <div className="fixed top-2 right-2 bg-black text-white text-xs p-2 rounded z-50">
+        URL: {window.location.href.substring(0, 50)}...
+        <br/>
+        Invite: {inviteToken ? 'YES' : 'NO'}
+        <br/>
+        Loading: {inviteLoading ? 'YES' : 'NO'}
+      </div>
+      
       <Card className="w-full max-w-md">
         <CardHeader className="text-center px-4 md:px-6 py-4 md:py-6">
           <CardTitle className="text-2xl md:text-3xl font-bold">
