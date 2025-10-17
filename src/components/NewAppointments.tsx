@@ -29,7 +29,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
-import { Hand } from "lucide-react";
+import { Hand, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface Appointment {
   id: string;
@@ -63,6 +64,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   const [selectedCloser, setSelectedCloser] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     loadTeamMembers();
@@ -114,7 +116,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
         .select('*')
         .eq('team_id', teamId)
         .is('setter_id', null)
-        .order('start_at_utc', { ascending: true });
+        .order('start_at_utc', { ascending: false });
 
       if (error) throw error;
       setAppointments(data || []);
@@ -193,6 +195,16 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
     return <div className="p-4">Loading...</div>;
   }
 
+  const filteredAppointments = appointments.filter(apt => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      apt.lead_name.toLowerCase().includes(query) ||
+      apt.lead_email.toLowerCase().includes(query) ||
+      apt.closer_name?.toLowerCase().includes(query)
+    );
+  });
+
   if (appointments.length === 0) {
     return (
       <div className="p-8 text-center text-muted-foreground">
@@ -202,8 +214,24 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by lead name, email, or closer..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+      
+      {filteredAppointments.length === 0 ? (
+        <div className="p-8 text-center text-muted-foreground border rounded-md">
+          No appointments match your search
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Start Time</TableHead>
@@ -215,7 +243,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {appointments.map((apt) => (
+          {filteredAppointments.map((apt) => (
             <TableRow key={apt.id}>
               <TableCell>{formatLocalTime(apt.start_at_utc)}</TableCell>
               <TableCell className="font-medium">{apt.lead_name}</TableCell>
@@ -246,6 +274,8 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           ))}
         </TableBody>
       </Table>
+        </div>
+      )}
 
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent>
