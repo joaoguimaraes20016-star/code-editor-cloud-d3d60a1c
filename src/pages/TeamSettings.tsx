@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { CalendlyConfig } from '@/components/CalendlyConfig';
+import { getUserFriendlyError } from '@/lib/errorUtils';
 
 interface TeamMember {
   id: string;
@@ -115,7 +116,7 @@ export default function TeamSettings() {
     } catch (error: any) {
       toast({
         title: 'Error loading team',
-        description: error.message,
+        description: getUserFriendlyError(error),
         variant: 'destructive',
       });
     } finally {
@@ -151,7 +152,7 @@ export default function TeamSettings() {
     } catch (error: any) {
       toast({
         title: 'Error loading members',
-        description: error.message,
+        description: getUserFriendlyError(error),
         variant: 'destructive',
       });
     }
@@ -195,7 +196,7 @@ export default function TeamSettings() {
     } catch (error: any) {
       toast({
         title: 'Error sending invitation',
-        description: error.message,
+        description: getUserFriendlyError(error),
         variant: 'destructive',
       });
     } finally {
@@ -221,7 +222,7 @@ export default function TeamSettings() {
     } catch (error: any) {
       toast({
         title: 'Error removing member',
-        description: error.message,
+        description: getUserFriendlyError(error),
         variant: 'destructive',
       });
     }

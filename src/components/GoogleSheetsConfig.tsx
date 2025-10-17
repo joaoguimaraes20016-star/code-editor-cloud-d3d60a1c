@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Save } from "lucide-react";
+import { getUserFriendlyError } from "@/lib/errorUtils";
 
 interface GoogleSheetsConfigProps {
   teamId: string;
@@ -37,7 +38,7 @@ export function GoogleSheetsConfig({ teamId, currentUrl, onUpdate }: GoogleSheet
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: getUserFriendlyError(error),
         variant: "destructive",
       });
     } finally {
@@ -66,7 +67,7 @@ export function GoogleSheetsConfig({ teamId, currentUrl, onUpdate }: GoogleSheet
 
       onUpdate();
     } catch (error: any) {
-      console.error('Sync error:', error);
+      // Sync errors are not shown to avoid spamming during auto-sync
     } finally {
       setSyncing(false);
     }

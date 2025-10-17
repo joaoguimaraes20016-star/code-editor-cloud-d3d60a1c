@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { format, addMonths, startOfMonth } from "date-fns";
 import { DollarSign, MessageSquare, Clock, Mail, User } from "lucide-react";
+import { getUserFriendlyError } from "@/lib/errorUtils";
 
 interface Appointment {
   id: string;
@@ -107,7 +108,7 @@ export function CloserView({ teamId }: CloserViewProps) {
       if (error) throw error;
       setUserProfile(data);
     } catch (error: any) {
-      console.error('Error loading profile:', error);
+      // Error loading profile - no action needed as it's not critical
     }
   };
 
@@ -165,7 +166,7 @@ export function CloserView({ teamId }: CloserViewProps) {
     } catch (error: any) {
       toast({
         title: 'Error loading appointments',
-        description: error.message,
+        description: getUserFriendlyError(error),
         variant: 'destructive',
       });
     } finally {
@@ -301,7 +302,7 @@ export function CloserView({ teamId }: CloserViewProps) {
     } catch (error: any) {
       toast({
         title: 'Error closing deal',
-        description: error.message,
+        description: getUserFriendlyError(error),
         variant: 'destructive',
       });
     }
@@ -428,7 +429,7 @@ export function CloserView({ teamId }: CloserViewProps) {
     } catch (error: any) {
       toast({
         title: 'Error updating deal',
-        description: error.message,
+        description: getUserFriendlyError(error),
         variant: 'destructive',
       });
     }
@@ -452,7 +453,7 @@ export function CloserView({ teamId }: CloserViewProps) {
     } catch (error: any) {
       toast({
         title: 'Error updating status',
-        description: error.message,
+        description: getUserFriendlyError(error),
         variant: 'destructive',
       });
     }
