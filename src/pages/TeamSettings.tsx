@@ -55,6 +55,7 @@ export default function TeamSettings() {
   const [calendlyAccessToken, setCalendlyAccessToken] = useState<string | null>(null);
   const [calendlyOrgUri, setCalendlyOrgUri] = useState<string | null>(null);
   const [calendlyWebhookId, setCalendlyWebhookId] = useState<string | null>(null);
+  const [calendlyEventTypes, setCalendlyEventTypes] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (!user || !teamId) {
@@ -101,7 +102,7 @@ export default function TeamSettings() {
     try {
       const { data, error } = await supabase
         .from('teams')
-        .select('name, calendly_access_token, calendly_organization_uri, calendly_webhook_id')
+        .select('name, calendly_access_token, calendly_organization_uri, calendly_webhook_id, calendly_event_types')
         .eq('id', teamId)
         .single();
 
@@ -110,6 +111,7 @@ export default function TeamSettings() {
       setCalendlyAccessToken(data.calendly_access_token);
       setCalendlyOrgUri(data.calendly_organization_uri);
       setCalendlyWebhookId(data.calendly_webhook_id);
+      setCalendlyEventTypes(data.calendly_event_types);
     } catch (error: any) {
       toast({
         title: 'Error loading team',
@@ -354,6 +356,7 @@ export default function TeamSettings() {
           currentAccessToken={calendlyAccessToken}
           currentOrgUri={calendlyOrgUri}
           currentWebhookId={calendlyWebhookId}
+          currentEventTypes={calendlyEventTypes}
           onUpdate={loadTeamData}
         />
       </div>

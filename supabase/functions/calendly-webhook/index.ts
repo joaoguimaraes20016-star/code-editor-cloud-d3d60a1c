@@ -39,7 +39,7 @@ serve(async (req) => {
     
     const { data: team, error: teamError } = await supabase
       .from('teams')
-      .select('id, calendly_access_token')
+      .select('id, calendly_access_token, calendly_event_types')
       .not('calendly_access_token', 'is', null)
       .limit(1)
       .maybeSingle();
@@ -54,6 +54,19 @@ serve(async (req) => {
 
     const accessToken = team.calendly_access_token;
     const teamId = team.id;
+    const allowedEventTypes = team.calendly_event_types || [];
+
+    // Check if event type filtering is enabled
+    const eventTypeUri = payload.payload?.scheduled_event?.event_type;
+    if (allowedEventTypes.length > 0 && eventTypeUri) {
+      if (!allowedEventTypes.includes(eventTypeUri)) {
+        console.log(`Event type ${eventTypeUri} not in allowed list. Skipping appointment creation.`);
+        return new Response(JSON.stringify({ success: true, message: 'Event type not tracked' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // Get invitee details - the payload.payload IS the invitee data
     const inviteeData = payload.payload;

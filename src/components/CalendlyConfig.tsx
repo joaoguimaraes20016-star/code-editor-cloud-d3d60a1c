@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, AlertCircle, CheckCircle2, Unplug } from "lucide-react";
+import { Calendar, AlertCircle, CheckCircle2, Unplug, Settings } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CalendlyConfigProps {
@@ -13,7 +14,14 @@ interface CalendlyConfigProps {
   currentAccessToken?: string | null;
   currentOrgUri?: string | null;
   currentWebhookId?: string | null;
+  currentEventTypes?: string[] | null;
   onUpdate: () => void;
+}
+
+interface EventType {
+  uri: string;
+  name: string;
+  active: boolean;
 }
 
 export function CalendlyConfig({ 
@@ -21,6 +29,7 @@ export function CalendlyConfig({
   currentAccessToken, 
   currentOrgUri,
   currentWebhookId,
+  currentEventTypes,
   onUpdate 
 }: CalendlyConfigProps) {
   const [accessToken, setAccessToken] = useState("");
@@ -28,9 +37,94 @@ export function CalendlyConfig({
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [fetchingOrgUri, setFetchingOrgUri] = useState(false);
+  const [availableEventTypes, setAvailableEventTypes] = useState<EventType[]>([]);
+  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>(currentEventTypes || []);
+  const [loadingEventTypes, setLoadingEventTypes] = useState(false);
+  const [savingEventTypes, setSavingEventTypes] = useState(false);
   const { toast } = useToast();
 
   const isConnected = Boolean(currentAccessToken && currentOrgUri && currentWebhookId);
+
+  useEffect(() => {
+    if (isConnected && currentAccessToken && currentOrgUri) {
+      fetchEventTypes();
+    }
+  }, [isConnected, currentAccessToken, currentOrgUri]);
+
+  useEffect(() => {
+    setSelectedEventTypes(currentEventTypes || []);
+  }, [currentEventTypes]);
+
+  const fetchEventTypes = async () => {
+    if (!currentAccessToken || !currentOrgUri) return;
+
+    setLoadingEventTypes(true);
+    try {
+      const response = await fetch(`https://api.calendly.com/event_types?organization=${encodeURIComponent(currentOrgUri)}&active=true`, {
+        headers: {
+          'Authorization': `Bearer ${currentAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch event types');
+      }
+
+      const data = await response.json();
+      const eventTypes = data.collection.map((et: any) => ({
+        uri: et.uri,
+        name: et.name,
+        active: et.active,
+      }));
+      
+      setAvailableEventTypes(eventTypes);
+    } catch (error: any) {
+      console.error('Error fetching event types:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch event types",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingEventTypes(false);
+    }
+  };
+
+  const handleEventTypeToggle = (eventTypeUri: string) => {
+    setSelectedEventTypes(prev => 
+      prev.includes(eventTypeUri)
+        ? prev.filter(uri => uri !== eventTypeUri)
+        : [...prev, eventTypeUri]
+    );
+  };
+
+  const handleSaveEventTypes = async () => {
+    setSavingEventTypes(true);
+    try {
+      const { error } = await supabase
+        .from("teams")
+        .update({ calendly_event_types: selectedEventTypes })
+        .eq("id", teamId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Event type filters saved successfully",
+      });
+      
+      onUpdate();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingEventTypes(false);
+    }
+  };
 
   const handleConnect = async () => {
     if (!accessToken || !organizationUri) {
@@ -267,6 +361,55 @@ export function CalendlyConfig({
                   {currentOrgUri}
                 </span>
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                <Label className="text-sm font-medium">Event Type Filters</Label>
+              </div>
+              
+              {loadingEventTypes ? (
+                <p className="text-sm text-muted-foreground">Loading event types...</p>
+              ) : availableEventTypes.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Select which Calendly event types should create appointments:
+                  </p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto p-2 border rounded-md">
+                    {availableEventTypes.map((eventType) => (
+                      <div key={eventType.uri} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={eventType.uri}
+                          checked={selectedEventTypes.includes(eventType.uri)}
+                          onCheckedChange={() => handleEventTypeToggle(eventType.uri)}
+                        />
+                        <label
+                          htmlFor={eventType.uri}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {eventType.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <Button 
+                    onClick={handleSaveEventTypes}
+                    disabled={savingEventTypes}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {savingEventTypes ? "Saving..." : "Save Event Type Filters"}
+                  </Button>
+                  {selectedEventTypes.length === 0 && (
+                    <p className="text-xs text-amber-600">
+                      ⚠️ No event types selected. All appointments will be synced.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No event types found</p>
+              )}
             </div>
 
             <Button 
