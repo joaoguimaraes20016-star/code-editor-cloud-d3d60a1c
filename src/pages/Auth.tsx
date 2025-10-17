@@ -563,17 +563,17 @@ const Auth = () => {
             </div>
           ) : inviteMode ? (
             <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 space-y-2">
+              <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 space-y-3">
+                <h3 className="font-semibold text-lg">Welcome to {inviteTeamName}! 🎉</h3>
                 <div className="space-y-1 text-sm">
                   <p className="flex items-center gap-2">
                     <span className="font-semibold">📧 Email:</span>
                     <span className="text-muted-foreground">{inviteEmail}</span>
                   </p>
-                  <p className="flex items-center gap-2">
-                    <span className="font-semibold">👥 Team:</span>
-                    <span className="text-muted-foreground">{inviteTeamName}</span>
-                  </p>
                 </div>
+                <p className="text-sm text-muted-foreground">
+                  Create your account to get started with the team
+                </p>
               </div>
               
               <div className="space-y-2">
