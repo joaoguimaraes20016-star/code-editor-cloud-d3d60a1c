@@ -64,8 +64,11 @@ const Auth = () => {
     }
     
     if (token) {
+      console.log('=== INVITATION TOKEN DETECTED ===');
       // Check if user is already logged in
       supabase.auth.getSession().then(async ({ data: { session } }) => {
+        console.log('Current session:', session ? 'User logged in' : 'No session');
+        
         if (session?.user) {
           // User is logged in - check if their email matches the invitation
           try {
@@ -165,7 +168,9 @@ const Auth = () => {
         }
 
         // User not logged in, load invitation for signup
-        console.log('User not logged in, loading invitation data for token:', token);
+        console.log('=== USER NOT LOGGED IN - LOADING INVITATION DATA ===');
+        console.log('Token:', token);
+        
         supabase
           .from('team_invitations')
           .select('*, teams(name)')
@@ -173,7 +178,9 @@ const Auth = () => {
           .is('accepted_at', null)
           .maybeSingle()
           .then(({ data, error }) => {
-            console.log('Invitation query result:', { data, error });
+            console.log('=== INVITATION QUERY RESULT ===');
+            console.log('Data:', data);
+            console.log('Error:', error);
             
             if (error) {
               console.error('Error loading invitation:', error);
@@ -207,7 +214,11 @@ const Auth = () => {
               return;
             }
 
-            console.log('Valid invitation found! Email:', data.email);
+            console.log('=== VALID INVITATION FOUND ===');
+            console.log('Email:', data.email);
+            console.log('Team:', (data.teams as any)?.name);
+            console.log('Setting inviteMode to TRUE');
+            
             setInviteToken(token);
             setInviteEmail(data.email);
             setInviteTeamName((data.teams as any)?.name || 'the team');
