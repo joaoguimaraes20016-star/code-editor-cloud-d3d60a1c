@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.setup-calendly]
 verify_jwt = true
+
+[functions.send-password-reset]
+verify_jwt = false

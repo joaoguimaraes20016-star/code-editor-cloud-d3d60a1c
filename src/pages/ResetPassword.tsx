@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,49 +9,59 @@ import { useToast } from '@/hooks/use-toast';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [userId, setUserId] = useState('');
   const [isValidSession, setIsValidSession] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('=== RESET PASSWORD PAGE LOADED ===');
-    console.log('URL:', window.location.href);
-    
-    // Check for valid recovery session
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Session:', session?.user?.email);
-      
-      if (session?.user?.email) {
-        setUserEmail(session.user.email);
-        setIsValidSession(true);
-      } else {
+    const token = searchParams.get('token');
+    console.log('Reset password page loaded with token:', token ? 'present' : 'missing');
+
+    if (!token) {
+      toast({
+        title: 'Invalid reset link',
+        description: 'Please request a new password reset link.',
+        variant: 'destructive',
+      });
+      setTimeout(() => navigate('/auth'), 2000);
+      return;
+    }
+
+    // Verify the token
+    const verifyToken = async () => {
+      const { data, error } = await supabase
+        .from('password_reset_tokens')
+        .select('*')
+        .eq('token', token)
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+      if (error || !data) {
+        console.error('Token verification error:', error);
         toast({
           title: 'Invalid or expired link',
           description: 'Please request a new password reset link.',
           variant: 'destructive',
         });
         setTimeout(() => navigate('/auth'), 2000);
+        return;
       }
+
+      setResetToken(token);
+      setUserEmail(data.email);
+      setUserId(data.user_id);
+      setIsValidSession(true);
     };
 
-    checkSession();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth event on reset page:', event);
-      if (event === 'PASSWORD_RECOVERY' && session) {
-        console.log('PASSWORD_RECOVERY detected!');
-        setUserEmail(session.user.email || '');
-        setIsValidSession(true);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate, toast]);
+    verifyToken();
+  }, [searchParams, navigate, toast]);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,27 +84,53 @@ const ResetPassword = () => {
       return;
     }
     
+    if (!resetToken) {
+      toast({
+        title: 'Invalid reset session',
+        description: 'Please request a new password reset link.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setLoading(true);
     
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-    
-    if (error) {
+    try {
+      // Update password using admin API
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { password: newPassword }
+      );
+      
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Mark token as used
+      const { error: tokenError } = await supabase
+        .from('password_reset_tokens')
+        .update({ used_at: new Date().toISOString() })
+        .eq('token', resetToken);
+
+      if (tokenError) {
+        console.error('Error marking token as used:', tokenError);
+      }
+
+      toast({
+        title: 'Password updated!',
+        description: 'Your password has been successfully updated.',
+      });
+      
+      setTimeout(() => navigate('/auth'), 1500);
+    } catch (error: any) {
       toast({
         title: 'Error updating password',
         description: error.message,
         variant: 'destructive',
       });
-    } else {
-      toast({
-        title: 'Password updated!',
-        description: 'Your password has been successfully updated.',
-      });
-      setTimeout(() => navigate('/auth'), 1500);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   if (!isValidSession) {
