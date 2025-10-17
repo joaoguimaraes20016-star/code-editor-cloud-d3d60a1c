@@ -27,6 +27,8 @@ const Auth = () => {
   const [linkExpired, setLinkExpired] = useState(false);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteTeamName, setInviteTeamName] = useState('');
+  const [inviteMode, setInviteMode] = useState(false);
   // Check URL params immediately to set initial tab
   const urlParams = new URLSearchParams(location.search);
   const hasInvite = urlParams.get('invite');
@@ -166,7 +168,7 @@ const Auth = () => {
         console.log('User not logged in, loading invitation data for token:', token);
         supabase
           .from('team_invitations')
-          .select('*')
+          .select('*, teams(name)')
           .eq('token', token)
           .is('accepted_at', null)
           .maybeSingle()
@@ -208,12 +210,13 @@ const Auth = () => {
             console.log('Valid invitation found! Email:', data.email);
             setInviteToken(token);
             setInviteEmail(data.email);
+            setInviteTeamName((data.teams as any)?.name || 'the team');
+            setInviteMode(true);
             setSignUpData(prev => ({ ...prev, email: data.email }));
-            setActiveTab('signup');
             
             toast({
               title: 'Welcome!',
-              description: `You've been invited to join a team. Please create your account.`,
+              description: `You've been invited to join ${(data.teams as any)?.name || 'a team'}!`,
             });
           });
       });
@@ -493,7 +496,7 @@ const Auth = () => {
       return;
     }
 
-    // If user signed up with an invitation, don't auto-login - make them sign in manually
+    // If user signed up with an invitation, process it immediately
     if (inviteToken && signUpResult?.user) {
       console.log('Account created for invited user:', signUpResult.user.id);
       
@@ -503,19 +506,54 @@ const Auth = () => {
         .update({ account_type: 'invited' })
         .eq('id', signUpResult.user.id);
       
-      // Sign out immediately so they have to manually sign in
-      await supabase.auth.signOut();
-      
-      toast({
-        title: '✅ Account created successfully!',
-        description: `Welcome ${signUpData.fullName}! Please sign in with your credentials to join the team.`,
-      });
-      
-      // Switch to sign-in tab and pre-fill email
-      setActiveTab('signin');
-      setSignInData({ email: signUpData.email, password: '' });
-      setLoading(false);
-      return;
+      // Process invitation for new user (they're already logged in)
+      try {
+        const { data: invitation } = await supabase
+          .from('team_invitations')
+          .select('team_id, role, id')
+          .eq('token', inviteToken)
+          .maybeSingle();
+
+        if (invitation) {
+          // Add user to team
+          const { error: insertError } = await supabase.from('team_members').insert({
+            team_id: invitation.team_id,
+            user_id: signUpResult.user.id,
+            role: invitation.role,
+          });
+
+          if (insertError) {
+            console.error('Error inserting team member:', insertError);
+            throw insertError;
+          }
+
+          // Mark invitation as accepted
+          await supabase
+            .from('team_invitations')
+            .update({ accepted_at: new Date().toISOString() })
+            .eq('id', invitation.id);
+
+          toast({
+            title: '🎉 Welcome to the team!',
+            description: `You're all set! Taking you to your dashboard...`,
+          });
+
+          setTimeout(() => {
+            navigate(`/team/${invitation.team_id}`);
+          }, 1000);
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Error processing invitation:', err);
+        toast({
+          title: 'Error joining team',
+          description: 'There was a problem adding you to the team. Please contact support.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
     } else {
       // Set account_type to 'creator' for regular signups with code
       if (signUpResult?.user) {
@@ -609,13 +647,84 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-3 md:p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center px-4 md:px-6 py-4 md:py-6">
-          <CardTitle className="text-2xl md:text-3xl font-bold">GRWTH</CardTitle>
+          <CardTitle className="text-2xl md:text-3xl font-bold">
+            {inviteMode ? '🎉 Welcome!' : 'GRWTH'}
+          </CardTitle>
           <CardDescription className="text-sm md:text-base">
-            {isResettingPassword ? 'Reset your password' : 'Track your sales performance'}
+            {isResettingPassword 
+              ? 'Reset your password' 
+              : inviteMode 
+              ? `You've been invited to join ${inviteTeamName}`
+              : 'Track your sales performance'}
           </CardDescription>
         </CardHeader>
         <CardContent className="px-4 md:px-6 py-4 md:py-6">
-          {isResettingPassword ? (
+          {inviteMode ? (
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 space-y-3">
+                <h3 className="font-semibold text-base">Set up your account</h3>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <p>📧 <strong>Email:</strong> {inviteEmail}</p>
+                  <p>👥 <strong>Team:</strong> {inviteTeamName}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="invite-fullname">Your Full Name</Label>
+                <Input
+                  id="invite-fullname"
+                  type="text"
+                  placeholder="John Doe"
+                  value={signUpData.fullName}
+                  onChange={(e) => setSignUpData({ ...signUpData, fullName: e.target.value })}
+                  required
+                  autoFocus
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="invite-password">Create a Password</Label>
+                <Input
+                  id="invite-password"
+                  type="password"
+                  placeholder="Minimum 6 characters"
+                  value={signUpData.password}
+                  onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
+                  required
+                  minLength={6}
+                />
+                <p className="text-xs text-muted-foreground">You'll use this to log in to your account</p>
+              </div>
+              
+              <Button type="submit" className="w-full" disabled={loading} size="lg">
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin">⏳</span> 
+                    Setting up your account...
+                  </span>
+                ) : (
+                  '✨ Create Account & Join Team'
+                )}
+              </Button>
+              
+              <div className="text-center pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInviteMode(false);
+                      setActiveTab('signin');
+                      setSignInData({ email: inviteEmail, password: '' });
+                    }}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Sign in instead
+                  </button>
+                </p>
+              </div>
+            </form>
+          ) : isResettingPassword ? (
             <form onSubmit={handleUpdatePassword} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="reset-email-display">Email</Label>
