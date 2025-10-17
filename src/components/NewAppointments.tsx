@@ -29,9 +29,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
-import { Hand, Search } from "lucide-react";
+import { Hand, Search, CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface Appointment {
   id: string;
@@ -67,6 +70,10 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   const [assigning, setAssigning] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
+  const [customDateRange, setCustomDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({ from: undefined, to: undefined });
 
   useEffect(() => {
     loadTeamMembers();
@@ -221,6 +228,14 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           const aptDate = new Date(apt.start_at_utc);
           return aptDate >= thirtyDaysAgo;
         });
+      case "custom":
+        if (!customDateRange.from) return appointments;
+        return appointments.filter(apt => {
+          const aptDate = new Date(apt.start_at_utc);
+          const from = customDateRange.from!;
+          const to = customDateRange.to || new Date();
+          return aptDate >= from && aptDate <= to;
+        });
       default:
         return appointments;
     }
@@ -259,14 +274,62 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           />
         </div>
         
-        <Tabs value={dateFilter} onValueChange={setDateFilter}>
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="today">Today</TabsTrigger>
-            <TabsTrigger value="7days">7 Days</TabsTrigger>
-            <TabsTrigger value="30days">30 Days</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex gap-2">
+          <Tabs value={dateFilter} onValueChange={setDateFilter}>
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="today">Today</TabsTrigger>
+              <TabsTrigger value="7days">7 Days</TabsTrigger>
+              <TabsTrigger value="30days">30 Days</TabsTrigger>
+              <TabsTrigger value="custom">Custom</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          {dateFilter === "custom" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "justify-start text-left font-normal",
+                    !customDateRange.from && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {customDateRange.from ? (
+                    customDateRange.to ? (
+                      <>
+                        {format(customDateRange.from, "LLL dd, y")} -{" "}
+                        {format(customDateRange.to, "LLL dd, y")}
+                      </>
+                    ) : (
+                      format(customDateRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={{
+                    from: customDateRange.from,
+                    to: customDateRange.to,
+                  }}
+                  onSelect={(range) =>
+                    setCustomDateRange({
+                      from: range?.from,
+                      to: range?.to,
+                    })
+                  }
+                  numberOfMonths={2}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
       </div>
       
       {filteredAppointments.length === 0 ? (
