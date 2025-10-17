@@ -367,7 +367,7 @@ const Auth = () => {
     
     // Skip signup code validation if user has an invitation
     if (!inviteToken) {
-      if (signUpData.signupCode.trim().toUpperCase() !== 'GRWTHCO25') {
+      if (signUpData.signupCode.trim().toUpperCase() !== 'CREATOR2025') {
         toast({
           title: 'Invalid signup code',
           description: 'Please enter a valid signup code to create an account.',
