@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Table,
   TableBody,
@@ -21,6 +22,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -30,7 +40,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
-import { Hand, Search, CalendarIcon, Trash2 } from "lucide-react";
+import { Hand, Search, CalendarIcon, Trash2, Clock, Mail, User } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +56,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
 interface Appointment {
   id: string;
@@ -70,6 +81,7 @@ interface NewAppointmentsProps {
 export function NewAppointments({ teamId }: NewAppointmentsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -438,7 +450,61 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
         <div className="p-8 text-center text-muted-foreground border rounded-md">
           No appointments match your search
         </div>
+      ) : isMobile ? (
+        // Mobile Card View
+        <div className="space-y-3">
+          {filteredAppointments.map((apt) => (
+            <Card key={apt.id} className="overflow-hidden">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-base truncate">{apt.lead_name}</h3>
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                      <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{apt.lead_email}</span>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 flex-shrink-0">
+                    {apt.status}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{formatLocalTime(apt.start_at_utc)}</span>
+                </div>
+                
+                {apt.closer_name && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <User className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                    <span className="text-primary font-medium">{apt.closer_name}</span>
+                  </div>
+                )}
+              </CardContent>
+              
+              <CardFooter className="p-3 pt-0 flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => handleOpenAssignDialog(apt)}
+                  className="flex-1 h-10 text-sm"
+                >
+                  <Hand className="h-3.5 w-3.5 mr-1.5" />
+                  Claim
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleOpenDeleteDialog(apt)}
+                  className="h-10 w-10 p-0"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       ) : (
+        // Desktop Table View
         <div className="rounded-md border">
           <Table>
         <TableHeader>
@@ -510,7 +576,87 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
         </div>
       )}
 
-      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+      {/* Use Drawer for mobile, Dialog for desktop */}
+      {isMobile ? (
+        <Drawer open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+          <DrawerContent className="max-h-[90vh]">
+            <DrawerHeader>
+              <DrawerTitle>Claim Appointment</DrawerTitle>
+              <DrawerDescription>
+                Assign yourself and optionally select a closer
+              </DrawerDescription>
+            </DrawerHeader>
+            
+            <div className="px-4 pb-4 space-y-4 overflow-y-auto">
+              {selectedAppointment && (
+                <>
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-3 space-y-1.5">
+                      <p className="text-sm font-medium">{selectedAppointment.lead_name}</p>
+                      <p className="text-xs text-muted-foreground">{selectedAppointment.lead_email}</p>
+                      <p className="text-xs text-muted-foreground">{formatLocalTime(selectedAppointment.start_at_utc)}</p>
+                    </CardContent>
+                  </Card>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="setter-mobile" className="text-sm">Setter (You)</Label>
+                    <Select value={selectedSetter} onValueChange={setSelectedSetter}>
+                      <SelectTrigger id="setter-mobile" className="h-11">
+                        <SelectValue placeholder="Select setter..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.user_id} value={member.user_id}>
+                            {member.profiles.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="closer-mobile" className="text-sm">Closer (Optional)</Label>
+                    <Select value={selectedCloser} onValueChange={setSelectedCloser}>
+                      <SelectTrigger id="closer-mobile" className="h-11">
+                        <SelectValue placeholder="Select closer (optional)..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Closer</SelectItem>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.user_id} value={member.user_id}>
+                            {member.profiles.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes-mobile" className="text-sm">Notes (Optional)</Label>
+                    <Textarea
+                      id="notes-mobile"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Add any notes about this appointment..."
+                      className="min-h-[80px] resize-none"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <DrawerFooter className="px-4 pt-4">
+              <Button onClick={handleAssign} disabled={assigning || !selectedSetter} className="h-11 text-base">
+                {assigning ? "Assigning..." : "Claim Appointment"}
+              </Button>
+              <DrawerClose asChild>
+                <Button variant="outline" className="h-11 text-base">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Assign Appointment</DialogTitle>
@@ -590,6 +736,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
