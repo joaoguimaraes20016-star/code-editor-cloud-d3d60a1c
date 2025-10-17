@@ -433,24 +433,22 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
                         Choose a custom date range to filter appointments
                       </DrawerDescription>
                     </DrawerHeader>
-                    <div className="w-full overflow-x-auto px-4 pb-4">
-                      <div className="flex justify-center min-w-full">
-                        <Calendar
-                          mode="range"
-                          selected={{
-                            from: customDateRange.from,
-                            to: customDateRange.to,
-                          }}
-                          onSelect={(range) =>
-                            setCustomDateRange({
-                              from: range?.from,
-                              to: range?.to,
-                            })
-                          }
-                          numberOfMonths={1}
-                          className={cn("pointer-events-auto w-full max-w-[320px]")}
-                        />
-                      </div>
+                    <div className="w-full px-2 pb-4">
+                      <Calendar
+                        mode="range"
+                        selected={{
+                          from: customDateRange.from,
+                          to: customDateRange.to,
+                        }}
+                        onSelect={(range) =>
+                          setCustomDateRange({
+                            from: range?.from,
+                            to: range?.to,
+                          })
+                        }
+                        numberOfMonths={1}
+                        className={cn("pointer-events-auto w-full scale-95 origin-center")}
+                      />
                     </div>
                     <DrawerFooter>
                       <DrawerClose asChild>
