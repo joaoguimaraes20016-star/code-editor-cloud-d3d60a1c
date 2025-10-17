@@ -379,34 +379,36 @@ export function CalendlyConfig({
                     Select which Calendly event types should create appointments:
                   </p>
                   
-                  {isMobile ? (
-                    <div className="space-y-4">
-                      {availableEventTypes.map((eventType) => (
-                        <Card 
-                          key={eventType.uri}
-                          className={`cursor-pointer transition-all min-h-[60px] ${
-                            selectedEventTypes.includes(eventType.uri)
-                              ? 'border-primary bg-primary/5'
-                              : 'hover:border-primary/50'
-                          }`}
-                          onClick={() => handleEventTypeToggle(eventType.uri)}
-                        >
-                          <CardContent className="p-5">
-                            <div className="flex items-center space-x-4">
-                              <Checkbox
-                                checked={selectedEventTypes.includes(eventType.uri)}
-                                onCheckedChange={() => handleEventTypeToggle(eventType.uri)}
-                                className="h-6 w-6 border-2"
-                              />
-                              <span className="text-base font-medium flex-1 leading-relaxed">
-                                {eventType.name}
-                              </span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : (
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-4">
+                    {availableEventTypes.map((eventType) => (
+                      <Card 
+                        key={eventType.uri}
+                        className={`cursor-pointer transition-all min-h-[60px] ${
+                          selectedEventTypes.includes(eventType.uri)
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:border-primary/50'
+                        }`}
+                        onClick={() => handleEventTypeToggle(eventType.uri)}
+                      >
+                        <CardContent className="p-5">
+                          <div className="flex items-center space-x-4">
+                            <Checkbox
+                              checked={selectedEventTypes.includes(eventType.uri)}
+                              onCheckedChange={() => handleEventTypeToggle(eventType.uri)}
+                              className="h-6 w-6 border-2"
+                            />
+                            <span className="text-base font-medium flex-1 leading-relaxed">
+                              {eventType.name}
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                  
+                  {/* Desktop List View */}
+                  <div className="hidden md:block">
                     <div className="space-y-3 max-h-48 overflow-y-auto p-3 border rounded-md">
                       {availableEventTypes.map((eventType) => (
                         <div key={eventType.uri} className="flex items-center space-x-3 py-2">
@@ -425,7 +427,7 @@ export function CalendlyConfig({
                         </div>
                       ))}
                     </div>
-                  )}
+                  </div>
                   
                   <Button 
                     onClick={handleSaveEventTypes}
