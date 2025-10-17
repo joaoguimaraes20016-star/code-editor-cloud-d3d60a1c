@@ -68,179 +68,55 @@ const Auth = () => {
     
     if (token) {
       console.log('=== INVITATION TOKEN DETECTED ===');
-      // Check if user is already logged in
-      supabase.auth.getSession().then(async ({ data: { session } }) => {
-        console.log('Current session:', session ? 'User logged in' : 'No session');
-        
-        if (session?.user) {
-          // User is logged in - check if their email matches the invitation
-          try {
-            const { data: invitation, error: inviteError } = await supabase
-              .from('team_invitations')
-              .select('*')
-              .eq('token', token)
-              .is('accepted_at', null)
-              .maybeSingle();
-
-            if (inviteError) throw inviteError;
-
-            if (!invitation) {
-              toast({
-                title: 'Invalid invitation',
-                description: 'This invitation link is not valid or has already been used.',
-                variant: 'destructive',
-              });
-              return;
-            }
-
-            // Check if the logged-in user's email matches the invitation
-            if (session.user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
-              toast({
-                title: 'Wrong account',
-                description: `This invitation is for ${invitation.email}. Please sign out and use the correct account, or open this link in a private/incognito window.`,
-                variant: 'destructive',
-              });
-              return;
-            }
-
-            // Emails match - process invitation immediately
-            setLoading(true);
-            
-            // Check if invitation is expired
-            const expiresAt = new Date(invitation.expires_at);
-            if (expiresAt < new Date()) {
-              toast({
-                title: 'Invitation expired',
-                description: 'This invitation link has expired.',
-                variant: 'destructive',
-              });
-              setLoading(false);
-              return;
-            }
-
-            // Check if user is already a team member
-            const { data: existingMember } = await supabase
-              .from('team_members')
-              .select('id')
-              .eq('team_id', invitation.team_id)
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-
-            if (existingMember) {
-              toast({
-                title: 'Already a member',
-                description: 'You are already a member of this team.',
-              });
-              navigate(`/team/${invitation.team_id}`);
-              return;
-            }
-
-            // Add user to team
-            const { error: insertError } = await supabase.from('team_members').insert({
-              team_id: invitation.team_id,
-              user_id: session.user.id,
-              role: invitation.role,
-            });
-
-            if (insertError) throw insertError;
-
-            // Mark invitation as accepted
-            await supabase
-              .from('team_invitations')
-              .update({ accepted_at: new Date().toISOString() })
-              .eq('id', invitation.id);
-
+      setInviteLoading(true);
+      setActiveTab('signup');
+      
+      // Load invitation data - ignore login state
+      supabase
+        .from('team_invitations')
+        .select('*, teams(name)')
+        .eq('token', token)
+        .is('accepted_at', null)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          console.log('=== INVITATION QUERY RESULT ===');
+          console.log('Data:', data);
+          
+          if (error || !data) {
             toast({
-              title: 'Welcome to the team!',
-              description: 'You have been added to the team successfully.',
-            });
-
-            setTimeout(() => {
-              navigate(`/team/${invitation.team_id}`);
-            }, 500);
-          } catch (err) {
-            console.error('Error processing invitation:', err);
-            toast({
-              title: 'Error joining team',
-              description: 'There was a problem adding you to the team. Please contact support.',
+              title: 'Invalid invitation',
+              description: 'This invitation link is not valid or has already been used.',
               variant: 'destructive',
             });
-            setLoading(false);
-          }
-          return;
-        }
-
-        // User not logged in, load invitation for signup
-        console.log('=== USER NOT LOGGED IN - LOADING INVITATION DATA ===');
-        console.log('Token:', token);
-        
-        setInviteLoading(true);
-        
-        supabase
-          .from('team_invitations')
-          .select('*, teams(name)')
-          .eq('token', token)
-          .is('accepted_at', null)
-          .maybeSingle()
-          .then(({ data, error }) => {
-            console.log('=== INVITATION QUERY RESULT ===');
-            console.log('Data:', data);
-            console.log('Error:', error);
-            
-            if (error) {
-              console.error('Error loading invitation:', error);
-              toast({
-                title: 'Error loading invitation',
-                description: error.message,
-                variant: 'destructive',
-              });
-              setInviteLoading(false);
-              return;
-            }
-
-            if (!data) {
-              console.error('No invitation found for token:', token);
-              toast({
-                title: 'Invalid invitation',
-                description: 'This invitation link is not valid or has already been used.',
-                variant: 'destructive',
-              });
-              setInviteLoading(false);
-              return;
-            }
-
-            // Check if invitation is expired
-            const expiresAt = new Date(data.expires_at);
-            if (expiresAt < new Date()) {
-              console.error('Invitation expired:', expiresAt);
-              toast({
-                title: 'Invitation expired',
-                description: 'This invitation link has expired.',
-                variant: 'destructive',
-              });
-              setInviteLoading(false);
-              return;
-            }
-
-            console.log('=== VALID INVITATION FOUND ===');
-            console.log('Email:', data.email);
-            console.log('Team:', (data.teams as any)?.name);
-            console.log('Setting inviteMode to TRUE');
-            
-            setInviteToken(token);
-            setInviteEmail(data.email);
-            setInviteTeamName((data.teams as any)?.name || 'the team');
-            setInviteMode(true);
-            setSignUpData(prev => ({ ...prev, email: data.email }));
             setInviteLoading(false);
-            
+            return;
+          }
+
+          // Check expiration
+          if (new Date(data.expires_at) < new Date()) {
             toast({
-              title: 'Welcome!',
-              description: `You've been invited to join ${(data.teams as any)?.name || 'a team'}!`,
+              title: 'Invitation expired',
+              description: 'This invitation link has expired.',
+              variant: 'destructive',
             });
+            setInviteLoading(false);
+            return;
+          }
+
+          // Set invitation mode
+          setInviteToken(token);
+          setInviteEmail(data.email);
+          setInviteTeamName((data.teams as any)?.name || 'the team');
+          setInviteMode(true);
+          setSignUpData({ email: data.email, password: '', fullName: '', signupCode: '' });
+          setInviteLoading(false);
+          
+          toast({
+            title: 'Welcome!',
+            description: `You've been invited to join ${(data.teams as any)?.name}`,
           });
-      });
-      return; // Don't process password reset if invitation is present
+        });
+      return;
     }
 
     // Set up auth state listener to catch PASSWORD_RECOVERY event
@@ -665,15 +541,6 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-3 md:p-4">
-      {/* Debug info - remove after testing */}
-      <div className="fixed top-2 right-2 bg-black text-white text-xs p-2 rounded z-50">
-        URL: {window.location.href.substring(0, 50)}...
-        <br/>
-        Invite: {inviteToken ? 'YES' : 'NO'}
-        <br/>
-        Loading: {inviteLoading ? 'YES' : 'NO'}
-      </div>
-      
       <Card className="w-full max-w-md">
         <CardHeader className="text-center px-4 md:px-6 py-4 md:py-6">
           <CardTitle className="text-2xl md:text-3xl font-bold">
