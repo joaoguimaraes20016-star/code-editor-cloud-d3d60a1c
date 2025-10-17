@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -87,6 +88,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedAppointments, setSelectedAppointments] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadTeamMembers();
@@ -215,33 +217,61 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   };
 
   const handleDelete = async () => {
-    if (!appointmentToDelete) return;
+    const idsToDelete = appointmentToDelete 
+      ? [appointmentToDelete.id] 
+      : Array.from(selectedAppointments);
+
+    if (idsToDelete.length === 0) return;
 
     setDeleting(true);
     try {
       const { error } = await supabase
         .from('appointments')
         .delete()
-        .eq('id', appointmentToDelete.id);
+        .in('id', idsToDelete);
 
       if (error) throw error;
 
       toast({
-        title: 'Appointment deleted',
-        description: `Deleted appointment for ${appointmentToDelete.lead_name}`,
+        title: 'Appointments deleted',
+        description: `Deleted ${idsToDelete.length} appointment${idsToDelete.length > 1 ? 's' : ''}`,
       });
 
       setDeleteDialogOpen(false);
+      setSelectedAppointments(new Set());
       loadAppointments();
     } catch (error: any) {
       toast({
-        title: 'Error deleting appointment',
+        title: 'Error deleting appointments',
         description: error.message,
         variant: 'destructive',
       });
     } finally {
       setDeleting(false);
     }
+  };
+
+  const toggleAppointmentSelection = (id: string) => {
+    const newSelected = new Set(selectedAppointments);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedAppointments(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedAppointments.size === filteredAppointments.length) {
+      setSelectedAppointments(new Set());
+    } else {
+      setSelectedAppointments(new Set(filteredAppointments.map(apt => apt.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    setAppointmentToDelete(null);
+    setDeleteDialogOpen(true);
   };
 
   const formatLocalTime = (utcTime: string) => {
@@ -311,6 +341,30 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
 
   return (
     <div className="space-y-4">
+      {selectedAppointments.size > 0 && (
+        <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+          <span className="text-sm font-medium">
+            {selectedAppointments.size} appointment{selectedAppointments.size > 1 ? 's' : ''} selected
+          </span>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={handleBulkDelete}
+            className="flex items-center gap-1"
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete Selected
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSelectedAppointments(new Set())}
+          >
+            Clear Selection
+          </Button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -389,6 +443,13 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-12">
+              <Checkbox
+                checked={selectedAppointments.size === filteredAppointments.length && filteredAppointments.length > 0}
+                onCheckedChange={toggleSelectAll}
+                aria-label="Select all"
+              />
+            </TableHead>
             <TableHead>Start Time</TableHead>
             <TableHead>Lead Name</TableHead>
             <TableHead>Email</TableHead>
@@ -400,6 +461,13 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
         <TableBody>
           {filteredAppointments.map((apt) => (
             <TableRow key={apt.id}>
+              <TableCell>
+                <Checkbox
+                  checked={selectedAppointments.has(apt.id)}
+                  onCheckedChange={() => toggleAppointmentSelection(apt.id)}
+                  aria-label={`Select ${apt.lead_name}`}
+                />
+              </TableCell>
               <TableCell>{formatLocalTime(apt.start_at_utc)}</TableCell>
               <TableCell className="font-medium">{apt.lead_name}</TableCell>
               <TableCell>{apt.lead_email}</TableCell>
@@ -526,10 +594,18 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Appointment</AlertDialogTitle>
+            <AlertDialogTitle>Delete Appointment{appointmentToDelete ? '' : 's'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this appointment for{" "}
-              <strong>{appointmentToDelete?.lead_name}</strong>? This action cannot be undone.
+              {appointmentToDelete ? (
+                <>
+                  Are you sure you want to delete this appointment for{" "}
+                  <strong>{appointmentToDelete.lead_name}</strong>? This action cannot be undone.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to delete <strong>{selectedAppointments.size}</strong> selected appointment{selectedAppointments.size > 1 ? 's' : ''}? This action cannot be undone.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
