@@ -27,6 +27,7 @@ export function CalendlyConfig({
   const [organizationUri, setOrganizationUri] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [fetchingOrgUri, setFetchingOrgUri] = useState(false);
   const { toast } = useToast();
 
   const isConnected = Boolean(currentAccessToken && currentOrgUri && currentWebhookId);
@@ -74,6 +75,53 @@ export function CalendlyConfig({
       });
     } finally {
       setConnecting(false);
+    }
+  };
+
+  const handleFetchOrgUri = async () => {
+    if (!accessToken) {
+      toast({
+        title: "Missing Token",
+        description: "Please enter your Personal Access Token first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setFetchingOrgUri(true);
+    try {
+      const response = await fetch('https://api.calendly.com/users/me', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch organization URI. Please check your access token.');
+      }
+
+      const data = await response.json();
+      const orgUri = data.resource.current_organization;
+      
+      if (orgUri) {
+        setOrganizationUri(orgUri);
+        toast({
+          title: "Success",
+          description: "Organization URI fetched successfully!",
+        });
+      } else {
+        throw new Error('Organization URI not found in response');
+      }
+    } catch (error: any) {
+      console.error('Fetch error:', error);
+      toast({
+        title: "Fetch Failed",
+        description: error.message || "Failed to fetch organization URI",
+        variant: "destructive",
+      });
+    } finally {
+      setFetchingOrgUri(false);
     }
   };
 
@@ -169,15 +217,26 @@ export function CalendlyConfig({
 
             <div className="space-y-2">
               <Label htmlFor="org-uri">Organization URI</Label>
-              <Input
-                id="org-uri"
-                type="text"
-                placeholder="https://api.calendly.com/organizations/XXXXXXXX"
-                value={organizationUri}
-                onChange={(e) => setOrganizationUri(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="org-uri"
+                  type="text"
+                  placeholder="https://api.calendly.com/organizations/XXXXXXXX"
+                  value={organizationUri}
+                  onChange={(e) => setOrganizationUri(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleFetchOrgUri}
+                  disabled={fetchingOrgUri || !accessToken}
+                >
+                  {fetchingOrgUri ? "Fetching..." : "Auto-Fetch"}
+                </Button>
+              </div>
               <p className="text-sm text-muted-foreground">
-                Find this in the same Calendly API settings page
+                Click "Auto-Fetch" to automatically retrieve your Organization URI
               </p>
             </div>
 
