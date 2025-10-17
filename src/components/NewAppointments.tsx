@@ -102,6 +102,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedAppointments, setSelectedAppointments] = useState<Set<string>>(new Set());
+  const [dateDrawerOpen, setDateDrawerOpen] = useState(false);
 
   useEffect(() => {
     loadTeamMembers();
@@ -389,21 +390,26 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           />
         </div>
         
-        <div className="flex gap-2">
-          <Tabs value={dateFilter} onValueChange={setDateFilter}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="today">Today</TabsTrigger>
-              <TabsTrigger value="7days">7 Days</TabsTrigger>
-              <TabsTrigger value="30days">30 Days</TabsTrigger>
-              <TabsTrigger value="custom">Custom</TabsTrigger>
+        <div className="flex gap-2 overflow-x-auto">
+          <Tabs value={dateFilter} onValueChange={(value) => {
+            setDateFilter(value);
+            if (value === "custom" && isMobile) {
+              setDateDrawerOpen(true);
+            }
+          }}>
+            <TabsList className="w-full md:w-auto">
+              <TabsTrigger value="all" className="text-xs md:text-sm">All</TabsTrigger>
+              <TabsTrigger value="today" className="text-xs md:text-sm">Today</TabsTrigger>
+              <TabsTrigger value="7days" className="text-xs md:text-sm">7 Days</TabsTrigger>
+              <TabsTrigger value="30days" className="text-xs md:text-sm">30 Days</TabsTrigger>
+              <TabsTrigger value="custom" className="text-xs md:text-sm">Custom</TabsTrigger>
             </TabsList>
           </Tabs>
           
-          {dateFilter === "custom" && (
+          {dateFilter === "custom" && !isMobile && (
             <>
               {isMobile ? (
-                <Drawer>
+                <Drawer open={dateDrawerOpen} onOpenChange={setDateDrawerOpen}>
                   <DrawerTrigger asChild>
                     <Button
                       variant="outline"
@@ -505,6 +511,42 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           )}
         </div>
       </div>
+      
+      {/* Mobile Date Range Drawer */}
+      {isMobile && dateFilter === "custom" && (
+        <Drawer open={dateDrawerOpen} onOpenChange={setDateDrawerOpen}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Select Date Range</DrawerTitle>
+              <DrawerDescription>
+                Choose a custom date range to filter appointments
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="w-full px-2 pb-4">
+              <Calendar
+                mode="range"
+                selected={{
+                  from: customDateRange.from,
+                  to: customDateRange.to,
+                }}
+                onSelect={(range) =>
+                  setCustomDateRange({
+                    from: range?.from,
+                    to: range?.to,
+                  })
+                }
+                numberOfMonths={1}
+                className={cn("pointer-events-auto w-full scale-95 origin-center")}
+              />
+            </div>
+            <DrawerFooter>
+              <DrawerClose asChild>
+                <Button variant="outline">Done</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      )}
       
       {filteredAppointments.length === 0 ? (
         <div className="p-8 text-center text-muted-foreground border rounded-md">

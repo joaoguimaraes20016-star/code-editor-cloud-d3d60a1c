@@ -466,12 +466,14 @@ export function CloserView({ teamId }: CloserViewProps) {
   return (
     <>
       <Tabs defaultValue="all-new" className="w-full">
-        <TabsList>
-          <TabsTrigger value="all-new">All Appointments ({allNewAppointments.length})</TabsTrigger>
-          <TabsTrigger value="my-new">My Meetings ({myNewAppointments.length})</TabsTrigger>
-          <TabsTrigger value="all-closed">All Closed ({allClosedAppointments.length})</TabsTrigger>
-          <TabsTrigger value="my-closed">My Closed ({myClosedAppointments.length})</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="w-full md:w-auto inline-flex">
+            <TabsTrigger value="all-new" className="text-xs md:text-sm whitespace-nowrap">All Appointments ({allNewAppointments.length})</TabsTrigger>
+            <TabsTrigger value="my-new" className="text-xs md:text-sm whitespace-nowrap">My Meetings ({myNewAppointments.length})</TabsTrigger>
+            <TabsTrigger value="all-closed" className="text-xs md:text-sm whitespace-nowrap">All Closed ({allClosedAppointments.length})</TabsTrigger>
+            <TabsTrigger value="my-closed" className="text-xs md:text-sm whitespace-nowrap">My Closed ({myClosedAppointments.length})</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="all-new" className="mt-6">
           {allNewAppointments.length === 0 ? (
