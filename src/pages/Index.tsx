@@ -551,13 +551,13 @@ const Index = () => {
               />
             )}
             
-            <Tabs defaultValue={canViewSetterScheduling ? "new" : "closer"} className="w-full overflow-x-hidden">
-              <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-                <TabsList className="w-full md:w-auto inline-flex">
-                  {canViewSetterScheduling && <TabsTrigger value="new" className="text-xs md:text-sm whitespace-nowrap">New Appointments</TabsTrigger>}
-                  {canViewSetterScheduling && <TabsTrigger value="claimed" className="text-xs md:text-sm whitespace-nowrap">All Assigned</TabsTrigger>}
-                  {canViewSetterScheduling && <TabsTrigger value="my-claimed" className="text-xs md:text-sm whitespace-nowrap">My Assigned</TabsTrigger>}
-                  {canViewCloserScheduling && <TabsTrigger value="closer" className="text-xs md:text-sm whitespace-nowrap">Closer View</TabsTrigger>}
+            <Tabs defaultValue={canViewSetterScheduling ? "new" : "closer"} className="w-full">
+              <div className="overflow-x-auto pb-2">
+                <TabsList className="inline-flex w-auto min-w-full md:min-w-0">
+                  {canViewSetterScheduling && <TabsTrigger value="new" className="text-xs md:text-sm flex-1 md:flex-none">New Appointments</TabsTrigger>}
+                  {canViewSetterScheduling && <TabsTrigger value="claimed" className="text-xs md:text-sm flex-1 md:flex-none">All Assigned</TabsTrigger>}
+                  {canViewSetterScheduling && <TabsTrigger value="my-claimed" className="text-xs md:text-sm flex-1 md:flex-none">My Assigned</TabsTrigger>}
+                  {canViewCloserScheduling && <TabsTrigger value="closer" className="text-xs md:text-sm flex-1 md:flex-none">Closer View</TabsTrigger>}
                 </TabsList>
               </div>
 

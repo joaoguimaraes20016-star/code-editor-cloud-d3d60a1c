@@ -390,19 +390,19 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
           />
         </div>
         
-        <div className="-mx-3 px-3 md:mx-0 md:px-0 overflow-x-auto">
+        <div className="overflow-x-auto pb-2">
           <Tabs value={dateFilter} onValueChange={(value) => {
             setDateFilter(value);
             if (value === "custom" && isMobile) {
               setDateDrawerOpen(true);
             }
           }}>
-            <TabsList className="w-full md:w-auto inline-flex min-w-max">
-              <TabsTrigger value="all" className="text-xs md:text-sm">All</TabsTrigger>
-              <TabsTrigger value="today" className="text-xs md:text-sm">Today</TabsTrigger>
-              <TabsTrigger value="7days" className="text-xs md:text-sm">7 Days</TabsTrigger>
-              <TabsTrigger value="30days" className="text-xs md:text-sm">30 Days</TabsTrigger>
-              <TabsTrigger value="custom" className="text-xs md:text-sm">Custom</TabsTrigger>
+            <TabsList className="inline-flex w-auto min-w-full md:min-w-0">
+              <TabsTrigger value="all" className="text-xs md:text-sm flex-1 md:flex-none">All</TabsTrigger>
+              <TabsTrigger value="today" className="text-xs md:text-sm flex-1 md:flex-none">Today</TabsTrigger>
+              <TabsTrigger value="7days" className="text-xs md:text-sm flex-1 md:flex-none">7 Days</TabsTrigger>
+              <TabsTrigger value="30days" className="text-xs md:text-sm flex-1 md:flex-none">30 Days</TabsTrigger>
+              <TabsTrigger value="custom" className="text-xs md:text-sm flex-1 md:flex-none">Custom</TabsTrigger>
             </TabsList>
           </Tabs>
           

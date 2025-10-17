@@ -111,8 +111,8 @@ export function SalesTable({ sales, userRole, currentUserName, onSaleDeleted }: 
 
   return (
     <>
-      <div className="rounded-lg border bg-card overflow-x-auto -mx-3 md:mx-0">
-        <Table className="min-w-[800px]">
+      <div className="rounded-lg border bg-card overflow-x-auto">
+        <Table className="min-w-[600px]">
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
