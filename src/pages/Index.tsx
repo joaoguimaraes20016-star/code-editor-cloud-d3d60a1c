@@ -55,7 +55,7 @@ const Index = () => {
 
   useEffect(() => {
     if (!user || !teamId) {
-      navigate('/');
+      navigate('/dashboard');
       return;
     }
     loadUserProfile();
@@ -390,7 +390,7 @@ const Index = () => {
         <div className="flex flex-col gap-3 md:gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="text-xs md:text-sm">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="text-xs md:text-sm">
                 <ArrowLeft className="h-3 w-3 md:h-4 md:w-4 mr-1" />
                 Back
               </Button>

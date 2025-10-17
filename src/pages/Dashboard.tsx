@@ -29,7 +29,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!user) {
-      navigate('/auth');
+      navigate('/');
       return;
     }
     loadTeams();
@@ -133,7 +133,7 @@ const Dashboard = () => {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/auth');
+    navigate('/');
   };
 
   if (loading) {
@@ -171,7 +171,7 @@ const Dashboard = () => {
             {!canCreateTeams && (
               <Button 
                 variant="default" 
-                onClick={() => navigate('/auth?creator=true')}
+                onClick={() => navigate('/?creator=true')}
                 className="bg-primary hover:bg-primary/90 transition-all duration-300 text-sm md:text-base"
               >
                 Sign Up as Creator

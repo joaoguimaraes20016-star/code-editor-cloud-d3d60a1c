@@ -59,7 +59,7 @@ export default function TeamSettings() {
 
   useEffect(() => {
     if (!user || !teamId) {
-      navigate('/');
+      navigate('/dashboard');
       return;
     }
     

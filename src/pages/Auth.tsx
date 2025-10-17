@@ -348,7 +348,7 @@ const Auth = () => {
       title: 'Welcome back!',
       description: 'Successfully signed in',
     });
-    navigate('/');
+    navigate('/dashboard');
     setLoading(false);
   };
 
@@ -657,7 +657,7 @@ const Auth = () => {
       setIsResettingPassword(false);
       setNewPassword('');
       setConfirmPassword('');
-      navigate('/');
+      navigate('/dashboard');
     }
     
     setLoading(false);
