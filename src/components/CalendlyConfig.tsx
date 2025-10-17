@@ -379,31 +379,32 @@ export function CalendlyConfig({
                     Select which Calendly event types should create appointments:
                   </p>
                   
-                  {/* Mobile Card View */}
-                  <div className="md:hidden space-y-4">
+                  {/* Always use card view on small screens */}
+                  <div className="space-y-4 md:space-y-0">
                     {availableEventTypes.map((eventType) => (
-                      <Card 
-                        key={eventType.uri}
-                        className={`cursor-pointer transition-all min-h-[60px] ${
-                          selectedEventTypes.includes(eventType.uri)
-                            ? 'border-primary bg-primary/5'
-                            : 'hover:border-primary/50'
-                        }`}
-                        onClick={() => handleEventTypeToggle(eventType.uri)}
-                      >
-                        <CardContent className="p-5">
-                          <div className="flex items-center space-x-4">
-                            <Checkbox
-                              checked={selectedEventTypes.includes(eventType.uri)}
-                              onCheckedChange={() => handleEventTypeToggle(eventType.uri)}
-                              className="h-6 w-6 border-2"
-                            />
-                            <span className="text-base font-medium flex-1 leading-relaxed">
-                              {eventType.name}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <div key={eventType.uri} className="md:hidden">
+                        <Card 
+                          className={`cursor-pointer transition-all min-h-[68px] ${
+                            selectedEventTypes.includes(eventType.uri)
+                              ? 'border-primary bg-primary/5 shadow-sm'
+                              : 'hover:border-primary/50'
+                          }`}
+                          onClick={() => handleEventTypeToggle(eventType.uri)}
+                        >
+                          <CardContent className="p-6">
+                            <div className="flex items-center space-x-4">
+                              <Checkbox
+                                checked={selectedEventTypes.includes(eventType.uri)}
+                                onCheckedChange={() => handleEventTypeToggle(eventType.uri)}
+                                className="h-7 w-7 border-2"
+                              />
+                              <span className="text-base font-semibold flex-1 leading-relaxed">
+                                {eventType.name}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
                     ))}
                   </div>
                   
@@ -433,12 +434,12 @@ export function CalendlyConfig({
                     onClick={handleSaveEventTypes}
                     disabled={savingEventTypes}
                     variant="outline"
-                    className="w-full min-h-[52px] text-base font-semibold"
+                    className="w-full min-h-[56px] text-base font-bold"
                   >
                     {savingEventTypes ? "Saving..." : "Save Event Type Filters"}
                   </Button>
                   {selectedEventTypes.length === 0 && (
-                    <p className="text-xs text-amber-600">
+                    <p className="text-xs text-amber-600 font-medium">
                       ⚠️ No event types selected. All appointments will be synced.
                     </p>
                   )}
