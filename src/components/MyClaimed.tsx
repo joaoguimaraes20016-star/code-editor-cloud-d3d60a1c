@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Table,
   TableBody,
@@ -21,7 +22,8 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { MessageSquare, Clock, Mail } from "lucide-react";
 import { format } from "date-fns";
 
 interface Appointment {
@@ -40,6 +42,7 @@ interface MyClaimedProps {
 export function MyClaimed({ teamId }: MyClaimedProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
@@ -177,7 +180,62 @@ export function MyClaimed({ teamId }: MyClaimedProps) {
     );
   }
 
-  return (
+  return isMobile ? (
+    // Mobile Card View
+    <div className="space-y-3">
+      {appointments.map((apt) => (
+        <Card key={apt.id} className="overflow-hidden">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-base truncate">{apt.lead_name}</h3>
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                  <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate">{apt.lead_email}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+              <span>{formatLocalTime(apt.start_at_utc)}</span>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Status</label>
+              <Select 
+                value={apt.status} 
+                onValueChange={(value: 'NEW' | 'CONFIRMED' | 'CANCELLED' | 'RESCHEDULED' | 'CLOSED') => handleStatusChange(apt.id, value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NEW">NEW</SelectItem>
+                  <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
+                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                  <SelectItem value="RESCHEDULED">RESCHEDULED</SelectItem>
+                  <SelectItem value="CLOSED">CLOSED</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Notes</label>
+              <Textarea
+                value={editingNotes[apt.id] !== undefined ? editingNotes[apt.id] : (apt.setter_notes || '')}
+                onChange={(e) => handleNotesChange(apt.id, e.target.value)}
+                onBlur={() => handleNotesBlur(apt.id)}
+                placeholder="Add notes..."
+                className="min-h-[80px]"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  ) : (
+    // Desktop Table View
     <div className="rounded-md border">
       <Table>
         <TableHeader>

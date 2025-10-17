@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Table,
   TableBody,
@@ -21,8 +22,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { Trash2, Clock, Mail, User } from "lucide-react";
 
 interface Appointment {
   id: string;
@@ -40,6 +42,7 @@ interface AllClaimedProps {
 
 export function AllClaimed({ teamId }: AllClaimedProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -199,8 +202,64 @@ export function AllClaimed({ teamId }: AllClaimedProps) {
         </div>
       )}
 
-      <div className="rounded-md border">
-      <Table>
+      {isMobile ? (
+        // Mobile Card View
+        <div className="space-y-3">
+          {appointments.map((apt) => (
+            <Card key={apt.id} className="overflow-hidden">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-base truncate">{apt.lead_name}</h3>
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                      <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{apt.lead_email}</span>
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-medium flex-shrink-0 ${
+                    apt.status === 'SHOWED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                    apt.status === 'NO_SHOW' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                    'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    {apt.status}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{formatLocalTime(apt.start_at_utc)}</span>
+                </div>
+                
+                {apt.setter_name && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <User className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                    <span className="text-primary font-medium">{apt.setter_name}</span>
+                  </div>
+                )}
+                
+                {apt.setter_notes && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">{apt.setter_notes}</p>
+                )}
+              </CardContent>
+              
+              <CardFooter className="p-3 pt-0">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleOpenDeleteDialog(apt)}
+                  className="w-full h-10 text-sm"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  Delete
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        // Desktop Table View
+        <div className="rounded-md border">
+          <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">
@@ -246,20 +305,21 @@ export function AllClaimed({ teamId }: AllClaimedProps) {
                </TableCell>
                <TableCell className="max-w-xs truncate">{apt.setter_notes || '-'}</TableCell>
                <TableCell>
-                 <Button
-                   size="sm"
-                   variant="destructive"
-                   onClick={() => handleOpenDeleteDialog(apt)}
-                   className="flex items-center gap-1"
-                 >
-                   <Trash2 className="h-3 w-3" />
-                 </Button>
-               </TableCell>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleOpenDeleteDialog(apt)}
+                    className="flex items-center gap-1"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </TableCell>
              </TableRow>
            ))}
          </TableBody>
        </Table>
      </div>
+      )}
        
        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
          <AlertDialogContent>
