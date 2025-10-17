@@ -27,7 +27,11 @@ const Auth = () => {
   const [linkExpired, setLinkExpired] = useState(false);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [activeTab, setActiveTab] = useState('signin');
+  // Check URL params immediately to set initial tab
+  const urlParams = new URLSearchParams(location.search);
+  const hasInvite = urlParams.get('invite');
+  const hasCreator = urlParams.get('creator');
+  const [activeTab, setActiveTab] = useState(hasInvite || hasCreator ? 'signup' : 'signin');
   const [isCreatorUpgrade, setIsCreatorUpgrade] = useState(false);
   const [creatorCode, setCreatorCode] = useState('');
 
