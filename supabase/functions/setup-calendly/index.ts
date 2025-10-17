@@ -61,7 +61,6 @@ serve(async (req) => {
       body: JSON.stringify({
         url: webhookUrl,
         organization: organizationUri,
-        user: 'me',
         scope: 'organization',
         events: [
           'invitee.created',
