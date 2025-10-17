@@ -59,6 +59,15 @@ const Index = () => {
     loadTeamData();
     loadSales();
     loadAppointments();
+
+    // Auto-refresh every 2 seconds for real-time sync
+    const refreshInterval = setInterval(() => {
+      loadSales();
+      loadAppointments();
+      loadTeamData();
+    }, 2000);
+
+    return () => clearInterval(refreshInterval);
   }, [user, teamId, navigate]);
 
   const loadUserProfile = async () => {
