@@ -31,6 +31,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Trash2 } from 'lucide-react';
+import { CalendlyConfig } from '@/components/CalendlyConfig';
 
 interface TeamMember {
   id: string;
@@ -51,6 +52,9 @@ export default function TeamSettings() {
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<string>('member');
   const [loading, setLoading] = useState(true);
+  const [calendlyAccessToken, setCalendlyAccessToken] = useState<string | null>(null);
+  const [calendlyOrgUri, setCalendlyOrgUri] = useState<string | null>(null);
+  const [calendlyWebhookId, setCalendlyWebhookId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !teamId) {
@@ -97,12 +101,15 @@ export default function TeamSettings() {
     try {
       const { data, error } = await supabase
         .from('teams')
-        .select('name')
+        .select('name, calendly_access_token, calendly_organization_uri, calendly_webhook_id')
         .eq('id', teamId)
         .single();
 
       if (error) throw error;
       setTeamName(data.name);
+      setCalendlyAccessToken(data.calendly_access_token);
+      setCalendlyOrgUri(data.calendly_organization_uri);
+      setCalendlyWebhookId(data.calendly_webhook_id);
     } catch (error: any) {
       toast({
         title: 'Error loading team',
@@ -340,6 +347,15 @@ export default function TeamSettings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Calendly Integration */}
+        <CalendlyConfig 
+          teamId={teamId!}
+          currentAccessToken={calendlyAccessToken}
+          currentOrgUri={calendlyOrgUri}
+          currentWebhookId={calendlyWebhookId}
+          onUpdate={loadTeamData}
+        />
       </div>
     </div>
   );

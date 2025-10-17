@@ -1,1 +1,7 @@
 project_id = "inbvluddkutyfhsxfqco"
+
+[functions.calendly-webhook]
+verify_jwt = false
+
+[functions.setup-calendly]
+verify_jwt = true

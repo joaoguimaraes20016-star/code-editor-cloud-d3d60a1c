@@ -348,6 +348,9 @@ export type Database = {
       }
       teams: {
         Row: {
+          calendly_access_token: string | null
+          calendly_organization_uri: string | null
+          calendly_webhook_id: string | null
           created_at: string | null
           created_by: string
           google_sheets_url: string | null
@@ -356,6 +359,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          calendly_access_token?: string | null
+          calendly_organization_uri?: string | null
+          calendly_webhook_id?: string | null
           created_at?: string | null
           created_by: string
           google_sheets_url?: string | null
@@ -364,6 +370,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          calendly_access_token?: string | null
+          calendly_organization_uri?: string | null
+          calendly_webhook_id?: string | null
           created_at?: string | null
           created_by?: string
           google_sheets_url?: string | null
