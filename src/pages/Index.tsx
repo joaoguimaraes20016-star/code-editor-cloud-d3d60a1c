@@ -65,10 +65,27 @@ const Index = () => {
       loadSales();
       loadAppointments();
       loadTeamData();
+      syncGoogleSheets();
     }, 2000);
 
     return () => clearInterval(refreshInterval);
   }, [user, teamId, navigate]);
+
+  const syncGoogleSheets = async () => {
+    if (!teamId) return;
+    
+    try {
+      const { error } = await supabase.functions.invoke('sync-appointments', {
+        body: { teamId }
+      });
+      
+      if (error) {
+        console.error('Error syncing appointments:', error);
+      }
+    } catch (error) {
+      console.error('Error syncing appointments:', error);
+    }
+  };
 
   const loadUserProfile = async () => {
     try {
