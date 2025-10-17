@@ -237,7 +237,7 @@ export default function TeamSettings() {
       member: 'outline',
     };
 
-    const displayName = role === 'offer_owner' ? 'Offer Owner' : role;
+    const displayName = role === 'owner' ? 'Admin' : role === 'offer_owner' ? 'Offer Owner' : role;
     return <Badge variant={variants[role] || 'outline'}>{displayName}</Badge>;
   };
 
@@ -296,7 +296,7 @@ export default function TeamSettings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="owner">Owner</SelectItem>
+                      <SelectItem value="owner">Admin</SelectItem>
                       <SelectItem value="offer_owner">Offer Owner</SelectItem>
                       <SelectItem value="closer">Closer</SelectItem>
                       <SelectItem value="setter">Setter</SelectItem>
