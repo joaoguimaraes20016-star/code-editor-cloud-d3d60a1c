@@ -753,9 +753,9 @@ const Auth = () => {
                 {!isCreatorUpgrade && inviteToken && (
                   <div className="space-y-4">
                     <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-                      <h3 className="font-semibold text-lg mb-2">🎉 You're Invited!</h3>
+                      <h3 className="font-semibold text-lg mb-2">🎉 You're Invited to Join a Team!</h3>
                       <p className="text-sm text-muted-foreground">
-                        Complete your profile below to join the team.
+                        You've been invited to join a team. Create your account below to get started.
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -767,7 +767,7 @@ const Auth = () => {
                         disabled
                         className="bg-muted"
                       />
-                      <p className="text-xs text-muted-foreground">Your invitation email</p>
+                      <p className="text-xs text-muted-foreground">This is the email that received the invitation</p>
                     </div>
                   </div>
                 )}
