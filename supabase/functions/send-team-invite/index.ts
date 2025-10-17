@@ -57,8 +57,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get the origin from the request headers to build the correct invite URL
-    const origin = req.headers.get('origin') || 'https://sales-stats-spark.lovable.app';
-    const inviteUrl = `${origin}/auth?invite=${inviteToken}`;
+    // Always use the production URL for email links
+    const inviteUrl = `https://sales-stats-spark.lovable.app/auth?invite=${inviteToken}`;
     
     console.log('Generated invite URL:', inviteUrl);
     
