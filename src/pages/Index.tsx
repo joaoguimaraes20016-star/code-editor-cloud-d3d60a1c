@@ -62,6 +62,28 @@ const Index = () => {
     loadTeamData();
     loadSales();
     loadAppointments();
+
+    // Set up real-time subscription for appointments
+    const appointmentsChannel = supabase
+      .channel('appointments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `team_id=eq.${teamId}`,
+        },
+        (payload) => {
+          console.log('Appointment change detected:', payload);
+          loadAppointments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(appointmentsChannel);
+    };
   }, [user, teamId, navigate]);
 
 
