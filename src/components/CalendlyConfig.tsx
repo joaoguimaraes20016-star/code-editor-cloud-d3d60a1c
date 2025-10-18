@@ -46,12 +46,13 @@ export function CalendlyConfig({
   const isMobile = useIsMobile();
 
   const isConnected = Boolean(currentAccessToken && currentOrgUri && currentWebhookId);
+  const [tokenValidationFailed, setTokenValidationFailed] = useState(false);
 
   useEffect(() => {
-    if (isConnected && currentAccessToken && currentOrgUri) {
+    if (isConnected && currentAccessToken && currentOrgUri && !tokenValidationFailed) {
       fetchEventTypes();
     }
-  }, [isConnected, currentAccessToken, currentOrgUri]);
+  }, [isConnected, currentAccessToken, currentOrgUri, tokenValidationFailed]);
 
   useEffect(() => {
     setSelectedEventTypes(currentEventTypes || []);
@@ -70,11 +71,15 @@ export function CalendlyConfig({
       });
 
       if (response.status === 401) {
-        toast({
-          title: "Calendly Token Expired",
-          description: "Your Calendly access token has expired. Please reconnect your Calendly account.",
-          variant: "destructive",
-        });
+        setTokenValidationFailed(true);
+        // Only show error once, not on every page load
+        if (!tokenValidationFailed) {
+          toast({
+            title: "Calendly Token Expired",
+            description: "Your Calendly access token has expired. Please reconnect your Calendly account.",
+            variant: "destructive",
+          });
+        }
         return;
       }
 
@@ -90,13 +95,10 @@ export function CalendlyConfig({
       }));
       
       setAvailableEventTypes(eventTypes);
+      setTokenValidationFailed(false); // Reset if successful
     } catch (error: any) {
       console.error('Error fetching event types:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load Calendly event types. Your access token may be expired.",
-        variant: "destructive",
-      });
+      // Don't show toast on every page load, only log to console
     } finally {
       setLoadingEventTypes(false);
     }
