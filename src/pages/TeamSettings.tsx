@@ -356,22 +356,38 @@ export default function TeamSettings() {
         </Card>
 
         {/* Calendly Integration */}
-        <CalendlyConfig 
-          teamId={teamId!}
-          currentAccessToken={calendlyAccessToken}
-          currentOrgUri={calendlyOrgUri}
-          currentWebhookId={calendlyWebhookId}
-          currentEventTypes={calendlyEventTypes}
-          onUpdate={loadTeamData}
-        />
+        {(() => {
+          try {
+            return (
+              <CalendlyConfig 
+                teamId={teamId!}
+                currentAccessToken={calendlyAccessToken}
+                currentOrgUri={calendlyOrgUri}
+                currentWebhookId={calendlyWebhookId}
+                currentEventTypes={calendlyEventTypes}
+                onUpdate={loadTeamData}
+              />
+            );
+          } catch (error) {
+            console.error('Error rendering Calendly config:', error);
+            return null;
+          }
+        })()}
 
         {/* Setter Booking Links */}
-        {(role === 'owner' || role === 'admin') && calendlyEventTypes && calendlyEventTypes.length > 0 && (
-          <SetterBookingLinks
-            teamId={teamId!}
-            calendlyEventTypes={calendlyEventTypes}
-          />
-        )}
+        {(role === 'owner' || role === 'admin') && calendlyEventTypes && calendlyEventTypes.length > 0 && (() => {
+          try {
+            return (
+              <SetterBookingLinks
+                teamId={teamId!}
+                calendlyEventTypes={calendlyEventTypes}
+              />
+            );
+          } catch (error) {
+            console.error('Error rendering booking links:', error);
+            return null;
+          }
+        })()}
       </div>
     </div>
   );

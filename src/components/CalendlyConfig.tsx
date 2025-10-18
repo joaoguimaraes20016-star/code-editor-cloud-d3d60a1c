@@ -70,18 +70,24 @@ export function CalendlyConfig({
         },
       });
 
-      if (response.status === 401) {
-        setTokenValidationFailed(true);
-        console.warn('Calendly token validation failed - token may be expired');
-        return;
-      }
-
+      // Silently handle errors - don't show toasts
       if (!response.ok) {
-        console.error('Failed to fetch Calendly event types:', response.status);
+        console.warn('Failed to fetch Calendly event types:', response.status);
+        if (response.status === 401) {
+          setTokenValidationFailed(true);
+        }
         return;
       }
 
       const data = await response.json();
+      
+      // Additional check for Calendly error format
+      if (data.title === 'Unauthenticated') {
+        console.warn('Calendly authentication failed');
+        setTokenValidationFailed(true);
+        return;
+      }
+      
       const eventTypes = data.collection.map((et: any) => ({
         uri: et.uri,
         name: et.name,
@@ -89,10 +95,10 @@ export function CalendlyConfig({
       }));
       
       setAvailableEventTypes(eventTypes);
-      setTokenValidationFailed(false); // Reset if successful
+      setTokenValidationFailed(false);
     } catch (error: any) {
+      // Silently log errors without showing toast
       console.error('Error fetching event types:', error);
-      // Don't show error toast - this is a background operation
     } finally {
       setLoadingEventTypes(false);
     }
@@ -123,9 +129,13 @@ export function CalendlyConfig({
     } catch (error: any) {
       // Revert on error
       setSelectedEventTypes(selectedEventTypes);
+      
+      // Don't show Calendly API errors
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to update event type filters';
+      
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -408,15 +418,23 @@ export function CalendlyConfig({
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                <Label className="text-sm font-medium">Event Type Filters</Label>
+            {tokenValidationFailed ? (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-sm text-destructive font-medium">⚠️ Calendly Token Issue</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Your access token appears to be invalid or expired. Please disconnect and reconnect with a fresh token.
+                </p>
               </div>
-              
-              {loadingEventTypes ? (
-                <p className="text-sm text-muted-foreground">Loading event types...</p>
-              ) : availableEventTypes.length > 0 ? (
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  <Label className="text-sm font-medium">Event Type Filters</Label>
+                </div>
+                
+                {loadingEventTypes ? (
+                  <p className="text-sm text-muted-foreground">Loading event types...</p>
+                ) : availableEventTypes.length > 0 ? (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
                     Select which Calendly event types should create appointments:
@@ -492,6 +510,7 @@ export function CalendlyConfig({
                 <p className="text-sm text-muted-foreground">No event types found</p>
               )}
             </div>
+            )}
 
             <Button 
               onClick={handleDisconnect} 
