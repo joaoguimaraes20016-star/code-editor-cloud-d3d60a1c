@@ -152,7 +152,6 @@ export function CalendlyConfig({
       setSavingEventTypes(false);
     }
   };
-
   const handleConnect = async () => {
     if (!accessToken || !organizationUri) {
       toast({
