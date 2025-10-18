@@ -56,16 +56,18 @@ serve(async (req) => {
     const teamId = team.id;
     const allowedEventTypes = team.calendly_event_types || [];
 
-    // Check if event type filtering is enabled
+    // Check if event type filtering is enabled (only if filters are set)
     const eventTypeUri = payload.payload?.scheduled_event?.event_type;
-    if (allowedEventTypes.length > 0 && eventTypeUri) {
+    if (allowedEventTypes && allowedEventTypes.length > 0 && eventTypeUri) {
       if (!allowedEventTypes.includes(eventTypeUri)) {
-        console.log(`Event type ${eventTypeUri} not in allowed list. Skipping appointment creation.`);
+        console.log(`Event type ${eventTypeUri} not in allowed list (${allowedEventTypes.length} filters active). Skipping.`);
         return new Response(JSON.stringify({ success: true, message: 'Event type not tracked' }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+    } else {
+      console.log(`No event type filters configured. Accepting all appointments.`);
     }
 
     // Get invitee details - the payload.payload IS the invitee data
