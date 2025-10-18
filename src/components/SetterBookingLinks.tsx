@@ -112,10 +112,15 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes }: SetterBooking
     }
   };
 
-  const getBookingLink = (bookingCode: string): string => {
-    if (!calendlyEventTypes.length) return '';
-    const eventTypeUrl = calendlyEventTypes[0];
+  const getBookingLink = (eventTypeUrl: string, bookingCode: string): string => {
     return `${eventTypeUrl}?utm_source=setter_${bookingCode}`;
+  };
+
+  const getEventTypeName = (url: string): string => {
+    // Extract readable name from Calendly URL
+    // e.g., "https://calendly.com/user/30min" -> "30min"
+    const parts = url.split('/');
+    return parts[parts.length - 1] || 'Event';
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -168,7 +173,6 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes }: SetterBooking
         {members.map((member) => {
           const currentCode = editingCodes[member.user_id] ?? member.booking_code ?? '';
           const hasBookingCode = !!member.booking_code;
-          const bookingLink = hasBookingCode ? getBookingLink(member.booking_code) : '';
 
           return (
             <div key={member.user_id} className="border rounded-lg p-4 space-y-3">
@@ -222,31 +226,49 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes }: SetterBooking
               </div>
 
               {hasBookingCode && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Personalized Booking Link</label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={bookingLink}
-                      readOnly
-                      className="flex-1 font-mono text-xs"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => copyToClipboard(bookingLink, 'Booking link')}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => window.open(bookingLink, '_blank')}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </div>
+                <div className="space-y-3">
+                  <label className="text-sm font-medium">
+                    Personalized Booking Links ({calendlyEventTypes.length} event {calendlyEventTypes.length === 1 ? 'type' : 'types'})
+                  </label>
+                  
+                  {calendlyEventTypes.map((eventTypeUrl, index) => {
+                    const bookingLink = getBookingLink(eventTypeUrl, member.booking_code!);
+                    const eventName = getEventTypeName(eventTypeUrl);
+                    
+                    return (
+                      <div key={index} className="border rounded p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {eventName}
+                          </span>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => copyToClipboard(bookingLink, `${eventName} booking link`)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => window.open(bookingLink, '_blank')}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <Input
+                          value={bookingLink}
+                          readOnly
+                          className="font-mono text-xs"
+                        />
+                      </div>
+                    );
+                  })}
+                  
                   <p className="text-xs text-muted-foreground">
-                    Appointments booked through this link will automatically assign to{' '}
+                    Appointments booked through these links will automatically assign to{' '}
                     {member.profiles.full_name}
                   </p>
                 </div>
