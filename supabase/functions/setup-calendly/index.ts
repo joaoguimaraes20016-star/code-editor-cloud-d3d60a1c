@@ -49,8 +49,8 @@ serve(async (req) => {
       });
     }
 
-    // Register webhook with Calendly
-    const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/calendly-webhook`;
+    // Register webhook with Calendly - include team ID in URL
+    const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/calendly-webhook?team_id=${teamId}`;
     
     const webhookResponse = await fetch('https://api.calendly.com/webhook_subscriptions', {
       method: 'POST',

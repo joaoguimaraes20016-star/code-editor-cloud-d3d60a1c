@@ -76,15 +76,24 @@ serve(async (req) => {
     const event = payload.event;
     const inviteeUri = payload.payload?.uri;
 
-    // Get team's Calendly access token based on webhook subscription
-    // First, find which team this webhook belongs to by checking the organization URI
-    const organizationUri = payload.payload?.scheduled_event?.event_memberships?.[0]?.user;
+    // Get team ID from URL parameter
+    const url = new URL(req.url);
+    const teamIdParam = url.searchParams.get('team_id');
     
+    if (!teamIdParam) {
+      console.error('No team_id in webhook URL');
+      return new Response(JSON.stringify({ error: 'Configuration error' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Verify team exists and has Calendly configured
     const { data: team, error: teamError } = await supabase
       .from('teams')
       .select('id, calendly_access_token, calendly_event_types')
+      .eq('id', teamIdParam)
       .not('calendly_access_token', 'is', null)
-      .limit(1)
       .maybeSingle();
 
     if (teamError || !team) {
