@@ -195,15 +195,33 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
     return <div className="text-sm text-muted-foreground">Loading booking links...</div>;
   }
 
-  if (!calendlyEventTypes.length) {
+  // Filter to only show public booking URLs (not API endpoints)
+  const validBookingUrls = calendlyEventTypes.filter(url => 
+    url.startsWith('https://calendly.com/') && !url.includes('/event_types/')
+  );
+
+  if (!validBookingUrls.length) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Setter Booking Links</CardTitle>
           <CardDescription>
-            Configure Calendly event types first to enable personalized booking links
+            Click "Refresh Links" to fetch your Calendly booking pages
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          {onRefresh && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshLinks}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh Links'}
+            </Button>
+          )}
+        </CardContent>
       </Card>
     );
   }
@@ -303,10 +321,10 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
               {hasBookingCode && (
                 <div className="space-y-3">
                   <label className="text-sm font-medium">
-                    Personalized Booking Links ({calendlyEventTypes.length} event {calendlyEventTypes.length === 1 ? 'type' : 'types'})
+                    Personalized Booking Links ({validBookingUrls.length} event {validBookingUrls.length === 1 ? 'type' : 'types'})
                   </label>
                   
-                  {calendlyEventTypes.map((eventTypeUrl, index) => {
+                  {validBookingUrls.map((eventTypeUrl, index) => {
                     const bookingLink = getBookingLink(eventTypeUrl, member.booking_code!);
                     const eventName = getEventTypeName(eventTypeUrl);
                     
