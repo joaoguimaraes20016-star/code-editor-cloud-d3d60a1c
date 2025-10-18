@@ -1,10 +1,50 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, calendly-webhook-signature',
 };
+
+// Webhook payload validation schema
+const webhookPayloadSchema = z.object({
+  event: z.enum(['invitee.created', 'invitee.canceled', 'invitee.rescheduled']),
+  payload: z.object({
+    uri: z.string().url().optional(),
+    name: z.string().min(1).max(255),
+    email: z.string().email().max(255),
+    status: z.string().optional(),
+    scheduled_event: z.object({
+      uri: z.string().url().optional(),
+      start_time: z.string(),
+      event_type: z.string().url().optional(),
+      event_memberships: z.array(z.object({
+        user: z.string().optional(),
+        user_email: z.string().optional(),
+      })).optional(),
+    }).optional(),
+  }),
+});
+
+// Audit log helper
+async function logWebhookEvent(
+  supabase: any,
+  teamId: string,
+  event: string,
+  status: 'success' | 'error',
+  details: any
+) {
+  await supabase.from('webhook_audit_logs').insert({
+    team_id: teamId,
+    event_type: event,
+    status,
+    details,
+    received_at: new Date().toISOString(),
+  }).then(({ error }: any) => {
+    if (error) console.error('Failed to log webhook event:', error);
+  });
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -18,20 +58,23 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const payload = await req.json();
-    console.log('Received Calendly webhook payload:', JSON.stringify(payload, null, 2));
+    const rawPayload = await req.json();
+    console.log('Received Calendly webhook');
 
-    const event = payload.event;
-    
-    // Extract invitee URI from the correct location in Calendly webhook payload
-    const inviteeUri = payload.payload?.uri;
-    if (!inviteeUri) {
-      console.error('No invitee URI in payload. Payload structure:', JSON.stringify(payload));
-      return new Response(JSON.stringify({ error: 'No invitee data' }), {
+    // Validate webhook payload
+    let payload;
+    try {
+      payload = webhookPayloadSchema.parse(rawPayload);
+    } catch (validationError) {
+      console.error('Invalid webhook payload:', validationError);
+      return new Response(JSON.stringify({ error: 'Invalid payload format' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const event = payload.event;
+    const inviteeUri = payload.payload?.uri;
 
     // Get team's Calendly access token based on webhook subscription
     // First, find which team this webhook belongs to by checking the organization URI
@@ -45,8 +88,8 @@ serve(async (req) => {
       .maybeSingle();
 
     if (teamError || !team) {
-      console.error('Could not find team for webhook:', teamError);
-      return new Response(JSON.stringify({ error: 'Team not found' }), {
+      console.error('Could not find team for webhook');
+      return new Response(JSON.stringify({ error: 'Configuration error' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -73,12 +116,12 @@ serve(async (req) => {
     // Get invitee details - the payload.payload IS the invitee data
     const inviteeData = payload.payload;
 
-    const leadName = inviteeData.name;
-    const leadEmail = inviteeData.email;
+    const leadName = inviteeData.name.substring(0, 255);
+    const leadEmail = inviteeData.email.substring(0, 255);
     const startTime = inviteeData.scheduled_event?.start_time;
-    const status = inviteeData.status; // "active" or "canceled"
+    const status = inviteeData.status;
     
-    console.log('Processing appointment:', { leadName, leadEmail, startTime, status });
+    console.log('Processing appointment for team:', teamId);
 
     // Get event organizer email
     const eventUri = inviteeData.scheduled_event?.uri;
@@ -133,14 +176,16 @@ serve(async (req) => {
 
       if (error) {
         console.error('Error creating appointment:', error);
-        return new Response(JSON.stringify({ error: error.message }), {
+        await logWebhookEvent(supabase, teamId, event, 'error', { error: error.message });
+        return new Response(JSON.stringify({ error: 'Failed to process appointment' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       console.log('Created appointment:', appointment.id);
-      return new Response(JSON.stringify({ success: true, appointment }), {
+      await logWebhookEvent(supabase, teamId, event, 'success', { appointmentId: appointment.id });
+      return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -157,14 +202,16 @@ serve(async (req) => {
 
       if (error) {
         console.error('Error canceling appointment:', error);
-        return new Response(JSON.stringify({ error: error.message }), {
+        await logWebhookEvent(supabase, teamId, event, 'error', { error: error.message });
+        return new Response(JSON.stringify({ error: 'Failed to process cancellation' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       console.log('Canceled appointment:', appointment?.id);
-      return new Response(JSON.stringify({ success: true, appointment }), {
+      await logWebhookEvent(supabase, teamId, event, 'success', { appointmentId: appointment?.id });
+      return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -180,14 +227,16 @@ serve(async (req) => {
 
       if (error) {
         console.error('Error rescheduling appointment:', error);
-        return new Response(JSON.stringify({ error: error.message }), {
+        await logWebhookEvent(supabase, teamId, event, 'error', { error: error.message });
+        return new Response(JSON.stringify({ error: 'Failed to process reschedule' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       console.log('Rescheduled appointment:', appointment?.id);
-      return new Response(JSON.stringify({ success: true, appointment }), {
+      await logWebhookEvent(supabase, teamId, event, 'success', { appointmentId: appointment?.id });
+      return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -201,11 +250,7 @@ serve(async (req) => {
   } catch (error: any) {
     console.error('Webhook error:', error);
     console.error('Error stack:', error.stack);
-    console.error('Error details:', JSON.stringify(error, null, 2));
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      details: error.toString()
-    }), {
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
