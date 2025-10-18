@@ -40,6 +40,8 @@ interface TeamMember {
   email: string;
   full_name: string;
   role: string;
+  user_id?: string;
+  is_super_admin?: boolean;
 }
 
 export default function TeamSettings() {
@@ -142,11 +144,25 @@ export default function TeamSettings() {
 
       if (error) throw error;
 
+      // Get user IDs to check for super admin status
+      const userIds = (data || []).map((m: any) => m.user_id);
+      
+      // Check which users are super admins
+      const { data: superAdmins } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('user_id', userIds)
+        .eq('role', 'super_admin');
+
+      const superAdminIds = new Set(superAdmins?.map(sa => sa.user_id) || []);
+
       const formattedMembers = (data || []).map((member: any) => ({
         id: member.id,
         email: member.profiles?.email || 'Unknown',
         full_name: member.profiles?.full_name || 'Unknown',
         role: member.role,
+        user_id: member.user_id,
+        is_super_admin: superAdminIds.has(member.user_id),
       }));
 
       setMembers(formattedMembers);
@@ -333,11 +349,16 @@ export default function TeamSettings() {
                 <TableBody>
                   {members.map((member) => (
                     <TableRow key={member.id}>
-                      <TableCell className="font-medium">{member.full_name}</TableCell>
+                      <TableCell className="font-medium">
+                        {member.full_name}
+                        {member.is_super_admin && (
+                          <Badge variant="destructive" className="ml-2">SUPER ADMIN</Badge>
+                        )}
+                      </TableCell>
                       <TableCell>{member.email}</TableCell>
                       <TableCell>{getRoleBadge(member.role)}</TableCell>
                       <TableCell className="text-right">
-                        {member.role !== 'owner' && member.role !== 'offer_owner' && (
+                        {!member.is_super_admin && member.role !== 'owner' && member.role !== 'offer_owner' && (
                           <Button
                             variant="ghost"
                             size="sm"
