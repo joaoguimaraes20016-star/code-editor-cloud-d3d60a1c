@@ -378,7 +378,15 @@ const Auth = () => {
     
     // Skip signup code validation if user has an invitation
     if (!inviteToken) {
-      if (signUpData.signupCode.trim().toUpperCase() !== 'CREATOR2025') {
+      // Validate creator code from database
+      const { data: validCode, error: codeError } = await supabase
+        .from('creator_codes')
+        .select('id, uses_count')
+        .eq('code', signUpData.signupCode.trim().toUpperCase())
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (codeError || !validCode) {
         toast({
           title: 'Invalid signup code',
           description: 'Please enter a valid signup code to create an account.',
@@ -387,6 +395,12 @@ const Auth = () => {
         setLoading(false);
         return;
       }
+
+      // Increment uses count
+      await supabase
+        .from('creator_codes')
+        .update({ uses_count: validCode.uses_count + 1 })
+        .eq('id', validCode.id);
     }
     
     const { data: signUpResult, error } = await signUp(signUpData.email, signUpData.password, signUpData.fullName);

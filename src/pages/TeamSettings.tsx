@@ -42,6 +42,7 @@ interface TeamMember {
   role: string;
   user_id?: string;
   is_super_admin?: boolean;
+  is_current_user?: boolean;
 }
 
 export default function TeamSettings() {
@@ -163,12 +164,37 @@ export default function TeamSettings() {
         role: member.role,
         user_id: member.user_id,
         is_super_admin: superAdminIds.has(member.user_id),
+        is_current_user: member.user_id === user?.id,
       }));
 
       setMembers(formattedMembers);
     } catch (error: any) {
       toast({
         title: 'Error loading members',
+        description: getUserFriendlyError(error),
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRoleChange = async (memberId: string, newRole: string) => {
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .update({ role: newRole })
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Role updated',
+        description: 'Team member role has been updated successfully',
+      });
+
+      loadMembers();
+    } catch (error: any) {
+      toast({
+        title: 'Error updating role',
         description: getUserFriendlyError(error),
         variant: 'destructive',
       });
@@ -356,7 +382,27 @@ export default function TeamSettings() {
                         )}
                       </TableCell>
                       <TableCell>{member.email}</TableCell>
-                      <TableCell>{getRoleBadge(member.role)}</TableCell>
+                      <TableCell>
+                        {member.is_super_admin && !member.is_current_user ? (
+                          <Select
+                            value={member.role}
+                            onValueChange={(value) => handleRoleChange(member.id, value)}
+                          >
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="owner">Admin</SelectItem>
+                              <SelectItem value="offer_owner">Offer Owner</SelectItem>
+                              <SelectItem value="closer">Closer</SelectItem>
+                              <SelectItem value="setter">Setter</SelectItem>
+                              <SelectItem value="member">Member</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          getRoleBadge(member.role)
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         {!member.is_super_admin && member.role !== 'owner' && member.role !== 'offer_owner' && (
                           <Button

@@ -117,6 +117,33 @@ export type Database = {
           },
         ]
       }
+      creator_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          uses_count: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          uses_count?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          uses_count?: number | null
+        }
+        Relationships: []
+      }
       mrr_commissions: {
         Row: {
           appointment_id: string | null
