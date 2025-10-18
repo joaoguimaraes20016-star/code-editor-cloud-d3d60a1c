@@ -70,20 +70,54 @@ serve(async (req) => {
       }),
     });
 
+    let webhookId;
+    
     if (!webhookResponse.ok) {
       const errorData = await webhookResponse.json();
-      console.error('Failed to register webhook:', errorData);
-      return new Response(JSON.stringify({ 
-        error: 'Failed to register webhook with Calendly',
-        details: errorData 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      
+      // If webhook already exists, fetch existing webhooks and use that
+      if (errorData.title === 'Already Exists' || errorData.message?.includes('already exists')) {
+        console.log('Webhook already exists, fetching existing webhooks...');
+        
+        const listResponse = await fetch(`https://api.calendly.com/webhook_subscriptions?organization=${encodeURIComponent(organizationUri)}`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (listResponse.ok) {
+          const listData = await listResponse.json();
+          const existingWebhook = listData.collection?.find((w: any) => w.callback_url === webhookUrl);
+          
+          if (existingWebhook) {
+            webhookId = existingWebhook.uri;
+            console.log('Using existing webhook:', webhookId);
+          } else {
+            console.error('Could not find existing webhook');
+            return new Response(JSON.stringify({ error: 'Webhook configuration mismatch' }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        } else {
+          console.error('Failed to list webhooks:', await listResponse.text());
+          return new Response(JSON.stringify({ error: 'Failed to verify webhook' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else {
+        console.error('Failed to register webhook:', errorData);
+        return new Response(JSON.stringify({ error: 'Failed to register webhook' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      const webhookData = await webhookResponse.json();
+      webhookId = webhookData.resource?.uri;
     }
-
-    const webhookData = await webhookResponse.json();
-    const webhookId = webhookData.resource?.uri;
 
     // Store credentials in database
     const { error: updateError } = await supabase
