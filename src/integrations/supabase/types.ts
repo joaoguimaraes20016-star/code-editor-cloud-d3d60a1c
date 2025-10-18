@@ -444,6 +444,36 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_audit_logs: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event_type: string
+          id: string
+          received_at: string
+          status: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event_type: string
+          id?: string
+          received_at?: string
+          status: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+          received_at?: string
+          status?: string
+          team_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
