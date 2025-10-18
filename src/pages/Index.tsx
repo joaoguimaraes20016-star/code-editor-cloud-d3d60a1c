@@ -579,7 +579,7 @@ const Index = () => {
             <Tabs defaultValue={canViewSetterScheduling ? "new" : "closer"} className="w-full">
               <div className="overflow-x-auto pb-2">
                 <TabsList className="inline-flex w-auto min-w-full md:min-w-0">
-                  {canViewSetterScheduling && <TabsTrigger value="new" className="text-xs md:text-sm flex-1 md:flex-none">New Unassigned Appointments</TabsTrigger>}
+                  {canViewSetterScheduling && <TabsTrigger value="new" className="text-xs md:text-sm flex-1 md:flex-none">Unassigned Appointments</TabsTrigger>}
                   {canViewSetterScheduling && <TabsTrigger value="claimed" className="text-xs md:text-sm flex-1 md:flex-none">All Assigned Appointments</TabsTrigger>}
                   {canViewSetterScheduling && <TabsTrigger value="my-claimed" className="text-xs md:text-sm flex-1 md:flex-none">My Assigned</TabsTrigger>}
                   {canViewCloserScheduling && <TabsTrigger value="closer" className="text-xs md:text-sm flex-1 md:flex-none">Closer View</TabsTrigger>}
