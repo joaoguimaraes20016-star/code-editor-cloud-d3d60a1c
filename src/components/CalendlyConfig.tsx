@@ -69,8 +69,17 @@ export function CalendlyConfig({
         },
       });
 
+      if (response.status === 401) {
+        toast({
+          title: "Calendly Token Expired",
+          description: "Your Calendly access token has expired. Please reconnect your Calendly account.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (!response.ok) {
-        throw new Error('Failed to fetch event types');
+        throw new Error('Failed to fetch event types from Calendly');
       }
 
       const data = await response.json();
@@ -85,7 +94,7 @@ export function CalendlyConfig({
       console.error('Error fetching event types:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch event types",
+        description: "Failed to load Calendly event types. Your access token may be expired.",
         variant: "destructive",
       });
     } finally {
