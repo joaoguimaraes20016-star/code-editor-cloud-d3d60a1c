@@ -41,6 +41,7 @@ export function CalendlyConfig({
   const [availableEventTypes, setAvailableEventTypes] = useState<EventType[]>([]);
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>(currentEventTypes || []);
   const [loadingEventTypes, setLoadingEventTypes] = useState(false);
+  const [savingEventTypes, setSavingEventTypes] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -125,6 +126,32 @@ export function CalendlyConfig({
     }
   };
 
+  const handleManualSave = async () => {
+    setSavingEventTypes(true);
+    try {
+      const { error } = await supabase
+        .from("teams")
+        .update({ calendly_event_types: selectedEventTypes })
+        .eq("id", teamId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Saved",
+        description: "Event type filters updated",
+      });
+      
+      onUpdate();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingEventTypes(false);
+    }
+  };
 
   const handleConnect = async () => {
     if (!accessToken || !organizationUri) {
@@ -427,6 +454,15 @@ export function CalendlyConfig({
                       ))}
                     </div>
                   </div>
+                  
+                  <Button 
+                    onClick={handleManualSave}
+                    disabled={savingEventTypes}
+                    variant="outline"
+                    className="w-full min-h-[56px] text-base font-bold"
+                  >
+                    {savingEventTypes ? "Saving..." : "Save Event Type Filters"}
+                  </Button>
                   
                   {selectedEventTypes.length === 0 && (
                     <p className="text-xs text-amber-600 font-medium">
