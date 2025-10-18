@@ -168,18 +168,85 @@ serve(async (req) => {
 
     // Handle different event types
     if (event === 'invitee.created') {
-      // Create new appointment
+      // Prepare appointment data with optional auto-assignment
+      const appointmentData: any = {
+        lead_name: leadName,
+        lead_email: leadEmail,
+        start_at_utc: startTime,
+        closer_id: closerId,
+        closer_name: closerName,
+        status: 'NEW',
+        team_id: teamId,
+      };
+
+      // Try to auto-assign based on UTM tracking parameter
+      try {
+        console.log('Attempting to fetch invitee details for auto-assignment');
+        
+        // The invitee URI is the full URI, extract UUID from it
+        const inviteeUuid = inviteeUri?.split('/').pop();
+        const eventUuid = eventUri?.split('/').pop();
+        
+        if (inviteeUuid && eventUuid && accessToken) {
+          const inviteeResponse = await fetch(
+            `https://api.calendly.com/scheduled_events/${eventUuid}/invitees/${inviteeUuid}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          if (inviteeResponse.ok) {
+            const inviteeDetails = await inviteeResponse.json();
+            const utmSource = inviteeDetails.resource?.tracking?.utm_source;
+            
+            console.log('UTM tracking data:', { utm_source: utmSource });
+            
+            // Check if utm_source matches pattern "setter_{code}"
+            if (utmSource && utmSource.startsWith('setter_')) {
+              const bookingCode = utmSource.replace('setter_', '');
+              console.log('Attempting auto-assignment with booking code:', bookingCode);
+              
+              // Look up team member by booking_code
+              const { data: teamMemberData, error: memberError } = await supabase
+                .from('team_members')
+                .select('user_id')
+                .eq('team_id', teamId)
+                .eq('booking_code', bookingCode)
+                .maybeSingle();
+              
+              if (teamMemberData && !memberError) {
+                // Get profile info separately
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', teamMemberData.user_id)
+                  .maybeSingle();
+                
+                appointmentData.setter_id = teamMemberData.user_id;
+                appointmentData.setter_name = profile?.full_name || 'Unknown';
+                console.log(`Auto-assigned to setter: ${profile?.full_name} (${bookingCode})`);
+              } else {
+                console.log('No team member found for booking code:', bookingCode);
+              }
+            }
+          } else {
+            console.warn('Failed to fetch invitee details:', inviteeResponse.status);
+          }
+        } else {
+          console.log('Missing required data for auto-assignment:', { inviteeUuid, eventUuid, hasToken: !!accessToken });
+        }
+      } catch (error) {
+        // Log error but continue - appointment will just remain unassigned
+        console.warn('Error during auto-assignment attempt:', error);
+      }
+
+      // Create new appointment (with or without auto-assignment)
       const { data: appointment, error } = await supabase
         .from('appointments')
-        .insert({
-          lead_name: leadName,
-          lead_email: leadEmail,
-          start_at_utc: startTime,
-          closer_id: closerId,
-          closer_name: closerName,
-          status: 'NEW',
-          team_id: teamId,
-        })
+        .insert(appointmentData)
         .select()
         .single();
 

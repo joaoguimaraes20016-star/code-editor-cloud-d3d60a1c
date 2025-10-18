@@ -339,6 +339,7 @@ export type Database = {
       }
       team_members: {
         Row: {
+          booking_code: string | null
           created_at: string | null
           id: string
           role: string | null
@@ -346,6 +347,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          booking_code?: string | null
           created_at?: string | null
           id?: string
           role?: string | null
@@ -353,6 +355,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          booking_code?: string | null
           created_at?: string | null
           id?: string
           role?: string | null

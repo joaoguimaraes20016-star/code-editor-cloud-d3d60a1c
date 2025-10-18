@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { CalendlyConfig } from '@/components/CalendlyConfig';
+import { SetterBookingLinks } from '@/components/SetterBookingLinks';
 import { getUserFriendlyError } from '@/lib/errorUtils';
 
 interface TeamMember {
@@ -363,6 +364,14 @@ export default function TeamSettings() {
           currentEventTypes={calendlyEventTypes}
           onUpdate={loadTeamData}
         />
+
+        {/* Setter Booking Links */}
+        {(role === 'owner' || role === 'admin') && calendlyEventTypes && calendlyEventTypes.length > 0 && (
+          <SetterBookingLinks
+            teamId={teamId!}
+            calendlyEventTypes={calendlyEventTypes}
+          />
+        )}
       </div>
     </div>
   );
