@@ -23,6 +23,7 @@ interface EventType {
   uri: string;
   name: string;
   active: boolean;
+  scheduling_url: string;
 }
 
 export function CalendlyConfig({ 
@@ -92,6 +93,7 @@ export function CalendlyConfig({
         uri: et.uri,
         name: et.name,
         active: et.active,
+        scheduling_url: et.scheduling_url,
       }));
       
       setAvailableEventTypes(eventTypes);
@@ -446,17 +448,17 @@ export function CalendlyConfig({
                       <div key={eventType.uri} className="md:hidden">
                         <Card 
                           className={`cursor-pointer transition-all min-h-[68px] ${
-                            selectedEventTypes.includes(eventType.uri)
+                            selectedEventTypes.includes(eventType.scheduling_url)
                               ? 'border-primary bg-primary/5 shadow-sm'
                               : 'hover:border-primary/50'
                           }`}
-                          onClick={() => handleEventTypeToggle(eventType.uri)}
+                          onClick={() => handleEventTypeToggle(eventType.scheduling_url)}
                         >
                           <CardContent className="p-6">
                             <div className="flex items-center space-x-4">
                               <Checkbox
-                                checked={selectedEventTypes.includes(eventType.uri)}
-                                onCheckedChange={() => handleEventTypeToggle(eventType.uri)}
+                                checked={selectedEventTypes.includes(eventType.scheduling_url)}
+                                onCheckedChange={() => handleEventTypeToggle(eventType.scheduling_url)}
                                 className="h-7 w-7 border-2"
                               />
                               <span className="text-base font-semibold flex-1 leading-relaxed">
@@ -476,8 +478,8 @@ export function CalendlyConfig({
                         <div key={eventType.uri} className="flex items-center space-x-3 py-2">
                           <Checkbox
                             id={eventType.uri}
-                            checked={selectedEventTypes.includes(eventType.uri)}
-                            onCheckedChange={() => handleEventTypeToggle(eventType.uri)}
+                            checked={selectedEventTypes.includes(eventType.scheduling_url)}
+                            onCheckedChange={() => handleEventTypeToggle(eventType.scheduling_url)}
                             className="h-5 w-5"
                           />
                           <label
