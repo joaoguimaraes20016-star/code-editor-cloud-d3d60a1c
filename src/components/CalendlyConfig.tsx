@@ -222,12 +222,14 @@ export function CalendlyConfig({
         },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch organization URI. Please check your access token.');
+      const data = await response.json();
+      
+      // Check for Calendly API errors
+      if (!response.ok || data.title === 'Unauthenticated') {
+        throw new Error('Invalid access token. Please check your Calendly Personal Access Token.');
       }
 
-      const data = await response.json();
-      const orgUri = data.resource.current_organization;
+      const orgUri = data.resource?.current_organization;
       
       if (orgUri) {
         setOrganizationUri(orgUri);
