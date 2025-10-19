@@ -671,9 +671,14 @@ export function CalendlyConfig({
         {isConnected && (
           <div className="space-y-4">
             <div className="p-4 bg-muted rounded-lg">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-600" />
+              <div className="flex items-center gap-3">
+                <img 
+                  src="https://images.ctfassets.net/k0lk9kiuza3o/55zQqKCqcJgdZxLvmn9IAm/3e04c9ef36dc92fd00a04e72fdabce17/calendly-logo-primary.svg" 
+                  alt="Calendly" 
+                  className="w-5 h-5"
+                />
                 <span className="text-sm font-medium">Connected to Calendly</span>
+                <CheckCircle2 className="w-4 h-4 text-green-600 ml-auto" />
               </div>
             </div>
 
