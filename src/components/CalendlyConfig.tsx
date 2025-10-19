@@ -269,8 +269,14 @@ export function CalendlyConfig({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Redirect popup to OAuth URL
-      popup.location.href = data.authUrl;
+      console.log('OAuth URL received:', data.authUrl);
+
+      // Redirect popup to OAuth URL - use replace to avoid popup issues
+      if (popup && !popup.closed) {
+        popup.location.replace(data.authUrl);
+      } else {
+        throw new Error('Popup was closed or blocked');
+      }
 
       // Monitor popup closure
       const checkClosed = setInterval(() => {
@@ -281,6 +287,7 @@ export function CalendlyConfig({
       }, 500);
 
     } catch (error: any) {
+      console.error('OAuth error:', error);
       if (popup && !popup.closed) {
         popup.close();
       }
