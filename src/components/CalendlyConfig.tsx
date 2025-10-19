@@ -233,7 +233,7 @@ export function CalendlyConfig({
     const top = window.screenY + (window.outerHeight - height) / 2;
     
     const popup = window.open(
-      '',
+      'about:blank',
       'calendly-oauth',
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
     );
