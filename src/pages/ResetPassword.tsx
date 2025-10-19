@@ -75,10 +75,10 @@ const ResetPassword = () => {
       return;
     }
     
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       toast({
         title: 'Password too short',
-        description: 'Password must be at least 6 characters long.',
+        description: 'Password must be at least 8 characters long.',
         variant: 'destructive',
       });
       return;
@@ -96,24 +96,20 @@ const ResetPassword = () => {
     setLoading(true);
     
     try {
-      // Update password using admin API
-      const { error: updateError } = await supabase.auth.admin.updateUserById(
-        userId,
-        { password: newPassword }
-      );
-      
-      if (updateError) {
-        throw updateError;
+      // Call edge function to complete password reset securely
+      const { data, error } = await supabase.functions.invoke('complete-password-reset', {
+        body: {
+          token: resetToken,
+          newPassword: newPassword,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to update password');
       }
 
-      // Mark token as used
-      const { error: tokenError } = await supabase
-        .from('password_reset_tokens')
-        .update({ used_at: new Date().toISOString() })
-        .eq('token', resetToken);
-
-      if (tokenError) {
-        console.error('Error marking token as used:', tokenError);
+      if (!data?.success) {
+        throw new Error('Failed to update password');
       }
 
       toast({
@@ -125,7 +121,7 @@ const ResetPassword = () => {
     } catch (error: any) {
       toast({
         title: 'Error updating password',
-        description: error.message,
+        description: error.message || 'Failed to update password',
         variant: 'destructive',
       });
     } finally {
@@ -172,8 +168,8 @@ const ResetPassword = () => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
-                minLength={6}
-                placeholder="Enter new password"
+                minLength={8}
+                placeholder="Enter new password (min 8 characters)"
               />
             </div>
             <div className="space-y-2">
@@ -184,7 +180,7 @@ const ResetPassword = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 placeholder="Confirm new password"
               />
             </div>

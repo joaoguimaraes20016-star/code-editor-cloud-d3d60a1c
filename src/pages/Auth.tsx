@@ -331,15 +331,8 @@ const Auth = () => {
     
     // Handle creator upgrade
     if (isCreatorUpgrade) {
-      if (creatorCode.trim().toUpperCase() !== 'CREATOR2025') {
-        toast({
-          title: 'Invalid creator code',
-          description: 'Please enter a valid creator code.',
-          variant: 'destructive',
-        });
-        setLoading(false);
-        return;
-      }
+      // Creator code validation happens server-side via creator_codes table
+      // No client-side validation needed
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {

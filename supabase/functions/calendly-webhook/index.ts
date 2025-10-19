@@ -3,9 +3,43 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://calendly.com',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, calendly-webhook-signature',
 };
+
+// Verify Calendly webhook signature
+async function verifyWebhookSignature(
+  payload: string,
+  signature: string | null,
+  signingKey: string
+): Promise<boolean> {
+  if (!signature || !signingKey) return false;
+
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(signingKey),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const signatureBytes = new Uint8Array(
+      signature.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))
+    );
+
+    return await crypto.subtle.verify(
+      'HMAC',
+      key,
+      signatureBytes,
+      encoder.encode(payload)
+    );
+  } catch (error) {
+    console.error('Signature verification error:', error);
+    return false;
+  }
+}
 
 // Webhook payload validation schema
 const webhookPayloadSchema = z.object({
@@ -58,7 +92,23 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const rawPayload = await req.json();
+    const rawBody = await req.text();
+    
+    // Verify webhook signature
+    const signature = req.headers.get('calendly-webhook-signature');
+    const signingKey = Deno.env.get('CALENDLY_WEBHOOK_SIGNING_KEY') ?? '';
+    
+    const isValidSignature = await verifyWebhookSignature(rawBody, signature, signingKey);
+    
+    if (!isValidSignature) {
+      console.error('Invalid webhook signature');
+      return new Response(
+        JSON.stringify({ error: 'Invalid signature' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const rawPayload = JSON.parse(rawBody);
     console.log('Received Calendly webhook');
 
     // Validate webhook payload
