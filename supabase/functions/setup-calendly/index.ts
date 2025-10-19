@@ -189,6 +189,26 @@ serve(async (req) => {
 
     console.log('Successfully configured Calendly for team:', teamId);
 
+    // Trigger background import of existing appointments (fire and forget)
+    console.log('Triggering background import of existing appointments...');
+    fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/import-calendly-appointments`, {
+      method: 'POST',
+      headers: {
+        'Authorization': req.headers.get('Authorization')!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ teamId }),
+    }).then(async (response) => {
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`✓ Import completed: ${result.imported} imported, ${result.skipped} skipped`);
+      } else {
+        console.error('✗ Import failed:', await response.text());
+      }
+    }).catch((error) => {
+      console.error('✗ Import error:', error);
+    });
+
     return new Response(JSON.stringify({ 
       success: true,
       webhookId,

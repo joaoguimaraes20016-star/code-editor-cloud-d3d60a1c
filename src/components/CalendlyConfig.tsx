@@ -53,6 +53,7 @@ export function CalendlyConfig({
   const [manualUrl, setManualUrl] = useState("");
   const [isManualFetchOpen, setIsManualFetchOpen] = useState(false);
   const [isFetchingManual, setIsFetchingManual] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -406,6 +407,38 @@ export function CalendlyConfig({
     }
   };
 
+  const handleSyncAppointments = async () => {
+    setSyncing(true);
+    try {
+      toast({
+        title: "Syncing Appointments",
+        description: "Importing existing appointments from Calendly...",
+      });
+
+      const { data, error } = await supabase.functions.invoke("import-calendly-appointments", {
+        body: { teamId },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Sync Complete",
+        description: `Successfully imported ${data.imported} appointments (${data.skipped} skipped as duplicates)`,
+      });
+      
+      onUpdate();
+    } catch (error: any) {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync appointments",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
@@ -686,6 +719,16 @@ export function CalendlyConfig({
                 <CheckCircle2 className="w-4 h-4 text-green-600 ml-auto" />
               </div>
             </div>
+
+            <Button 
+              onClick={handleSyncAppointments}
+              disabled={syncing}
+              variant="outline"
+              className="w-full"
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              {syncing ? "Syncing..." : "Sync Existing Appointments"}
+            </Button>
 
             {tokenValidationFailed ? (
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
