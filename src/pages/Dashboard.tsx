@@ -219,77 +219,78 @@ const Dashboard = () => {
       
       <div className="container mx-auto p-4 md:p-6 space-y-6 md:space-y-8 relative z-10">
 
-        <div className="grid gap-8 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 animate-scale-in">
-          {teams.map((team, index) => (
-            <Card
-              key={team.id}
-              className="group hover:border-primary hover:shadow-glow transition-all duration-500 bg-gradient-card backdrop-blur-sm border-border/50 overflow-hidden relative"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <CardHeader className="relative py-8 md:py-6 cursor-pointer" onClick={() => navigate(`/team/${team.id}`)}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors duration-300">
-                      <Users className="h-5 w-5 text-primary" />
+        <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 md:p-6 border border-primary/30">
+          <div className="grid gap-8 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 animate-scale-in">
+            {teams.map((team, index) => (
+              <Card
+                key={team.id}
+                className="group hover:border-primary hover:shadow-glow transition-all duration-500 bg-gradient-card backdrop-blur-sm border-2 border-primary/50 overflow-hidden relative cursor-pointer"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <CardHeader className="relative py-8 md:py-6 cursor-pointer" onClick={() => navigate(`/team/${team.id}`)}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors duration-300">
+                        <Users className="h-5 w-5 text-primary" />
+                      </div>
+                      <CardTitle className="group-hover:text-primary transition-colors duration-300">{team.name}</CardTitle>
                     </div>
-                    <CardTitle className="group-hover:text-primary transition-colors duration-300">{team.name}</CardTitle>
-                  </div>
-                  {canCreateTeams && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Team</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{team.name}"? This action cannot be undone and will remove all team data.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteTeam(team.id, team.name)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    {canCreateTeams && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
-                <CardDescription className="flex items-center gap-2">
-                  Click to view team data
-                  <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">→</span>
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Team</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{team.name}"? This action cannot be undone and will remove all team data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteTeam(team.id, team.name)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                  <CardDescription className="flex items-center gap-2">
+                    Click to view team data
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">→</span>
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
 
-          {canCreateTeams && (
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Card className="group cursor-pointer hover:border-primary hover:shadow-glow transition-all duration-500 border-dashed border-2 bg-gradient-card backdrop-blur-sm overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <CardContent className="flex flex-col items-center justify-center h-full min-h-[220px] py-10 md:py-8 relative">
-                    <div className="p-4 bg-primary/10 rounded-full mb-4 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
-                      <Plus className="h-8 w-8 text-primary" />
-                    </div>
-                    <p className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors duration-300">
-                      Create New Team
-                    </p>
-                  </CardContent>
-                </Card>
-              </DialogTrigger>
+            {canCreateTeams && (
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Card className="group cursor-pointer hover:border-primary hover:shadow-glow transition-all duration-500 border-dashed border-2 border-primary/50 bg-gradient-card backdrop-blur-sm overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <CardContent className="flex flex-col items-center justify-center h-full min-h-[220px] py-10 md:py-8 relative">
+                      <div className="p-4 bg-primary/10 rounded-full mb-4 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
+                        <Plus className="h-8 w-8 text-primary" />
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors duration-300">
+                        Create New Team
+                      </p>
+                    </CardContent>
+                  </Card>
+                </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create New Team</DialogTitle>
@@ -310,18 +311,21 @@ const Dashboard = () => {
                 </Button>
               </form>
             </DialogContent>
-          </Dialog>
-          )}
+            </Dialog>
+            )}
+          </div>
         </div>
 
         {teams.length === 0 && !canCreateTeams && (
-          <Card className="mt-4">
-            <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground">
-                You haven't been invited to any teams yet. Contact your administrator to be added to a team.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 md:p-6 border border-primary/30">
+            <Card className="mt-4 border-primary/50">
+              <CardContent className="py-8 text-center">
+                <p className="text-muted-foreground">
+                  You haven't been invited to any teams yet. Contact your administrator to be added to a team.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>
