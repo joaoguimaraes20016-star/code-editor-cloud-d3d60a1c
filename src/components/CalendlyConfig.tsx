@@ -77,6 +77,21 @@ export function CalendlyConfig({
       });
       window.history.replaceState({}, '', window.location.pathname);
     }
+
+    // Listen for popup messages
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'calendly-oauth-success') {
+        toast({
+          title: "🎉 Connected Successfully!",
+          description: "Calendly connected! Your appointments will now sync automatically.",
+          duration: 5000,
+        });
+        onUpdate();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, [toast, onUpdate]);
 
   useEffect(() => {
@@ -203,6 +218,41 @@ export function CalendlyConfig({
   const handleOAuthConnect = async () => {
     setConnecting(true);
     
+    // Open popup IMMEDIATELY (synchronously) to avoid popup blockers
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    
+    const popup = window.open(
+      'about:blank',
+      'calendly-oauth',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+    );
+
+    if (!popup) {
+      toast({
+        title: "Popup Blocked",
+        description: "Please allow popups for this site and try again.",
+        variant: "destructive",
+      });
+      setConnecting(false);
+      return;
+    }
+
+    // Show loading in popup
+    popup.document.write(`
+      <html>
+        <head><title>Connecting...</title></head>
+        <body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui;background:#f5f5f5;">
+          <div style="text-align:center;">
+            <div style="font-size:48px;margin-bottom:16px;">🔄</div>
+            <p style="color:#666;">Connecting to Calendly...</p>
+          </div>
+        </body>
+      </html>
+    `);
+
     try {
       const { data, error } = await supabase.functions.invoke("calendly-oauth-start", {
         body: { teamId },
@@ -211,10 +261,21 @@ export function CalendlyConfig({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Just redirect to OAuth - simpler and more reliable
-      window.location.href = data.authUrl;
+      // Redirect popup to OAuth URL
+      popup.location.href = data.authUrl;
+
+      // Monitor popup closure
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          setConnecting(false);
+        }
+      }, 500);
 
     } catch (error: any) {
+      if (popup && !popup.closed) {
+        popup.close();
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to start OAuth flow",
@@ -396,13 +457,13 @@ export function CalendlyConfig({
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 size="lg"
               >
-                <Calendar className="w-4 h-4 mr-2" />
-                {connecting ? "Connecting..." : "Connect with Calendly"}
-              </Button>
-              <p className="text-sm text-center text-muted-foreground">
-                You'll be redirected to Calendly to authorize access
-              </p>
-            </div>
+              <Calendar className="w-4 h-4 mr-2" />
+              {connecting ? "Connecting..." : "Connect with Calendly"}
+            </Button>
+            <p className="text-sm text-center text-muted-foreground">
+              A popup will open for you to choose your Calendly account
+            </p>
+          </div>
 
             {/* Divider */}
             <div className="relative">

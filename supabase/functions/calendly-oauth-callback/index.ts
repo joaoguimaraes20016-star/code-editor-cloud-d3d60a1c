@@ -171,10 +171,69 @@ Deno.serve(async (req) => {
 
     console.log('Calendly OAuth setup completed successfully');
 
-    // Simple redirect back to the team page with success parameter
-    const redirectUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/${teamId}?calendly_oauth_success=true`;
-    
-    return Response.redirect(redirectUrl, 302);
+    // Return HTML that will close the popup and notify the parent window
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Success</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    .checkmark {
+      font-size: 64px;
+      margin-bottom: 1rem;
+      animation: scale-in 0.3s ease-out;
+    }
+    @keyframes scale-in {
+      from { transform: scale(0); }
+      to { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="checkmark">✓</div>
+    <h1>Connected Successfully!</h1>
+    <p>This window will close automatically...</p>
+  </div>
+  <script>
+    (function() {
+      // Send message to parent window
+      if (window.opener) {
+        window.opener.postMessage({ type: 'calendly-oauth-success' }, '*');
+        // Close after a short delay to show the success message
+        setTimeout(function() {
+          window.close();
+        }, 1500);
+      } else {
+        // Fallback: redirect if not in popup
+        window.location.href = '${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/${teamId}?calendly_oauth_success=true';
+      }
+    })();
+  </script>
+</body>
+</html>`;
+
+    return new Response(html, {
+      status: 200,
+      headers: { 
+        'Content-Type': 'text/html; charset=utf-8',
+        ...corsHeaders 
+      }
+    });
   } catch (error) {
     console.error('Error in calendly-oauth-callback:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
