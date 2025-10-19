@@ -173,7 +173,6 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
         .from('appointments')
         .select('*')
         .eq('team_id', teamId)
-        .is('setter_id', null)
         .order('start_at_utc', { ascending: false });
 
       if (error) throw error;
