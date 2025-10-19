@@ -75,8 +75,8 @@ export function CalendlyConfig({
 
     if (oauthSuccess === 'true') {
       toast({
-        title: "🎉 Connected Successfully!",
-        description: "Calendly has been connected to your team. Appointments will now sync automatically.",
+        title: "Calendly Successfully Connected",
+        description: "Your Calendly account is now connected. Appointments will sync automatically.",
         duration: 5000,
       });
       
