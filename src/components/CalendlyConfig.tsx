@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Calendar, AlertCircle, CheckCircle2, Unplug, Settings, ChevronDown, Plus } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface CalendlyConfigProps {
   teamId: string;
@@ -601,66 +601,70 @@ export function CalendlyConfig({
             </p>
           </div>
 
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or use manual setup
-                </span>
-              </div>
-            </div>
-
-            {/* Manual Token Setup */}
-            <div className="space-y-2">
-              <Label htmlFor="access-token">Personal Access Token</Label>
-              <Input
-                id="access-token"
-                type="password"
-                placeholder="Enter your Calendly access token"
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-              />
-              <p className="text-sm text-muted-foreground">
-                Get your token from: <strong>Calendly → Settings → Integrations → API & Webhooks</strong>
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="org-uri">Organization URI</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="org-uri"
-                  type="text"
-                  placeholder="https://api.calendly.com/organizations/XXXXXXXX"
-                  value={organizationUri}
-                  onChange={(e) => setOrganizationUri(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleFetchOrgUri}
-                  disabled={fetchingOrgUri || !accessToken}
-                >
-                  {fetchingOrgUri ? "Fetching..." : "Auto-Fetch"}
+            {/* Troubleshooting: Manual Token Setup */}
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full text-sm text-muted-foreground hover:text-foreground">
+                  Having trouble connecting? Try manual setup
                 </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Click "Auto-Fetch" to automatically retrieve your Organization URI
-              </p>
-            </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-4">
+                <Alert>
+                  <AlertTitle>Manual Setup</AlertTitle>
+                  <AlertDescription>
+                    If OAuth isn't working, you can manually configure your Calendly connection using a Personal Access Token.
+                  </AlertDescription>
+                </Alert>
 
-            <Button 
-              onClick={handleConnect} 
-              disabled={connecting || !accessToken || !organizationUri}
-              className="w-full"
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              {connecting ? "Connecting..." : "Connect Calendly"}
-            </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="access-token">Personal Access Token</Label>
+                  <Input
+                    id="access-token"
+                    type="password"
+                    placeholder="Enter your Calendly access token"
+                    value={accessToken}
+                    onChange={(e) => setAccessToken(e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Get your token from: <strong>Calendly → Settings → Integrations → API & Webhooks</strong>
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="org-uri">Organization URI</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="org-uri"
+                      type="text"
+                      placeholder="https://api.calendly.com/organizations/XXXXXXXX"
+                      value={organizationUri}
+                      onChange={(e) => setOrganizationUri(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleFetchOrgUri}
+                      disabled={fetchingOrgUri || !accessToken}
+                    >
+                      {fetchingOrgUri ? "Fetching..." : "Auto-Fetch"}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Click "Auto-Fetch" to automatically retrieve your Organization URI
+                  </p>
+                </div>
+
+                <Button 
+                  onClick={handleConnect} 
+                  disabled={connecting || !accessToken || !organizationUri}
+                  className="w-full"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  {connecting ? "Connecting..." : "Connect Calendly"}
+                </Button>
+              </CollapsibleContent>
+            </Collapsible>
           </>
         )}
 
