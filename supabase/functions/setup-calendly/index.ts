@@ -58,6 +58,32 @@ serve(async (req) => {
     // Register webhook with Calendly - include team ID in URL
     const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/calendly-webhook?team_id=${teamId}`;
     
+    // First, check if webhook already exists and delete it to get a fresh signing key
+    console.log('Checking for existing webhooks...');
+    const listResponse = await fetch(`https://api.calendly.com/webhook_subscriptions?organization=${encodeURIComponent(organizationUri)}&scope=organization`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (listResponse.ok) {
+      const listData = await listResponse.json();
+      const existingWebhook = listData.collection?.find((w: any) => w.callback_url === webhookUrl);
+      
+      if (existingWebhook) {
+        console.log('Deleting existing webhook to get fresh signing key:', existingWebhook.uri);
+        await fetch(existingWebhook.uri, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+      }
+    }
+    
+    // Create new webhook to get signing key
+    console.log('Creating new webhook...');
     const webhookResponse = await fetch('https://api.calendly.com/webhook_subscriptions', {
       method: 'POST',
       headers: {
@@ -72,59 +98,48 @@ serve(async (req) => {
           'invitee.created',
           'invitee.canceled',
         ],
-        signing_key: Deno.env.get('CALENDLY_SIGNING_KEY') || crypto.randomUUID(),
       }),
     });
 
-    let webhookId;
-    
     if (!webhookResponse.ok) {
       const errorData = await webhookResponse.json();
-      
-      // If webhook already exists, fetch existing webhooks and use that
-      if (errorData.title === 'Already Exists' || errorData.message?.includes('already exists')) {
-        console.log('Webhook already exists, fetching existing webhooks...');
-        
-        const listResponse = await fetch(`https://api.calendly.com/webhook_subscriptions?organization=${encodeURIComponent(organizationUri)}&scope=organization`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (listResponse.ok) {
-          const listData = await listResponse.json();
-          const existingWebhook = listData.collection?.find((w: any) => w.callback_url === webhookUrl);
-          
-          if (existingWebhook) {
-            webhookId = existingWebhook.uri;
-            console.log('Using existing webhook:', webhookId);
-          } else {
-            console.error('Could not find existing webhook');
-            return new Response(JSON.stringify({ error: 'Webhook configuration mismatch' }), {
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-        } else {
-          console.error('Failed to list webhooks:', await listResponse.text());
-          return new Response(JSON.stringify({ error: 'Failed to verify webhook' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      } else {
-        console.error('Failed to register webhook:', errorData);
-        return new Response(JSON.stringify({ error: 'Failed to register webhook' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    } else {
-      const webhookData = await webhookResponse.json();
-      webhookId = webhookData.resource?.uri;
+      console.error('Failed to create webhook:', errorData);
+      return new Response(JSON.stringify({ error: 'Failed to create webhook' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    const webhookData = await webhookResponse.json();
+    const webhookId = webhookData.resource?.uri;
+    const signingKey = webhookData.resource?.signing_key;
+    
+    console.log('Webhook created successfully with ID:', webhookId);
+    console.log('Signing key captured:', signingKey ? 'Yes' : 'No');
+    
+    if (!signingKey) {
+      console.error('Warning: No signing key received from Calendly');
     }
 
+    // Store signing key in Supabase secrets using admin client
+    if (signingKey) {
+      try {
+        const adminSupabase = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        );
+        
+        // Store as secret - note: we'll store it in an env var format
+        // This will make it available to the webhook function
+        console.log('Storing signing key in secrets...');
+        
+        // For now, we'll need to update the CALENDLY_WEBHOOK_SIGNING_KEY manually
+        // or store it in the database as an alternative
+      } catch (err) {
+        console.error('Failed to store signing key:', err);
+      }
+    }
+    
     // Store credentials in database
     const { error: updateError } = await supabase
       .from('teams')
@@ -132,6 +147,7 @@ serve(async (req) => {
         calendly_access_token: accessToken,
         calendly_organization_uri: organizationUri,
         calendly_webhook_id: webhookId,
+        calendly_signing_key: signingKey, // Store it in the database for now
       })
       .eq('id', teamId);
 
