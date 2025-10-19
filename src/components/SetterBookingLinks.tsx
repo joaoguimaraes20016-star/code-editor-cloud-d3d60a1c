@@ -16,6 +16,11 @@ interface TeamMemberWithBooking {
   };
 }
 
+interface EventTypeDetails {
+  url: string;
+  name: string;
+}
+
 interface SetterBookingLinksProps {
   teamId: string;
   calendlyEventTypes: string[];
@@ -30,11 +35,40 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [eventTypeDetails, setEventTypeDetails] = useState<EventTypeDetails[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     loadMembers();
-  }, [teamId]);
+    if (calendlyAccessToken && calendlyOrgUri) {
+      fetchEventTypeNames();
+    }
+  }, [teamId, calendlyAccessToken, calendlyOrgUri]);
+
+  const fetchEventTypeNames = async () => {
+    if (!calendlyAccessToken || !calendlyOrgUri) return;
+
+    try {
+      const response = await fetch(`https://api.calendly.com/event_types?organization=${encodeURIComponent(calendlyOrgUri)}&active=true`, {
+        headers: {
+          'Authorization': `Bearer ${calendlyAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const details: EventTypeDetails[] = data.collection.map((et: any) => ({
+        url: et.scheduling_url,
+        name: et.name,
+      }));
+      
+      setEventTypeDetails(details);
+    } catch (error) {
+      console.error('Error fetching event type names:', error);
+    }
+  };
 
   const loadMembers = async () => {
     try {
@@ -121,10 +155,15 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
   };
 
   const getEventTypeName = (url: string): string => {
-    // Extract readable name from Calendly URL
-    // e.g., "https://calendly.com/user/30min" -> "30min"
+    // First try to find the name from fetched event type details
+    const detail = eventTypeDetails.find(et => et.url === url);
+    if (detail) return detail.name;
+    
+    // Fallback: Extract readable name from Calendly URL
     const parts = url.split('/');
-    return parts[parts.length - 1]?.split('?')[0] || 'Event';
+    const slug = parts[parts.length - 1]?.split('?')[0] || 'Event';
+    // Convert slug to readable format (e.g., "30-min-call" -> "30 Min Call")
+    return slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
   const handleRefreshLinks = async () => {
@@ -166,6 +205,9 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
         title: 'Success',
         description: 'Booking links refreshed successfully',
       });
+
+      // Refresh event type names
+      fetchEventTypeNames();
 
       // Trigger parent refresh
       if (onRefresh) {
