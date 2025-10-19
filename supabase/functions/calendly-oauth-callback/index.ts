@@ -171,32 +171,10 @@ Deno.serve(async (req) => {
 
     console.log('Calendly OAuth setup completed successfully');
 
-    // Return properly formatted HTML without CORS headers (HTML doesn't need them)
-    return new Response(
-      `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Connected</title>
-</head>
-<body>
-<script>
-if(window.opener){
-  window.opener.postMessage({type:'calendly-oauth-success'},'*');
-  window.close();
-} else {
-  window.location.href='${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')}/team/${teamId}?calendly_oauth_success=true';
-}
-</script>
-</body>
-</html>`,
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8'
-        }
-      }
-    );
+    // Redirect to app with success parameter - the app will handle closing the popup
+    const redirectUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')}/team/${teamId}?calendly_oauth_success=true&close_popup=true`;
+    
+    return Response.redirect(redirectUrl, 302);
   } catch (error) {
     console.error('Error in calendly-oauth-callback:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';

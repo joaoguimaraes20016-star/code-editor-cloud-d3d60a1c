@@ -54,6 +54,14 @@ export function CalendlyConfig({
     const params = new URLSearchParams(window.location.search);
     const oauthSuccess = params.get('calendly_oauth_success');
     const oauthError = params.get('calendly_oauth_error');
+    const closePopup = params.get('close_popup');
+
+    // If this is a popup that should close itself
+    if (closePopup === 'true' && window.opener) {
+      window.opener.postMessage({ type: 'calendly-oauth-success' }, '*');
+      window.close();
+      return;
+    }
 
     if (oauthSuccess === 'true') {
       toast({
