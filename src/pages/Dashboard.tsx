@@ -187,7 +187,7 @@ const Dashboard = () => {
                   <Logo size="large" />
                 </div>
                 <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  GRWTH Dashboard
+                  GRWTH OP Dashboard
                 </h1>
               </div>
               <p className="text-sm md:text-base text-muted-foreground flex items-center gap-2">
