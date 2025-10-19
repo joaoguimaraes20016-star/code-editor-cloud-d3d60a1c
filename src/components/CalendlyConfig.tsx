@@ -257,18 +257,10 @@ export function CalendlyConfig({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      console.log('Redirecting to Calendly:', data.authUrl);
+      console.log('Calendly URL:', data.authUrl);
 
-      // Write HTML with immediate JavaScript redirect
-      popup.document.write(`<!DOCTYPE html>
-<html>
-<head><title>Connecting...</title></head>
-<body>
-<p>Connecting to Calendly...</p>
-<script>window.location.replace('${data.authUrl}');</script>
-</body>
-</html>`);
-      popup.document.close();
+      // Directly set location - no HTML writing
+      popup.location = data.authUrl;
 
       // Monitor popup closure
       const checkClosed = setInterval(() => {
