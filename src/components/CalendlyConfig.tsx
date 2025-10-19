@@ -565,18 +565,22 @@ export function CalendlyConfig({
 
         {!isConnected && (
           <>
-            <Alert className="border-orange-500/50 bg-orange-50 dark:bg-orange-950/20">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
+            <Alert className="border-blue-500/50 bg-blue-50 dark:bg-blue-950/20">
+              <AlertCircle className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-sm space-y-2">
                 <div>
-                  <strong>Want to connect a different Calendly account?</strong>
+                  <strong>⚠️ Important: Account Auto-Login</strong>
                 </div>
-                <ol className="list-decimal list-inside space-y-1 text-xs">
-                  <li>Open Calendly in a new tab</li>
-                  <li>Click your profile → Sign out</li>
-                  <li>Come back here and click "Connect with Calendly"</li>
-                  <li>Login with the account you want to use</li>
-                </ol>
+                <div className="text-xs">
+                  When you click "Connect with Calendly" below, it will automatically use whichever Calendly account you're currently logged into. This will happen every time unless you:
+                </div>
+                <ul className="list-disc list-inside space-y-1 text-xs ml-2">
+                  <li>Log out of Calendly in your browser</li>
+                  <li>Switch accounts in your Calendly settings</li>
+                </ul>
+                <div className="text-xs font-semibold text-blue-700 dark:text-blue-400">
+                  To connect a different account now: Go to Calendly → Profile → Sign out, then return here.
+                </div>
               </AlertDescription>
             </Alert>
 
