@@ -188,50 +188,25 @@ Deno.serve(async (req) => {
     // Process each event
     for (const event of allEvents) {
       try {
-        // Fetch invitees for this event
-        const inviteesUrl = `${event.uri}/invitees`;
-        const inviteesResponse = await fetch(inviteesUrl, {
+        // Fetch event details ONCE per event (not per invitee) - major performance gain
+        const eventDetailsResponse = await fetch(event.uri, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
         });
 
-        if (!inviteesResponse.ok) {
-          console.error(`Failed to fetch invitees for event ${event.uri}`);
+        if (!eventDetailsResponse.ok) {
+          console.error(`Failed to fetch event details for ${event.uri}`);
           continue;
         }
 
-        const inviteesData = await inviteesResponse.json();
-        const invitees: CalendlyInvitee[] = inviteesData.collection || [];
-
-        for (const invitee of invitees) {
-          // Skip cancelled invitees and check for duplicates using Set (fast)
-          const appointmentKey = `${invitee.email}|${event.start_time}`;
-          if (existingAppointmentKeys.has(appointmentKey)) {
-            console.log(`Skipping duplicate: ${invitee.email} at ${event.start_time}`);
-            skippedCount++;
-            continue;
-          }
-
-          // Fetch full event details to get organizer info
-          const eventDetailsResponse = await fetch(event.uri, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (!eventDetailsResponse.ok) {
-            console.error(`Failed to fetch event details for ${event.uri}`);
-            continue;
-          }
-
-          const eventDetails = await eventDetailsResponse.json();
-          const eventMemberships = eventDetails.resource?.event_memberships || [];
-          
-          let closerId = null;
-          let closerName = null;
+        const eventDetails = await eventDetailsResponse.json();
+        const eventMemberships = eventDetails.resource?.event_memberships || [];
+        
+        // Determine closer info once per event
+        let closerId = null;
+        let closerName = null;
 
           // Match closer using same 3-tier logic as webhook
           if (eventMemberships.length > 0) {
@@ -281,6 +256,47 @@ Deno.serve(async (req) => {
             }
           }
 
+        // Fetch event type name once per event
+        let eventTypeName = event.name;
+        if (event.event_type) {
+          const eventTypeResponse = await fetch(event.event_type, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (eventTypeResponse.ok) {
+            const eventTypeData = await eventTypeResponse.json();
+            eventTypeName = eventTypeData.resource?.name || event.name;
+          }
+        }
+
+        // Now fetch invitees and process them
+        const inviteesUrl = `${event.uri}/invitees`;
+        const inviteesResponse = await fetch(inviteesUrl, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!inviteesResponse.ok) {
+          console.error(`Failed to fetch invitees for event ${event.uri}`);
+          continue;
+        }
+
+        const inviteesData = await inviteesResponse.json();
+        const invitees: CalendlyInvitee[] = inviteesData.collection || [];
+
+        for (const invitee of invitees) {
+          // Skip duplicates using Set (fast O(1) lookup)
+          const appointmentKey = `${invitee.email}|${event.start_time}`;
+          if (existingAppointmentKeys.has(appointmentKey)) {
+            console.log(`Skipping duplicate: ${invitee.email} at ${event.start_time}`);
+            skippedCount++;
+            continue;
+          }
+
           // Auto-assign setter based on UTM parameters (same logic as webhook)
           let setterId = null;
           let setterName = null;
@@ -303,21 +319,6 @@ Deno.serve(async (req) => {
                 setterName = profile?.full_name || null;
                 console.log(`✓ Auto-assigned setter: ${setterName}`);
               }
-            }
-          }
-
-          // Fetch event type name
-          let eventTypeName = event.name;
-          if (event.event_type) {
-            const eventTypeResponse = await fetch(event.event_type, {
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-            });
-            if (eventTypeResponse.ok) {
-              const eventTypeData = await eventTypeResponse.json();
-              eventTypeName = eventTypeData.resource?.name || event.name;
             }
           }
 
