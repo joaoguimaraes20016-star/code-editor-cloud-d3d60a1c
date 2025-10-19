@@ -222,6 +222,32 @@ export default function TeamSettings() {
     }
   };
 
+  const handleFixWebhook = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fix-webhook', {
+        body: { teamId },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Webhook fixed',
+        description: 'Your Calendly webhook has been re-registered successfully',
+      });
+
+      loadTeamData();
+    } catch (error: any) {
+      toast({
+        title: 'Error fixing webhook',
+        description: getUserFriendlyError(error),
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -448,14 +474,32 @@ export default function TeamSettings() {
         {(isOwner || role === "offer_owner" || role === "admin") && (() => {
           try {
             return (
-              <CalendlyConfig 
-                teamId={teamId!}
-                currentAccessToken={calendlyAccessToken}
-                currentOrgUri={calendlyOrgUri}
-                currentWebhookId={calendlyWebhookId}
-                currentEventTypes={calendlyEventTypes}
-                onUpdate={loadTeamData}
-              />
+              <>
+                <CalendlyConfig 
+                  teamId={teamId!}
+                  currentAccessToken={calendlyAccessToken}
+                  currentOrgUri={calendlyOrgUri}
+                  currentWebhookId={calendlyWebhookId}
+                  currentEventTypes={calendlyEventTypes}
+                  onUpdate={loadTeamData}
+                />
+                
+                {calendlyAccessToken && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Webhook Troubleshooting</CardTitle>
+                      <CardDescription>
+                        If booking links aren't capturing setter assignments, click below to re-register the webhook
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button onClick={handleFixWebhook} disabled={loading}>
+                        Fix Webhook
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             );
           } catch (error) {
             console.error('Error rendering Calendly config:', error);
