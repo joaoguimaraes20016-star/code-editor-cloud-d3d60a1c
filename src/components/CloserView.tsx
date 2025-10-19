@@ -70,6 +70,8 @@ export function CloserView({ teamId }: CloserViewProps) {
   const [productName, setProductName] = useState("");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [dateFilter, setDateFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     loadUserProfile();
@@ -467,6 +469,51 @@ export function CloserView({ teamId }: CloserViewProps) {
     return format(new Date(utcTime), 'MMM d, yyyy h:mm a');
   };
 
+  const getFilteredByDate = (appointments: Appointment[]) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (dateFilter) {
+      case "last7days":
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(today.getDate() - 7);
+        return appointments.filter(apt => {
+          const aptDate = new Date(apt.start_at_utc);
+          return aptDate >= sevenDaysAgo && aptDate <= now;
+        });
+      case "last30days":
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+        return appointments.filter(apt => {
+          const aptDate = new Date(apt.start_at_utc);
+          return aptDate >= thirtyDaysAgo && aptDate <= now;
+        });
+      case "next7days":
+        const sevenDaysFromNow = new Date(today);
+        sevenDaysFromNow.setDate(today.getDate() + 7);
+        return appointments.filter(apt => {
+          const aptDate = new Date(apt.start_at_utc);
+          return aptDate >= now && aptDate <= sevenDaysFromNow;
+        });
+      case "next30days":
+        const thirtyDaysFromNow = new Date(today);
+        thirtyDaysFromNow.setDate(today.getDate() + 30);
+        return appointments.filter(apt => {
+          const aptDate = new Date(apt.start_at_utc);
+          return aptDate >= now && aptDate <= thirtyDaysFromNow;
+        });
+      default:
+        return appointments;
+    }
+  };
+
+  const getFilteredByStatus = (appointments: Appointment[]) => {
+    if (statusFilter === "all") return appointments;
+    return appointments.filter(apt => apt.status === statusFilter);
+  };
+
+  const filteredAllNewAppointments = getFilteredByStatus(getFilteredByDate(allNewAppointments));
+
   if (loading) {
     return <div className="p-4">Loading...</div>;
   }
@@ -484,14 +531,44 @@ export function CloserView({ teamId }: CloserViewProps) {
         </div>
 
         <TabsContent value="all-new" className="mt-6">
-          {allNewAppointments.length === 0 ? (
+          <div className="flex gap-2 mb-4">
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="last7days">Last 7 Days</SelectItem>
+                <SelectItem value="last30days">Last 30 Days</SelectItem>
+                <SelectItem value="next7days">Next 7 Days</SelectItem>
+                <SelectItem value="next30days">Next 30 Days</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="NEW">New</SelectItem>
+                <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                <SelectItem value="SHOWED">Showed</SelectItem>
+                <SelectItem value="NO_SHOW">No Show</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                <SelectItem value="RESCHEDULED">Rescheduled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredAllNewAppointments.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
-              No new appointments
+              No appointments match your filters
             </div>
           ) : isMobile ? (
             // Mobile Card View
             <div className="space-y-3">
-              {allNewAppointments.map((apt) => (
+              {filteredAllNewAppointments.map((apt) => (
                 <Card key={apt.id} className="overflow-hidden">
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -552,7 +629,7 @@ export function CloserView({ teamId }: CloserViewProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {allNewAppointments.map((apt) => (
+              {filteredAllNewAppointments.map((apt) => (
                     <TableRow key={apt.id}>
                       <TableCell>{formatLocalTime(apt.start_at_utc)}</TableCell>
                       <TableCell className="font-medium">{apt.lead_name}</TableCell>
