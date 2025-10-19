@@ -11,6 +11,7 @@ import { Leaderboard } from "@/components/Leaderboard";
 import { ImportSpreadsheet } from "@/components/ImportSpreadsheet";
 import { DateRangeFilter, DateRangePreset } from "@/components/DateRangeFilter";
 import { NewAppointments } from "@/components/NewAppointments";
+import { AllNewAppointments } from "@/components/AllNewAppointments";
 import { AllClaimed } from "@/components/AllClaimed";
 import { MyClaimed } from "@/components/MyClaimed";
 import { CloserView } from "@/components/CloserView";
@@ -583,10 +584,11 @@ const Index = () => {
               />
             )}
             
-            <Tabs defaultValue={canViewSetterScheduling ? "new" : "closer"} className="w-full">
+            <Tabs defaultValue={canViewSetterScheduling ? "all-new" : "closer"} className="w-full">
               <div className="overflow-x-auto pb-2">
                 <TabsList className="inline-flex w-auto min-w-full md:min-w-0">
-                  {canViewSetterScheduling && <TabsTrigger value="new" className="text-xs md:text-sm flex-1 md:flex-none">Unassigned Appointments</TabsTrigger>}
+                  {canViewSetterScheduling && <TabsTrigger value="all-new" className="text-xs md:text-sm flex-1 md:flex-none">New Appointments</TabsTrigger>}
+                  {canViewSetterScheduling && <TabsTrigger value="unassigned" className="text-xs md:text-sm flex-1 md:flex-none">Unassigned Appointments</TabsTrigger>}
                   {canViewSetterScheduling && <TabsTrigger value="claimed" className="text-xs md:text-sm flex-1 md:flex-none">All Assigned Appointments</TabsTrigger>}
                   {canViewSetterScheduling && <TabsTrigger value="my-claimed" className="text-xs md:text-sm flex-1 md:flex-none">My Assigned</TabsTrigger>}
                   {canViewCloserScheduling && <TabsTrigger value="closer" className="text-xs md:text-sm flex-1 md:flex-none">Closer View</TabsTrigger>}
@@ -595,9 +597,19 @@ const Index = () => {
 
               {canViewSetterScheduling && (
                 <>
-                  <TabsContent value="new" className="mt-6">
+                  <TabsContent value="all-new" className="mt-6">
                     <div>
                       <h3 className="text-lg font-semibold mb-4">New Appointments</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        All newly booked appointments (assigned and unassigned)
+                      </p>
+                      <AllNewAppointments teamId={teamId!} key={`all-new-${Date.now()}`} />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="unassigned" className="mt-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Unassigned Appointments</h3>
                       <p className="text-sm text-muted-foreground mb-4">
                         Click "Assign" to add an appointment to your list
                       </p>
