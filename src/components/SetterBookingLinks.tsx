@@ -80,7 +80,7 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
         .from('team_members')
         .select('user_id, role, booking_code, profiles!inner(full_name)')
         .eq('team_id', teamId)
-        .in('role', ['setter', 'closer', 'admin']);
+        .in('role', ['setter', 'closer', 'admin', 'offer_owner']);
 
       if (error) throw error;
       setMembers(data || []);
