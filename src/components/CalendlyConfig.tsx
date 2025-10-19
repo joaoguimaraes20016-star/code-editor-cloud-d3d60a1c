@@ -226,14 +226,15 @@ export function CalendlyConfig({
   const handleOAuthConnect = async () => {
     setConnecting(true);
     
-    // MUST open popup SYNCHRONOUSLY (before any await) to avoid popup blocker
+    // MUST open popup SYNCHRONOUSLY to avoid popup blocker
     const width = 600;
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
     
+    // Open with a data URL to prevent any app routing
     const popup = window.open(
-      'about:blank',
+      'data:text/html,<html><body><p>Loading...</p></body></html>',
       'calendly-oauth',
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
     );
@@ -257,10 +258,10 @@ export function CalendlyConfig({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      console.log('Navigating popup to:', data.authUrl);
+      console.log('Navigating to Calendly:', data.authUrl);
 
-      // Navigate popup to Calendly
-      popup.location.href = data.authUrl;
+      // Replace the entire location to go to Calendly
+      popup.location.replace(data.authUrl);
 
       // Monitor popup closure
       const checkClosed = setInterval(() => {
