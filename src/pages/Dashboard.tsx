@@ -4,9 +4,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Users, TrendingUp, Zap } from "lucide-react";
+import { Plus, Users, TrendingUp, Zap, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -136,6 +137,30 @@ const Dashboard = () => {
     navigate('/');
   };
 
+  const deleteTeam = async (teamId: string, teamName: string) => {
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .delete()
+        .eq('id', teamId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Team deleted',
+        description: `${teamName} has been deleted successfully.`,
+      });
+
+      loadTeams();
+    } catch (error: any) {
+      toast({
+        title: 'Error deleting team',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -191,17 +216,49 @@ const Dashboard = () => {
           {teams.map((team, index) => (
             <Card
               key={team.id}
-              className="group cursor-pointer hover:border-primary hover:shadow-glow transition-all duration-500 bg-gradient-card backdrop-blur-sm border-border/50 overflow-hidden"
-              onClick={() => navigate(`/team/${team.id}`)}
+              className="group hover:border-primary hover:shadow-glow transition-all duration-500 bg-gradient-card backdrop-blur-sm border-border/50 overflow-hidden relative"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <CardHeader className="relative py-8 md:py-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors duration-300">
-                    <Users className="h-5 w-5 text-primary" />
+              <CardHeader className="relative py-8 md:py-6 cursor-pointer" onClick={() => navigate(`/team/${team.id}`)}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors duration-300">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <CardTitle className="group-hover:text-primary transition-colors duration-300">{team.name}</CardTitle>
                   </div>
-                  <CardTitle className="group-hover:text-primary transition-colors duration-300">{team.name}</CardTitle>
+                  {canCreateTeams && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Team</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{team.name}"? This action cannot be undone and will remove all team data.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteTeam(team.id, team.name)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
                 <CardDescription className="flex items-center gap-2">
                   Click to view team data
