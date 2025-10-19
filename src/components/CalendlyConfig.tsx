@@ -258,8 +258,8 @@ export function CalendlyConfig({
 
       console.log('Redirecting popup to Calendly:', data.authUrl);
 
-      // Use window.location (not popup.location) to navigate the popup
-      popup.location = data.authUrl;
+      // Navigate the popup to Calendly OAuth page
+      popup.location.href = data.authUrl;
 
       // Monitor popup closure
       const checkClosed = setInterval(() => {
