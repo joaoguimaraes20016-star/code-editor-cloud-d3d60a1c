@@ -177,6 +177,12 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
         .order('start_at_utc', { ascending: false });
 
       if (error) throw error;
+      console.log('Loaded appointments:', data?.length);
+      console.log('Sample appointment dates:', data?.slice(0, 5).map(a => ({
+        name: a.lead_name,
+        date: a.start_at_utc,
+        parsed: new Date(a.start_at_utc)
+      })));
       setAppointments(data || []);
     } catch (error: any) {
       toast({
