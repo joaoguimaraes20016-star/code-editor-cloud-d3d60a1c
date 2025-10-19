@@ -602,11 +602,18 @@ export function CalendlyConfig({
                                   className="h-7 w-7 border-2"
                                 />
                                 <div className="flex-1">
-                                  <div className="text-base font-semibold leading-relaxed">
-                                    {eventType.name}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-base font-semibold leading-relaxed">
+                                      {eventType.name}
+                                    </span>
+                                    {(isRoundRobin || isTeam) && (
+                                      <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                                        {typeLabel}
+                                      </span>
+                                    )}
                                   </div>
                                   <p className="text-xs text-muted-foreground mt-1">
-                                    {typeLabel} • {ownerName}
+                                    {ownerName}
                                     {!eventType.active && ' • Inactive'}
                                   </p>
                                 </div>
@@ -635,14 +642,21 @@ export function CalendlyConfig({
                               onCheckedChange={() => handleEventTypeToggle(eventType.scheduling_url)}
                             />
                             <div className="flex-1">
-                              <label
-                                htmlFor={eventType.uri}
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                              >
-                                {eventType.name}
-                              </label>
+                              <div className="flex items-center gap-2">
+                                <label
+                                  htmlFor={eventType.uri}
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                >
+                                  {eventType.name}
+                                </label>
+                                {(isRoundRobin || isTeam) && (
+                                  <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                                    {typeLabel}
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-muted-foreground mt-1">
-                                {typeLabel} • {ownerName}
+                                {ownerName}
                                 {!eventType.active && ' • Inactive'}
                               </p>
                             </div>
