@@ -204,6 +204,7 @@ serve(async (req) => {
     let closerName = null;
 
     if (eventUri && accessToken) {
+      console.log('Fetching event details from:', eventUri);
       const eventResponse = await fetch(eventUri, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -213,23 +214,35 @@ serve(async (req) => {
 
       if (eventResponse.ok) {
         const eventData = await eventResponse.json();
+        console.log('Event data received:', JSON.stringify(eventData, null, 2));
         const organizerEmail = eventData.resource?.event_memberships?.[0]?.user_email;
+        console.log('Organizer email from event:', organizerEmail);
 
         if (organizerEmail) {
           // Find team member by email
-          const { data: profiles } = await supabase
+          const { data: profiles, error: profileError } = await supabase
             .from('profiles')
-            .select('id, full_name')
+            .select('id, full_name, email')
             .eq('email', organizerEmail)
             .maybeSingle();
+
+          console.log('Profile lookup result:', { profiles, profileError });
 
           if (profiles) {
             closerId = profiles.id;
             closerName = profiles.full_name;
             console.log(`Matched organizer ${organizerEmail} to team member ${closerName}`);
+          } else {
+            console.log(`No profile found for organizer email: ${organizerEmail}`);
           }
+        } else {
+          console.log('No organizer email found in event data');
         }
+      } else {
+        console.error('Failed to fetch event details:', eventResponse.status, await eventResponse.text());
       }
+    } else {
+      console.log('Missing eventUri or accessToken for closer lookup', { hasEventUri: !!eventUri, hasAccessToken: !!accessToken });
     }
 
     // Handle different event types
