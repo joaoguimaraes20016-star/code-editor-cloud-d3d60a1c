@@ -39,13 +39,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Decode state to get teamId and userId
+    // Decode state to get teamId, userId, and origin
     let teamId: string;
     let userId: string;
+    let origin: string;
     try {
       const stateData = JSON.parse(atob(state));
       teamId = stateData.teamId;
       userId = stateData.userId;
+      origin = stateData.origin || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com';
     } catch (e) {
       console.error('Failed to parse state:', e);
       return Response.redirect(
@@ -171,8 +173,8 @@ Deno.serve(async (req) => {
 
     console.log('Calendly OAuth setup completed successfully');
 
-    // Redirect to app with success parameter - the app will handle closing the popup
-    const redirectUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')}/team/${teamId}?calendly_oauth_success=true&close_popup=true`;
+    // Redirect popup back to the origin app with success parameter
+    const redirectUrl = `${origin}/team/${teamId}?calendly_oauth_success=true&close_popup=true`;
     
     return Response.redirect(redirectUrl, 302);
   } catch (error) {

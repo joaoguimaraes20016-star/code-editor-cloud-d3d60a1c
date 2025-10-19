@@ -84,8 +84,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate state parameter (includes team_id for callback)
-    const state = btoa(JSON.stringify({ teamId, userId: user.id }));
+    // Get the origin from the request headers to redirect back correctly
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || '';
+
+    // Generate state parameter (includes team_id and origin for callback)
+    const state = btoa(JSON.stringify({ teamId, userId: user.id, origin }));
 
     // Construct Calendly OAuth authorization URL
     const authUrl = new URL('https://auth.calendly.com/oauth/authorize');
