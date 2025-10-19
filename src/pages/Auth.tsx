@@ -652,7 +652,7 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center px-4 md:px-6 py-4 md:py-6">
           <div className="flex justify-center mb-4">
-            <Logo size="large" />
+            <Logo size="xlarge" />
           </div>
           <CardTitle className="text-2xl md:text-3xl font-bold">
             {inviteMode ? '🎉 Welcome to the Team!' : 'GRWTH'}

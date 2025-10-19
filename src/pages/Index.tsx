@@ -422,7 +422,7 @@ const Index = () => {
               </Button>
             </div>
             <div className="flex items-center gap-3 mb-2">
-              <Logo size="small" />
+              <Logo size="large" />
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{teamName}</h1>
             </div>
             <p className="text-muted-foreground mt-1 text-sm md:text-base">

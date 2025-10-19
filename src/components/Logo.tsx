@@ -2,7 +2,7 @@ import logo from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
-  size?: "small" | "medium" | "large";
+  size?: "small" | "medium" | "large" | "xlarge";
   className?: string;
   showText?: boolean;
 }
@@ -12,6 +12,7 @@ export const Logo = ({ size = "medium", className, showText = false }: LogoProps
     small: "h-6 w-6",
     medium: "h-8 w-8",
     large: "h-16 w-16",
+    xlarge: "h-24 w-24",
   };
 
   return (
