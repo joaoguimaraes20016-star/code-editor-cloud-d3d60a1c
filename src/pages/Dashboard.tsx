@@ -177,41 +177,47 @@ const Dashboard = () => {
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
       
-      <div className="container mx-auto p-4 md:p-6 space-y-6 md:space-y-8 relative z-10">
-        <div className="bg-black rounded-lg p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in">
-          <div className="space-y-2 w-full md:w-auto">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="bg-black p-2 rounded-lg">
-                <Logo size="large" />
+      {/* Full-width black header */}
+      <div className="w-full bg-black border-y-2 border-primary relative z-10">
+        <div className="container mx-auto p-4 md:p-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in">
+            <div className="space-y-2 w-full md:w-auto">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="bg-black p-2 rounded-lg">
+                  <Logo size="large" />
+                </div>
+                <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  GRWTH Dashboard
+                </h1>
               </div>
-              <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                GRWTH Dashboard
-              </h1>
+              <p className="text-sm md:text-base text-muted-foreground flex items-center gap-2">
+                <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                Select a team to get started
+              </p>
             </div>
-            <p className="text-sm md:text-base text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              Select a team to get started
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 w-full md:w-auto">
-            {!canCreateTeams && (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 w-full md:w-auto">
+              {!canCreateTeams && (
+                <Button 
+                  variant="default" 
+                  onClick={() => navigate('/?creator=true')}
+                  className="bg-primary hover:bg-primary/90 transition-all duration-300 text-sm md:text-base"
+                >
+                  Sign Up as Creator
+                </Button>
+              )}
               <Button 
-                variant="default" 
-                onClick={() => navigate('/?creator=true')}
-                className="bg-primary hover:bg-primary/90 transition-all duration-300 text-sm md:text-base"
+                variant="outline" 
+                onClick={handleSignOut}
+                className="hover:bg-primary/10 hover:text-primary transition-all duration-300 text-sm md:text-base"
               >
-                Sign Up as Creator
+                Sign Out
               </Button>
-            )}
-            <Button 
-              variant="outline" 
-              onClick={handleSignOut}
-              className="hover:bg-primary/10 hover:text-primary transition-all duration-300 text-sm md:text-base"
-            >
-              Sign Out
-            </Button>
+            </div>
           </div>
         </div>
+      </div>
+      
+      <div className="container mx-auto p-4 md:p-6 space-y-6 md:space-y-8 relative z-10">
 
         <div className="grid gap-8 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 animate-scale-in">
           {teams.map((team, index) => (
