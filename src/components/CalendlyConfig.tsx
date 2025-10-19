@@ -259,14 +259,13 @@ export function CalendlyConfig({
 
       console.log('Redirecting to Calendly:', data.authUrl);
 
-      // Write HTML with immediate redirect to popup
+      // Write HTML with immediate JavaScript redirect
       popup.document.write(`<!DOCTYPE html>
 <html>
-<head>
-<meta http-equiv="refresh" content="0;url=${data.authUrl}">
-</head>
+<head><title>Connecting...</title></head>
 <body>
 <p>Connecting to Calendly...</p>
+<script>window.location.replace('${data.authUrl}');</script>
 </body>
 </html>`);
       popup.document.close();
