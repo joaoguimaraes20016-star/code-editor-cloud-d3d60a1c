@@ -407,9 +407,6 @@ export function CalendlyConfig({
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
-      // Open Calendly logout in new tab to clear browser session
-      window.open('https://calendly.com/app/logout', '_blank');
-      
       // Use edge function to revoke token and clear the connection
       const { data, error } = await supabase.functions.invoke("reset-calendly", {
         body: { teamId },
@@ -420,7 +417,7 @@ export function CalendlyConfig({
 
       toast({
         title: "Disconnected",
-        description: "Calendly has been disconnected. Please complete the logout in the opened tab to switch accounts.",
+        description: "Calendly has been disconnected. To connect a different account, sign out of Calendly first.",
         duration: 7000,
       });
       
@@ -568,18 +565,16 @@ export function CalendlyConfig({
           <>
             <Alert className="border-orange-500/50 bg-orange-50 dark:bg-orange-950/20">
               <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertDescription className="text-sm">
-                <strong>Switching Calendly accounts?</strong>
-                <br />
-                First log out of Calendly, then click "Connect with Calendly" below.
-                <br />
-                <Button 
-                  variant="link" 
-                  className="h-auto p-0 text-orange-600 hover:text-orange-700"
-                  onClick={() => window.open('https://calendly.com/app/logout', '_blank')}
-                >
-                  Click here to logout of Calendly →
-                </Button>
+              <AlertDescription className="text-sm space-y-2">
+                <div>
+                  <strong>Want to connect a different Calendly account?</strong>
+                </div>
+                <ol className="list-decimal list-inside space-y-1 text-xs">
+                  <li>Open Calendly in a new tab</li>
+                  <li>Click your profile → Sign out</li>
+                  <li>Come back here and click "Connect with Calendly"</li>
+                  <li>Login with the account you want to use</li>
+                </ol>
               </AlertDescription>
             </Alert>
 
