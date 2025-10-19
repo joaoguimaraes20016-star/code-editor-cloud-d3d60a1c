@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Calendar, AlertCircle, CheckCircle2, Unplug, Settings } from "lucide-react";
+import { Calendar, AlertCircle, CheckCircle2, Unplug, Settings, ChevronDown, Plus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CalendlyConfigProps {
@@ -49,6 +50,9 @@ export function CalendlyConfig({
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>(currentEventTypes || []);
   const [loadingEventTypes, setLoadingEventTypes] = useState(false);
   const [savingEventTypes, setSavingEventTypes] = useState(false);
+  const [manualUrl, setManualUrl] = useState("");
+  const [isManualFetchOpen, setIsManualFetchOpen] = useState(false);
+  const [isFetchingManual, setIsFetchingManual] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -428,6 +432,101 @@ export function CalendlyConfig({
     }
   };
 
+  const handleFetchByUrl = async () => {
+    if (!currentAccessToken || !manualUrl.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a Calendly URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsFetchingManual(true);
+    try {
+      // Fetch all event types from the API
+      const response = await fetch(
+        `https://api.calendly.com/event_types?organization=${encodeURIComponent(currentOrgUri!)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${currentAccessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch event types from Calendly",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const data = await response.json();
+      const matchedEventType = data.collection.find((et: any) => 
+        et.scheduling_url.toLowerCase().includes(manualUrl.toLowerCase()) ||
+        manualUrl.toLowerCase().includes(et.slug)
+      );
+
+      if (matchedEventType) {
+        const eventTypeDetail: EventType = {
+          uri: matchedEventType.uri,
+          scheduling_url: matchedEventType.scheduling_url,
+          name: matchedEventType.name,
+          active: matchedEventType.active,
+          profile: matchedEventType.profile,
+          pooling_type: matchedEventType.pooling_type,
+          type: matchedEventType.type,
+        };
+
+        // Check if it already exists
+        const exists = availableEventTypes.some(et => et.uri === eventTypeDetail.uri);
+        if (!exists) {
+          setAvailableEventTypes(prev => [...prev, eventTypeDetail]);
+          setSelectedEventTypes(prev => [...prev, eventTypeDetail.scheduling_url]);
+          toast({
+            title: "Success",
+            description: `Added: ${eventTypeDetail.name}`,
+          });
+        } else {
+          // If it exists but isn't selected, select it
+          if (!selectedEventTypes.includes(eventTypeDetail.scheduling_url)) {
+            setSelectedEventTypes(prev => [...prev, eventTypeDetail.scheduling_url]);
+            toast({
+              title: "Event type selected",
+              description: `${eventTypeDetail.name} is now selected`,
+            });
+          } else {
+            toast({
+              title: "Already added",
+              description: "This event type is already in your list",
+            });
+          }
+        }
+        
+        setManualUrl("");
+        setIsManualFetchOpen(false);
+      } else {
+        toast({
+          title: "Not found",
+          description: "Could not find a matching event type for that URL",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching event type:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch event type",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetchingManual(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -674,6 +773,37 @@ export function CalendlyConfig({
                   >
                     {savingEventTypes ? "Saving..." : "Save Event Type Filters"}
                   </Button>
+                  
+                  {/* Manual URL Fetch Section */}
+                  <Collapsible open={isManualFetchOpen} onOpenChange={setIsManualFetchOpen}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-sm">
+                        <Plus className="h-4 w-4" />
+                        Don't see your event type? Add it manually
+                        <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${isManualFetchOpen ? 'rotate-180' : ''}`} />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-3 pt-3">
+                      <p className="text-xs text-muted-foreground">
+                        If your Round Robin or Team event doesn't appear above, paste its Calendly URL below:
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="https://calendly.com/..."
+                          value={manualUrl}
+                          onChange={(e) => setManualUrl(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button 
+                          onClick={handleFetchByUrl} 
+                          disabled={isFetchingManual || !manualUrl.trim()}
+                          size="sm"
+                        >
+                          {isFetchingManual ? "Fetching..." : "Add"}
+                        </Button>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                   
                   {selectedEventTypes.length === 0 && (
                     <p className="text-xs text-amber-600 font-medium">
