@@ -96,6 +96,9 @@ serve(async (req) => {
     const url = new URL(req.url);
     const teamIdParam = url.searchParams.get('team_id');
     
+    console.log('Webhook received - URL:', req.url);
+    console.log('Team ID from URL:', teamIdParam);
+    
     if (!teamIdParam) {
       console.error('No team_id in webhook URL');
       return new Response(JSON.stringify({ error: 'Configuration error' }), {
@@ -112,8 +115,10 @@ serve(async (req) => {
       .not('calendly_access_token', 'is', null)
       .maybeSingle();
 
+    console.log('Team query result:', { team, error: teamError });
+
     if (teamError || !team) {
-      console.error('Could not find team for webhook');
+      console.error('Could not find team for webhook - Team ID:', teamIdParam, 'Error:', teamError);
       return new Response(JSON.stringify({ error: 'Configuration error' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
