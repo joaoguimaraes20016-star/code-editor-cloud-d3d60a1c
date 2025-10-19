@@ -68,6 +68,7 @@ interface Appointment {
   closer_name: string | null;
   event_type_uri: string | null;
   event_type_name: string | null;
+  setter_id: string | null;
 }
 
 interface TeamMember {
@@ -362,6 +363,7 @@ export function NewAppointments({ teamId }: NewAppointmentsProps) {
   };
 
   const filteredAppointments = getFilteredByDate(appointments)
+    .filter(apt => apt.setter_id === null)
     .filter(apt => {
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
