@@ -118,13 +118,13 @@ export function CloserView({ teamId }: CloserViewProps) {
     if (!user) return;
     
     try {
-      // Load ALL new appointments (not closed) for the team
+      // Load ALL new appointments (not closed) for the team - newest first
       const { data: allNewData, error: allNewError } = await supabase
         .from('appointments')
         .select('*')
         .eq('team_id', teamId)
         .neq('status', 'CLOSED')
-        .order('start_at_utc', { ascending: true });
+        .order('start_at_utc', { ascending: false });
 
       if (allNewError) throw allNewError;
       setAllNewAppointments(allNewData || []);
