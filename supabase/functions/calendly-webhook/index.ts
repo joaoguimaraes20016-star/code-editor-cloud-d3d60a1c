@@ -93,40 +93,6 @@ serve(async (req) => {
     );
 
     const rawBody = await req.text();
-    
-    // Verify webhook signature
-    const signature = req.headers.get('calendly-webhook-signature');
-    const signingKey = Deno.env.get('CALENDLY_WEBHOOK_SIGNING_KEY') ?? '';
-    
-    const isValidSignature = await verifyWebhookSignature(rawBody, signature, signingKey);
-    
-    if (!isValidSignature) {
-      console.error('Invalid webhook signature');
-      return new Response(
-        JSON.stringify({ error: 'Invalid signature' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    const rawPayload = JSON.parse(rawBody);
-    console.log('Received Calendly webhook');
-
-    // Validate webhook payload
-    let payload;
-    try {
-      payload = webhookPayloadSchema.parse(rawPayload);
-    } catch (validationError) {
-      console.error('Invalid webhook payload:', validationError);
-      return new Response(JSON.stringify({ error: 'Invalid payload format' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const event = payload.event;
-    const inviteeUri = payload.payload?.uri;
-
-    // Get team ID from URL parameter
     const url = new URL(req.url);
     const teamIdParam = url.searchParams.get('team_id');
     
@@ -138,10 +104,10 @@ serve(async (req) => {
       });
     }
 
-    // Verify team exists and has Calendly configured
+    // Fetch team's Calendly configuration including signing key
     const { data: team, error: teamError } = await supabase
       .from('teams')
-      .select('id, calendly_access_token, calendly_event_types')
+      .select('id, calendly_access_token, calendly_event_types, calendly_signing_key')
       .eq('id', teamIdParam)
       .not('calendly_access_token', 'is', null)
       .maybeSingle();
@@ -157,6 +123,45 @@ serve(async (req) => {
     const accessToken = team.calendly_access_token;
     const teamId = team.id;
     const allowedEventTypes = team.calendly_event_types || [];
+    const signingKey = team.calendly_signing_key;
+    
+    // Verify webhook signature using team's signing key
+    if (!signingKey) {
+      console.error('No signing key configured for team');
+      return new Response(JSON.stringify({ error: 'Signing key not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    const signature = req.headers.get('calendly-webhook-signature');
+    const isValidSignature = await verifyWebhookSignature(rawBody, signature, signingKey);
+    
+    if (!isValidSignature) {
+      console.error('Invalid webhook signature');
+      return new Response(
+        JSON.stringify({ error: 'Invalid signature' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const rawPayload = JSON.parse(rawBody);
+    console.log('Received valid Calendly webhook for team:', teamId);
+
+    // Validate webhook payload
+    let payload;
+    try {
+      payload = webhookPayloadSchema.parse(rawPayload);
+    } catch (validationError) {
+      console.error('Invalid webhook payload:', validationError);
+      return new Response(JSON.stringify({ error: 'Invalid payload format' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const event = payload.event;
+    const inviteeUri = payload.payload?.uri;
 
     // Check if event type filtering is enabled (only if filters are set)
     const eventTypeUri = payload.payload?.scheduled_event?.event_type;
