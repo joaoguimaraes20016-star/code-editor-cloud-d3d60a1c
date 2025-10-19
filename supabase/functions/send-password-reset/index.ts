@@ -86,6 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
                     <!-- Header -->
                     <tr>
                       <td style="padding: 40px 40px 20px 40px; text-align: center;">
+                        <img src="https://grwthop.com/logo.png" alt="GRWTH OP Logo" style="width: 80px; height: 80px; margin-bottom: 20px;" />
                         <h1 style="margin: 0; color: #1a1a1a; font-size: 28px; font-weight: 600;">Reset Your Password</h1>
                       </td>
                     </tr>
