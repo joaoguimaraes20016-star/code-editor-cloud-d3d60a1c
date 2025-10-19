@@ -167,28 +167,26 @@ export function EventTypeFilter({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <Select value={selectedEventType} onValueChange={handleFilterChange}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="All Event Types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Event Types</SelectItem>
-            {eventTypes.map((et) => {
-              const isRoundRobin = et.pooling_type === 'round_robin';
-              const isTeam = et.pooling_type === 'collective';
-              const typeLabel = isRoundRobin ? ' (Round Robin)' : isTeam ? ' (Team)' : '';
-              
-              return (
-                <SelectItem key={et.uri} value={et.uri}>
-                  {et.name}{typeLabel}
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
-      </div>
+    <div className="flex flex-col gap-2 min-w-[200px]">
+      <Select value={selectedEventType} onValueChange={handleFilterChange}>
+        <SelectTrigger className="w-full bg-background">
+          <SelectValue placeholder="All Event Types" />
+        </SelectTrigger>
+        <SelectContent className="bg-background z-50">
+          <SelectItem value="all">All Event Types</SelectItem>
+          {eventTypes.map((et) => {
+            const isRoundRobin = et.pooling_type === 'round_robin';
+            const isTeam = et.pooling_type === 'collective';
+            const typeLabel = isRoundRobin ? ' (Round Robin)' : isTeam ? ' (Team)' : '';
+            
+            return (
+              <SelectItem key={et.uri} value={et.uri}>
+                {et.name}{typeLabel}
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
 
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
