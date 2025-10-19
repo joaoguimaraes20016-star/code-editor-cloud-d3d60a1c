@@ -146,17 +146,24 @@ serve(async (req) => {
     // Only verify signature if we have a signing key
     if (signingKey) {
       const signature = req.headers.get('calendly-webhook-signature');
-      const isValidSignature = await verifyWebhookSignature(rawBody, signature, signingKey);
       
-      if (!isValidSignature) {
-        console.error('Invalid webhook signature');
-        return new Response(
-          JSON.stringify({ error: 'Invalid signature' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (signature) {
+        const isValidSignature = await verifyWebhookSignature(rawBody, signature, signingKey);
+        
+        if (!isValidSignature) {
+          console.error('Invalid webhook signature');
+          return new Response(
+            JSON.stringify({ error: 'Invalid signature' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        console.log('Webhook signature verified successfully');
+      } else {
+        console.warn('No signature provided in webhook request, but signing key is configured');
       }
-      
-      console.log('Webhook signature verified successfully');
+    } else {
+      console.warn('Processing webhook WITHOUT signature verification - signing key not configured');
     }
     
     const rawPayload = JSON.parse(rawBody);
