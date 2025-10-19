@@ -1,4 +1,4 @@
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo-transparent.png";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
