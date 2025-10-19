@@ -26,6 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { DollarSign, TrendingUp, Users, Calendar, ArrowLeft, Settings } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { useToast } from "@/hooks/use-toast";
 import { useTeamRole } from "@/hooks/useTeamRole";
 
@@ -420,7 +421,10 @@ const Index = () => {
                 Back
               </Button>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{teamName}</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <Logo size="small" />
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{teamName}</h1>
+            </div>
             <p className="text-muted-foreground mt-1 text-sm md:text-base">
               Track your sales performance and commissions
             </p>

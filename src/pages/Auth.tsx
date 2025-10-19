@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { Logo } from '@/components/Logo';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -650,6 +651,9 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-3 md:p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center px-4 md:px-6 py-4 md:py-6">
+          <div className="flex justify-center mb-4">
+            <Logo size="large" />
+          </div>
           <CardTitle className="text-2xl md:text-3xl font-bold">
             {inviteMode ? '🎉 Welcome to the Team!' : 'GRWTH'}
           </CardTitle>
