@@ -181,9 +181,7 @@ const Dashboard = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in">
           <div className="space-y-2 w-full md:w-auto">
             <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-1.5 md:p-2 bg-primary/20 rounded-lg backdrop-blur-sm">
-                <Logo size="small" />
-              </div>
+              <Logo size="small" />
               <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                 GRWTH Dashboard
               </h1>
