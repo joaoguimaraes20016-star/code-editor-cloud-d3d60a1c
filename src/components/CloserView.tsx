@@ -392,8 +392,8 @@ export function CloserView({ teamId }: CloserViewProps) {
 
       if (updateError) throw updateError;
 
-      // Update sale record
-      const { error: saleError } = await supabase
+      // Update sale record and get the sale_id
+      const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .update({
           revenue: cc, // Revenue is just CC
@@ -401,7 +401,9 @@ export function CloserView({ teamId }: CloserViewProps) {
           setter_commission: setterCommission,
         })
         .eq('customer_name', editingAppointment.lead_name)
-        .eq('team_id', teamId);
+        .eq('team_id', teamId)
+        .select()
+        .single();
 
       if (saleError) throw saleError;
 
@@ -412,7 +414,7 @@ export function CloserView({ teamId }: CloserViewProps) {
         .eq('appointment_id', editingAppointment.id);
 
       // Create new MRR commission records if MRR exists
-      if (mrr > 0 && months > 0) {
+      if (mrr > 0 && months > 0 && saleData) {
         const mrrCommissions = [];
         
         for (let i = 1; i <= months; i++) {
@@ -420,6 +422,7 @@ export function CloserView({ teamId }: CloserViewProps) {
           
           mrrCommissions.push({
             team_id: teamId,
+            sale_id: saleData.id, // Link to the sale
             appointment_id: editingAppointment.id,
             team_member_id: user.id,
             team_member_name: userProfile.full_name,
@@ -435,6 +438,7 @@ export function CloserView({ teamId }: CloserViewProps) {
           if (editingAppointment.setter_id && editingAppointment.setter_name) {
             mrrCommissions.push({
               team_id: teamId,
+              sale_id: saleData.id, // Link to the sale
               appointment_id: editingAppointment.id,
               team_member_id: editingAppointment.setter_id,
               team_member_name: editingAppointment.setter_name,

@@ -63,6 +63,15 @@ export function SalesTable({ sales, userRole, currentUserName, onSaleDeleted }: 
 
     setDeleting(true);
     try {
+      // First delete any MRR commissions linked to this sale
+      const { error: mrrError } = await supabase
+        .from('mrr_commissions')
+        .delete()
+        .eq('sale_id', saleToDelete.id);
+
+      if (mrrError) throw mrrError;
+
+      // Then delete the sale
       const { error } = await supabase
         .from('sales')
         .delete()
@@ -72,7 +81,7 @@ export function SalesTable({ sales, userRole, currentUserName, onSaleDeleted }: 
 
       toast({
         title: 'Sale deleted',
-        description: 'The transaction has been removed successfully',
+        description: 'The transaction and MRR commissions have been removed successfully',
       });
 
       onSaleDeleted?.();
