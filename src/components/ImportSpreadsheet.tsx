@@ -276,7 +276,7 @@ export function ImportSpreadsheet({ teamId, onImport }: ImportSpreadsheetProps) 
             errorCount++;
           }
         } catch (rowError: any) {
-          console.error('Error processing row:', rowError);
+          console.error('Error processing row:', rowError.message);
           errorCount++;
         }
       }
