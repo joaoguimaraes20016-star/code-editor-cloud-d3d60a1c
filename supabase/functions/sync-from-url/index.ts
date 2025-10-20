@@ -50,15 +50,16 @@ Deno.serve(async (req) => {
         .find(idx => idx !== -1) ?? -1;
     };
 
-    const customerIdx = getColumnIndex(['customer name', 'customer', 'prospect name', 'prospect']);
+    const customerIdx = getColumnIndex(['lead name', 'customer name', 'customer', 'prospect name', 'prospect']);
     const offerOwnerIdx = getColumnIndex(['offer owner', 'owner']);
     const setterIdx = getColumnIndex(['setter', 'setter name']);
     const closerIdx = getColumnIndex(['closer', 'closer name', 'sales rep', 'salesrep']);
-    const dateIdx = getColumnIndex(['date', 'close date', 'closed date']);
-    const revenueIdx = getColumnIndex(['revenue', 'amount', 'deal value']);
-    const setterCommissionIdx = getColumnIndex(['setter commission', 'setter comm']);
-    const closerCommissionIdx = getColumnIndex(['closer commission', 'closer comm', 'commission']);
+    const dateIdx = getColumnIndex(['date of call', 'date', 'close date', 'closed date']);
+    const revenueIdx = getColumnIndex(['revenue (total ticket)', 'revenue', 'amount', 'deal value']);
+    const setterCommissionIdx = getColumnIndex(['commission $ (setter)', 'setter commission', 'setter comm']);
+    const closerCommissionIdx = getColumnIndex(['commission $ (closer)', 'closer commission', 'closer comm', 'commission']);
     const statusIdx = getColumnIndex(['status']);
+    const ccCollectedIdx = getColumnIndex(['cash collected', 'cc collected', 'cash']);
     const mrrIdx = getColumnIndex(['mrr', 'mrr amount', 'monthly recurring']);
     const mrrMonthsIdx = getColumnIndex(['mrr months', 'months', 'duration']);
     const emailIdx = getColumnIndex(['email', 'prospect email', 'customer email']);
@@ -70,6 +71,7 @@ Deno.serve(async (req) => {
       revenueIdx,
       setterIdx,
       statusIdx,
+      ccCollectedIdx,
       mrrIdx,
       mrrMonthsIdx,
       emailIdx
@@ -132,11 +134,12 @@ Deno.serve(async (req) => {
           }
         }
 
-        const revenue = revenueIdx >= 0 ? parseFloat(columns[revenueIdx]) || 0 : 0;
-        const setterCommission = setterCommissionIdx >= 0 ? parseFloat(columns[setterCommissionIdx]) || 0 : 0;
-        const closerCommission = closerCommissionIdx >= 0 ? parseFloat(columns[closerCommissionIdx]) || 0 : 0;
+        const revenue = revenueIdx >= 0 ? parseFloat(columns[revenueIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
+        const setterCommission = setterCommissionIdx >= 0 ? parseFloat(columns[setterCommissionIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
+        const closerCommission = closerCommissionIdx >= 0 ? parseFloat(columns[closerCommissionIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
+        const ccCollected = ccCollectedIdx >= 0 ? parseFloat(columns[ccCollectedIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
         const status = statusIdx >= 0 ? columns[statusIdx] : 'closed';
-        const mrr = mrrIdx >= 0 ? parseFloat(columns[mrrIdx]) || 0 : 0;
+        const mrr = mrrIdx >= 0 ? parseFloat(columns[mrrIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
         const mrrMonths = mrrMonthsIdx >= 0 ? parseInt(columns[mrrMonthsIdx]) || 0 : 0;
         const email = emailIdx >= 0 ? columns[emailIdx] : '';
 
