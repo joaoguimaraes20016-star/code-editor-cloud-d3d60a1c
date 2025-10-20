@@ -107,10 +107,10 @@ serve(async (req) => {
       });
     }
 
-    // Fetch team's Calendly configuration including signing key
+    // Fetch team's Calendly configuration including signing key and token expiry
     const { data: team, error: teamError } = await supabase
       .from('teams')
-      .select('id, calendly_access_token, calendly_event_types, calendly_signing_key')
+      .select('id, calendly_access_token, calendly_refresh_token, calendly_token_expires_at, calendly_event_types, calendly_signing_key')
       .eq('id', teamIdParam)
       .not('calendly_access_token', 'is', null)
       .maybeSingle();
@@ -125,7 +125,44 @@ serve(async (req) => {
       });
     }
 
-    const accessToken = team.calendly_access_token;
+    // Check if token is expired or about to expire (within 5 minutes)
+    let accessToken = team.calendly_access_token;
+    if (team.calendly_token_expires_at) {
+      const expiresAt = new Date(team.calendly_token_expires_at);
+      const now = new Date();
+      const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+
+      if (expiresAt < fiveMinutesFromNow) {
+        console.log('Access token expired or expiring soon, attempting to refresh...');
+        
+        // Call refresh function
+        const { data: refreshData, error: refreshError } = await supabase.functions.invoke('refresh-calendly-token', {
+          body: { teamId: teamIdParam }
+        });
+
+        if (refreshError || refreshData?.error) {
+          console.error('Token refresh failed:', refreshError || refreshData?.error);
+          await logWebhookEvent(supabase, teamIdParam, 'token_refresh_failed', 'error', { 
+            error: 'Token expired and refresh failed. Please reconnect Calendly.' 
+          });
+          return new Response(
+            JSON.stringify({ error: 'Calendly token expired. Please reconnect.' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Fetch updated token
+        const { data: updatedTeam } = await supabase
+          .from('teams')
+          .select('calendly_access_token')
+          .eq('id', teamIdParam)
+          .single();
+        
+        accessToken = updatedTeam?.calendly_access_token || accessToken;
+        console.log('Token refreshed successfully for webhook processing');
+      }
+    }
+
     const teamId = team.id;
     const allowedEventTypes = team.calendly_event_types || [];
     

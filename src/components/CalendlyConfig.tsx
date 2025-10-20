@@ -135,21 +135,55 @@ export function CalendlyConfig({
         },
       });
 
-      // Silently handle errors - don't show toasts
       if (!response.ok) {
         console.warn('Failed to fetch Calendly event types:', response.status);
         if (response.status === 401) {
-          setTokenValidationFailed(true);
+          // Try to refresh the token automatically
+          try {
+            const { data: refreshData, error: refreshError } = await supabase.functions.invoke('refresh-calendly-token', {
+              body: { teamId }
+            });
+
+            if (refreshError || refreshData?.error) {
+              setTokenValidationFailed(true);
+              toast({
+                title: "Token Expired",
+                description: "Please disconnect and reconnect Calendly to continue.",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            // Token refreshed, retry fetching event types
+            toast({
+              title: "Token Refreshed",
+              description: "Retrying...",
+            });
+            setTimeout(() => fetchEventTypes(), 500);
+            return;
+          } catch (e) {
+            setTokenValidationFailed(true);
+            toast({
+              title: "Token Expired",
+              description: "Please disconnect and reconnect Calendly.",
+              variant: "destructive",
+            });
+            return;
+          }
         }
         return;
       }
 
       const data = await response.json();
       
-      // Additional check for Calendly error format
       if (data.title === 'Unauthenticated') {
         console.warn('Calendly authentication failed');
         setTokenValidationFailed(true);
+        toast({
+          title: "Token Expired",
+          description: "Please disconnect and reconnect Calendly.",
+          variant: "destructive",
+        });
         return;
       }
       
