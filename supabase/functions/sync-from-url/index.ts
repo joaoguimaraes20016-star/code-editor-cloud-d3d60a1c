@@ -137,20 +137,18 @@ Deno.serve(async (req) => {
         const setterMatch = findTeamMember(rawSetter);
         const closerMatch = findTeamMember(rawCloser);
         
-        const setter = setterMatch ? (setterMatch.profiles as any).full_name : rawSetter;
-        const closer = closerMatch ? (closerMatch.profiles as any).full_name : rawCloser;
+        // ALWAYS use the matched team member's full name, skip if no match found
+        if (!closerMatch) {
+          console.log(`No team member found for closer: ${rawCloser}`);
+          errorCount++;
+          continue;
+        }
+        
+        const setter = setterMatch ? (setterMatch.profiles as any).full_name : null;
+        const closer = (closerMatch.profiles as any).full_name;
 
-        if (!customerName || !closer) {
-          if (dataLines.indexOf(line) < 3) {
-            console.log('Row', dataLines.indexOf(line), 'data:', { 
-              customerName, 
-              closer,
-              customerIdx,
-              closerIdx,
-              columnsLength: columns.length,
-              sample: columns.slice(0, 5)
-            });
-          }
+        if (!customerName) {
+          console.log('Missing customer name');
           errorCount++;
           continue;
         }
