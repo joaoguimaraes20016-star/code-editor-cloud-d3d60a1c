@@ -212,9 +212,13 @@ export function CloserView({ teamId }: CloserViewProps) {
     }
 
     try {
+      console.log('Closing deal - CC:', cc, 'MRR:', mrr, 'Months:', months);
+      
       // Calculate commissions on CC
       const closerCommission = cc * 0.10; // 10% for closer
       const setterCommission = selectedAppointment.setter_id ? cc * 0.05 : 0; // 5% for setter if assigned
+      
+      console.log('Calculated commissions - Closer:', closerCommission, 'Setter:', setterCommission);
 
       // Update appointment to closed - revenue is just CC, MRR tracked separately
       const { error: updateError } = await supabase

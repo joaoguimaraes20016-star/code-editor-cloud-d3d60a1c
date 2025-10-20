@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MetricCard } from "@/components/MetricCard";
 import { SalesTable, Sale } from "@/components/SalesTable";
 import { AddSaleDialog } from "@/components/AddSaleDialog";
+import { FixCommissionsButton } from "@/components/FixCommissionsButton";
 import { RevenueChart } from "@/components/RevenueChart";
 import { CommissionBreakdown } from "@/components/CommissionBreakdown";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -208,9 +209,13 @@ const Index = () => {
     status: 'closed' | 'pending' | 'no-show';
   }) => {
     try {
+      console.log('Adding manual sale - CC:', newSale.ccCollected, 'MRR:', newSale.mrrAmount, 'Months:', newSale.mrrMonths);
+      
       // Calculate commissions on CC
       const closerCommission = newSale.ccCollected * 0.10; // 10% for closer
       const setterCommission = newSale.setterId ? newSale.ccCollected * 0.05 : 0; // 5% for setter if assigned
+      
+      console.log('Calculated commissions - Closer:', closerCommission, 'Setter:', setterCommission);
 
       // Insert sale record with CC as revenue
       const { error } = await supabase
@@ -485,10 +490,13 @@ const Index = () => {
           </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             {isOwner && (
-              <Button variant="outline" onClick={() => navigate(`/team/${teamId}/settings`)} className="text-sm md:text-base w-full sm:w-auto">
-                <Settings className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" />
-                Settings
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => navigate(`/team/${teamId}/settings`)} className="text-sm md:text-base w-full sm:w-auto">
+                  <Settings className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" />
+                  Settings
+                </Button>
+                <FixCommissionsButton teamId={teamId || ''} onFixed={loadSales} />
+              </>
             )}
             <AddSaleDialog onAddSale={handleAddSale} />
           </div>
