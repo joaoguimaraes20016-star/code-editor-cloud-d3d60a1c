@@ -432,9 +432,14 @@ const Index = () => {
   const noShowAppointments = filteredAppointments.filter(apt => apt.status === 'NO_SHOW');
   const totalScheduledAppointments = filteredAppointments.length;
   
-  // Close Rate: Deals CLOSED / Appointments that SHOWED (including those that got closed)
-  const closeRate = showedAppointments.length > 0 
-    ? ((closedAppointments.length / showedAppointments.length) * 100).toFixed(1)
+  // Include closed sales in close rate calculation
+  const closedSalesCount = filteredSales.filter(s => s.status === 'closed').length;
+  const totalClosedDeals = closedAppointments.length + closedSalesCount;
+  const totalShowedOrClosed = showedAppointments.length + closedSalesCount;
+  
+  // Close Rate: All closed deals (appointments + sales) / All showed opportunities (appointments + sales)
+  const closeRate = totalShowedOrClosed > 0 
+    ? ((totalClosedDeals / totalShowedOrClosed) * 100).toFixed(1)
     : '0';
   
   // Show-Up Rate: Appointments that SHOWED / Total SCHEDULED
