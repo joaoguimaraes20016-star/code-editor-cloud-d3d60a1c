@@ -89,6 +89,7 @@ Deno.serve(async (req) => {
         const closer = closerIdx >= 0 ? columns[closerIdx] : '';
 
         if (!customerName || !closer) {
+          console.log('Skipping row - missing required fields:', { customerName, closer });
           errorCount++;
           continue;
         }
@@ -97,8 +98,10 @@ Deno.serve(async (req) => {
         
         // Parse date - skip row if invalid
         const rawDateValue = dateIdx >= 0 ? columns[dateIdx]?.trim() : '';
+        console.log('Processing date:', rawDateValue, 'for customer:', customerName);
+        
         if (rawDateValue && /^[a-zA-Z\s]+$/.test(rawDateValue)) {
-          console.log('Skipping row with text date:', rawDateValue);
+          console.log('Skipping row - text in date field:', rawDateValue);
           errorCount++;
           continue;
         }
@@ -108,6 +111,10 @@ Deno.serve(async (req) => {
           const parsedDate = new Date(rawDateValue);
           if (!isNaN(parsedDate.getTime())) {
             date = parsedDate.toISOString().split('T')[0];
+          } else {
+            console.log('Skipping row - invalid date:', rawDateValue);
+            errorCount++;
+            continue;
           }
         }
 
@@ -184,12 +191,12 @@ Deno.serve(async (req) => {
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Sync error:', error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: error.message || 'Unknown error',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     );
