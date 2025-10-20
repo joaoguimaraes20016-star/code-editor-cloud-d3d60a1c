@@ -274,7 +274,7 @@ const Index = () => {
       console.log('Calculated commissions - Closer:', closerCommission, 'Setter:', setterCommission);
 
       // Insert sale record with CC as revenue
-      const { error } = await supabase
+      const { data: saleData, error } = await supabase
         .from('sales')
         .insert({
           team_id: teamId,
@@ -288,12 +288,14 @@ const Index = () => {
           setter_commission: setterCommission,
           commission: closerCommission,
           status: newSale.status,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
       // Create MRR commission records if MRR exists
-      if (newSale.mrrAmount > 0 && newSale.mrrMonths > 0) {
+      if (newSale.mrrAmount > 0 && newSale.mrrMonths > 0 && saleData) {
         const { startOfMonth, addMonths, format } = await import('date-fns');
         const mrrCommissions = [];
         
@@ -303,6 +305,7 @@ const Index = () => {
           // Closer MRR commission
           mrrCommissions.push({
             team_id: teamId,
+            sale_id: saleData.id, // Link to the sale
             team_member_id: newSale.salesRepId,
             team_member_name: newSale.salesRep,
             role: 'closer',
@@ -318,6 +321,7 @@ const Index = () => {
           if (newSale.setterId) {
             mrrCommissions.push({
               team_id: teamId,
+              sale_id: saleData.id, // Link to the sale
               team_member_id: newSale.setterId,
               team_member_name: newSale.setter,
               role: 'setter',

@@ -170,8 +170,8 @@ export function SalesTable({ sales, userRole, currentUserName, onSaleDeleted }: 
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this transaction for {saleToDelete?.customerName}? 
-              This will permanently remove ${saleToDelete?.revenue.toLocaleString()} in revenue and all associated commissions. 
+            Are you sure you want to delete this transaction for {saleToDelete?.customerName}? 
+              This will permanently remove ${saleToDelete?.revenue.toLocaleString()} in revenue, all associated commissions, and any MRR commissions. 
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

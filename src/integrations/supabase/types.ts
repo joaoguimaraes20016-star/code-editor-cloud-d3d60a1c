@@ -162,6 +162,7 @@ export type Database = {
           prospect_email: string
           prospect_name: string
           role: string
+          sale_id: string | null
           team_id: string
           team_member_id: string
           team_member_name: string
@@ -177,6 +178,7 @@ export type Database = {
           prospect_email: string
           prospect_name: string
           role: string
+          sale_id?: string | null
           team_id: string
           team_member_id: string
           team_member_name: string
@@ -192,6 +194,7 @@ export type Database = {
           prospect_email?: string
           prospect_name?: string
           role?: string
+          sale_id?: string | null
           team_id?: string
           team_member_id?: string
           team_member_name?: string
@@ -202,6 +205,13 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mrr_commissions_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
             referencedColumns: ["id"]
           },
         ]
