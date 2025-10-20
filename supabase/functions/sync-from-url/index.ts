@@ -153,8 +153,16 @@ Deno.serve(async (req) => {
         const setterCommission = setterCommissionIdx >= 0 ? parseFloat(columns[setterCommissionIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
         const closerCommission = closerCommissionIdx >= 0 ? parseFloat(columns[closerCommissionIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
         const ccCollected = ccCollectedIdx >= 0 ? parseFloat(columns[ccCollectedIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
-        const rawStatus = statusIdx >= 0 ? columns[statusIdx]?.toLowerCase() : 'closed';
-        const status = rawStatus === 'closed' ? 'closed' : rawStatus;
+        const rawStatus = statusIdx >= 0 ? columns[statusIdx]?.toLowerCase().trim() : 'closed';
+        // Map CSV status values to database allowed values: closed, pending, no-show
+        let status = 'closed';
+        if (rawStatus.includes('deposit') || rawStatus.includes('pending')) {
+          status = 'pending';
+        } else if (rawStatus.includes('not closed') || rawStatus.includes('no-show') || rawStatus.includes('no show')) {
+          status = 'no-show';
+        } else if (rawStatus.includes('closed')) {
+          status = 'closed';
+        }
         const mrr = mrrIdx >= 0 ? parseFloat(columns[mrrIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
         const mrrMonths = mrrMonthsIdx >= 0 ? parseInt(columns[mrrMonthsIdx]) || 0 : 0;
         const email = emailIdx >= 0 ? columns[emailIdx] : '';
