@@ -175,6 +175,8 @@ const Index = () => {
         status: sale.status,
       }));
 
+      console.log(`Loaded ${formattedSales.length} sales, ${formattedSales.filter(s => s.status === 'closed').length} closed`);
+
       setSales(prev => {
         if (JSON.stringify(prev) !== JSON.stringify(formattedSales)) {
           return formattedSales;
@@ -202,6 +204,8 @@ const Index = () => {
         .order('start_at_utc', { ascending: false });
 
       if (error) throw error;
+      
+      console.log(`Loaded ${data?.length || 0} appointments, ${data?.filter(a => a.status === 'CLOSED').length || 0} closed`);
       
       // Only update if data has changed
       setAppointments(prev => {
@@ -397,7 +401,8 @@ const Index = () => {
   });
 
   // Calculate metrics from CLOSED appointments only (actual deals closed)
-  const closedAppointments = filteredAppointments.filter(apt => apt.status === 'CLOSED' && (apt.cc_collected || 0) > 0);
+  // Note: We filter for CLOSED status only, cc_collected can be 0 for some deals
+  const closedAppointments = filteredAppointments.filter(apt => apt.status === 'CLOSED');
   
   const totalCCRevenue = closedAppointments.reduce((sum, apt) => sum + (Number(apt.cc_collected) || 0), 0);
   

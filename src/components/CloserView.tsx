@@ -276,6 +276,8 @@ export function CloserView({ teamId }: CloserViewProps) {
 
       if (saleError) throw saleError;
 
+      console.log('Deal closed successfully - Appointment updated, Sale created');
+
       // Create MRR commission records if MRR exists
       if (mrr > 0 && months > 0) {
         const mrrCommissions = [];
