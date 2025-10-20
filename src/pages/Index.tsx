@@ -771,7 +771,10 @@ const Index = () => {
                 <h2 className="text-2xl font-semibold">
                   {selectedRep === 'all' ? 'All Sales' : `${selectedRep}'s Sales`}
                 </h2>
-                <ImportSpreadsheet onImport={handleImport} />
+                <ImportSpreadsheet teamId={teamId!} onImport={() => {
+                  loadSales();
+                  loadAppointments();
+                }} />
               </div>
               <SalesTable 
                 sales={filteredSales} 
