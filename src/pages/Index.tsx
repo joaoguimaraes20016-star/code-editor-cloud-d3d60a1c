@@ -712,7 +712,7 @@ const Index = () => {
             title="Close Rate"
             value={`${closeRate}%`}
             icon={Users}
-            trend={`${closedAppointments.length}/${showedAppointments.length} showed closed`}
+            trend={`${totalClosedDeals}/${totalShowedOrClosed} showed closed`}
             trendUp={Number(closeRate) >= 30}
           />
           <MetricCard
