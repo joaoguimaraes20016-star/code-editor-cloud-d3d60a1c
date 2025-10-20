@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +58,13 @@ export function SalesTable({ sales, userRole, currentUserName, onSaleDeleted, te
   const [saleToDelete, setSaleToDelete] = useState<Sale | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editingSetter, setEditingSetter] = useState<string | null>(null);
+  const [editingCloser, setEditingCloser] = useState<string | null>(null);
+  const [editingSetterCommission, setEditingSetterCommission] = useState<string | null>(null);
+  const [editingCloserCommission, setEditingCloserCommission] = useState<string | null>(null);
+  const [tempSetterCommission, setTempSetterCommission] = useState("");
+  const [tempCloserCommission, setTempCloserCommission] = useState("");
+
+  const canEdit = userRole === 'admin' || userRole === 'owner' || userRole === 'offer_owner';
 
   const canDelete = (sale: Sale) => {
     return userRole === 'admin' || userRole === 'owner' || sale.offerOwner === currentUserName;
@@ -132,6 +140,105 @@ export function SalesTable({ sales, userRole, currentUserName, onSaleDeleted, te
     }
   };
 
+  const handleCloserChange = async (saleId: string, newCloser: string) => {
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .update({ sales_rep: newCloser })
+        .eq('id', saleId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Closer updated',
+        description: 'The closer has been updated successfully',
+      });
+
+      setEditingCloser(null);
+      onSaleDeleted?.(); // Refresh data
+    } catch (error: any) {
+      toast({
+        title: 'Error updating closer',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSetterCommissionChange = async (saleId: string) => {
+    const newCommission = parseFloat(tempSetterCommission);
+    
+    if (isNaN(newCommission) || newCommission < 0) {
+      toast({
+        title: 'Invalid commission',
+        description: 'Please enter a valid commission amount',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .update({ setter_commission: newCommission })
+        .eq('id', saleId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Commission updated',
+        description: 'Setter commission has been updated successfully',
+      });
+
+      setEditingSetterCommission(null);
+      setTempSetterCommission("");
+      onSaleDeleted?.(); // Refresh data
+    } catch (error: any) {
+      toast({
+        title: 'Error updating commission',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCloserCommissionChange = async (saleId: string) => {
+    const newCommission = parseFloat(tempCloserCommission);
+    
+    if (isNaN(newCommission) || newCommission < 0) {
+      toast({
+        title: 'Invalid commission',
+        description: 'Please enter a valid commission amount',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .update({ commission: newCommission })
+        .eq('id', saleId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Commission updated',
+        description: 'Closer commission has been updated successfully',
+      });
+
+      setEditingCloserCommission(null);
+      setTempCloserCommission("");
+      onSaleDeleted?.(); // Refresh data
+    } catch (error: any) {
+      toast({
+        title: 'Error updating commission',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getStatusBadge = (status: Sale['status']) => {
     const variants = {
       closed: 'default',
@@ -178,7 +285,7 @@ export function SalesTable({ sales, userRole, currentUserName, onSaleDeleted, te
                 <TableCell className="font-medium">{sale.customerName}</TableCell>
                 <TableCell>{sale.offerOwner}</TableCell>
                 <TableCell>
-                  {userRole === 'admin' && editingSetter === sale.id ? (
+                  {canEdit && editingSetter === sale.id ? (
                     <Select
                       value={sale.setter}
                       onValueChange={(value) => handleSetterChange(sale.id, value)}
@@ -196,21 +303,120 @@ export function SalesTable({ sales, userRole, currentUserName, onSaleDeleted, te
                     </Select>
                   ) : (
                     <div 
-                      onClick={() => userRole === 'admin' && setEditingSetter(sale.id)}
-                      className={userRole === 'admin' ? 'cursor-pointer hover:text-primary' : ''}
+                      onClick={() => canEdit && setEditingSetter(sale.id)}
+                      className={canEdit ? 'cursor-pointer hover:text-primary' : ''}
                     >
                       {sale.setter}
                     </div>
                   )}
                 </TableCell>
-                <TableCell>{sale.salesRep}</TableCell>
+                <TableCell>
+                  {canEdit && editingCloser === sale.id ? (
+                    <Select
+                      value={sale.salesRep}
+                      onValueChange={(value) => handleCloserChange(sale.id, value)}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.name}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div 
+                      onClick={() => canEdit && setEditingCloser(sale.id)}
+                      className={canEdit ? 'cursor-pointer hover:text-primary' : ''}
+                    >
+                      {sale.salesRep}
+                    </div>
+                  )}
+                </TableCell>
                 <TableCell>{new Date(sale.date).toLocaleDateString()}</TableCell>
                 <TableCell>${sale.revenue.toLocaleString()}</TableCell>
                 <TableCell className="text-primary font-semibold">
-                  ${sale.setterCommission.toLocaleString()}
+                  {canEdit && editingSetterCommission === sale.id ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={tempSetterCommission}
+                        onChange={(e) => setTempSetterCommission(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSetterCommissionChange(sale.id);
+                          if (e.key === 'Escape') {
+                            setEditingSetterCommission(null);
+                            setTempSetterCommission("");
+                          }
+                        }}
+                        className="w-24"
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleSetterCommissionChange(sale.id)}
+                      >
+                        ✓
+                      </Button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => {
+                        if (canEdit) {
+                          setEditingSetterCommission(sale.id);
+                          setTempSetterCommission(sale.setterCommission.toString());
+                        }
+                      }}
+                      className={canEdit ? 'cursor-pointer hover:underline' : ''}
+                    >
+                      ${sale.setterCommission.toLocaleString()}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell className="text-accent font-semibold">
-                  ${sale.commission.toLocaleString()}
+                  {canEdit && editingCloserCommission === sale.id ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={tempCloserCommission}
+                        onChange={(e) => setTempCloserCommission(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCloserCommissionChange(sale.id);
+                          if (e.key === 'Escape') {
+                            setEditingCloserCommission(null);
+                            setTempCloserCommission("");
+                          }
+                        }}
+                        className="w-24"
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleCloserCommissionChange(sale.id)}
+                      >
+                        ✓
+                      </Button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => {
+                        if (canEdit) {
+                          setEditingCloserCommission(sale.id);
+                          setTempCloserCommission(sale.commission.toString());
+                        }
+                      }}
+                      className={canEdit ? 'cursor-pointer hover:underline' : ''}
+                    >
+                      ${sale.commission.toLocaleString()}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell>{getStatusBadge(sale.status)}</TableCell>
                 {(userRole === 'admin' || userRole === 'owner') && (
