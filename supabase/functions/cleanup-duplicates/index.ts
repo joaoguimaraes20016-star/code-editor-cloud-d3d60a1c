@@ -20,25 +20,51 @@ Deno.serve(async (req) => {
     // Find all duplicate sales
     const { data: allSales, error: fetchError } = await supabase
       .from('sales')
-      .select('id, customer_name, date, sales_rep, created_at')
+      .select('id, customer_name, date, sales_rep, setter, created_at')
       .eq('team_id', teamId)
       .order('created_at', { ascending: true });
 
     if (fetchError) throw fetchError;
 
-    // Group by customer_name, date, sales_rep and keep only the first one
-    const seen = new Map<string, string>();
-    const duplicateIds: string[] = [];
+    // Normalize name for comparison (remove case sensitivity and partial matches)
+    const normalizeName = (name: string) => {
+      if (!name) return '';
+      const lower = name.toLowerCase().trim();
+      // Map common variations to full names
+      if (lower.includes('jaxon')) return 'jaxon';
+      if (lower.includes('isai')) return 'isai';
+      return lower;
+    };
+
+    // Group by customer_name, date, and normalized sales_rep - keep only the one with the longest name (most complete)
+    const groups = new Map<string, any[]>();
 
     for (const sale of allSales || []) {
-      const key = `${sale.customer_name}-${sale.date}-${sale.sales_rep}`;
+      const normalizedRep = normalizeName(sale.sales_rep);
+      const key = `${sale.customer_name.toLowerCase().trim()}-${sale.date}-${normalizedRep}`;
       
-      if (seen.has(key)) {
-        // This is a duplicate, mark for deletion
-        duplicateIds.push(sale.id);
-      } else {
-        // First occurrence, keep it
-        seen.set(key, sale.id);
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(sale);
+    }
+
+    // For each group, keep the sale with the longest sales_rep name (most complete) and delete the rest
+    const duplicateIds: string[] = [];
+
+    for (const [key, salesInGroup] of groups) {
+      if (salesInGroup.length > 1) {
+        // Sort by sales_rep name length (descending) and created_at (ascending)
+        salesInGroup.sort((a, b) => {
+          const lenDiff = b.sales_rep.length - a.sales_rep.length;
+          if (lenDiff !== 0) return lenDiff;
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        });
+        
+        // Keep the first one (longest name, earliest created), delete the rest
+        for (let i = 1; i < salesInGroup.length; i++) {
+          duplicateIds.push(salesInGroup[i].id);
+        }
       }
     }
 
@@ -58,7 +84,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         deletedCount: duplicateIds.length,
-        remainingCount: seen.size,
+        remainingCount: groups.size,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
