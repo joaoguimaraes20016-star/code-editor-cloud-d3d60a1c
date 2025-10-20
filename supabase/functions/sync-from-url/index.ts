@@ -19,6 +19,19 @@ Deno.serve(async (req) => {
 
     console.log('Fetching CSV from URL:', url);
 
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch team members for name matching
+    const { data: teamMembers } = await supabase
+      .from('team_members')
+      .select('user_id, profiles(full_name)')
+      .eq('team_id', teamId);
+
+    console.log('Team members:', teamMembers);
+
     // Fetch the CSV file
     const csvResponse = await fetch(url);
     if (!csvResponse.ok) {
@@ -31,11 +44,6 @@ Deno.serve(async (req) => {
     if (lines.length < 2) {
       throw new Error('CSV file is empty or has no data rows');
     }
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse header and data
     const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
@@ -107,8 +115,24 @@ Deno.serve(async (req) => {
         }
 
         const customerName = customerIdx >= 0 ? columns[customerIdx] : '';
-        const setter = setterIdx >= 0 ? columns[setterIdx] : '';
-        const closer = closerIdx >= 0 ? columns[closerIdx] : '';
+        const rawSetter = setterIdx >= 0 ? columns[setterIdx] : '';
+        const rawCloser = closerIdx >= 0 ? columns[closerIdx] : '';
+        
+        // Match names to team members (case-insensitive partial match)
+        const findTeamMember = (name: string) => {
+          if (!name) return null;
+          const lowerName = name.toLowerCase().trim();
+          return teamMembers?.find((tm: any) => 
+            tm.profiles?.full_name?.toLowerCase().includes(lowerName) ||
+            lowerName.includes(tm.profiles?.full_name?.toLowerCase())
+          );
+        };
+        
+        const setterMatch = findTeamMember(rawSetter);
+        const closerMatch = findTeamMember(rawCloser);
+        
+        const setter = setterMatch ? (setterMatch.profiles as any).full_name : rawSetter;
+        const closer = closerMatch ? (closerMatch.profiles as any).full_name : rawCloser;
 
         if (!customerName || !closer) {
           if (dataLines.indexOf(line) < 3) {
@@ -167,6 +191,22 @@ Deno.serve(async (req) => {
         const mrrMonths = mrrMonthsIdx >= 0 ? parseInt(columns[mrrMonthsIdx]) || 0 : 0;
         const email = emailIdx >= 0 ? columns[emailIdx] : '';
 
+        // Check for duplicate before inserting
+        const { data: existingSale } = await supabase
+          .from('sales')
+          .select('id')
+          .eq('team_id', teamId)
+          .eq('customer_name', customerName)
+          .eq('date', date)
+          .eq('sales_rep', closer)
+          .maybeSingle();
+
+        if (existingSale) {
+          console.log('Skipping duplicate:', customerName, date);
+          errorCount++;
+          continue;
+        }
+
         // Insert sale
         const { data: saleData, error: saleError } = await supabase
           .from('sales')
@@ -193,23 +233,16 @@ Deno.serve(async (req) => {
 
         // Create appointment if email exists
         if (email && saleData) {
-          const { data: teamMembers } = await supabase
-            .from('team_members')
-            .select('user_id, profiles(full_name)')
-            .eq('team_id', teamId);
-
-          const closerMember = teamMembers?.find(
-            (tm: any) => tm.profiles?.full_name?.toLowerCase() === closer.toLowerCase()
-          );
-
           await supabase.from('appointments').insert([{
             team_id: teamId,
             lead_name: customerName,
             lead_email: email,
             start_at_utc: new Date(date).toISOString(),
             event_type_name: 'Imported',
-            closer_id: closerMember?.user_id || null,
+            closer_id: closerMatch?.user_id || null,
             closer_name: closer,
+            setter_id: setterMatch?.user_id || null,
+            setter_name: setter,
             status: 'CLOSED',
             revenue: revenue,
             mrr_amount: mrr > 0 ? mrr : null,
