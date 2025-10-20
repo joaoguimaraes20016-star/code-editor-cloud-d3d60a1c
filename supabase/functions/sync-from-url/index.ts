@@ -237,23 +237,35 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Create appointment if email exists
+        // Try to match and update existing Calendly appointment
         if (email && saleData) {
-          await supabase.from('appointments').insert([{
-            team_id: teamId,
-            lead_name: customerName,
-            lead_email: email,
-            start_at_utc: new Date(date).toISOString(),
-            event_type_name: 'Imported',
-            closer_id: closerMatch?.user_id || null,
-            closer_name: closer,
-            setter_id: setterMatch?.user_id || null,
-            setter_name: setter,
-            status: 'CLOSED',
-            revenue: revenue,
-            mrr_amount: mrr > 0 ? mrr : null,
-            mrr_months: mrrMonths > 0 ? mrrMonths : null,
-          }]);
+          // Find existing appointment by email and date proximity (within same day)
+          const { data: existingAppointment } = await supabase
+            .from('appointments')
+            .select('id')
+            .eq('team_id', teamId)
+            .eq('lead_email', email)
+            .gte('start_at_utc', new Date(date).toISOString().split('T')[0])
+            .lt('start_at_utc', new Date(new Date(date).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+            .maybeSingle();
+
+          if (existingAppointment) {
+            // Update existing appointment with close details
+            await supabase
+              .from('appointments')
+              .update({
+                closer_id: closerMatch?.user_id || null,
+                closer_name: closer,
+                setter_id: setterMatch?.user_id || null,
+                setter_name: setter,
+                status: status === 'closed' ? 'CLOSED' : status === 'no-show' ? 'NO_SHOW' : 'NEW',
+                revenue: revenue,
+                cc_collected: ccCollected,
+                mrr_amount: mrr > 0 ? mrr : null,
+                mrr_months: mrrMonths > 0 ? mrrMonths : null,
+              })
+              .eq('id', existingAppointment.id);
+          }
         }
 
         successCount++;
