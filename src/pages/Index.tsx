@@ -52,9 +52,9 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ from: Date | null; to: Date | null; preset: DateRangePreset }>({
-    from: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
-    to: new Date(),
-    preset: "last7days"
+    from: null,
+    to: null,
+    preset: "alltime"
   });
   const [setterCommissionPct, setSetterCommissionPct] = useState(5);
   const [closerCommissionPct, setCloserCommissionPct] = useState(10);
