@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { Search, CalendarIcon, Trash2, Clock, Mail, User } from "lucide-react";
+import { Search, CalendarIcon, Trash2, Clock, Mail, User, Hand } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,7 +45,19 @@ import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
+  DrawerClose,
+  DrawerFooter,
 } from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Appointment {
   id: string;
@@ -60,6 +72,13 @@ interface Appointment {
   setter_name: string | null;
 }
 
+interface TeamMember {
+  user_id: string;
+  profiles: {
+    full_name: string;
+  };
+}
+
 interface AllNewAppointmentsProps {
   teamId: string;
   closerCommissionPct: number;
@@ -72,6 +91,13 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
   const isMobile = useIsMobile();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignAppointment, setAssignAppointment] = useState<Appointment | null>(null);
+  const [selectedSetter, setSelectedSetter] = useState<string>("");
+  const [selectedCloser, setSelectedCloser] = useState<string>("");
+  const [notes, setNotes] = useState("");
+  const [assigning, setAssigning] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
   const [customDateRange, setCustomDateRange] = useState<{
@@ -90,6 +116,7 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
 
   useEffect(() => {
     loadTeamData();
+    loadTeamMembers();
     loadAppointments();
 
     // Set up realtime subscription
@@ -132,6 +159,20 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
     }
   };
 
+  const loadTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('user_id, profiles!inner(full_name)')
+        .eq('team_id', teamId);
+
+      if (error) throw error;
+      setTeamMembers(data || []);
+    } catch (error: any) {
+      console.error('Error loading team members:', error);
+    }
+  };
+
   const loadAppointments = async () => {
     try {
       const { data, error } = await supabase
@@ -157,6 +198,60 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
   const handleOpenDeleteDialog = (appointment: Appointment) => {
     setAppointmentToDelete(appointment);
     setDeleteDialogOpen(true);
+  };
+
+  const handleOpenAssignDialog = (appointment: Appointment) => {
+    setAssignAppointment(appointment);
+    setSelectedSetter("");
+    setSelectedCloser("");
+    setNotes("");
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssign = async () => {
+    if (!assignAppointment || !selectedSetter) return;
+
+    setAssigning(true);
+    try {
+      const selectedSetterMember = teamMembers.find(m => m.user_id === selectedSetter);
+      const selectedCloserMember = selectedCloser && selectedCloser !== "none" 
+        ? teamMembers.find(m => m.user_id === selectedCloser) 
+        : null;
+      
+      const updateData: any = {
+        setter_id: selectedSetter,
+        setter_name: selectedSetterMember?.profiles.full_name || "",
+        setter_notes: notes || null,
+      };
+
+      if (selectedCloser && selectedCloser !== "none") {
+        updateData.closer_id = selectedCloser;
+        updateData.closer_name = selectedCloserMember?.profiles.full_name || null;
+      }
+      
+      const { error } = await supabase
+        .from('appointments')
+        .update(updateData)
+        .eq('id', assignAppointment.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Appointment assigned',
+        description: `Assigned to setter: ${selectedSetterMember?.profiles.full_name}${selectedCloserMember ? `, closer: ${selectedCloserMember.profiles.full_name}` : ''}`,
+      });
+
+      setAssignDialogOpen(false);
+      loadAppointments();
+    } catch (error: any) {
+      toast({
+        title: 'Error assigning appointment',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setAssigning(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -489,6 +584,14 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
                 <div className="flex gap-2 pt-2">
                   <Button
                     size="sm"
+                    onClick={() => handleOpenAssignDialog(apt)}
+                    className="flex items-center gap-1"
+                  >
+                    <Hand className="h-3 w-3" />
+                    {apt.setter_id ? "Reassign" : "Assign"}
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={() => handleOpenCloseDeal(apt)}
                     className="flex items-center gap-1 flex-1"
                   >
@@ -547,6 +650,13 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
                     <div className="flex gap-2">
                       <Button
                         size="sm"
+                        onClick={() => handleOpenAssignDialog(apt)}
+                      >
+                        <Hand className="h-3 w-3 mr-1" />
+                        {apt.setter_id ? "Reassign" : "Assign"}
+                      </Button>
+                      <Button
+                        size="sm"
                         onClick={() => handleOpenCloseDeal(apt)}
                       >
                         Close Deal
@@ -583,6 +693,168 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assign Dialog/Drawer */}
+      {isMobile ? (
+        <Drawer open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+          <DrawerContent className="max-h-[90vh]">
+            <DrawerHeader>
+              <DrawerTitle>Assign Appointment</DrawerTitle>
+              <DrawerDescription>
+                Assign this appointment to a setter and closer
+              </DrawerDescription>
+            </DrawerHeader>
+            
+            <div className="px-4 pb-4 space-y-4 overflow-y-auto">
+              {assignAppointment && (
+                <>
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-3 space-y-1.5">
+                      <p className="text-sm font-medium">{assignAppointment.lead_name}</p>
+                      <p className="text-xs text-muted-foreground">{assignAppointment.lead_email}</p>
+                      <p className="text-xs text-muted-foreground">{formatLocalTime(assignAppointment.start_at_utc)}</p>
+                    </CardContent>
+                  </Card>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="setter-mobile" className="text-sm">Setter</Label>
+                    <Select value={selectedSetter} onValueChange={setSelectedSetter}>
+                      <SelectTrigger id="setter-mobile" className="h-11">
+                        <SelectValue placeholder="Select setter..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.user_id} value={member.user_id}>
+                            {member.profiles.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="closer-mobile" className="text-sm">Closer (Optional)</Label>
+                    <Select value={selectedCloser} onValueChange={setSelectedCloser}>
+                      <SelectTrigger id="closer-mobile" className="h-11">
+                        <SelectValue placeholder="Select closer (optional)..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Closer</SelectItem>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.user_id} value={member.user_id}>
+                            {member.profiles.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes-mobile" className="text-sm">Notes (Optional)</Label>
+                    <Textarea
+                      id="notes-mobile"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Add any notes about this appointment..."
+                      className="min-h-[80px] resize-none"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <DrawerFooter className="px-4 pt-4">
+              <Button onClick={handleAssign} disabled={assigning || !selectedSetter} className="h-11 text-base">
+                {assigning ? "Assigning..." : "Assign Appointment"}
+              </Button>
+              <DrawerClose asChild>
+                <Button variant="outline" className="h-11 text-base">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Assign Appointment</DialogTitle>
+              <DialogDescription>
+                Assign this appointment to a setter and closer
+              </DialogDescription>
+            </DialogHeader>
+            
+            {assignAppointment && (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-muted p-4 space-y-2">
+                  <p className="text-sm"><strong>Lead:</strong> {assignAppointment.lead_name}</p>
+                  <p className="text-sm"><strong>Email:</strong> {assignAppointment.lead_email}</p>
+                  <p className="text-sm"><strong>Time:</strong> {formatLocalTime(assignAppointment.start_at_utc)}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="setter">Select Setter</Label>
+                  <Select value={selectedSetter} onValueChange={setSelectedSetter}>
+                    <SelectTrigger id="setter">
+                      <SelectValue placeholder="Choose a setter..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teamMembers.map((member) => (
+                        <SelectItem key={member.user_id} value={member.user_id}>
+                          {member.profiles.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="closer">Select Closer (Optional)</Label>
+                  <Select value={selectedCloser} onValueChange={setSelectedCloser}>
+                    <SelectTrigger id="closer">
+                      <SelectValue placeholder="Choose a closer..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {teamMembers.map((member) => (
+                        <SelectItem key={member.user_id} value={member.user_id}>
+                          {member.profiles.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Add any notes about this appointment..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setAssignDialogOpen(false)}
+                disabled={assigning}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAssign}
+                disabled={!selectedSetter || assigning}
+              >
+                {assigning ? "Assigning..." : "Assign Appointment"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <CloseDealDialog
         appointment={selectedAppointment}
