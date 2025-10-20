@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,47 +19,103 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useParams } from "react-router-dom";
+
+interface TeamMember {
+  id: string;
+  user_id: string;
+  full_name: string;
+  role: string;
+}
 
 interface AddSaleDialogProps {
   onAddSale: (sale: {
     customerName: string;
+    setterId: string;
     setter: string;
+    salesRepId: string;
     salesRep: string;
     offerOwner: string;
     productName: string;
     date: string;
-    revenue: number;
-    setterCommission: number;
-    commission: number;
+    ccCollected: number;
+    mrrAmount: number;
+    mrrMonths: number;
     status: 'closed' | 'pending' | 'no-show';
   }) => void;
 }
 
 export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
+  const { teamId } = useParams();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [offerOwner, setOfferOwner] = useState("");
   const [productName, setProductName] = useState("");
-  const [setter, setSetter] = useState("");
-  const [salesRep, setSalesRep] = useState("");
+  const [setterId, setSetterId] = useState("");
+  const [salesRepId, setSalesRepId] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [revenue, setRevenue] = useState("");
-  const [setterCommission, setSetterCommission] = useState("");
-  const [commission, setCommission] = useState("");
-  const [status, setStatus] = useState<'closed' | 'pending' | 'no-show'>("pending");
+  const [ccCollected, setCcCollected] = useState("");
+  const [mrrAmount, setMrrAmount] = useState("");
+  const [mrrMonths, setMrrMonths] = useState("");
+  const [status, setStatus] = useState<'closed' | 'pending' | 'no-show'>("closed");
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    if (open && teamId) {
+      loadTeamMembers();
+    }
+  }, [open, teamId]);
+
+  const loadTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select(`
+          id,
+          user_id,
+          role,
+          profiles:user_id (
+            full_name
+          )
+        `)
+        .eq('team_id', teamId);
+
+      if (error) throw error;
+
+      const members = data?.map(member => ({
+        id: member.id,
+        user_id: member.user_id,
+        full_name: (member.profiles as any)?.full_name || 'Unknown',
+        role: member.role
+      })) || [];
+
+      setTeamMembers(members);
+    } catch (error) {
+      console.error('Error loading team members:', error);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const selectedSetter = teamMembers.find(m => m.user_id === setterId);
+    const selectedCloser = teamMembers.find(m => m.user_id === salesRepId);
+    
     onAddSale({
       customerName,
-      setter,
-      salesRep,
+      setterId,
+      setter: selectedSetter?.full_name || '',
+      salesRepId,
+      salesRep: selectedCloser?.full_name || '',
       offerOwner,
       productName,
       date,
-      revenue: parseFloat(revenue),
-      setterCommission: parseFloat(setterCommission),
-      commission: parseFloat(commission),
+      ccCollected: parseFloat(ccCollected) || 0,
+      mrrAmount: parseFloat(mrrAmount) || 0,
+      mrrMonths: parseInt(mrrMonths) || 0,
       status,
     });
     setOpen(false);
@@ -70,13 +126,13 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
     setCustomerName("");
     setOfferOwner("");
     setProductName("");
-    setSetter("");
-    setSalesRep("");
+    setSetterId("");
+    setSalesRepId("");
     setDate(new Date().toISOString().split('T')[0]);
-    setRevenue("");
-    setSetterCommission("");
-    setCommission("");
-    setStatus("pending");
+    setCcCollected("");
+    setMrrAmount("");
+    setMrrMonths("");
+    setStatus("closed");
   };
 
   return (
@@ -131,24 +187,38 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
 
             <div className="grid gap-2">
               <Label htmlFor="setter">Setter</Label>
-              <Input
-                id="setter"
-                value={setter}
-                onChange={(e) => setSetter(e.target.value)}
-                placeholder="Mike Johnson"
-                required
-              />
+              <Select value={setterId} onValueChange={setSetterId} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select setter" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamMembers
+                    .filter(m => m.role === 'setter' || m.role === 'admin' || m.role === 'owner')
+                    .map(member => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        {member.full_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="salesRep">Closer</Label>
-              <Input
-                id="salesRep"
-                value={salesRep}
-                onChange={(e) => setSalesRep(e.target.value)}
-                placeholder="Sarah Williams"
-                required
-              />
+              <Select value={salesRepId} onValueChange={setSalesRepId} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select closer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamMembers
+                    .filter(m => m.role === 'closer' || m.role === 'admin' || m.role === 'owner')
+                    .map(member => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        {member.full_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2">
@@ -163,41 +233,38 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="revenue">Revenue</Label>
+              <Label htmlFor="ccCollected">Cash Collected (CC)</Label>
               <Input
-                id="revenue"
+                id="ccCollected"
                 type="number"
                 step="0.01"
-                value={revenue}
-                onChange={(e) => setRevenue(e.target.value)}
+                value={ccCollected}
+                onChange={(e) => setCcCollected(e.target.value)}
                 placeholder="10000"
                 required
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="setterCommission">Setter Commission</Label>
+              <Label htmlFor="mrrAmount">MRR Amount (Monthly)</Label>
               <Input
-                id="setterCommission"
+                id="mrrAmount"
                 type="number"
                 step="0.01"
-                value={setterCommission}
-                onChange={(e) => setSetterCommission(e.target.value)}
+                value={mrrAmount}
+                onChange={(e) => setMrrAmount(e.target.value)}
                 placeholder="500"
-                required
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="commission">Closer Commission</Label>
+              <Label htmlFor="mrrMonths">MRR Months</Label>
               <Input
-                id="commission"
+                id="mrrMonths"
                 type="number"
-                step="0.01"
-                value={commission}
-                onChange={(e) => setCommission(e.target.value)}
-                placeholder="1000"
-                required
+                value={mrrMonths}
+                onChange={(e) => setMrrMonths(e.target.value)}
+                placeholder="12"
               />
             </div>
 

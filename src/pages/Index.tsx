@@ -195,17 +195,24 @@ const Index = () => {
 
   const handleAddSale = async (newSale: {
     customerName: string;
+    setterId: string;
     setter: string;
+    salesRepId: string;
     salesRep: string;
     offerOwner: string;
     productName: string;
     date: string;
-    revenue: number;
-    setterCommission: number;
-    commission: number;
+    ccCollected: number;
+    mrrAmount: number;
+    mrrMonths: number;
     status: 'closed' | 'pending' | 'no-show';
   }) => {
     try {
+      // Calculate commissions on CC
+      const closerCommission = newSale.ccCollected * 0.10; // 10% for closer
+      const setterCommission = newSale.setterId ? newSale.ccCollected * 0.05 : 0; // 5% for setter if assigned
+
+      // Insert sale record with CC as revenue
       const { error } = await supabase
         .from('sales')
         .insert({
@@ -216,17 +223,63 @@ const Index = () => {
           setter: newSale.setter,
           sales_rep: newSale.salesRep,
           date: newSale.date,
-          revenue: newSale.revenue,
-          setter_commission: newSale.setterCommission,
-          commission: newSale.commission,
+          revenue: newSale.ccCollected, // Revenue is CC
+          setter_commission: setterCommission,
+          commission: closerCommission,
           status: newSale.status,
         });
 
       if (error) throw error;
 
+      // Create MRR commission records if MRR exists
+      if (newSale.mrrAmount > 0 && newSale.mrrMonths > 0) {
+        const { startOfMonth, addMonths, format } = await import('date-fns');
+        const mrrCommissions = [];
+        
+        for (let i = 1; i <= newSale.mrrMonths; i++) {
+          const monthDate = startOfMonth(addMonths(new Date(), i));
+          
+          // Closer MRR commission (10%)
+          mrrCommissions.push({
+            team_id: teamId,
+            team_member_id: newSale.salesRepId,
+            team_member_name: newSale.salesRep,
+            role: 'closer',
+            prospect_name: newSale.customerName,
+            prospect_email: '', // Not available for manual sales
+            month_date: format(monthDate, 'yyyy-MM-dd'),
+            mrr_amount: newSale.mrrAmount,
+            commission_amount: newSale.mrrAmount * 0.10,
+            commission_percentage: 10,
+          });
+
+          // Setter MRR commission (5%) if there's a setter
+          if (newSale.setterId) {
+            mrrCommissions.push({
+              team_id: teamId,
+              team_member_id: newSale.setterId,
+              team_member_name: newSale.setter,
+              role: 'setter',
+              prospect_name: newSale.customerName,
+              prospect_email: '', // Not available for manual sales
+              month_date: format(monthDate, 'yyyy-MM-dd'),
+              mrr_amount: newSale.mrrAmount,
+              commission_amount: newSale.mrrAmount * 0.05,
+              commission_percentage: 5,
+            });
+          }
+        }
+
+        const { error: mrrError } = await supabase
+          .from('mrr_commissions')
+          .insert(mrrCommissions);
+
+        if (mrrError) throw mrrError;
+      }
+
       toast({
         title: 'Sale added',
-        description: 'New sale has been added successfully',
+        description: 'New sale has been added successfully with all commissions',
       });
 
       loadSales();
