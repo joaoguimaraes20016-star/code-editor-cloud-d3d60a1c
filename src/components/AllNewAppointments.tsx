@@ -414,40 +414,51 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by lead, email, setter, closer, or event type..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by lead, email, setter, closer, or event type..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          
+          <div className="flex gap-2 items-center">
+            <Select value={dateFilter} onValueChange={(value) => {
+              setDateFilter(value);
+              if (value === "custom") {
+                if (isMobile) {
+                  setDateDrawerOpen(true);
+                }
+              }
+            }}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="last7days">Last 7 Days</SelectItem>
+                <SelectItem value="last30days">Last 30 Days</SelectItem>
+                <SelectItem value="next7days">Next 7 Days</SelectItem>
+                <SelectItem value="next30days">Next 30 Days</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
+              
+            <EventTypeFilter
+              teamId={teamId}
+              onFilterChange={setEventTypeFilter}
+              calendlyAccessToken={teamData?.calendly_access_token}
+              calendlyOrgUri={teamData?.calendly_organization_uri}
+            />
+          </div>
         </div>
         
-        <div className="flex gap-2 items-center flex-wrap">
-          <Select value={dateFilter} onValueChange={(value) => {
-            setDateFilter(value);
-            if (value === "custom") {
-              if (isMobile) {
-                setDateDrawerOpen(true);
-              }
-            }
-          }}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Time</SelectItem>
-              <SelectItem value="last7days">Last 7 Days</SelectItem>
-              <SelectItem value="last30days">Last 30 Days</SelectItem>
-              <SelectItem value="next7days">Next 7 Days</SelectItem>
-              <SelectItem value="next30days">Next 30 Days</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
-            </SelectContent>
-          </Select>
-            
-          {dateFilter === "custom" && !isMobile && (
+        {dateFilter === "custom" && !isMobile && (
+          <div>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -490,45 +501,38 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
                 />
               </PopoverContent>
             </Popover>
-          )}
+          </div>
+        )}
 
-          {dateFilter === "custom" && isMobile && (
-            <Drawer open={dateDrawerOpen} onOpenChange={setDateDrawerOpen}>
-              <DrawerContent>
-                <DrawerHeader>
-                  <DrawerTitle>Select Date Range</DrawerTitle>
-                  <DrawerDescription>
-                    Choose a custom date range to filter appointments
-                  </DrawerDescription>
-                </DrawerHeader>
-                <div className="w-full px-2 pb-4">
-                  <Calendar
-                    mode="range"
-                    selected={{
-                      from: customDateRange.from,
-                      to: customDateRange.to,
-                    }}
-                    onSelect={(range) =>
-                      setCustomDateRange({
-                        from: range?.from,
-                        to: range?.to,
-                      })
-                    }
-                    numberOfMonths={1}
-                    className={cn("p-3")}
-                  />
-                </div>
-              </DrawerContent>
-            </Drawer>
-          )}
-
-          <EventTypeFilter
-            teamId={teamId}
-            onFilterChange={setEventTypeFilter}
-            calendlyAccessToken={teamData?.calendly_access_token}
-            calendlyOrgUri={teamData?.calendly_organization_uri}
-          />
-        </div>
+        {dateFilter === "custom" && isMobile && (
+          <Drawer open={dateDrawerOpen} onOpenChange={setDateDrawerOpen}>
+            <DrawerContent>
+              <DrawerHeader>
+                <DrawerTitle>Select Date Range</DrawerTitle>
+                <DrawerDescription>
+                  Choose a custom date range to filter appointments
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="w-full px-2 pb-4">
+                <Calendar
+                  mode="range"
+                  selected={{
+                    from: customDateRange.from,
+                    to: customDateRange.to,
+                  }}
+                  onSelect={(range) =>
+                    setCustomDateRange({
+                      from: range?.from,
+                      to: range?.to,
+                    })
+                  }
+                  numberOfMonths={1}
+                  className={cn("p-3")}
+                />
+              </div>
+            </DrawerContent>
+          </Drawer>
+        )}
       </div>
 
       {filteredAppointments.length === 0 ? (
