@@ -41,6 +41,8 @@ Deno.serve(async (req) => {
     const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
     const dataLines = lines.slice(1);
 
+    console.log('CSV Headers detected:', headers);
+
     // Find column indices
     const getColumnIndex = (possibleNames: string[]) => {
       return possibleNames
@@ -60,6 +62,18 @@ Deno.serve(async (req) => {
     const mrrIdx = getColumnIndex(['mrr', 'mrr amount', 'monthly recurring']);
     const mrrMonthsIdx = getColumnIndex(['mrr months', 'months', 'duration']);
     const emailIdx = getColumnIndex(['email', 'prospect email', 'customer email']);
+
+    console.log('Column indices found:', {
+      customerIdx,
+      closerIdx,
+      dateIdx,
+      revenueIdx,
+      setterIdx,
+      statusIdx,
+      mrrIdx,
+      mrrMonthsIdx,
+      emailIdx
+    });
 
     let successCount = 0;
     let errorCount = 0;
