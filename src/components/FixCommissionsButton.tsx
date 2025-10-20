@@ -28,7 +28,8 @@ export function FixCommissionsButton({ teamId, onComplete }: FixCommissionsButto
           title: "Cleanup Complete",
           description: `Removed ${data.deletedCount} duplicate sales. ${data.remainingCount} unique sales remaining.`,
         });
-        onComplete();
+        // Force page reload to clear any cached data
+        window.location.reload();
       }
     } catch (error: any) {
       console.error('Cleanup error:', error);
