@@ -533,7 +533,7 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
 
       {filteredAppointments.length === 0 ? (
         <div className="p-8 text-center text-muted-foreground">
-          No new appointments found
+          No appointments found
         </div>
       ) : isMobile ? (
         <div className="space-y-3">
