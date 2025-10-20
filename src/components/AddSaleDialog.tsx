@@ -225,7 +225,7 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border z-50">
                   {teamMembers
-                    .filter(m => m.role === 'setter' || m.role === 'admin' || m.role === 'owner')
+                    .filter(m => m.role === 'setter' || m.role === 'admin' || m.role === 'owner' || m.role === 'offer_owner')
                     .map(member => (
                       <SelectItem key={member.user_id} value={member.user_id}>
                         {member.full_name}
@@ -243,7 +243,7 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border z-50">
                   {teamMembers
-                    .filter(m => m.role === 'closer' || m.role === 'admin' || m.role === 'owner')
+                    .filter(m => m.role === 'closer' || m.role === 'admin' || m.role === 'owner' || m.role === 'offer_owner')
                     .map(member => (
                       <SelectItem key={member.user_id} value={member.user_id}>
                         {member.full_name}
