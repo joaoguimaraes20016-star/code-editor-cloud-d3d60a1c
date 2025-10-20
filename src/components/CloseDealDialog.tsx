@@ -193,8 +193,8 @@ export function CloseDealDialog({
             });
           }
 
-          // Setter MRR commission if there's a setter and NOT an offer owner
-          if (appointment.setter_id && appointment.setter_name && !isSetterOfferOwner) {
+          // Setter MRR commission if there's a setter
+          if (appointment.setter_id && appointment.setter_name) {
             mrrCommissions.push({
               team_id: teamId,
               sale_id: saleData.id,

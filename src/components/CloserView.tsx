@@ -329,8 +329,8 @@ export function CloserView({ teamId }: CloserViewProps) {
             });
           }
 
-          // Setter MRR commission if there's a setter and NOT an offer owner
-          if (selectedAppointment.setter_id && selectedAppointment.setter_name && !isSetterOfferOwner) {
+          // Setter MRR commission if there's a setter (track MRR even for offer owners)
+          if (selectedAppointment.setter_id && selectedAppointment.setter_name) {
             mrrCommissions.push({
               team_id: teamId,
               sale_id: saleData.id,
@@ -418,20 +418,8 @@ export function CloserView({ teamId }: CloserViewProps) {
       
       const isOfferOwner = teamMemberData?.role === 'offer_owner';
       
-      // Check if setter is offer owner
-      let isSetterOfferOwner = false;
-      if (editingAppointment.setter_id) {
-        const { data: setterData } = await supabase
-          .from('team_members')
-          .select('role')
-          .eq('user_id', editingAppointment.setter_id)
-          .eq('team_id', teamId)
-          .single();
-        isSetterOfferOwner = setterData?.role === 'offer_owner';
-      }
-      
       const closerCommission = isOfferOwner ? 0 : cc * (closerCommissionPct / 100);
-      const setterCommission = (editingAppointment.setter_id && !isSetterOfferOwner) ? cc * (setterCommissionPct / 100) : 0;
+      const setterCommission = editingAppointment.setter_id ? cc * (setterCommissionPct / 100) : 0;
 
       // Update appointment - revenue is just CC
       const { error: updateError } = await supabase
@@ -492,8 +480,7 @@ export function CloserView({ teamId }: CloserViewProps) {
             });
           }
 
-          // Setter MRR commission if there's a setter and NOT an offer owner
-          if (editingAppointment.setter_id && editingAppointment.setter_name && !isSetterOfferOwner) {
+          if (editingAppointment.setter_id && editingAppointment.setter_name) {
             mrrCommissions.push({
               team_id: teamId,
               sale_id: saleData.id, // Link to the sale

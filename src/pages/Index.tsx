@@ -324,8 +324,8 @@ const Index = () => {
             });
           }
 
-          // Setter MRR commission if there's a setter and NOT an offer owner
-          if (newSale.setterId && !isSetterOfferOwner) {
+          // Setter MRR commission if there's a setter (track MRR even for offer owners)
+          if (newSale.setterId) {
             mrrCommissions.push({
               team_id: teamId,
               sale_id: saleData.id, // Link to the sale
