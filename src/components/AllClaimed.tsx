@@ -248,15 +248,25 @@ export function AllClaimed({ teamId, closerCommissionPct, setterCommissionPct }:
                 )}
               </CardContent>
               
-              <CardFooter className="p-3 pt-0">
+              <CardFooter className="p-3 pt-0 flex gap-2">
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => {
+                    setCloseDealAppointment(apt);
+                    setCloseDealOpen(true);
+                  }}
+                  className="flex-1 h-10 text-sm"
+                >
+                  Close Deal
+                </Button>
                 <Button
                   size="sm"
                   variant="destructive"
                   onClick={() => handleOpenDeleteDialog(apt)}
-                  className="w-full h-10 text-sm"
+                  className="h-10 w-10 p-0"
                 >
-                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                  Delete
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </CardFooter>
             </Card>
@@ -311,15 +321,28 @@ export function AllClaimed({ teamId, closerCommissionPct, setterCommissionPct }:
                </TableCell>
                <TableCell className="max-w-xs truncate">{apt.setter_notes || '-'}</TableCell>
                <TableCell>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleOpenDeleteDialog(apt)}
-                    className="flex items-center gap-1"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </TableCell>
+                 <div className="flex gap-2">
+                   <Button
+                     size="sm"
+                     variant="default"
+                     onClick={() => {
+                       setCloseDealAppointment(apt);
+                       setCloseDealOpen(true);
+                     }}
+                     className="flex items-center gap-1"
+                   >
+                     Close Deal
+                   </Button>
+                   <Button
+                     size="sm"
+                     variant="destructive"
+                     onClick={() => handleOpenDeleteDialog(apt)}
+                     className="flex items-center gap-1"
+                   >
+                     <Trash2 className="h-3 w-3" />
+                   </Button>
+                 </div>
+               </TableCell>
              </TableRow>
            ))}
          </TableBody>

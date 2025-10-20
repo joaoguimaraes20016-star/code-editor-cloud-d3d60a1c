@@ -15,6 +15,7 @@ import { NewAppointments } from "@/components/NewAppointments";
 import { AllNewAppointments } from "@/components/AllNewAppointments";
 import { AllClaimed } from "@/components/AllClaimed";
 import { MyClaimed } from "@/components/MyClaimed";
+import { CloserView } from "@/components/CloserView";
 import { MRRDashboard } from "@/components/MRRDashboard";
 import { CalendlyConfig } from "@/components/CalendlyConfig";
 import {
@@ -618,6 +619,7 @@ const Index = () => {
   }
 
   const canViewSetterScheduling = userRole === 'setter' || userRole === 'admin' || isOwner;
+  const canViewCloserScheduling = userRole === 'closer' || userRole === 'admin' || isOwner;
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -655,10 +657,13 @@ const Index = () => {
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-grid h-auto">
+          <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-grid h-auto">
             <TabsTrigger value="dashboard" className="text-xs md:text-sm py-2 md:py-2.5">Dashboard</TabsTrigger>
             {canViewSetterScheduling && (
               <TabsTrigger value="scheduling" className="text-xs md:text-sm py-2 md:py-2.5">Appointments</TabsTrigger>
+            )}
+            {canViewCloserScheduling && (
+              <TabsTrigger value="closer" className="text-xs md:text-sm py-2 md:py-2.5">Closer View</TabsTrigger>
             )}
           </TabsList>
 
@@ -867,6 +872,12 @@ const Index = () => {
               )}
             </Tabs>
           </TabsContent>
+
+          {canViewCloserScheduling && (
+            <TabsContent value="closer" className="mt-6">
+              <CloserView teamId={teamId!} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

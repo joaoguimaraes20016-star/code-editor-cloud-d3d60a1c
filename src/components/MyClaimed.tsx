@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { MessageSquare, Clock, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { CloseDealDialog } from "@/components/CloseDealDialog";
@@ -238,6 +238,20 @@ export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct }: 
               />
             </div>
           </CardContent>
+          
+          <CardFooter className="p-3 pt-0">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => {
+                setCloseDealAppointment(apt);
+                setCloseDealOpen(true);
+              }}
+              className="w-full h-10 text-sm"
+            >
+              Close Deal
+            </Button>
+          </CardFooter>
         </Card>
       ))}
     </div>
@@ -252,6 +266,7 @@ export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct }: 
             <TableHead>Email</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Setter Notes</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -307,6 +322,19 @@ export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct }: 
                     </Popover>
                   )}
                 </div>
+              </TableCell>
+              <TableCell>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => {
+                    setCloseDealAppointment(apt);
+                    setCloseDealOpen(true);
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  Close Deal
+                </Button>
               </TableCell>
             </TableRow>
           ))}

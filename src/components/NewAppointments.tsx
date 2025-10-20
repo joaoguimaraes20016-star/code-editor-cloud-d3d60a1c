@@ -574,6 +574,17 @@ export function NewAppointments({ teamId, closerCommissionPct, setterCommissionP
                 </Button>
                 <Button
                   size="sm"
+                  variant="default"
+                  onClick={() => {
+                    setCloseDealAppointment(apt);
+                    setCloseDealOpen(true);
+                  }}
+                  className="flex-1 h-10 text-sm"
+                >
+                  Close Deal
+                </Button>
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={() => handleOpenDeleteDialog(apt)}
                   className="h-10 w-10 p-0"
@@ -639,6 +650,17 @@ export function NewAppointments({ teamId, closerCommissionPct, setterCommissionP
                    >
                      <Hand className="h-3 w-3" />
                      Assign
+                   </Button>
+                   <Button
+                     size="sm"
+                     variant="default"
+                     onClick={() => {
+                       setCloseDealAppointment(apt);
+                       setCloseDealOpen(true);
+                     }}
+                     className="flex items-center gap-1"
+                   >
+                     Close Deal
                    </Button>
                    <Button
                      size="sm"
