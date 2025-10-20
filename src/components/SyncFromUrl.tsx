@@ -45,9 +45,15 @@ export function SyncFromUrl({ teamId, onSync }: SyncFromUrlProps) {
       if (error) throw error;
 
       if (data.success) {
+        const { successCount = 0, duplicateCount = 0, errorCount = 0 } = data;
+        const messages = [];
+        if (successCount > 0) messages.push(`${successCount} new records`);
+        if (duplicateCount > 0) messages.push(`${duplicateCount} duplicates skipped`);
+        if (errorCount > 0) messages.push(`${errorCount} failed`);
+        
         toast({
-          title: "Sync Successful",
-          description: `Imported ${data.successCount} records${data.errorCount > 0 ? ` (${data.errorCount} failed)` : ''}`,
+          title: "Sync Complete",
+          description: messages.join(', ') || "No changes made",
         });
         onSync();
         setOpen(false);

@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
 
     let successCount = 0;
     let errorCount = 0;
+    let duplicateCount = 0;
 
     for (const line of dataLines) {
       try {
@@ -203,7 +204,7 @@ Deno.serve(async (req) => {
 
         if (existingSale) {
           console.log('Skipping duplicate:', customerName, date);
-          errorCount++;
+          duplicateCount++;
           continue;
         }
 
@@ -261,6 +262,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         successCount,
+        duplicateCount,
         errorCount,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
