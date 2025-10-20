@@ -32,6 +32,18 @@ Deno.serve(async (req) => {
 
     console.log('Team members:', teamMembers);
 
+    // Fetch team commission settings
+    const { data: teamSettings } = await supabase
+      .from('teams')
+      .select('setter_commission_percentage, closer_commission_percentage')
+      .eq('id', teamId)
+      .single();
+
+    const setterCommissionPct = Number(teamSettings?.setter_commission_percentage) || 5;
+    const closerCommissionPct = Number(teamSettings?.closer_commission_percentage) || 10;
+
+    console.log('Commission settings:', { setterCommissionPct, closerCommissionPct });
+
     // Fetch the CSV file
     const csvResponse = await fetch(url);
     if (!csvResponse.ok) {
@@ -178,9 +190,20 @@ Deno.serve(async (req) => {
         }
 
         const revenue = revenueIdx >= 0 ? parseFloat(columns[revenueIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
-        const setterCommission = setterCommissionIdx >= 0 ? parseFloat(columns[setterCommissionIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
-        const closerCommission = closerCommissionIdx >= 0 ? parseFloat(columns[closerCommissionIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
+        const csvSetterCommission = setterCommissionIdx >= 0 ? parseFloat(columns[setterCommissionIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
+        const csvCloserCommission = closerCommissionIdx >= 0 ? parseFloat(columns[closerCommissionIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
         const ccCollected = ccCollectedIdx >= 0 ? parseFloat(columns[ccCollectedIdx]?.replace(/[^0-9.-]/g, '')) || 0 : 0;
+        
+        // Calculate commissions based on revenue if not provided in CSV
+        // Use the actual revenue amount (revenue or ccCollected, whichever is greater)
+        const baseAmount = Math.max(revenue, ccCollected);
+        const setterCommission = csvSetterCommission > 0 
+          ? csvSetterCommission 
+          : (setter ? baseAmount * (setterCommissionPct / 100) : 0);
+        const closerCommission = csvCloserCommission > 0 
+          ? csvCloserCommission 
+          : baseAmount * (closerCommissionPct / 100);
+        
         const rawStatus = statusIdx >= 0 ? columns[statusIdx]?.toLowerCase().trim() : 'closed';
         // Map CSV status values to database allowed values: closed, pending, no-show
         let status = 'closed';
