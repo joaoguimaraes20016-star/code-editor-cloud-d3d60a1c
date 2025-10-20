@@ -369,7 +369,6 @@ export function NewAppointments({ teamId, closerCommissionPct, setterCommissionP
   };
 
   const filteredAppointments = getFilteredByDate(appointments)
-    .filter(apt => apt.setter_id === null)
     .filter(apt => {
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
@@ -570,7 +569,7 @@ export function NewAppointments({ teamId, closerCommissionPct, setterCommissionP
                   className="flex-1 h-10 text-sm"
                 >
                   <Hand className="h-3.5 w-3.5 mr-1.5" />
-                  Assign
+                  {apt.setter_id ? "Reassign" : "Assign"}
                 </Button>
                 <Button
                   size="sm"
@@ -642,14 +641,14 @@ export function NewAppointments({ teamId, closerCommissionPct, setterCommissionP
                 </span>
                </TableCell>
                <TableCell>
-                 <div className="flex gap-2">
+                  <div className="flex gap-2">
                    <Button
                      size="sm"
                      onClick={() => handleOpenAssignDialog(apt)}
                      className="flex items-center gap-1"
                    >
                      <Hand className="h-3 w-3" />
-                     Assign
+                     {apt.setter_id ? "Reassign" : "Assign"}
                    </Button>
                    <Button
                      size="sm"
