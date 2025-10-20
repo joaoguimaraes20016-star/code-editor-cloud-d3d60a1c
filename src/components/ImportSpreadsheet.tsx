@@ -216,55 +216,55 @@ export function ImportSpreadsheet({ teamId, onImport }: ImportSpreadsheetProps) 
 
             // Create MRR commission records if MRR data exists
             if (mrr > 0 && mrrMonths > 0 && saleData) {
-            const { startOfMonth, addMonths, format } = await import('date-fns');
-            const mrrCommissions = [];
-            
-            for (let i = 1; i <= mrrMonths; i++) {
-              const monthDate = startOfMonth(addMonths(new Date(), i));
+              const { startOfMonth, addMonths, format } = await import('date-fns');
+              const mrrCommissions = [];
               
-              // Closer MRR commission
-              if (closer !== offerOwner) {
-                mrrCommissions.push({
-                  team_id: teamId,
-                  sale_id: saleData.id,
-                  team_member_name: closer,
-                  role: 'closer',
-                  prospect_name: customerName,
-                  prospect_email: email,
-                  month_date: format(monthDate, 'yyyy-MM-dd'),
-                  mrr_amount: mrr,
-                  commission_amount: closerCommission > 0 ? mrr * (closerCommission / revenue) : 0,
-                  commission_percentage: closerCommission > 0 ? (closerCommission / revenue) * 100 : 0,
-                });
+              for (let i = 1; i <= mrrMonths; i++) {
+                const monthDate = startOfMonth(addMonths(new Date(), i));
+                
+                // Closer MRR commission
+                if (closer !== offerOwner) {
+                  mrrCommissions.push({
+                    team_id: teamId,
+                    sale_id: saleData.id,
+                    team_member_name: closer,
+                    role: 'closer',
+                    prospect_name: customerName,
+                    prospect_email: email,
+                    month_date: format(monthDate, 'yyyy-MM-dd'),
+                    mrr_amount: mrr,
+                    commission_amount: closerCommission > 0 ? mrr * (closerCommission / revenue) : 0,
+                    commission_percentage: closerCommission > 0 ? (closerCommission / revenue) * 100 : 0,
+                  });
+                }
+
+                // Setter MRR commission
+                if (setter) {
+                  mrrCommissions.push({
+                    team_id: teamId,
+                    sale_id: saleData.id,
+                    team_member_name: setter,
+                    role: 'setter',
+                    prospect_name: customerName,
+                    prospect_email: email,
+                    month_date: format(monthDate, 'yyyy-MM-dd'),
+                    mrr_amount: mrr,
+                    commission_amount: setterCommission > 0 ? mrr * (setterCommission / revenue) : 0,
+                    commission_percentage: setterCommission > 0 ? (setterCommission / revenue) * 100 : 0,
+                  });
+                }
               }
 
-              // Setter MRR commission
-              if (setter) {
-                mrrCommissions.push({
-                  team_id: teamId,
-                  sale_id: saleData.id,
-                  team_member_name: setter,
-                  role: 'setter',
-                  prospect_name: customerName,
-                  prospect_email: email,
-                  month_date: format(monthDate, 'yyyy-MM-dd'),
-                  mrr_amount: mrr,
-                  commission_amount: setterCommission > 0 ? mrr * (setterCommission / revenue) : 0,
-                  commission_percentage: setterCommission > 0 ? (setterCommission / revenue) * 100 : 0,
-                });
+              if (mrrCommissions.length > 0) {
+                const { error: mrrError } = await supabase
+                  .from('mrr_commissions')
+                  .insert(mrrCommissions);
+
+                if (mrrError) console.error('MRR commission insert error:', mrrError);
               }
             }
 
-            if (mrrCommissions.length > 0) {
-              const { error: mrrError } = await supabase
-                .from('mrr_commissions')
-                .insert(mrrCommissions);
-
-              if (mrrError) console.error('MRR commission insert error:', mrrError);
-            }
-          }
-
-          successCount++;
+            successCount++;
           } catch (insertError: any) {
             console.error('Database insert error:', insertError);
             console.error('Failed data:', { customerName, date, closer, setter });
