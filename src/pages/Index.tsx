@@ -15,6 +15,7 @@ import { NewAppointments } from "@/components/NewAppointments";
 import { AllNewAppointments } from "@/components/AllNewAppointments";
 import { AllClaimed } from "@/components/AllClaimed";
 import { MyClaimed } from "@/components/MyClaimed";
+import { CloserView } from "@/components/CloserView";
 import { MRRDashboard } from "@/components/MRRDashboard";
 import { CalendlyConfig } from "@/components/CalendlyConfig";
 import {
@@ -803,6 +804,7 @@ const Index = () => {
                   {canViewSetterScheduling && <TabsTrigger value="unassigned" className="text-xs md:text-sm flex-1 md:flex-none">Unassigned Appointments</TabsTrigger>}
                   {canViewSetterScheduling && <TabsTrigger value="claimed" className="text-xs md:text-sm flex-1 md:flex-none">Assigned Appointments</TabsTrigger>}
                   {canViewSetterScheduling && <TabsTrigger value="my-claimed" className="text-xs md:text-sm flex-1 md:flex-none">My Assigned</TabsTrigger>}
+                  <TabsTrigger value="closer" className="text-xs md:text-sm flex-1 md:flex-none">Closer View</TabsTrigger>
                 </TabsList>
               </div>
 
@@ -865,6 +867,16 @@ const Index = () => {
                   </TabsContent>
                 </>
               )}
+
+              <TabsContent value="closer" className="mt-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Closer View</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Close deals and manage appointments
+                  </p>
+                  <CloserView teamId={teamId!} />
+                </div>
+              </TabsContent>
             </Tabs>
           </TabsContent>
         </Tabs>
