@@ -85,43 +85,47 @@ export function ImportSpreadsheet({ teamId, onImport }: ImportSpreadsheetProps) 
           }
           columns.push(current.trim());
           
+          // Log the entire row for debugging
+          console.log('Parsing CSV row:', columns);
+          
           const customerName = customerIdx >= 0 ? columns[customerIdx] : '';
           const setter = setterIdx >= 0 ? columns[setterIdx] : '';
           const closer = closerIdx >= 0 ? columns[closerIdx] : '';
           
           if (!customerName || !closer) {
+            console.log('Skipping - missing customer or closer');
             errorCount++;
             continue;
           }
 
           const offerOwner = offerOwnerIdx >= 0 ? columns[offerOwnerIdx] : '';
           
-          // Validate and parse date - VERY strict validation
-          let dateStr = '';
-          if (dateIdx >= 0 && columns[dateIdx]) {
-            dateStr = columns[dateIdx].trim();
-          }
+          // Get the raw date value and log it
+          const rawDateValue = dateIdx >= 0 ? columns[dateIdx]?.trim() : '';
+          console.log('Raw date value from CSV:', rawDateValue, 'at index:', dateIdx);
           
-          // Skip row entirely if date looks invalid
-          if (dateStr && (/^[a-zA-Z]+$/.test(dateStr) || dateStr.toLowerCase().includes('deposit'))) {
-            console.log('Skipping row with text in date field:', dateStr);
+          // Check if it's actually text
+          if (rawDateValue && (rawDateValue.toLowerCase() === 'deposit' || /^[a-zA-Z\s]+$/.test(rawDateValue))) {
+            console.log('SKIPPING ROW - Date field contains text:', rawDateValue);
             errorCount++;
             continue;
           }
           
           // Parse date or use today
           let date = new Date().toISOString().split('T')[0];
-          if (dateStr) {
-            const parsedDate = new Date(dateStr);
+          if (rawDateValue && rawDateValue.length > 0) {
+            const parsedDate = new Date(rawDateValue);
             if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1900 && parsedDate.getFullYear() < 2100) {
               date = parsedDate.toISOString().split('T')[0];
+              console.log('Parsed date successfully:', date);
+            } else {
+              console.log('Could not parse date, using today:', rawDateValue);
             }
           }
           
-          // FINAL safety check - verify date is valid before ANY database operation
-          const testDate = new Date(date);
-          if (isNaN(testDate.getTime()) || date.includes('Deposit') || date.includes('deposit')) {
-            console.error('BLOCKED invalid date from reaching database:', date);
+          // FINAL validation - check date format
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            console.error('BLOCKED - Invalid date format:', date);
             errorCount++;
             continue;
           }
