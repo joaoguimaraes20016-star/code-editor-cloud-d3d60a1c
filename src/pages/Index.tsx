@@ -619,7 +619,7 @@ const Index = () => {
   }
 
   const canViewSetterScheduling = userRole === 'setter' || userRole === 'admin' || isOwner;
-  const canViewCloserScheduling = userRole === 'closer' || userRole === 'admin' || isOwner;
+  const canViewCloserScheduling = true; // All team members can close deals
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
