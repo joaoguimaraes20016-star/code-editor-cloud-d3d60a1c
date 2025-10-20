@@ -415,8 +415,8 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
       )}
 
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <div className="relative flex-1 w-full">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by lead, email, setter, closer, or event type..."
@@ -426,7 +426,7 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
             />
           </div>
           
-          <div className="flex gap-2 items-center relative">
+          <div className="flex gap-2 items-center">
             <Select value={dateFilter} onValueChange={(value) => {
               setDateFilter(value);
               if (value === "custom") {

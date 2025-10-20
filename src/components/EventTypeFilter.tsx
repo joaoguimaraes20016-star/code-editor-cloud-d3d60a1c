@@ -167,9 +167,9 @@ export function EventTypeFilter({
   }
 
   return (
-    <div className="relative flex items-center gap-2">
+    <div className="flex flex-col gap-2 min-w-[200px]">
       <Select value={selectedEventType} onValueChange={handleFilterChange}>
-        <SelectTrigger className="w-[180px] bg-background">
+        <SelectTrigger className="w-full bg-background">
           <SelectValue placeholder="All Event Types" />
         </SelectTrigger>
         <SelectContent className="bg-background z-50">
@@ -190,12 +190,14 @@ export function EventTypeFilter({
 
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1">
+          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs text-muted-foreground">
             <Plus className="h-3 w-3" />
+            Don't see your event type?
+            <ChevronDown className={`ml-auto h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className="absolute right-0 top-full mt-2 p-3 border rounded-lg bg-background shadow-lg z-50 w-[320px]">
-          <p className="text-xs text-muted-foreground mb-2">
+        <CollapsibleContent className="space-y-2 pt-2">
+          <p className="text-xs text-muted-foreground">
             Paste your Calendly event URL to manually fetch it:
           </p>
           <div className="flex gap-2">
