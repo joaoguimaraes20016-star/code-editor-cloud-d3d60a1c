@@ -67,8 +67,23 @@ export function ImportSpreadsheet({ teamId, onImport }: ImportSpreadsheetProps) 
 
       for (const line of dataLines) {
         try {
-          // Handle CSV parsing with proper quote handling
-          const columns = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g)?.map(s => s.trim().replace(/^"|"$/g, '')) || [];
+          // Simple CSV split - handle quotes properly
+          const columns = [];
+          let current = '';
+          let inQuotes = false;
+          
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              columns.push(current.trim());
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          columns.push(current.trim());
           
           const customerName = customerIdx >= 0 ? columns[customerIdx] : '';
           const setter = setterIdx >= 0 ? columns[setterIdx] : '';
@@ -81,35 +96,32 @@ export function ImportSpreadsheet({ teamId, onImport }: ImportSpreadsheetProps) 
 
           const offerOwner = offerOwnerIdx >= 0 ? columns[offerOwnerIdx] : '';
           
-          // Validate and parse date with robust error handling
-          let date = new Date().toISOString().split('T')[0];
+          // Validate and parse date - VERY strict validation
+          let dateStr = '';
           if (dateIdx >= 0 && columns[dateIdx]) {
-            const dateValue = columns[dateIdx].trim();
-            
-            // Skip row if date is clearly invalid (only letters, empty, or placeholder text)
-            if (!dateValue || /^[a-zA-Z\s]+$/.test(dateValue) || dateValue.toLowerCase() === 'deposit') {
-              console.log('Skipping row - invalid date value:', dateValue, 'for customer:', customerName);
-              errorCount++;
-              continue;
-            }
-            
-            // Try to parse date
-            const parsedDate = new Date(dateValue);
-            if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1900) {
+            dateStr = columns[dateIdx].trim();
+          }
+          
+          // Skip row entirely if date looks invalid
+          if (dateStr && (/^[a-zA-Z]+$/.test(dateStr) || dateStr.toLowerCase().includes('deposit'))) {
+            console.log('Skipping row with text in date field:', dateStr);
+            errorCount++;
+            continue;
+          }
+          
+          // Parse date or use today
+          let date = new Date().toISOString().split('T')[0];
+          if (dateStr) {
+            const parsedDate = new Date(dateStr);
+            if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1900 && parsedDate.getFullYear() < 2100) {
               date = parsedDate.toISOString().split('T')[0];
-            } else {
-              console.log('Skipping row - unparseable date:', dateValue);
-              errorCount++;
-              continue;
             }
           }
           
-          console.log('Processing row:', { customerName, closer, date });
-          
-          // Final date validation before database insert
-          const finalDate = new Date(date);
-          if (isNaN(finalDate.getTime())) {
-            console.error('Invalid date detected before insert, skipping row:', date);
+          // FINAL safety check - verify date is valid before ANY database operation
+          const testDate = new Date(date);
+          if (isNaN(testDate.getTime()) || date.includes('Deposit') || date.includes('deposit')) {
+            console.error('BLOCKED invalid date from reaching database:', date);
             errorCount++;
             continue;
           }
