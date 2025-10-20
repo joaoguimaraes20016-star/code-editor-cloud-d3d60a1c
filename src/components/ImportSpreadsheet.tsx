@@ -79,7 +79,17 @@ export function ImportSpreadsheet({ teamId, onImport }: ImportSpreadsheetProps) 
           }
 
           const offerOwner = offerOwnerIdx >= 0 ? columns[offerOwnerIdx] : '';
-          const date = dateIdx >= 0 ? columns[dateIdx] : new Date().toISOString().split('T')[0];
+          
+          // Parse and validate date
+          let date = new Date().toISOString().split('T')[0];
+          if (dateIdx >= 0 && columns[dateIdx]) {
+            const dateValue = columns[dateIdx].trim();
+            const parsedDate = new Date(dateValue);
+            if (!isNaN(parsedDate.getTime())) {
+              date = parsedDate.toISOString().split('T')[0];
+            }
+          }
+          
           const revenue = revenueIdx >= 0 ? parseFloat(columns[revenueIdx]) || 0 : 0;
           const setterCommission = setterCommissionIdx >= 0 ? parseFloat(columns[setterCommissionIdx]) || 0 : 0;
           const closerCommission = closerCommissionIdx >= 0 ? parseFloat(columns[closerCommissionIdx]) || 0 : 0;
