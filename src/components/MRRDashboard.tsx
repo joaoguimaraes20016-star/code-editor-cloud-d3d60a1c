@@ -34,9 +34,13 @@ export const MRRDashboard = ({ teamId }: MRRDashboardProps) => {
       const nextMonth = startOfMonth(addMonths(new Date(), 1));
       const nextMonthStr = format(nextMonth, 'yyyy-MM-dd');
 
+      // Only fetch MRR commissions where the sale still exists
       const { data, error } = await supabase
         .from('mrr_commissions')
-        .select('*')
+        .select(`
+          *,
+          sales!inner(id)
+        `)
         .eq('team_id', teamId)
         .eq('month_date', nextMonthStr)
         .order('team_member_name');

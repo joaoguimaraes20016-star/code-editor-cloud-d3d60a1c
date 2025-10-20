@@ -267,11 +267,14 @@ const Index = () => {
     try {
       console.log('Adding manual sale - CC:', newSale.ccCollected, 'MRR:', newSale.mrrAmount, 'Months:', newSale.mrrMonths);
       
+      // Check if closer is the offer owner - if so, no closer commission
+      const isCloserOfferOwner = newSale.salesRep === newSale.offerOwner;
+      
       // Calculate commissions on CC using configured percentages
-      const closerCommission = newSale.ccCollected * (newSale.closerCommissionPct / 100);
+      const closerCommission = isCloserOfferOwner ? 0 : newSale.ccCollected * (newSale.closerCommissionPct / 100);
       const setterCommission = newSale.setterId ? newSale.ccCollected * (newSale.setterCommissionPct / 100) : 0;
       
-      console.log('Calculated commissions - Closer:', closerCommission, 'Setter:', setterCommission);
+      console.log('Calculated commissions - Closer:', closerCommission, 'Setter:', setterCommission, 'Is offer owner:', isCloserOfferOwner);
 
       // Insert sale record with CC as revenue
       const { data: saleData, error } = await supabase
@@ -302,20 +305,22 @@ const Index = () => {
         for (let i = 1; i <= newSale.mrrMonths; i++) {
           const monthDate = startOfMonth(addMonths(new Date(), i));
           
-          // Closer MRR commission
-          mrrCommissions.push({
-            team_id: teamId,
-            sale_id: saleData.id, // Link to the sale
-            team_member_id: newSale.salesRepId,
-            team_member_name: newSale.salesRep,
-            role: 'closer',
-            prospect_name: newSale.customerName,
-            prospect_email: '', // Not available for manual sales
-            month_date: format(monthDate, 'yyyy-MM-dd'),
-            mrr_amount: newSale.mrrAmount,
-            commission_amount: newSale.mrrAmount * (newSale.closerCommissionPct / 100),
-            commission_percentage: newSale.closerCommissionPct,
-          });
+          // Closer MRR commission - only if closer is not the offer owner
+          if (!isCloserOfferOwner) {
+            mrrCommissions.push({
+              team_id: teamId,
+              sale_id: saleData.id, // Link to the sale
+              team_member_id: newSale.salesRepId,
+              team_member_name: newSale.salesRep,
+              role: 'closer',
+              prospect_name: newSale.customerName,
+              prospect_email: '', // Not available for manual sales
+              month_date: format(monthDate, 'yyyy-MM-dd'),
+              mrr_amount: newSale.mrrAmount,
+              commission_amount: newSale.mrrAmount * (newSale.closerCommissionPct / 100),
+              commission_percentage: newSale.closerCommissionPct,
+            });
+          }
 
           // Setter MRR commission if there's a setter
           if (newSale.setterId) {

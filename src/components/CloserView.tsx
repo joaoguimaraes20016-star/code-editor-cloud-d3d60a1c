@@ -235,11 +235,22 @@ export function CloserView({ teamId }: CloserViewProps) {
     try {
       console.log('Closing deal - CC:', cc, 'MRR:', mrr, 'Months:', months);
       
+      // Check if closer is offer owner
+      const { data: teamMemberData } = await supabase
+        .from('team_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('team_id', teamId)
+        .single();
+      
+      const isOfferOwner = teamMemberData?.role === 'offer_owner';
+      
       // Calculate commissions on CC using configured percentages
-      const closerCommission = cc * (closerCommissionPct / 100);
+      // Offer owners don't get commissions on their own deals
+      const closerCommission = isOfferOwner ? 0 : cc * (closerCommissionPct / 100);
       const setterCommission = selectedAppointment.setter_id ? cc * (setterCommissionPct / 100) : 0;
       
-      console.log('Calculated commissions - Closer:', closerCommission, 'Setter:', setterCommission);
+      console.log('Calculated commissions - Closer:', closerCommission, 'Setter:', setterCommission, 'Is offer owner:', isOfferOwner);
 
       // Update appointment to closed - revenue is just CC, MRR tracked separately
       const { error: updateError } = await supabase
@@ -259,11 +270,12 @@ export function CloserView({ teamId }: CloserViewProps) {
       if (updateError) throw updateError;
 
       // Create a sale record with CC commissions
-      const { error: saleError } = await supabase
+      const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
           team_id: teamId,
           customer_name: selectedAppointment.lead_name,
+          offer_owner: isOfferOwner ? userProfile.full_name : null,
           product_name: productName || null,
           setter: selectedAppointment.setter_name || 'No Setter',
           sales_rep: userProfile.full_name,
@@ -272,38 +284,44 @@ export function CloserView({ teamId }: CloserViewProps) {
           commission: closerCommission,
           setter_commission: setterCommission,
           status: 'closed',
-        });
+        })
+        .select()
+        .single();
 
       if (saleError) throw saleError;
 
       console.log('Deal closed successfully - Appointment updated, Sale created');
 
       // Create MRR commission records if MRR exists
-      if (mrr > 0 && months > 0) {
+      if (mrr > 0 && months > 0 && saleData) {
         const mrrCommissions = [];
         
         for (let i = 1; i <= months; i++) {
           const monthDate = startOfMonth(addMonths(new Date(), i));
           
-          // Closer MRR commission
-          mrrCommissions.push({
-            team_id: teamId,
-            appointment_id: selectedAppointment.id,
-            team_member_id: user.id,
-            team_member_name: userProfile.full_name,
-            role: 'closer',
-            prospect_name: selectedAppointment.lead_name,
-            prospect_email: selectedAppointment.lead_email,
-            month_date: format(monthDate, 'yyyy-MM-dd'),
-            mrr_amount: mrr,
-            commission_amount: mrr * (closerCommissionPct / 100),
-            commission_percentage: closerCommissionPct,
-          });
+          // Closer MRR commission - only if closer is not offer owner
+          if (!isOfferOwner) {
+            mrrCommissions.push({
+              team_id: teamId,
+              sale_id: saleData.id,
+              appointment_id: selectedAppointment.id,
+              team_member_id: user.id,
+              team_member_name: userProfile.full_name,
+              role: 'closer',
+              prospect_name: selectedAppointment.lead_name,
+              prospect_email: selectedAppointment.lead_email,
+              month_date: format(monthDate, 'yyyy-MM-dd'),
+              mrr_amount: mrr,
+              commission_amount: mrr * (closerCommissionPct / 100),
+              commission_percentage: closerCommissionPct,
+            });
+          }
 
           // Setter MRR commission if there's a setter
           if (selectedAppointment.setter_id && selectedAppointment.setter_name) {
             mrrCommissions.push({
               team_id: teamId,
+              sale_id: saleData.id,
               appointment_id: selectedAppointment.id,
               team_member_id: selectedAppointment.setter_id,
               team_member_name: selectedAppointment.setter_name,
@@ -318,11 +336,13 @@ export function CloserView({ teamId }: CloserViewProps) {
           }
         }
 
-        const { error: mrrError } = await supabase
-          .from('mrr_commissions')
-          .insert(mrrCommissions);
+        if (mrrCommissions.length > 0) {
+          const { error: mrrError } = await supabase
+            .from('mrr_commissions')
+            .insert(mrrCommissions);
 
-        if (mrrError) throw mrrError;
+          if (mrrError) throw mrrError;
+        }
       }
 
       toast({
@@ -376,7 +396,17 @@ export function CloserView({ teamId }: CloserViewProps) {
     }
 
     try {
-      const closerCommission = cc * (closerCommissionPct / 100);
+      // Check if closer is offer owner
+      const { data: teamMemberData } = await supabase
+        .from('team_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('team_id', teamId)
+        .single();
+      
+      const isOfferOwner = teamMemberData?.role === 'offer_owner';
+      
+      const closerCommission = isOfferOwner ? 0 : cc * (closerCommissionPct / 100);
       const setterCommission = editingAppointment.setter_id ? cc * (setterCommissionPct / 100) : 0;
 
       // Update appointment - revenue is just CC
@@ -420,20 +450,23 @@ export function CloserView({ teamId }: CloserViewProps) {
         for (let i = 1; i <= months; i++) {
           const monthDate = startOfMonth(addMonths(new Date(), i));
           
-          mrrCommissions.push({
-            team_id: teamId,
-            sale_id: saleData.id, // Link to the sale
-            appointment_id: editingAppointment.id,
-            team_member_id: user.id,
-            team_member_name: userProfile.full_name,
-            role: 'closer',
-            prospect_name: editingAppointment.lead_name,
-            prospect_email: editingAppointment.lead_email,
-            month_date: format(monthDate, 'yyyy-MM-dd'),
-            mrr_amount: mrr,
-            commission_amount: mrr * (closerCommissionPct / 100),
-            commission_percentage: closerCommissionPct,
-          });
+          // Closer MRR commission - only if closer is not offer owner
+          if (!isOfferOwner) {
+            mrrCommissions.push({
+              team_id: teamId,
+              sale_id: saleData.id, // Link to the sale
+              appointment_id: editingAppointment.id,
+              team_member_id: user.id,
+              team_member_name: userProfile.full_name,
+              role: 'closer',
+              prospect_name: editingAppointment.lead_name,
+              prospect_email: editingAppointment.lead_email,
+              month_date: format(monthDate, 'yyyy-MM-dd'),
+              mrr_amount: mrr,
+              commission_amount: mrr * (closerCommissionPct / 100),
+              commission_percentage: closerCommissionPct,
+            });
+          }
 
           if (editingAppointment.setter_id && editingAppointment.setter_name) {
             mrrCommissions.push({
@@ -453,7 +486,9 @@ export function CloserView({ teamId }: CloserViewProps) {
           }
         }
 
-        await supabase.from('mrr_commissions').insert(mrrCommissions);
+        if (mrrCommissions.length > 0) {
+          await supabase.from('mrr_commissions').insert(mrrCommissions);
+        }
       }
 
       toast({
