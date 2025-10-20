@@ -214,10 +214,10 @@ export function CloserView({ teamId }: CloserViewProps) {
     const mrr = parseFloat(mrrAmount);
     const months = parseInt(mrrMonths);
 
-    if (isNaN(cc) || cc < 0) {
+    if (isNaN(cc) || cc <= 0) {
       toast({
-        title: 'Invalid CC amount',
-        description: 'Please enter a valid cash collected amount (cannot be negative)',
+        title: 'CC amount required',
+        description: 'Please enter a valid cash collected amount greater than $0',
         variant: 'destructive',
       });
       return;
@@ -357,10 +357,10 @@ export function CloserView({ teamId }: CloserViewProps) {
     const mrr = parseFloat(mrrAmount);
     const months = parseInt(mrrMonths);
 
-    if (isNaN(cc) || cc < 0) {
+    if (isNaN(cc) || cc <= 0) {
       toast({
-        title: 'Invalid CC amount',
-        description: 'Please enter a valid cash collected amount',
+        title: 'CC amount required',
+        description: 'Please enter a valid cash collected amount greater than $0',
         variant: 'destructive',
       });
       return;
@@ -1117,11 +1117,12 @@ export function CloserView({ teamId }: CloserViewProps) {
                 value={ccCollected}
                 onChange={(e) => setCcCollected(e.target.value)}
                 placeholder="2000.00"
-                min="0"
+                min="0.01"
                 step="0.01"
+                required
               />
               <p className="text-xs text-muted-foreground">
-                Commissions: Closer 10%, Setter 5% on CC
+                Commissions: Closer {closerCommissionPct}%, Setter {setterCommissionPct}% on CC
               </p>
             </div>
             <div className="space-y-2">
@@ -1180,16 +1181,20 @@ export function CloserView({ teamId }: CloserViewProps) {
               <p className="text-sm font-medium text-primary">{editingAppointment?.setter_name || 'No Setter'}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-cc">Cash Collected (CC) ($)</Label>
+              <Label htmlFor="edit-cc">Cash Collected (CC) ($) *</Label>
               <Input
                 id="edit-cc"
                 type="number"
                 value={ccCollected}
                 onChange={(e) => setCcCollected(e.target.value)}
                 placeholder="2000.00"
-                min="0"
+                min="0.01"
                 step="0.01"
+                required
               />
+              <p className="text-xs text-muted-foreground">
+                Commissions: Closer {closerCommissionPct}%, Setter {setterCommissionPct}% on CC
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-mrr">Monthly Recurring Revenue (MRR) ($)</Label>
