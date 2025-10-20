@@ -74,6 +74,14 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
     }
   }, [open, teamId]);
 
+  useEffect(() => {
+    // Auto-select if there's only one offer owner
+    const offerOwners = teamMembers.filter(m => m.role === 'offer_owner' || m.role === 'owner');
+    if (offerOwners.length === 1 && !offerOwnerId) {
+      setOfferOwnerId(offerOwners[0].user_id);
+    }
+  }, [teamMembers, offerOwnerId]);
+
   const loadTeamSettings = async () => {
     try {
       const { data, error } = await supabase
@@ -190,20 +198,33 @@ export function AddSaleDialog({ onAddSale }: AddSaleDialogProps) {
 
             <div className="grid gap-2">
               <Label htmlFor="offerOwner">Offer Owner</Label>
-              <Select value={offerOwnerId} onValueChange={setOfferOwnerId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select offer owner" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border z-50">
-                  {teamMembers
-                    .filter(m => m.role === 'offer_owner' || m.role === 'owner')
-                    .map(member => (
-                      <SelectItem key={member.user_id} value={member.user_id}>
-                        {member.full_name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              {(() => {
+                const offerOwners = teamMembers.filter(m => m.role === 'offer_owner' || m.role === 'owner');
+                if (offerOwners.length === 1) {
+                  return (
+                    <Input
+                      id="offerOwner"
+                      value={offerOwners[0].full_name}
+                      disabled
+                      className="bg-muted"
+                    />
+                  );
+                }
+                return (
+                  <Select value={offerOwnerId} onValueChange={setOfferOwnerId} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select offer owner" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border z-50">
+                      {offerOwners.map(member => (
+                        <SelectItem key={member.user_id} value={member.user_id}>
+                          {member.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
             </div>
 
             <div className="grid gap-2">
