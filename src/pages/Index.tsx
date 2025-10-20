@@ -557,33 +557,37 @@ const Index = () => {
   // Deals that showed but didn't close
   const showedButNotClosed = showedAppointments.length - closedAppointments.length;
 
-  // Calculate leaderboards
+  // Calculate leaderboards (exclude zero commissions)
   const closedSales = filteredSales.filter(s => s.status === 'closed');
   
   const closerLeaderboard = Object.entries(
-    closedSales.reduce((acc, sale) => {
-      if (!acc[sale.salesRep]) {
-        acc[sale.salesRep] = { sales: 0, revenue: 0, commission: 0 };
-      }
-      acc[sale.salesRep].sales += 1;
-      acc[sale.salesRep].revenue += sale.revenue;
-      acc[sale.salesRep].commission += sale.commission;
-      return acc;
-    }, {} as Record<string, { sales: number; revenue: number; commission: number }>)
+    closedSales
+      .filter(sale => sale.commission > 0)
+      .reduce((acc, sale) => {
+        if (!acc[sale.salesRep]) {
+          acc[sale.salesRep] = { sales: 0, revenue: 0, commission: 0 };
+        }
+        acc[sale.salesRep].sales += 1;
+        acc[sale.salesRep].revenue += sale.revenue;
+        acc[sale.salesRep].commission += sale.commission;
+        return acc;
+      }, {} as Record<string, { sales: number; revenue: number; commission: number }>)
   )
     .map(([name, stats]) => ({ name, ...stats }))
     .sort((a, b) => b.commission - a.commission);
 
   const setterLeaderboard = Object.entries(
-    closedSales.reduce((acc, sale) => {
-      if (!acc[sale.setter]) {
-        acc[sale.setter] = { sales: 0, revenue: 0, commission: 0 };
-      }
-      acc[sale.setter].sales += 1;
-      acc[sale.setter].revenue += sale.revenue;
-      acc[sale.setter].commission += sale.setterCommission;
-      return acc;
-    }, {} as Record<string, { sales: number; revenue: number; commission: number }>)
+    closedSales
+      .filter(sale => sale.setterCommission > 0)
+      .reduce((acc, sale) => {
+        if (!acc[sale.setter]) {
+          acc[sale.setter] = { sales: 0, revenue: 0, commission: 0 };
+        }
+        acc[sale.setter].sales += 1;
+        acc[sale.setter].revenue += sale.revenue;
+        acc[sale.setter].commission += sale.setterCommission;
+        return acc;
+      }, {} as Record<string, { sales: number; revenue: number; commission: number }>)
   )
     .map(([name, stats]) => ({ name, ...stats }))
     .sort((a, b) => b.commission - a.commission);
