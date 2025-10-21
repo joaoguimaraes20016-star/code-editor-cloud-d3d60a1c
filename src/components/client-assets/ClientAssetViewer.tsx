@@ -3,8 +3,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Eye, EyeOff, Copy, Download } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Copy, Download, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface ClientAssetViewerProps {
   assetId: string;
@@ -119,6 +130,29 @@ export function ClientAssetViewer({ assetId, onClose }: ClientAssetViewerProps) 
     toast.success('File downloaded');
   };
 
+  const handleDelete = async () => {
+    try {
+      // Delete files from storage
+      for (const file of files) {
+        await supabase.storage.from('client-assets').remove([file.file_path]);
+      }
+
+      // Delete the client asset (cascade will delete fields, files, and audit logs)
+      const { error } = await supabase
+        .from('client_assets')
+        .delete()
+        .eq('id', assetId);
+
+      if (error) throw error;
+
+      toast.success('Client asset deleted successfully');
+      onClose();
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+      toast.error('Failed to delete client asset');
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -153,9 +187,33 @@ export function ClientAssetViewer({ assetId, onClose }: ClientAssetViewerProps) 
               <CardTitle className="text-2xl">{asset.client_name}</CardTitle>
               <p className="text-muted-foreground mt-1">{asset.client_email}</p>
             </div>
-            <Badge variant={asset.status === 'complete' ? 'default' : 'secondary'}>
-              {asset.status.replace('_', ' ')}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={asset.status === 'complete' ? 'default' : 'secondary'}>
+                {asset.status.replace('_', ' ')}
+              </Badge>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Client Asset?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all information for {asset.client_name}, including all fields and uploaded files. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         </CardHeader>
       </Card>
