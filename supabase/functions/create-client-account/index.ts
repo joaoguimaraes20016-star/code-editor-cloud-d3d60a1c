@@ -31,7 +31,19 @@ serve(async (req) => {
       console.log('User already exists:', existingUser.id);
       userId = existingUser.id;
       isNewUser = false;
-      // Note: Password verification will happen on the frontend during sign-in
+      
+      // Update the user's password to the new one they just entered
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { password }
+      );
+      
+      if (updateError) {
+        console.error('Password update error:', updateError);
+        // Continue anyway - they might be using the same password
+      } else {
+        console.log('User password updated');
+      }
     } else {
       // Create new user account
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
