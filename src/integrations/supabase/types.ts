@@ -577,6 +577,62 @@ export type Database = {
           },
         ]
       }
+      team_assets: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          description: string | null
+          external_url: string | null
+          file_path: string | null
+          file_type: string | null
+          id: string
+          loom_url: string | null
+          order_index: number
+          team_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          external_url?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          id?: string
+          loom_url?: string | null
+          order_index?: number
+          team_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          external_url?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          id?: string
+          loom_url?: string | null
+          order_index?: number
+          team_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_assets_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_invitations: {
         Row: {
           accepted_at: string | null
@@ -659,6 +715,44 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_edited: boolean
+          message: string
+          team_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_edited?: boolean
+          message: string
+          team_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_edited?: boolean
+          message?: string
+          team_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_messages_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]

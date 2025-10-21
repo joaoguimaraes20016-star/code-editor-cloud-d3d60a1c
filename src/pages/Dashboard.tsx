@@ -361,7 +361,7 @@ const Dashboard = () => {
                 key={team.id}
                 className="group hover:border-primary hover:shadow-glow transition-all duration-300 cursor-pointer bg-gradient-card backdrop-blur-sm border-2 border-primary/50"
                 style={{ animationDelay: `${index * 100}ms` }}
-                onClick={() => navigate(`/team/${team.id}/sales`)}
+                onClick={() => navigate(`/team/${team.id}`)}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">

@@ -10,6 +10,7 @@ import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import TeamSettings from "./pages/TeamSettings";
+import TeamHub from "./pages/TeamHub";
 import ClientAssets from "./pages/ClientAssets";
 import OnboardingForm from "./pages/OnboardingForm";
 import NotFound from "./pages/NotFound";
@@ -34,6 +35,9 @@ const App = () => (
             <Route path="/auth/confirm" element={<AuthCallback />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/client-assets" element={<ClientAssets />} />
+            <Route path="/team/:teamId" element={<TeamHub />} />
+            <Route path="/team/:teamId/assets" element={<TeamHub />} />
+            <Route path="/team/:teamId/chat" element={<TeamHub />} />
             <Route path="/team/:teamId/sales" element={<SalesDashboard />} />
             <Route path="/team/:teamId/settings" element={<TeamSettings />} />
             
