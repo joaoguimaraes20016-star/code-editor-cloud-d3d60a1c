@@ -156,14 +156,7 @@ export default function ClientAssets() {
             </TabsContent>
 
             <TabsContent value="templates" className="space-y-6">
-              {teams.map((team) => (
-                <div key={team.id} className="space-y-4">
-                  {teams.length > 1 && (
-                    <h3 className="text-lg font-semibold">{team.name}</h3>
-                  )}
-                  <OnboardingTemplateManager teamId={team.id} />
-                </div>
-              ))}
+              <OnboardingTemplateManager teamId={teams[0].id} />
             </TabsContent>
           </Tabs>
         )}
