@@ -42,16 +42,16 @@ Deno.serve(async (req) => {
       
       // Redirect back to app with error
       const redirectUrl = origin 
-        ? `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent(errorDescription)}`
-        : `/team/settings?calendly_oauth_error=${encodeURIComponent(errorDescription)}`;
+        ? `${origin}/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent(errorDescription)}`
+        : `/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent(errorDescription)}`;
       return Response.redirect(redirectUrl, 302);
     }
 
     if (!code || !state || !origin) {
       console.error('Missing required parameters');
       const redirectUrl = origin 
-        ? `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('Invalid OAuth callback')}`
-        : `/team/settings?calendly_oauth_error=${encodeURIComponent('Invalid OAuth callback')}`;
+        ? `${origin}/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent('Invalid OAuth callback')}`
+        : `/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent('Invalid OAuth callback')}`;
       return Response.redirect(redirectUrl, 302);
     }
 
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     if (!clientId || !clientSecret) {
       console.error('OAuth credentials not configured');
       return Response.redirect(
-        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('OAuth not configured')}`,
+        `${origin}/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent('OAuth not configured')}`,
         302
       );
     }
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
       const errorData = await tokenResponse.text();
       console.error('Token exchange failed:', errorData);
       return Response.redirect(
-        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('Failed to exchange authorization code')}`,
+        `${origin}/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent('Failed to exchange authorization code')}`,
         302
       );
     }
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
     if (!accessToken) {
       console.error('No access token in response');
       return Response.redirect(
-        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('No access token received')}`,
+        `${origin}/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent('No access token received')}`,
         302
       );
     }
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
     if (!userResponse.ok) {
       console.error('Failed to fetch user info');
       return Response.redirect(
-        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('Failed to fetch Calendly user info')}`,
+        `${origin}/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent('Failed to fetch Calendly user info')}`,
         302
       );
     }
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
     if (!organizationUri) {
       console.error('No organization URI found');
       return Response.redirect(
-        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('No organization found')}`,
+        `${origin}/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent('No organization found')}`,
         302
       );
     }
@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
     if (setupError) {
       console.error('Setup failed:', setupError);
       return Response.redirect(
-        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('Failed to setup webhook')}`,
+        `${origin}/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent('Failed to setup webhook')}`,
         302
       );
     }
@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
     if (setupData?.error) {
       console.error('Setup returned error:', setupData.error);
       return Response.redirect(
-        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent(setupData.error)}`,
+        `${origin}/team/${teamId}/settings?calendly_oauth_error=${encodeURIComponent(setupData.error)}`,
         302
       );
     }
@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
     console.log('Calendly OAuth setup completed successfully');
 
     // Redirect back to team settings with success
-    const redirectUrl = `${origin}/team/${teamId}?calendly_oauth_success=true`;
+    const redirectUrl = `${origin}/team/${teamId}/settings?calendly_oauth_success=true`;
     
     return Response.redirect(redirectUrl, 302);
   } catch (error) {
