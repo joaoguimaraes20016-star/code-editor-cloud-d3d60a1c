@@ -82,6 +82,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (!team) {
+      console.error('Team not found:', teamId);
+      return new Response(JSON.stringify({ error: 'Team not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Revoke the Calendly OAuth token to force fresh login on reconnect
     if (team?.calendly_access_token) {
       try {
