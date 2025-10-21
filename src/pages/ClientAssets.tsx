@@ -199,81 +199,79 @@ export default function ClientAssets() {
         {/* Content based on tab */}
         {teams.length > 0 && (
           defaultTab === 'onboard' ? (
-            // Onboard New Client View
-            <div className="space-y-6">
-              <Card className="bg-card/50 backdrop-blur-sm border-2 border-primary/20">
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-4 mb-6">
-                    <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <Plus className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold">Create Client Onboarding</h2>
-                      <p className="text-muted-foreground mt-2">
-                        Generate a secure form to collect client information
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="max-w-2xl mx-auto space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <h3 className="font-semibold mb-2">📋 Secure Forms</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Custom forms with encrypted storage for sensitive data
-                        </p>
+            // Onboard New Client View with Tabs
+            <Tabs defaultValue="create" className="space-y-6">
+              <TabsList className="bg-card/50 backdrop-blur-sm border border-border">
+                <TabsTrigger value="create">Create New Onboarding</TabsTrigger>
+                <TabsTrigger value="templates">Form Templates</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="create" className="space-y-6">
+                <Card className="bg-card/50 backdrop-blur-sm border-2 border-primary/20">
+                  <CardContent className="pt-6">
+                    <div className="text-center space-y-4 mb-6">
+                      <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                        <Plus className="h-6 w-6 text-primary" />
                       </div>
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <h3 className="font-semibold mb-2">🔗 Share Links</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Send unique onboarding links to clients via email
-                        </p>
-                      </div>
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <h3 className="font-semibold mb-2">📊 Track Progress</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Monitor completion status in real-time
-                        </p>
-                      </div>
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <h3 className="font-semibold mb-2">🔐 Auto Accounts</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Automatically create client accounts upon completion
+                      <div>
+                        <h2 className="text-2xl font-bold">Create Client Onboarding</h2>
+                        <p className="text-muted-foreground mt-2">
+                          Generate a secure form to collect client information
                         </p>
                       </div>
                     </div>
                     
-                    <Button 
-                      onClick={() => setShowNewDialog(true)} 
-                      className="w-full h-12 text-lg gap-2"
-                      size="lg"
-                    >
-                      <Plus className="h-5 w-5" />
-                      Create New Client Onboarding
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            // Client Assets View
-            <Tabs defaultValue="assets" className="space-y-6">
-              <TabsList className="bg-card/50 backdrop-blur-sm border border-border">
-                <TabsTrigger value="assets">Client Assets</TabsTrigger>
-                <TabsTrigger value="templates">Form Templates</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="assets" className="space-y-6">
-                <ClientAssetsDashboard teamIds={teams.map(t => t.id)} />
-                <div className="mt-6">
-                  <ClientAssetsList teamIds={teams.map(t => t.id)} />
-                </div>
+                    <div className="max-w-2xl mx-auto space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <h3 className="font-semibold mb-2">📋 Secure Forms</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Custom forms with encrypted storage for sensitive data
+                          </p>
+                        </div>
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <h3 className="font-semibold mb-2">🔗 Share Links</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Send unique onboarding links to clients via email
+                          </p>
+                        </div>
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <h3 className="font-semibold mb-2">📊 Track Progress</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Monitor completion status in real-time
+                          </p>
+                        </div>
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <h3 className="font-semibold mb-2">🔐 Auto Accounts</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Automatically create client accounts upon completion
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        onClick={() => setShowNewDialog(true)} 
+                        className="w-full h-12 text-lg gap-2"
+                        size="lg"
+                      >
+                        <Plus className="h-5 w-5" />
+                        Create New Client Onboarding
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="templates" className="space-y-6">
                 <OnboardingTemplateManager teamId={teams[0].id} />
               </TabsContent>
             </Tabs>
+          ) : (
+            // Client Assets View - Assets only
+            <div className="space-y-6">
+              <ClientAssetsDashboard teamIds={teams.map(t => t.id)} />
+              <ClientAssetsList teamIds={teams.map(t => t.id)} />
+            </div>
           )
         )}
       </div>
