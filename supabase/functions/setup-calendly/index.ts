@@ -13,17 +13,17 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
+    // Use service role for database operations to bypass RLS
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     const { teamId, accessToken, refreshToken, expiresAt, organizationUri } = await req.json();
+
+    console.log('Setting up Calendly for team:', teamId);
+
+    console.log('Setting up Calendly for team:', teamId);
 
     // Check if this is a service role call (from OAuth callback)
     const authHeader = req.headers.get('Authorization');
@@ -31,23 +31,46 @@ serve(async (req) => {
 
     // For non-service-role calls, verify user authentication and permissions
     if (!isServiceRole) {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      // Create auth client to verify user
+      const supabaseAuth = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          global: {
+            headers: { Authorization: authHeader! },
+          },
+        }
+      );
+
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
       if (authError || !user) {
+        console.error('Auth error:', authError);
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
+      console.log('Verifying user permissions for team:', teamId);
+
       // Verify user is team owner or offer owner
-      const { data: membership } = await supabase
+      const { data: membership, error: membershipError } = await supabaseAdmin
         .from('team_members')
         .select('role')
         .eq('team_id', teamId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (membership?.role !== 'owner' && membership?.role !== 'offer_owner') {
+      if (membershipError) {
+        console.error('Error fetching membership:', membershipError);
+        return new Response(JSON.stringify({ error: 'Failed to verify team membership' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!membership || (membership.role !== 'owner' && membership.role !== 'offer_owner')) {
+        console.error('User does not have permission. Role:', membership?.role);
         return new Response(JSON.stringify({ error: 'Only team owners and offer owners can setup Calendly' }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -169,7 +192,8 @@ serve(async (req) => {
     }
     
     // Store credentials in database
-    const { error: updateError } = await supabase
+    console.log('Storing credentials in database for team:', teamId);
+    const { error: updateError } = await supabaseAdmin
       .from('teams')
       .update({
         calendly_access_token: accessToken,
@@ -183,18 +207,27 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('Failed to update team:', updateError);
+      console.error('Update error details:', JSON.stringify(updateError));
       
       // Try to cleanup webhook if database update failed
       if (webhookId) {
-        await fetch(webhookId, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
+        console.log('Cleaning up webhook due to database error');
+        try {
+          await fetch(webhookId, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+        } catch (cleanupError) {
+          console.error('Failed to cleanup webhook:', cleanupError);
+        }
       }
 
-      return new Response(JSON.stringify({ error: 'Failed to save configuration' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Failed to save configuration', 
+        details: updateError.message 
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
