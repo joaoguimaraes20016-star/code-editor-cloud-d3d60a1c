@@ -87,12 +87,21 @@ export function CalendlyConfig({
       setTimeout(() => {
         onUpdate();
       }, 100);
-    } else if (oauthError) {
+      } else if (oauthError) {
+      let errorMessage = decodeURIComponent(oauthError);
+      
+      // Provide helpful messages for common errors
+      if (errorMessage.includes('permission') || errorMessage.includes('Permission')) {
+        errorMessage = "Your Calendly account needs admin/owner permissions to connect. Please have an organization admin connect Calendly instead.";
+      } else if (errorMessage.includes('webhook')) {
+        errorMessage = "Failed to setup webhook. Make sure you have organization admin permissions in Calendly.";
+      }
+      
       toast({
         title: "Connection Failed",
-        description: decodeURIComponent(oauthError),
+        description: errorMessage,
         variant: "destructive",
-        duration: 7000,
+        duration: 10000,
       });
       window.history.replaceState({}, '', window.location.pathname);
     }

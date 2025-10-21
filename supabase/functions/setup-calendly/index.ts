@@ -130,7 +130,18 @@ serve(async (req) => {
     if (!webhookResponse.ok) {
       const errorData = await webhookResponse.json();
       console.error('Failed to create webhook:', errorData);
-      return new Response(JSON.stringify({ error: 'Failed to create webhook' }), {
+      
+      // Check if it's a permission error
+      if (errorData.title === 'Permission Denied' || errorData.message?.includes('permission')) {
+        return new Response(JSON.stringify({ 
+          error: 'Permission Denied: Your Calendly account needs admin/owner permissions to create webhooks. Please have an organization admin connect Calendly instead.' 
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      return new Response(JSON.stringify({ error: 'Failed to create webhook: ' + (errorData.message || 'Unknown error') }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
