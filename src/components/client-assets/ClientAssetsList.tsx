@@ -131,13 +131,19 @@ export function ClientAssetsList({ teamIds }: ClientAssetsListProps) {
     if (!deleteAssetId) return;
 
     try {
+      console.log('Deleting client asset:', deleteAssetId);
+      
       const { error } = await supabase
         .from('client_assets')
         .delete()
         .eq('id', deleteAssetId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
 
+      console.log('Successfully deleted client asset');
       toast.success('Client asset deleted successfully');
       loadAssets();
     } catch (error) {
