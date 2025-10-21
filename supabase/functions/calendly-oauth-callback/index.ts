@@ -19,41 +19,40 @@ Deno.serve(async (req) => {
 
     console.log('OAuth callback received');
 
+    // Decode state first to get origin
+    let teamId: string = '';
+    let userId: string = '';
+    let origin: string = '';
+    
+    if (state) {
+      try {
+        const stateData = JSON.parse(atob(state));
+        teamId = stateData.teamId;
+        userId = stateData.userId;
+        origin = stateData.origin;
+      } catch (e) {
+        console.error('Failed to parse state:', e);
+      }
+    }
+
     // Handle OAuth errors (user denied access)
     if (error) {
       console.error('OAuth error:', error);
       const errorDescription = url.searchParams.get('error_description') || 'Authorization denied';
       
       // Redirect back to app with error
-      return Response.redirect(
-        `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/settings?calendly_oauth_error=${encodeURIComponent(errorDescription)}`,
-        302
-      );
+      const redirectUrl = origin 
+        ? `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent(errorDescription)}`
+        : `/team/settings?calendly_oauth_error=${encodeURIComponent(errorDescription)}`;
+      return Response.redirect(redirectUrl, 302);
     }
 
-    if (!code || !state) {
-      console.error('Missing code or state parameter');
-      return Response.redirect(
-        `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/settings?calendly_oauth_error=${encodeURIComponent('Invalid OAuth callback')}`,
-        302
-      );
-    }
-
-    // Decode state to get teamId, userId, and origin
-    let teamId: string;
-    let userId: string;
-    let origin: string;
-    try {
-      const stateData = JSON.parse(atob(state));
-      teamId = stateData.teamId;
-      userId = stateData.userId;
-      origin = stateData.origin || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com';
-    } catch (e) {
-      console.error('Failed to parse state:', e);
-      return Response.redirect(
-        `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/settings?calendly_oauth_error=${encodeURIComponent('Invalid state parameter')}`,
-        302
-      );
+    if (!code || !state || !origin) {
+      console.error('Missing required parameters');
+      const redirectUrl = origin 
+        ? `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('Invalid OAuth callback')}`
+        : `/team/settings?calendly_oauth_error=${encodeURIComponent('Invalid OAuth callback')}`;
+      return Response.redirect(redirectUrl, 302);
     }
 
     console.log('Processing OAuth for team:', teamId, 'user:', userId);
@@ -66,7 +65,7 @@ Deno.serve(async (req) => {
     if (!clientId || !clientSecret) {
       console.error('OAuth credentials not configured');
       return Response.redirect(
-        `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/settings?calendly_oauth_error=${encodeURIComponent('OAuth not configured')}`,
+        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('OAuth not configured')}`,
         302
       );
     }
@@ -91,7 +90,7 @@ Deno.serve(async (req) => {
       const errorData = await tokenResponse.text();
       console.error('Token exchange failed:', errorData);
       return Response.redirect(
-        `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/settings?calendly_oauth_error=${encodeURIComponent('Failed to exchange authorization code')}`,
+        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('Failed to exchange authorization code')}`,
         302
       );
     }
@@ -104,7 +103,7 @@ Deno.serve(async (req) => {
     if (!accessToken) {
       console.error('No access token in response');
       return Response.redirect(
-        `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/settings?calendly_oauth_error=${encodeURIComponent('No access token received')}`,
+        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('No access token received')}`,
         302
       );
     }
@@ -126,7 +125,7 @@ Deno.serve(async (req) => {
     if (!userResponse.ok) {
       console.error('Failed to fetch user info');
       return Response.redirect(
-        `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/settings?calendly_oauth_error=${encodeURIComponent('Failed to fetch Calendly user info')}`,
+        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('Failed to fetch Calendly user info')}`,
         302
       );
     }
@@ -137,7 +136,7 @@ Deno.serve(async (req) => {
     if (!organizationUri) {
       console.error('No organization URI found');
       return Response.redirect(
-        `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/settings?calendly_oauth_error=${encodeURIComponent('No organization found')}`,
+        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('No organization found')}`,
         302
       );
     }
@@ -165,7 +164,7 @@ Deno.serve(async (req) => {
     if (setupError) {
       console.error('Setup failed:', setupError);
       return Response.redirect(
-        `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('Failed to setup webhook')}`,
+        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent('Failed to setup webhook')}`,
         302
       );
     }
@@ -173,7 +172,7 @@ Deno.serve(async (req) => {
     if (setupData?.error) {
       console.error('Setup returned error:', setupData.error);
       return Response.redirect(
-        `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/${teamId}?calendly_oauth_error=${encodeURIComponent(setupData.error)}`,
+        `${origin}/team/${teamId}?calendly_oauth_error=${encodeURIComponent(setupData.error)}`,
         302
       );
     }
@@ -188,7 +187,7 @@ Deno.serve(async (req) => {
     console.error('Error in calendly-oauth-callback:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return Response.redirect(
-      `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://58be05a2-2d12-4440-8371-6b03075eca7a.lovableproject.com'}/team/settings?calendly_oauth_error=${encodeURIComponent(errorMessage)}`,
+      `/team/settings?calendly_oauth_error=${encodeURIComponent(errorMessage)}`,
       302
     );
   }
