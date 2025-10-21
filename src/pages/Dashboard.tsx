@@ -85,9 +85,12 @@ const Dashboard = () => {
     console.log('User Email:', user.email);
     console.log('User Role from user_roles:', userRole?.role);
     console.log('Account Type from profiles:', profile?.account_type);
+    console.log('userRole full object:', userRole);
+    console.log('profile full object:', profile);
     
     const isCreator = userRole?.role === 'creator' || profile?.account_type === 'creator';
     console.log('Is Creator?', isCreator);
+    console.log('Will set isGrowthOperator to:', isCreator);
     console.log('=====================');
     
     setCanCreateTeams(isCreator);
