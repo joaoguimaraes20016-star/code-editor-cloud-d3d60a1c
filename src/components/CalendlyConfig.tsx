@@ -286,9 +286,19 @@ export function CalendlyConfig({
     try {
       console.log('Starting Calendly OAuth connection for team:', teamId);
       
+      // Get the current session to include auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please log in again.');
+      }
+      
       // Fetch OAuth URL first
       const { data, error } = await supabase.functions.invoke("calendly-oauth-start", {
         body: { teamId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       console.log('OAuth start response:', { data, error });
@@ -502,9 +512,19 @@ export function CalendlyConfig({
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
+      // Get the current session to include auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please log in again.');
+      }
+      
       // Use edge function to revoke token and clear the connection
       const { data, error } = await supabase.functions.invoke("reset-calendly", {
         body: { teamId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       if (error) throw error;
