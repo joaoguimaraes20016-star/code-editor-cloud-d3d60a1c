@@ -283,8 +283,8 @@ export default function OnboardingForm() {
         {/* Header */}
         <Card className="bg-card/50 backdrop-blur-sm border-2 border-primary/20">
           <CardHeader>
-            <CardTitle className="text-3xl font-bold text-center mb-2">MASTER ONBOARDING SURVEY</CardTitle>
-            <CardTitle className="text-xl">Welcome, {asset?.client_name}!</CardTitle>
+            <CardTitle className="text-3xl text-center mb-2">MASTER ONBOARDING SURVEY</CardTitle>
+            <p className="text-xl font-semibold">Welcome, {asset?.client_name}!</p>
             <p className="text-muted-foreground mt-2">
               Please fill in your information below. Your progress is automatically saved.
             </p>
@@ -300,11 +300,19 @@ export default function OnboardingForm() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {Object.entries(groupedFields).map(([category, categoryFields]) => (
-            <Card key={category} className="bg-card/50 backdrop-blur-sm border-2 border-border">
-              <CardHeader>
-                <CardTitle className="capitalize text-lg">{category.replace('_', ' ')}</CardTitle>
-              </CardHeader>
+          {Object.entries(groupedFields).map(([category, categoryFields]) => {
+            const categoryTitles: Record<string, string> = {
+              instagram: 'Enter Your Login Information',
+              domain: 'Domain Login',
+              manychat: 'ManyChat Login',
+              media: 'Upload Your Content'
+            };
+            
+            return (
+              <Card key={category} className="bg-card/50 backdrop-blur-sm border-2 border-border">
+                <CardHeader>
+                  <CardTitle className="text-lg">{categoryTitles[category] || category}</CardTitle>
+                </CardHeader>
               <CardContent className="space-y-4">
                 {categoryFields.map((field) => (
                   <div key={field.id} className="space-y-2">
@@ -350,7 +358,8 @@ export default function OnboardingForm() {
                 ))}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
 
           <Button type="submit" className="w-full" size="lg" disabled={saving}>
             {saving ? 'Saving...' : 'Submit'}
