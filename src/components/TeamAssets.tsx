@@ -261,7 +261,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
 
       {/* Sales Dashboard Flashcard */}
       <button
-        onClick={() => navigate(`/sales-dashboard/${teamId}`)}
+        onClick={() => navigate(`/team/${teamId}/sales`)}
         className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-500 border border-yellow-400/50 p-12 shadow-lg hover:shadow-2xl hover:shadow-yellow-500/50 transition-all hover:scale-[1.02] text-left w-full"
       >
         <div className="absolute inset-0 bg-gradient-to-tr from-yellow-300/20 via-transparent to-yellow-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
