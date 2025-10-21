@@ -88,13 +88,13 @@ serve(async (req) => {
       teamId = teamData.id;
       console.log('Team created:', teamId);
 
-      // Add user to team as offer_owner
+      // Add user to team as member (they're a client, not an agency)
       const { error: memberError } = await supabase
         .from('team_members')
         .insert({
           team_id: teamId,
           user_id: userId,
-          role: 'offer_owner',
+          role: 'member',
         });
 
       if (memberError) {

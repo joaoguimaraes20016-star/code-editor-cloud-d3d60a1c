@@ -67,13 +67,12 @@ export default function ClientAssets() {
       setTeams(teamsData);
 
       // Check if user has their own client asset (invited as a client)
-      const { data: ownAsset } = await supabase
+      const { data: ownAssets } = await supabase
         .from('client_assets')
         .select('id')
-        .eq('client_email', user?.email)
-        .maybeSingle();
+        .eq('client_email', user?.email);
 
-      setHasOwnAsset(!!ownAsset);
+      setHasOwnAsset((ownAssets?.length || 0) > 0);
     } catch (error) {
       console.error('Error loading teams:', error);
       toast.error('Failed to load teams');
