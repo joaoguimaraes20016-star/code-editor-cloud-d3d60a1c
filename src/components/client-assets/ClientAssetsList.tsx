@@ -76,10 +76,12 @@ export function ClientAssetsList({ teamIds }: ClientAssetsListProps) {
     // Load assets that either:
     // 1. Have team_id matching user's teams
     // 2. Were created by the user and have no team_id yet (pending account creation)
+    // But exclude assets where client_email matches current user (their own asset)
     const { data, error } = await supabase
       .from('client_assets')
       .select('*')
       .or(`team_id.in.(${teamIds.join(',')}),and(created_by.eq.${user.id},team_id.is.null)`)
+      .neq('client_email', user.email)
       .order('created_at', { ascending: false });
 
     if (error) {

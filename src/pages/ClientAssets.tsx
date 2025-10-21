@@ -25,6 +25,7 @@ export default function ClientAssets() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [hasOwnAsset, setHasOwnAsset] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -54,6 +55,15 @@ export default function ClientAssets() {
         .filter((t) => t.id && t.name) || [];
 
       setTeams(teamsData);
+
+      // Check if user has their own client asset (invited as a client)
+      const { data: ownAsset } = await supabase
+        .from('client_assets')
+        .select('id')
+        .eq('client_email', user?.email)
+        .maybeSingle();
+
+      setHasOwnAsset(!!ownAsset);
     } catch (error) {
       console.error('Error loading teams:', error);
       toast.error('Failed to load teams');
@@ -105,8 +115,9 @@ export default function ClientAssets() {
     ['owner', 'admin', 'offer_owner'].includes(t.role)
   );
 
-  // If not a growth operator, show My Assets view
-  if (!isGrowthOperator) {
+  // If user has their own client asset (was invited as a client), show My Assets view
+  // regardless of their role
+  if (hasOwnAsset || !isGrowthOperator) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
         <div className="container mx-auto px-4 py-6 space-y-6">
