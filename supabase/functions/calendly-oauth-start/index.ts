@@ -18,8 +18,14 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get the authorization header
+    // Get the authorization header - supabase.functions.invoke() automatically includes it
     const authHeader = req.headers.get('Authorization');
+    
+    console.log('=== AUTH DEBUG ===');
+    console.log('Auth header present:', !!authHeader);
+    console.log('All headers:', JSON.stringify([...req.headers.entries()]));
+    console.log('==================');
+    
     if (!authHeader) {
       console.error('No authorization header provided');
       return new Response(
@@ -30,8 +36,18 @@ Deno.serve(async (req) => {
 
     // Extract the JWT token
     const token = authHeader.replace('Bearer ', '');
+    console.log('Token extracted, length:', token?.length || 0);
+    
+    if (!token || token.length < 10) {
+      console.error('Invalid token extracted from auth header');
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     // Verify the user using service role
+    console.log('Verifying user token...');
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
     if (userError || !user) {
