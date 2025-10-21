@@ -262,17 +262,17 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
       {/* Sales Dashboard Flashcard */}
       <button
         onClick={() => navigate(`/sales-dashboard/${teamId}`)}
-        className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 border border-amber-400/50 p-12 shadow-lg hover:shadow-2xl hover:shadow-amber-500/50 transition-all hover:scale-[1.02] text-left w-full"
+        className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-500 border border-yellow-400/50 p-12 shadow-lg hover:shadow-2xl hover:shadow-yellow-500/50 transition-all hover:scale-[1.02] text-left w-full"
       >
-        <div className="absolute inset-0 bg-gradient-to-tr from-yellow-500/20 via-transparent to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-radial from-yellow-400/30 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-radial from-amber-400/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-yellow-300/20 via-transparent to-yellow-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-radial from-yellow-300/40 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-radial from-yellow-400/40 to-transparent rounded-full blur-3xl" />
         <div className="absolute -top-8 -right-8 opacity-10 group-hover:opacity-20 transition-opacity">
           <TrendingUp className="h-56 w-56 text-white" />
         </div>
         <div className="relative z-10">
           <div className="flex items-center gap-6 mb-4">
-            <div className="p-4 rounded-xl bg-white/20 border border-white/30 backdrop-blur-sm group-hover:bg-white/30 group-hover:scale-110 transition-all">
+            <div className="p-4 rounded-xl bg-white/25 border border-white/40 backdrop-blur-sm group-hover:bg-white/35 group-hover:scale-110 transition-all">
               <BarChart3 className="h-8 w-8 text-white" />
             </div>
             <h3 className="text-4xl font-bold uppercase tracking-wide text-white drop-shadow-lg">
@@ -283,7 +283,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
             Track performance, view analytics & manage your sales pipeline
           </p>
           <div className="flex items-center gap-3 mt-6 ml-20 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-2">
-            <div className="px-5 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/40 shadow-lg">
+            <div className="px-5 py-2 rounded-full bg-white/25 backdrop-blur-sm border border-white/40 shadow-lg">
               <span className="text-base font-semibold text-white">View Dashboard</span>
             </div>
             <span className="text-white text-xl animate-pulse">→</span>
