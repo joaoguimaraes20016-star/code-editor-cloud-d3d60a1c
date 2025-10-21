@@ -88,20 +88,22 @@ export function ClientAssetsList({ teamIds }: ClientAssetsListProps) {
     console.log('Team IDs:', teamIds);
 
     // Load assets that either:
-    // 1. Have team_id matching user's teams (if user has teams)
-    // 2. Were created by the user and have no team_id yet (pending account creation)
+    // 1. Have team_id matching user's teams
+    // 2. Were created by the user (regardless of team_id)
     // But exclude assets where client_email matches current user (their own asset)
     
     let query = supabase
       .from('client_assets')
       .select('*');
 
-    // Build the OR condition based on whether user has teams
+    // Build the OR condition to show:
+    // - Assets in user's teams
+    // - OR any assets created by this user (even if assigned to client's team)
     if (teamIds.length > 0) {
-      query = query.or(`team_id.in.(${teamIds.join(',')}),and(created_by.eq.${user.id},team_id.is.null)`);
+      query = query.or(`team_id.in.(${teamIds.join(',')}),created_by.eq.${user.id}`);
     } else {
-      // If no teams, just get assets created by this user with no team
-      query = query.eq('created_by', user.id).is('team_id', null);
+      // If no teams, just get assets created by this user
+      query = query.eq('created_by', user.id);
     }
 
     const { data, error } = await query
