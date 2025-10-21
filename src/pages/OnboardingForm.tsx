@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { AccountCreation } from '@/components/client-assets/AccountCreation';
 
 interface AssetField {
   id: string;
@@ -254,19 +255,7 @@ export default function OnboardingForm() {
   }
 
   if (submitted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4">
-        <Card className="max-w-md w-full bg-card/50 backdrop-blur-sm border-2 border-primary/20">
-          <CardContent className="pt-12 pb-12 text-center">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Thank You!</h2>
-            <p className="text-muted-foreground">
-              Your information has been submitted successfully. We'll be in touch soon!
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <AccountCreation assetId={asset?.id || ''} clientName={asset?.client_name || ''} clientEmail={asset?.client_email || ''} />;
   }
 
   const groupedFields = fields.reduce((acc, field) => {
