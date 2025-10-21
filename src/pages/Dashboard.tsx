@@ -72,12 +72,12 @@ const Dashboard = () => {
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .single(),
+        .maybeSingle(),
       supabase
         .from('profiles')
         .select('account_type')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
     ]);
     
     console.log('=== USER ROLE CHECK ===');
