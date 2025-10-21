@@ -340,7 +340,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Client Information Section - Show for non-growth operators */}
+        {/* Client Information Section - Always show for non-creators */}
         {!isGrowthOperator && (
           <div className="space-y-4 animate-fade-in">
             <div className="flex items-center gap-3">

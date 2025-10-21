@@ -27,7 +27,8 @@ interface TeamAssetsProps {
 
 export default function TeamAssets({ teamId }: TeamAssetsProps) {
   const { user } = useAuth();
-  const { isOwner } = useTeamRole(teamId);
+  const { isOwner, role } = useTeamRole(teamId);
+  const canManageAssets = isOwner || role === 'member';
   const navigate = useNavigate();
   const [assets, setAssets] = useState<TeamAsset[]>([]);
   const [loading, setLoading] = useState(true);
@@ -220,7 +221,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                 <span className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                   {teamName}
                 </span>
-                {isOwner && (
+                {canManageAssets && (
                   <Button
                     onClick={handleStartEdit}
                     variant="ghost"
@@ -246,7 +247,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
               </div>
             </div>
           </div>
-          {isOwner && (
+          {canManageAssets && (
             <Button
               onClick={() => setUploadDialogOpen(true)}
               size="lg"
@@ -292,7 +293,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
       </button>
 
       {/* Complete Offer Section */}
-      {(offerAssets.length > 0 || isOwner) && (
+      {(offerAssets.length > 0 || canManageAssets) && (
         <div className="space-y-6">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/5 via-background to-background border border-primary/20 p-12 shadow-lg hover:shadow-xl transition-all">
             <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
@@ -326,7 +327,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                         {asset.title}
                       </span>
                     </div>
-                    {isOwner && (
+                    {canManageAssets && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -341,7 +342,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                     )}
                   </button>
                 ))}
-                {offerAssets.length === 0 && isOwner && (
+                {offerAssets.length === 0 && canManageAssets && (
                   <p className="text-base text-muted-foreground px-4">No assets yet. Click "Add Asset" above.</p>
                 )}
               </div>
@@ -353,7 +354,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
       {/* Two Column Layout for other sections */}
       <div className="grid md:grid-cols-2 gap-8">
         {/* Scripts Section */}
-        {(scriptAssets.length > 0 || isOwner) && (
+        {(scriptAssets.length > 0 || canManageAssets) && (
           <div className="group/card rounded-3xl bg-gradient-to-br from-card to-card/50 border border-border/50 p-8 hover:border-primary/30 transition-all shadow-md hover:shadow-xl">
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
@@ -382,7 +383,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                       {asset.title}
                     </span>
                   </div>
-                  {isOwner && (
+                  {canManageAssets && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -397,7 +398,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                   )}
                 </button>
               ))}
-              {scriptAssets.length === 0 && isOwner && (
+              {scriptAssets.length === 0 && canManageAssets && (
                 <p className="text-base text-muted-foreground px-4">No scripts yet.</p>
               )}
             </div>
@@ -405,7 +406,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
         )}
 
         {/* Onboarding Section */}
-        {(onboardingAssets.length > 0 || isOwner) && (
+        {(onboardingAssets.length > 0 || canManageAssets) && (
           <div className="group/card rounded-3xl bg-gradient-to-br from-card to-card/50 border border-border/50 p-8 hover:border-primary/30 transition-all shadow-md hover:shadow-xl">
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
@@ -434,7 +435,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                       {asset.title}
                     </span>
                   </div>
-                  {isOwner && (
+                  {canManageAssets && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -449,7 +450,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                   )}
                 </button>
               ))}
-              {onboardingAssets.length === 0 && isOwner && (
+              {onboardingAssets.length === 0 && canManageAssets && (
                 <p className="text-base text-muted-foreground px-4">No onboarding materials yet.</p>
               )}
             </div>
@@ -457,7 +458,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
         )}
 
         {/* Tracking Sheets Section */}
-        {(trackingAssets.length > 0 || isOwner) && (
+        {(trackingAssets.length > 0 || canManageAssets) && (
           <div className="group/card rounded-3xl bg-gradient-to-br from-card to-card/50 border border-border/50 p-8 hover:border-primary/30 transition-all shadow-md hover:shadow-xl">
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
@@ -486,7 +487,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                       {asset.title}
                     </span>
                   </div>
-                  {isOwner && (
+                  {canManageAssets && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -501,7 +502,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                   )}
                 </button>
               ))}
-              {trackingAssets.length === 0 && isOwner && (
+              {trackingAssets.length === 0 && canManageAssets && (
                 <p className="text-base text-muted-foreground px-4">No tracking sheets yet.</p>
               )}
             </div>
@@ -509,7 +510,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
         )}
 
         {/* Training Section */}
-        {(trainingAssets.length > 0 || isOwner) && (
+        {(trainingAssets.length > 0 || canManageAssets) && (
           <div className="group/card rounded-3xl bg-gradient-to-br from-card to-card/50 border border-border/50 p-8 hover:border-primary/30 transition-all shadow-md hover:shadow-xl">
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
@@ -538,7 +539,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                       {asset.title}
                     </span>
                   </div>
-                  {isOwner && (
+                  {canManageAssets && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -553,7 +554,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                   )}
                 </button>
               ))}
-              {trainingAssets.length === 0 && isOwner && (
+              {trainingAssets.length === 0 && canManageAssets && (
                 <p className="text-base text-muted-foreground px-4">No training materials yet.</p>
               )}
             </div>
