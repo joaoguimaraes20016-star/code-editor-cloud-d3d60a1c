@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Copy } from 'lucide-react';
 import { getUserFriendlyError } from '@/lib/errorUtils';
@@ -19,17 +20,20 @@ import { getUserFriendlyError } from '@/lib/errorUtils';
 interface NewClientAssetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  teamId: string;
+  teamId?: string;
+  availableTeams?: { id: string; name: string }[];
 }
 
 export function NewClientAssetDialog({
   open,
   onOpenChange,
   teamId,
+  availableTeams = [],
 }: NewClientAssetDialogProps) {
   const { user } = useAuth();
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
+  const [selectedTeamId, setSelectedTeamId] = useState(teamId || '');
   const [loading, setLoading] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
@@ -42,6 +46,11 @@ export function NewClientAssetDialog({
   const handleCreate = async () => {
     if (!clientName.trim() || !clientEmail.trim()) {
       toast.error('Please fill in all fields');
+      return;
+    }
+
+    if (!selectedTeamId) {
+      toast.error('Please select a team');
       return;
     }
 
@@ -60,7 +69,7 @@ export function NewClientAssetDialog({
       const { data: asset, error: assetError } = await supabase
         .from('client_assets')
         .insert({
-          team_id: teamId,
+          team_id: selectedTeamId,
           client_name: clientName,
           client_email: clientEmail,
           access_token: accessToken,
@@ -72,13 +81,23 @@ export function NewClientAssetDialog({
 
       if (assetError) throw assetError;
 
-      // Load default templates and create fields
-      const { data: templates, error: templatesError } = await supabase
+      // Load team-specific templates first, then default templates
+      const { data: teamTemplates } = await supabase
+        .from('asset_field_templates')
+        .select('*')
+        .eq('team_id', selectedTeamId)
+        .eq('is_active', true)
+        .order('order_index');
+
+      const { data: defaultTemplates } = await supabase
         .from('asset_field_templates')
         .select('*')
         .is('team_id', null)
         .eq('is_active', true)
         .order('order_index');
+
+      const templates = [...(teamTemplates || []), ...(defaultTemplates || [])];
+      const templatesError = null;
 
       if (templatesError) throw templatesError;
 
@@ -115,7 +134,7 @@ export function NewClientAssetDialog({
       const { data: team } = await supabase
         .from('teams')
         .select('name')
-        .eq('id', teamId)
+        .eq('id', selectedTeamId)
         .single();
 
       // Send onboarding email
@@ -157,6 +176,7 @@ export function NewClientAssetDialog({
   const handleClose = () => {
     setClientName('');
     setClientEmail('');
+    setSelectedTeamId(teamId || '');
     setGeneratedLink(null);
     onOpenChange(false);
   };
@@ -188,6 +208,24 @@ export function NewClientAssetDialog({
           </div>
         ) : (
           <div className="space-y-4">
+            {availableTeams.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="team">Assign to Team</Label>
+                <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                  <SelectTrigger id="team">
+                    <SelectValue placeholder="Select a team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTeams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="clientName">Client Name</Label>
               <Input

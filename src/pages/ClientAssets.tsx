@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { ClientAssetsDashboard } from '@/components/client-assets/ClientAssetsDashboard';
 import { ClientAssetsList } from '@/components/client-assets/ClientAssetsList';
 import { NewClientAssetDialog } from '@/components/client-assets/NewClientAssetDialog';
+import { OnboardingTemplateManager } from '@/components/client-assets/OnboardingTemplateManager';
 
 interface Team {
   id: string;
@@ -165,6 +166,7 @@ export default function ClientAssets() {
             <TabsList className="bg-card/50 backdrop-blur-sm border border-border">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="clients">Active Clients</TabsTrigger>
+              <TabsTrigger value="templates">Form Templates</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
@@ -173,6 +175,10 @@ export default function ClientAssets() {
 
             <TabsContent value="clients" className="space-y-6">
               <ClientAssetsList teamId={selectedTeam.id} />
+            </TabsContent>
+
+            <TabsContent value="templates" className="space-y-6">
+              <OnboardingTemplateManager teamId={selectedTeam.id} />
             </TabsContent>
           </Tabs>
         )}
@@ -183,6 +189,7 @@ export default function ClientAssets() {
           open={showNewDialog}
           onOpenChange={setShowNewDialog}
           teamId={selectedTeam.id}
+          availableTeams={teams}
         />
       )}
     </div>
