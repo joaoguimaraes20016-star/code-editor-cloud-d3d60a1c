@@ -262,11 +262,11 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
       {/* Sales Dashboard Flashcard */}
       <button
         onClick={() => navigate(`/sales-dashboard/${teamId}`)}
-        className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-cyan-600 to-teal-600 border border-cyan-400/50 p-12 shadow-lg hover:shadow-2xl hover:shadow-cyan-500/50 transition-all hover:scale-[1.02] text-left w-full"
+        className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 border border-amber-400/50 p-12 shadow-lg hover:shadow-2xl hover:shadow-amber-500/50 transition-all hover:scale-[1.02] text-left w-full"
       >
-        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 via-transparent to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-radial from-cyan-400/20 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-radial from-teal-400/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-yellow-500/20 via-transparent to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-radial from-yellow-400/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-radial from-amber-400/30 to-transparent rounded-full blur-3xl" />
         <div className="absolute -top-8 -right-8 opacity-10 group-hover:opacity-20 transition-opacity">
           <TrendingUp className="h-56 w-56 text-white" />
         </div>
