@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, Edit2, X, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Plus, Trash2, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -184,8 +185,18 @@ export function OnboardingTemplateManager({ teamId }: OnboardingTemplateManagerP
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center p-8">Loading...</div>;
   }
+
+  // Group templates by category
+  const groupedTemplates = templates.reduce((acc, template) => {
+    const category = template.field_category;
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(template);
+    return acc;
+  }, {} as Record<string, TemplateField[]>);
 
   return (
     <Card>
@@ -204,46 +215,77 @@ export function OnboardingTemplateManager({ teamId }: OnboardingTemplateManagerP
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Field Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Required</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {templates.map((template) => (
-              <TableRow key={template.id}>
-                <TableCell>{template.order_index}</TableCell>
-                <TableCell className="capitalize">{template.field_category}</TableCell>
-                <TableCell>{template.field_name}</TableCell>
-                <TableCell>{template.field_type}</TableCell>
-                <TableCell>{template.is_required ? 'Yes' : 'No'}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(template)}>
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(template.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+        {templates.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p className="text-lg mb-2">No custom fields yet</p>
+            <p className="text-sm">Add your first field to customize the onboarding form</p>
+          </div>
+        ) : (
+          <Accordion type="multiple" defaultValue={Object.keys(groupedTemplates)} className="w-full">
+            {Object.entries(groupedTemplates).map(([category, fields]) => (
+              <AccordionItem key={category} value={category} className="border-b">
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-semibold capitalize">{category}</span>
+                    <Badge variant="secondary" className="ml-2">
+                      {fields.length} field{fields.length !== 1 ? 's' : ''}
+                    </Badge>
                   </div>
-                </TableCell>
-              </TableRow>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3 pt-2 pb-4">
+                    {fields
+                      .sort((a, b) => a.order_index - b.order_index)
+                      .map((template) => (
+                        <div
+                          key={template.id}
+                          className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary/10 text-primary font-semibold text-sm">
+                              {template.order_index}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium">{template.field_name}</span>
+                                {template.is_required && (
+                                  <Badge variant="destructive" className="text-xs">Required</Badge>
+                                )}
+                                <Badge variant="outline" className="text-xs">
+                                  {template.field_type}
+                                </Badge>
+                              </div>
+                              {template.help_text && (
+                                <p className="text-sm text-muted-foreground">{template.help_text}</p>
+                              )}
+                              {template.placeholder_text && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Placeholder: {template.placeholder_text}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(template)}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleDelete(template.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
             ))}
-            {templates.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
-                  No custom fields yet. Add your first field to customize the onboarding form.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+          </Accordion>
+        )}
       </CardContent>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
