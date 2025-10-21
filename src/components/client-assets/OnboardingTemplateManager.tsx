@@ -57,14 +57,28 @@ export function OnboardingTemplateManager({ teamId }: OnboardingTemplateManagerP
 
   const loadTemplates = async () => {
     try {
-      const { data, error } = await supabase
+      // Load team-specific templates first
+      const { data: teamData, error: teamError } = await supabase
         .from('asset_field_templates')
         .select('*')
         .eq('team_id', teamId)
         .order('order_index');
 
-      if (error) throw error;
-      setTemplates(data || []);
+      if (teamError) throw teamError;
+
+      // If no team templates, load default templates
+      if (!teamData || teamData.length === 0) {
+        const { data: defaultData, error: defaultError } = await supabase
+          .from('asset_field_templates')
+          .select('*')
+          .is('team_id', null)
+          .order('order_index');
+
+        if (defaultError) throw defaultError;
+        setTemplates(defaultData || []);
+      } else {
+        setTemplates(teamData);
+      }
     } catch (error) {
       console.error('Error loading templates:', error);
       toast.error('Failed to load templates');
