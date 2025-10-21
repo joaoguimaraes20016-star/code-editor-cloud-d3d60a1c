@@ -151,23 +151,13 @@ export default function ClientAssets() {
 
             <TabsContent value="overview" className="space-y-6">
               {teams.map((team) => (
-                <div key={team.id} className="space-y-4">
-                  {teams.length > 1 && (
-                    <h3 className="text-lg font-semibold">{team.name}</h3>
-                  )}
-                  <ClientAssetsDashboard teamId={team.id} />
-                </div>
+                <ClientAssetsDashboard key={team.id} teamId={team.id} />
               ))}
             </TabsContent>
 
             <TabsContent value="clients" className="space-y-6">
               {teams.map((team) => (
-                <div key={team.id} className="space-y-4">
-                  {teams.length > 1 && (
-                    <h3 className="text-lg font-semibold">{team.name}</h3>
-                  )}
-                  <ClientAssetsList teamId={team.id} />
-                </div>
+                <ClientAssetsList key={team.id} teamId={team.id} />
               ))}
             </TabsContent>
 
