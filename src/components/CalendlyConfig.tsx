@@ -286,9 +286,22 @@ export function CalendlyConfig({
     try {
       console.log('Starting Calendly OAuth connection for team:', teamId);
       
-      // Fetch OAuth URL - supabase.functions.invoke() automatically includes auth header
+      // Get current session explicitly
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('No active session:', sessionError);
+        throw new Error('Please refresh the page and try again - session expired');
+      }
+      
+      console.log('Session found, calling OAuth start...');
+      
+      // Fetch OAuth URL with explicit Authorization header
       const { data, error } = await supabase.functions.invoke("calendly-oauth-start", {
-        body: { teamId }
+        body: { teamId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       console.log('OAuth start response:', { data, error });
@@ -502,9 +515,20 @@ export function CalendlyConfig({
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
-      // Use edge function to revoke token - auth header automatically included
+      // Get current session explicitly
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('No active session:', sessionError);
+        throw new Error('Please refresh the page and try again - session expired');
+      }
+      
+      // Use edge function to revoke token with explicit Authorization header
       const { data, error } = await supabase.functions.invoke("reset-calendly", {
-        body: { teamId }
+        body: { teamId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       if (error) throw error;
