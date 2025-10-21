@@ -131,24 +131,52 @@ export function ClientAssetsList({ teamIds }: ClientAssetsListProps) {
     if (!deleteAssetId) return;
 
     try {
-      console.log('Deleting client asset:', deleteAssetId);
+      console.log('Deleting client asset and associated data:', deleteAssetId);
       
-      const { error } = await supabase
+      // Get the client asset to find the team_id
+      const { data: asset } = await supabase
+        .from('client_assets')
+        .select('team_id, client_email')
+        .eq('id', deleteAssetId)
+        .single();
+
+      if (!asset) {
+        throw new Error('Client asset not found');
+      }
+
+      // Delete the client asset (this will cascade to fields and files)
+      const { error: assetError } = await supabase
         .from('client_assets')
         .delete()
         .eq('id', deleteAssetId);
 
-      if (error) {
-        console.error('Delete error:', error);
-        throw error;
+      if (assetError) {
+        console.error('Delete asset error:', assetError);
+        throw assetError;
       }
 
-      console.log('Successfully deleted client asset');
-      toast.success('Client asset deleted successfully');
+      // If there's a team associated, delete it
+      if (asset.team_id) {
+        console.log('Deleting associated team:', asset.team_id);
+        
+        // Delete team (this will cascade to team_members)
+        const { error: teamError } = await supabase
+          .from('teams')
+          .delete()
+          .eq('id', asset.team_id);
+
+        if (teamError) {
+          console.error('Delete team error:', teamError);
+          // Don't throw - asset is already deleted
+        }
+      }
+
+      console.log('Successfully deleted client asset and associated data');
+      toast.success('Client deleted successfully');
       loadAssets();
     } catch (error) {
-      console.error('Error deleting asset:', error);
-      toast.error('Failed to delete client asset');
+      console.error('Error deleting:', error);
+      toast.error('Failed to delete client');
     } finally {
       setDeleteAssetId(null);
     }
