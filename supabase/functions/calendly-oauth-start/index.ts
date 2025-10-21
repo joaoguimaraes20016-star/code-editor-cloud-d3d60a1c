@@ -74,13 +74,16 @@ Deno.serve(async (req) => {
 
     // Get OAuth credentials from environment
     const clientId = Deno.env.get('CALENDLY_CLIENT_ID');
+    const clientSecret = Deno.env.get('CALENDLY_CLIENT_SECRET');
     const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/calendly-oauth-callback`;
 
-    if (!clientId) {
-      console.error('CALENDLY_CLIENT_ID not configured');
+    if (!clientId || !clientSecret) {
+      console.error('Calendly OAuth credentials not configured');
       return new Response(
-        JSON.stringify({ error: 'OAuth not configured. Please contact support.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'Calendly integration is not configured yet. Please contact your system administrator to set up the Calendly OAuth credentials (CALENDLY_CLIENT_ID and CALENDLY_CLIENT_SECRET).' 
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
