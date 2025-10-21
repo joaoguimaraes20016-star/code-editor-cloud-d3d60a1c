@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Copy } from 'lucide-react';
 import { getUserFriendlyError } from '@/lib/errorUtils';
@@ -20,20 +19,15 @@ import { getUserFriendlyError } from '@/lib/errorUtils';
 interface NewClientAssetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  teamId?: string;
-  availableTeams?: { id: string; name: string }[];
 }
 
 export function NewClientAssetDialog({
   open,
   onOpenChange,
-  teamId,
-  availableTeams = [],
 }: NewClientAssetDialogProps) {
   const { user } = useAuth();
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
-  const [selectedTeamId, setSelectedTeamId] = useState(teamId || '');
   const [loading, setLoading] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
@@ -49,11 +43,6 @@ export function NewClientAssetDialog({
       return;
     }
 
-    if (!selectedTeamId) {
-      toast.error('Please select a team');
-      return;
-    }
-
     if (!user) {
       toast.error('You must be logged in');
       return;
@@ -65,11 +54,11 @@ export function NewClientAssetDialog({
       // Generate cryptographically secure token
       const accessToken = generateSecureToken();
 
-      // Create client asset
+      // Create client asset without team_id (will be assigned during onboarding)
       const { data: asset, error: assetError } = await supabase
         .from('client_assets')
         .insert({
-          team_id: selectedTeamId,
+          team_id: null,
           client_name: clientName,
           client_email: clientEmail,
           access_token: accessToken,
@@ -81,14 +70,7 @@ export function NewClientAssetDialog({
 
       if (assetError) throw assetError;
 
-      // Load team-specific templates first, then default templates
-      const { data: teamTemplates } = await supabase
-        .from('asset_field_templates')
-        .select('*')
-        .eq('team_id', selectedTeamId)
-        .eq('is_active', true)
-        .order('order_index');
-
+      // Load only default templates (team-specific templates will be added after team creation)
       const { data: defaultTemplates } = await supabase
         .from('asset_field_templates')
         .select('*')
@@ -96,10 +78,7 @@ export function NewClientAssetDialog({
         .eq('is_active', true)
         .order('order_index');
 
-      const templates = [...(teamTemplates || []), ...(defaultTemplates || [])];
-      const templatesError = null;
-
-      if (templatesError) throw templatesError;
+      const templates = defaultTemplates || [];
 
       // Create fields from templates
       const fields = templates.map((template) => ({
@@ -112,11 +91,13 @@ export function NewClientAssetDialog({
         field_value: null,
       }));
 
-      const { error: fieldsError } = await supabase
-        .from('client_asset_fields')
-        .insert(fields);
+      if (fields.length > 0) {
+        const { error: fieldsError } = await supabase
+          .from('client_asset_fields')
+          .insert(fields);
 
-      if (fieldsError) throw fieldsError;
+        if (fieldsError) throw fieldsError;
+      }
 
       // Create audit log
       await supabase.from('client_asset_audit_logs').insert({
@@ -130,13 +111,6 @@ export function NewClientAssetDialog({
       const link = `${window.location.origin}/onboard/${accessToken}`;
       setGeneratedLink(link);
 
-      // Get team name
-      const { data: team } = await supabase
-        .from('teams')
-        .select('name')
-        .eq('id', selectedTeamId)
-        .single();
-
       // Send onboarding email
       try {
         const { error: emailError } = await supabase.functions.invoke('send-onboarding-email', {
@@ -144,7 +118,7 @@ export function NewClientAssetDialog({
             clientName,
             clientEmail,
             onboardingUrl: link,
-            teamName: team?.name || 'Our Team',
+            teamName: 'GRWTH OP',
           },
         });
 
@@ -176,7 +150,6 @@ export function NewClientAssetDialog({
   const handleClose = () => {
     setClientName('');
     setClientEmail('');
-    setSelectedTeamId(teamId || '');
     setGeneratedLink(null);
     onOpenChange(false);
   };
@@ -208,23 +181,9 @@ export function NewClientAssetDialog({
           </div>
         ) : (
           <div className="space-y-4">
-            {availableTeams.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="team">Assign to Team</Label>
-                <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
-                  <SelectTrigger id="team">
-                    <SelectValue placeholder="Select a team" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTeams.map((team) => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <p className="text-sm text-muted-foreground">
+              The client will automatically create their team when they complete onboarding.
+            </p>
 
             <div className="space-y-2">
               <Label htmlFor="clientName">Client Name</Label>

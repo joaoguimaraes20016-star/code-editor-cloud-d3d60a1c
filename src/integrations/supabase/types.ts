@@ -284,7 +284,7 @@ export type Database = {
           id: string
           last_updated_by: string | null
           status: string
-          team_id: string
+          team_id: string | null
           token_expires_at: string
           updated_at: string | null
         }
@@ -298,7 +298,7 @@ export type Database = {
           id?: string
           last_updated_by?: string | null
           status?: string
-          team_id: string
+          team_id?: string | null
           token_expires_at?: string
           updated_at?: string | null
         }
@@ -312,7 +312,7 @@ export type Database = {
           id?: string
           last_updated_by?: string | null
           status?: string
-          team_id?: string
+          team_id?: string | null
           token_expires_at?: string
           updated_at?: string | null
         }

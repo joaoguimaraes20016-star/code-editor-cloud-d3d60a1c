@@ -162,14 +162,10 @@ export default function ClientAssets() {
         )}
       </div>
 
-      {teams.length > 0 && (
-        <NewClientAssetDialog
-          open={showNewDialog}
-          onOpenChange={setShowNewDialog}
-          teamId={teams[0].id}
-          availableTeams={teams}
-        />
-      )}
+      <NewClientAssetDialog
+        open={showNewDialog}
+        onOpenChange={setShowNewDialog}
+      />
     </div>
   );
 }
