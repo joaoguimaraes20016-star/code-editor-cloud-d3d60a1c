@@ -38,6 +38,29 @@ const Dashboard = () => {
     }
     loadTeams();
     checkUserRole();
+
+    // Subscribe to team membership changes
+    const channel = supabase
+      .channel('team-membership-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_members',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          // Reload teams and check role when membership changes
+          loadTeams();
+          checkUserRole();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, navigate]);
 
   const checkUserRole = async () => {
