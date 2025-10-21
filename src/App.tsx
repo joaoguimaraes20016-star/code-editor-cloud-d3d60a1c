@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import Index from "./pages/Index";
+import SalesDashboard from "./pages/SalesDashboard";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
@@ -34,7 +34,7 @@ const App = () => (
             <Route path="/auth/confirm" element={<AuthCallback />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/client-assets" element={<ClientAssets />} />
-            <Route path="/team/:teamId" element={<Index />} />
+            <Route path="/team/:teamId/sales" element={<SalesDashboard />} />
             <Route path="/team/:teamId/settings" element={<TeamSettings />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

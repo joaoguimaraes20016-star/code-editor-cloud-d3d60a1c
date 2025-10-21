@@ -249,11 +249,11 @@ const Dashboard = () => {
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <CardHeader className="relative py-8 md:py-6 cursor-pointer" onClick={() => navigate(`/team/${team.id}`)}>
+                <CardHeader className="relative py-8 md:py-6 cursor-pointer" onClick={() => navigate(`/team/${team.id}/sales`)}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors duration-300">
-                        <Users className="h-5 w-5 text-primary" />
+                        <TrendingUp className="h-5 w-5 text-primary" />
                       </div>
                       <CardTitle className="group-hover:text-primary transition-colors duration-300">{team.name}</CardTitle>
                     </div>
@@ -290,7 +290,7 @@ const Dashboard = () => {
                     )}
                   </div>
                   <CardDescription className="flex items-center gap-2">
-                    Click to view team data
+                    Sales tracking & team performance
                     <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">→</span>
                   </CardDescription>
                 </CardHeader>
