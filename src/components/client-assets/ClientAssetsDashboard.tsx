@@ -52,10 +52,13 @@ export function ClientAssetsDashboard({ teamId }: ClientAssetsDashboardProps) {
 
   const loadStats = async () => {
     setLoading(true);
+    console.log('Loading stats for team:', teamId);
     const { data, error } = await supabase
       .from('client_assets')
       .select('status')
       .eq('team_id', teamId);
+
+    console.log('Stats query result:', { data, error, dataLength: data?.length });
 
     if (error) {
       console.error('Error loading stats:', error);
