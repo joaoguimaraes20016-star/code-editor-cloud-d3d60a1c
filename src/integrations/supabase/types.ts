@@ -885,14 +885,8 @@ export type Database = {
         Args: { asset_id: string }
         Returns: number
       }
-      can_create_teams: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      cleanup_expired_reset_tokens: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      can_create_teams: { Args: { _user_id: string }; Returns: boolean }
+      cleanup_expired_reset_tokens: { Args: never; Returns: undefined }
       get_team_role: {
         Args: { _team_id: string; _user_id: string }
         Returns: string
@@ -912,10 +906,7 @@ export type Database = {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
       }
-      is_creator: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
+      is_creator: { Args: { _user_id: string }; Returns: boolean }
       is_team_admin: {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
