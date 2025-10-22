@@ -28,7 +28,8 @@ interface TeamAssetsProps {
 export default function TeamAssets({ teamId }: TeamAssetsProps) {
   const { user } = useAuth();
   const { isOwner, role } = useTeamRole(teamId);
-  const canManageAssets = isOwner || role === 'offer_owner' || role === 'admin';
+  // All team members can manage assets
+  const canManageAssets = !!role;
   const navigate = useNavigate();
   const [assets, setAssets] = useState<TeamAsset[]>([]);
   const [loading, setLoading] = useState(true);
