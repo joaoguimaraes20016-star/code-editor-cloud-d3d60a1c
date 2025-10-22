@@ -289,6 +289,11 @@ export default function OnboardingForm() {
         details: { completed_at: new Date().toISOString() },
       });
 
+      // Add creator as admin to team
+      await supabase.functions.invoke('handle-onboarding-completion', {
+        body: { assetId: asset.id }
+      });
+
       setSubmitted(true);
       toast.success('Form submitted successfully!');
     } catch (error) {
