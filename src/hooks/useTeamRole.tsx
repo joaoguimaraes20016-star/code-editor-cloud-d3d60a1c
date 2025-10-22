@@ -20,10 +20,10 @@ export function useTeamRole(teamId: string | undefined) {
           .select('role')
           .eq('team_id', teamId)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
-        setRole(data.role);
+        setRole(data?.role || null);
       } catch (error) {
         console.error('Error loading user role:', error);
         setRole(null);
