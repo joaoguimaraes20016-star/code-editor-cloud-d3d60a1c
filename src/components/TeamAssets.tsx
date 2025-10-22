@@ -30,6 +30,14 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
   const { isOwner, role } = useTeamRole(teamId);
   // All team members can manage assets
   const canManageAssets = !!role;
+  
+  console.log('=== TEAM ASSETS DEBUG ===');
+  console.log('User:', user?.email);
+  console.log('Team ID:', teamId);
+  console.log('Role:', role);
+  console.log('isOwner:', isOwner);
+  console.log('canManageAssets:', canManageAssets);
+  console.log('========================');
   const navigate = useNavigate();
   const [assets, setAssets] = useState<TeamAsset[]>([]);
   const [loading, setLoading] = useState(true);
