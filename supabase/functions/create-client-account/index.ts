@@ -132,14 +132,14 @@ serve(async (req) => {
       teamId = teamData.id;
       console.log('Team created successfully:', teamId);
 
-      // Add user to team as admin (they're creating their own workspace)
-      console.log('Adding user to team as admin...');
+      // Add user to team as offer_owner (they're creating their own workspace)
+      console.log('Adding user to team as offer_owner...');
       const { error: memberError } = await supabase
         .from('team_members')
         .insert({
           team_id: teamId,
           user_id: userId,
-          role: 'admin',
+          role: 'offer_owner',
         });
 
       if (memberError) {
@@ -188,7 +188,7 @@ serve(async (req) => {
         .insert({
           team_id: teamId,
           user_id: assetData.created_by,
-          role: 'offer_owner',
+          role: 'admin',
         });
 
       if (creatorMemberError) {
