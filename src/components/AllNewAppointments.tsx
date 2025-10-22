@@ -328,16 +328,32 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
 
     setDeleting(true);
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .delete()
-        .in('id', idsToDelete);
+      // Delete in batches of 50 to avoid URL length limits
+      const batchSize = 50;
+      let deletedCount = 0;
+      
+      for (let i = 0; i < idsToDelete.length; i += batchSize) {
+        const batch = idsToDelete.slice(i, i + batchSize);
+        const { error } = await supabase
+          .from('appointments')
+          .delete()
+          .in('id', batch);
 
-      if (error) throw error;
+        if (error) throw error;
+        deletedCount += batch.length;
+        
+        // Show progress for large deletions
+        if (idsToDelete.length > batchSize) {
+          toast({
+            title: `Deleting... ${deletedCount}/${idsToDelete.length}`,
+            description: 'Please wait',
+          });
+        }
+      }
 
       toast({
         title: 'Appointments deleted',
-        description: `Deleted ${idsToDelete.length} appointment${idsToDelete.length > 1 ? 's' : ''}`,
+        description: `Deleted ${deletedCount} appointment${deletedCount > 1 ? 's' : ''}`,
       });
 
       setDeleteDialogOpen(false);
