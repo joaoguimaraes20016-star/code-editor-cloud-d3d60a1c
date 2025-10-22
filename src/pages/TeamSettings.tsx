@@ -72,8 +72,8 @@ export default function TeamSettings() {
     
     checkSuperAdmin();
     
-    // Allow owners, super admins, and setters to access settings
-    if (!roleLoading && !isOwner && !isSuperAdmin && role !== 'setter') {
+    // Allow owners, offer_owners, admins, super admins, and setters to access settings
+    if (!roleLoading && !isOwner && !isSuperAdmin && role !== 'setter' && role !== 'offer_owner' && role !== 'admin') {
       toast({
         title: 'Access denied',
         description: 'You do not have permission to access settings',

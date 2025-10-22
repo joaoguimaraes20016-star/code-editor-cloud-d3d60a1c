@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!membership || !['owner', 'offer_owner'].includes(membership.role)) {
+    if (!membership || !['owner', 'offer_owner', 'admin'].includes(membership.role)) {
       return new Response(JSON.stringify({ error: 'Unauthorized to modify this team' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
