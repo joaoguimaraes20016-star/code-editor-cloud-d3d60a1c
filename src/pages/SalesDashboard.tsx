@@ -242,13 +242,8 @@ const Index = () => {
       
       console.log(`Loaded ${data?.length || 0} appointments, ${data?.filter(a => a.status === 'CLOSED').length || 0} closed`);
       
-      // Only update if data has changed
-      setAppointments(prev => {
-        if (JSON.stringify(prev) !== JSON.stringify(data || [])) {
-          return data || [];
-        }
-        return prev;
-      });
+      // Always update state to ensure metrics recalculate
+      setAppointments(data || []);
     } catch (error: any) {
       console.error('Error loading appointments:', error);
     }
