@@ -87,6 +87,13 @@ export default function OnboardingForm() {
 
       setAsset(assetData);
 
+      // If asset is already complete, skip to account creation
+      if (assetData.status === 'complete') {
+        setSubmitted(true);
+        setLoading(false);
+        return;
+      }
+
       // Load fields
       const { data: fieldsData, error: fieldsError } = await supabase
         .from('client_asset_fields')
