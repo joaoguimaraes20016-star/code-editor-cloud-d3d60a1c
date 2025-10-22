@@ -81,7 +81,7 @@ export default function TeamHub() {
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Sales Dashboard
               </Button>
-              {isOwner && (
+              {(isOwner || role === 'offer_owner' || role === 'admin') && (
                 <Button
                   variant="outline"
                   size="icon"
