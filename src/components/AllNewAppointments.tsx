@@ -338,9 +338,9 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
       
       for (let i = 0; i < idsToDelete.length; i += batchSize) {
         const batch = idsToDelete.slice(i, i + batchSize);
-        const { data, error, count } = await supabase
+        const { data, error } = await supabase
           .from('appointments')
-          .delete({ count: 'exact' })
+          .delete()
           .in('id', batch)
           .select();
 
@@ -349,7 +349,6 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
           throw error;
         }
 
-        // Check if RLS policy prevented deletion
         const actuallyDeleted = data?.length || 0;
         if (actuallyDeleted === 0 && batch.length > 0) {
           throw new Error('Permission denied. Only team admins can delete appointments.');
@@ -357,23 +356,20 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
 
         deletedCount += actuallyDeleted;
         
-        // Show progress for large deletions
-        if (idsToDelete.length > batchSize) {
-          toast({
-            title: `Deleting... ${deletedCount}/${idsToDelete.length}`,
-            description: 'Please wait',
-          });
+        // Show progress for large deletions silently
+        if (idsToDelete.length > batchSize && i > 0) {
+          console.log(`Deleting batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(idsToDelete.length/batchSize)}: ${deletedCount}/${idsToDelete.length}`);
         }
       }
 
       toast({
-        title: 'Appointments deleted',
+        title: 'Success',
         description: `Deleted ${deletedCount} appointment${deletedCount > 1 ? 's' : ''}`,
       });
 
       setDeleteDialogOpen(false);
       setSelectedAppointments(new Set());
-      // Don't reload - realtime will handle it
+      loadAppointments();
     } catch (error: any) {
       console.error('Error deleting appointments:', error);
       toast({

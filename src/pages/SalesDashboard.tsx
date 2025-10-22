@@ -72,9 +72,9 @@ const Index = () => {
     loadSales();
     loadAppointments();
 
-    // Set up real-time subscription for appointments
+    // Set up real-time subscription for appointments with unique channel name
     const appointmentsChannel = supabase
-      .channel('appointments-changes')
+      .channel(`appointments-dashboard-${teamId}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -88,7 +88,12 @@ const Index = () => {
           loadAppointments();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Dashboard realtime subscription error:', status);
+          setTimeout(() => loadAppointments(), 2000);
+        }
+      });
 
     return () => {
       supabase.removeChannel(appointmentsChannel);
