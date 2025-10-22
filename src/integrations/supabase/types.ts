@@ -190,9 +190,11 @@ export type Database = {
           field_name: string
           field_type: string
           field_value: string | null
+          help_text: string | null
           id: string
           is_required: boolean | null
           order_index: number
+          placeholder_text: string | null
           updated_at: string | null
         }
         Insert: {
@@ -202,9 +204,11 @@ export type Database = {
           field_name: string
           field_type: string
           field_value?: string | null
+          help_text?: string | null
           id?: string
           is_required?: boolean | null
           order_index: number
+          placeholder_text?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -214,9 +218,11 @@ export type Database = {
           field_name?: string
           field_type?: string
           field_value?: string | null
+          help_text?: string | null
           id?: string
           is_required?: boolean | null
           order_index?: number
+          placeholder_text?: string | null
           updated_at?: string | null
         }
         Relationships: [

@@ -89,6 +89,8 @@ export function NewClientAssetDialog({
         is_required: template.is_required,
         order_index: template.order_index,
         field_value: null,
+        placeholder_text: template.placeholder_text,
+        help_text: template.help_text,
       }));
 
       if (fields.length > 0) {

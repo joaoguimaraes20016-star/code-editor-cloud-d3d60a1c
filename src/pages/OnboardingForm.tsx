@@ -102,7 +102,7 @@ export default function OnboardingForm() {
         return;
       }
 
-      // Map fields and add missing properties
+      // Map fields with all properties including help text
       const mappedFields: AssetField[] = (fieldsData || []).map((f: any) => ({
         id: f.id,
         field_category: f.field_category,
@@ -110,28 +110,12 @@ export default function OnboardingForm() {
         field_value: f.field_value,
         field_type: f.field_type,
         is_required: f.is_required,
-        placeholder_text: null,
-        help_text: null,
+        placeholder_text: f.placeholder_text || null,
+        help_text: f.help_text || null,
         order_index: f.order_index,
       }));
 
-      // Load templates to get placeholder and help text
-      const { data: templates } = await supabase
-        .from('asset_field_templates')
-        .select('field_name, placeholder_text, help_text')
-        .is('team_id', null);
-
-      // Merge template data
-      const enrichedFields = mappedFields.map((field) => {
-        const template = templates?.find((t) => t.field_name === field.field_name);
-        return {
-          ...field,
-          placeholder_text: template?.placeholder_text || null,
-          help_text: template?.help_text || null,
-        };
-      });
-
-      setFields(enrichedFields);
+      setFields(mappedFields);
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error('Error loading asset:', error);
