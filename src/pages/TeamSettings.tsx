@@ -72,8 +72,8 @@ export default function TeamSettings() {
     
     checkSuperAdmin();
     
-    // Allow owners, offer_owners, admins, super admins, and setters to access settings
-    if (!roleLoading && !isOwner && !isSuperAdmin && role !== 'setter' && role !== 'offer_owner' && role !== 'admin') {
+    // Allow all team members to access settings (limited view for closers/setters)
+    if (!roleLoading && !isOwner && !isSuperAdmin && role !== 'setter' && role !== 'offer_owner' && role !== 'admin' && role !== 'closer') {
       toast({
         title: 'Access denied',
         description: 'You do not have permission to access settings',
@@ -355,121 +355,128 @@ export default function TeamSettings() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{teamName} Settings</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your team members and roles
+            {(role === 'closer' || role === 'setter') 
+              ? 'Manage your booking links'
+              : 'Manage your team members and roles'}
           </p>
         </div>
 
-        {/* Add Member Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Add Team Member</CardTitle>
-            <CardDescription>
-              Invite users to your team by their email address
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleInviteMember} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="user@example.com"
-                    value={newMemberEmail}
-                    onChange={(e) => setNewMemberEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select value={newMemberRole} onValueChange={setNewMemberRole}>
-                    <SelectTrigger id="role">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="owner">Admin</SelectItem>
-                      <SelectItem value="offer_owner">Offer Owner</SelectItem>
-                      <SelectItem value="closer">Closer</SelectItem>
-                      <SelectItem value="setter">Setter</SelectItem>
-                      <SelectItem value="member">Member</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button type="submit">Add Member</Button>
-            </form>
-          </CardContent>
-        </Card>
+        {/* Admin/Owner sections - hidden from closers and setters */}
+        {(isOwner || role === 'offer_owner' || role === 'admin' || isSuperAdmin) && (
+          <>
+            {/* Add Member Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Add Team Member</CardTitle>
+                <CardDescription>
+                  Invite users to your team by their email address
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleInviteMember} className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="user@example.com"
+                        value={newMemberEmail}
+                        onChange={(e) => setNewMemberEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Role</Label>
+                      <Select value={newMemberRole} onValueChange={setNewMemberRole}>
+                        <SelectTrigger id="role">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="owner">Admin</SelectItem>
+                          <SelectItem value="offer_owner">Offer Owner</SelectItem>
+                          <SelectItem value="closer">Closer</SelectItem>
+                          <SelectItem value="setter">Setter</SelectItem>
+                          <SelectItem value="member">Member</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button type="submit">Add Member</Button>
+                </form>
+              </CardContent>
+            </Card>
 
-        {/* Team Members Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Team Members</CardTitle>
-            <CardDescription>
-              Current members of your team
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {members.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell className="font-medium">
-                        {member.full_name}
-                        {member.is_super_admin && (
-                          <Badge variant="destructive" className="ml-2">SUPER ADMIN</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{member.email}</TableCell>
-                      <TableCell>
-                        {(isSuperAdmin || isOwner) && !member.is_super_admin ? (
-                          <Select
-                            value={member.role}
-                            onValueChange={(value) => handleRoleChange(member.id, value)}
-                          >
-                            <SelectTrigger className="w-[140px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="owner">Admin</SelectItem>
-                              <SelectItem value="offer_owner">Offer Owner</SelectItem>
-                              <SelectItem value="closer">Closer</SelectItem>
-                              <SelectItem value="setter">Setter</SelectItem>
-                              <SelectItem value="member">Member</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          getRoleBadge(member.role)
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {((isSuperAdmin && !member.is_current_user) || (!member.is_super_admin && member.role !== 'owner' && member.role !== 'offer_owner')) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveMember(member.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Team Members Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Team Members</CardTitle>
+                <CardDescription>
+                  Current members of your team
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {members.map((member) => (
+                        <TableRow key={member.id}>
+                          <TableCell className="font-medium">
+                            {member.full_name}
+                            {member.is_super_admin && (
+                              <Badge variant="destructive" className="ml-2">SUPER ADMIN</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>{member.email}</TableCell>
+                          <TableCell>
+                            {(isSuperAdmin || isOwner) && !member.is_super_admin ? (
+                              <Select
+                                value={member.role}
+                                onValueChange={(value) => handleRoleChange(member.id, value)}
+                              >
+                                <SelectTrigger className="w-[140px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="owner">Admin</SelectItem>
+                                  <SelectItem value="offer_owner">Offer Owner</SelectItem>
+                                  <SelectItem value="closer">Closer</SelectItem>
+                                  <SelectItem value="setter">Setter</SelectItem>
+                                  <SelectItem value="member">Member</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              getRoleBadge(member.role)
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {((isSuperAdmin && !member.is_current_user) || (!member.is_super_admin && member.role !== 'owner' && member.role !== 'offer_owner')) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveMember(member.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         {/* Commission Settings - visible to owners only */}
         {isOwner && (
@@ -513,8 +520,8 @@ export default function TeamSettings() {
           }
         })()}
 
-        {/* Setter Booking Links - visible to owners and setters */}
-        {(isOwner || role === 'setter') && calendlyEventTypes && calendlyEventTypes.length > 0 && (() => {
+        {/* Setter Booking Links - visible to owners, setters, and closers */}
+        {(isOwner || role === 'setter' || role === 'closer') && calendlyEventTypes && calendlyEventTypes.length > 0 && (() => {
           try {
             return (
               <SetterBookingLinks
