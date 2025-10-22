@@ -151,6 +151,18 @@ serve(async (req) => {
       console.log('User assigned as admin successfully');
     }
 
+    // Fetch the client asset to get the original creator
+    const { data: assetData, error: assetFetchError } = await supabase
+      .from('client_assets')
+      .select('created_by')
+      .eq('id', clientAssetId)
+      .single();
+
+    if (assetFetchError) {
+      console.error('Asset fetch error:', assetFetchError);
+      throw assetFetchError;
+    }
+
     // Update the client asset to link to this team and user
     const { error: assetError } = await supabase
       .from('client_assets')
@@ -166,6 +178,26 @@ serve(async (req) => {
     }
 
     console.log('Client asset linked to team');
+
+    // Add the original creator to the team if they're not already a member
+    if (assetData.created_by && assetData.created_by !== userId) {
+      console.log('Adding original creator to team:', assetData.created_by);
+      
+      const { error: creatorMemberError } = await supabase
+        .from('team_members')
+        .insert({
+          team_id: teamId,
+          user_id: assetData.created_by,
+          role: 'offer_owner',
+        });
+
+      if (creatorMemberError) {
+        console.error('Error adding creator to team:', creatorMemberError);
+        // Don't throw - this is not critical enough to fail the whole operation
+      } else {
+        console.log('Original creator added to team successfully');
+      }
+    }
 
     // Create audit log
     await supabase.from('client_asset_audit_logs').insert({
