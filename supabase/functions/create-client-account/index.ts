@@ -19,6 +19,8 @@ serve(async (req) => {
     const { email, password, fullName, clientAssetId, teamName } = await req.json();
 
     console.log('Creating client account for:', email);
+    console.log('Team name:', teamName);
+    console.log('Client asset ID:', clientAssetId);
 
     // Validate team name
     if (!teamName || teamName.trim().length === 0) {
@@ -39,8 +41,10 @@ serve(async (req) => {
     let isNewUser = false;
 
     // Check if user already exists
+    console.log('Checking for existing user...');
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(u => u.email === email);
+    console.log('Existing user found:', !!existingUser);
 
     if (existingUser) {
       console.log('User already exists:', existingUser.id);
@@ -61,6 +65,7 @@ serve(async (req) => {
       }
     } else {
       // Create new user account
+      console.log('Creating new user...');
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email,
         password,
@@ -80,15 +85,21 @@ serve(async (req) => {
 
       userId = authData.user.id;
       isNewUser = true;
-      console.log('User created:', userId);
+      console.log('User created successfully:', userId);
     }
 
     // Check if user already has a team
-    const { data: existingMembership } = await supabase
+    console.log('Checking for existing team membership...');
+    const { data: existingMembership, error: membershipError } = await supabase
       .from('team_members')
       .select('team_id')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
+
+    if (membershipError) {
+      console.error('Membership check error:', membershipError);
+      throw membershipError;
+    }
 
     let teamId: string;
 
@@ -98,6 +109,7 @@ serve(async (req) => {
       console.log('Using existing team:', teamId);
     } else {
       // Create a new team with the provided name
+      console.log('Creating new team with name:', teamName.trim());
       const { data: teamData, error: teamError } = await supabase
         .from('teams')
         .insert({
@@ -109,13 +121,15 @@ serve(async (req) => {
 
       if (teamError) {
         console.error('Team creation error:', teamError);
+        console.error('Team error details:', JSON.stringify(teamError));
         throw teamError;
       }
 
       teamId = teamData.id;
-      console.log('Team created:', teamId);
+      console.log('Team created successfully:', teamId);
 
       // Add user to team as admin (they're creating their own workspace)
+      console.log('Adding user to team as admin...');
       const { error: memberError } = await supabase
         .from('team_members')
         .insert({
@@ -126,10 +140,11 @@ serve(async (req) => {
 
       if (memberError) {
         console.error('Team member error:', memberError);
+        console.error('Member error details:', JSON.stringify(memberError));
         throw memberError;
       }
 
-      console.log('User assigned as admin');
+      console.log('User assigned as admin successfully');
     }
 
     // Update the client asset to link to this team and user
