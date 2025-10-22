@@ -20,9 +20,20 @@ export function AccountCreation({ assetId, clientName, clientEmail }: AccountCre
   const [accountCreated, setAccountCreated] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [teamName, setTeamName] = useState('');
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!teamName.trim()) {
+      toast.error('Please enter a team name');
+      return;
+    }
+
+    if (teamName.trim().length > 100) {
+      toast.error('Team name must be less than 100 characters');
+      return;
+    }
 
     if (password.length < 8) {
       toast.error('Password must be at least 8 characters');
@@ -43,6 +54,7 @@ export function AccountCreation({ assetId, clientName, clientEmail }: AccountCre
           password,
           fullName: clientName,
           clientAssetId: assetId,
+          teamName: teamName.trim(),
         },
       });
 
@@ -135,6 +147,24 @@ export function AccountCreation({ assetId, clientName, clientEmail }: AccountCre
             <div className="space-y-2">
               <Label>Email</Label>
               <Input type="email" value={clientEmail} disabled />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="teamName">
+                Team Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="teamName"
+                type="text"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                placeholder="Enter your team or company name"
+                required
+                maxLength={100}
+              />
+              <p className="text-xs text-muted-foreground">
+                This will be the name of your workspace
+              </p>
             </div>
 
             <div className="space-y-2">

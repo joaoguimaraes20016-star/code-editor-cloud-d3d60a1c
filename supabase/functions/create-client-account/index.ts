@@ -16,9 +16,24 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { email, password, fullName, clientAssetId } = await req.json();
+    const { email, password, fullName, clientAssetId, teamName } = await req.json();
 
     console.log('Creating client account for:', email);
+
+    // Validate team name
+    if (!teamName || teamName.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Team name is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (teamName.trim().length > 100) {
+      return new Response(
+        JSON.stringify({ error: 'Team name must be less than 100 characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     let userId: string;
     let isNewUser = false;
@@ -82,11 +97,11 @@ serve(async (req) => {
       teamId = existingMembership.team_id;
       console.log('Using existing team:', teamId);
     } else {
-      // Create a new team
+      // Create a new team with the provided name
       const { data: teamData, error: teamError } = await supabase
         .from('teams')
         .insert({
-          name: `${fullName}'s Team`,
+          name: teamName.trim(),
           created_by: userId,
         })
         .select()
@@ -100,13 +115,13 @@ serve(async (req) => {
       teamId = teamData.id;
       console.log('Team created:', teamId);
 
-      // Add user to team as member (they're a client, not an agency)
+      // Add user to team as admin (they're creating their own workspace)
       const { error: memberError } = await supabase
         .from('team_members')
         .insert({
           team_id: teamId,
           user_id: userId,
-          role: 'member',
+          role: 'admin',
         });
 
       if (memberError) {
@@ -114,7 +129,7 @@ serve(async (req) => {
         throw memberError;
       }
 
-      console.log('User assigned as offer_owner');
+      console.log('User assigned as admin');
     }
 
     // Update the client asset to link to this team and user
