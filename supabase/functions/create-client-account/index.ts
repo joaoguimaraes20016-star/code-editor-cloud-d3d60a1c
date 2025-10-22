@@ -16,11 +16,15 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { email, password, fullName, clientAssetId, teamName } = await req.json();
+    const body = await req.json();
+    console.log('Received request body:', JSON.stringify(body));
+
+    const { email, password, fullName, clientAssetId, teamName } = body;
 
     console.log('Creating client account for:', email);
     console.log('Team name:', teamName);
     console.log('Client asset ID:', clientAssetId);
+    console.log('Full name:', fullName);
 
     // Validate team name
     if (!teamName || teamName.trim().length === 0) {
