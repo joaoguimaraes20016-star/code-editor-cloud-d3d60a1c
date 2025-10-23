@@ -969,7 +969,7 @@ export function CalendlyConfig({
               className="w-full"
             >
               <Settings className="w-4 h-4 mr-2" />
-              {fixingWebhook ? "Fixing..." : "Fix Webhook"}
+              {fixingWebhook ? "Fixing..." : "Appointments Not Showing? Click Here"}
             </Button>
 
             <Button 
