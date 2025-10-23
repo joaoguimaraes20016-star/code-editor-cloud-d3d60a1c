@@ -483,17 +483,37 @@ export function CalendlyConfig({
         throw new Error('Please log in to continue');
       }
 
-      const { data, error } = await supabase.functions.invoke("fix-webhook", {
+      // First, fix the webhook
+      const { data: webhookData, error: webhookError } = await supabase.functions.invoke("fix-webhook", {
         body: { teamId }
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (webhookError) throw webhookError;
+      if (webhookData?.error) throw new Error(webhookData.error);
 
-      toast({
-        title: "Webhook Fixed",
-        description: "Calendly webhook has been recreated. New appointments will now sync automatically.",
+      // Then, import any appointments that were missed
+      const { data: importData, error: importError } = await supabase.functions.invoke("import-calendly-appointments", {
+        body: { teamId }
       });
+
+      if (importError) {
+        // Don't fail completely if import fails, webhook is still fixed
+        console.error('Import error:', importError);
+        toast({
+          title: "Webhook Fixed",
+          description: "Webhook recreated but couldn't import appointments. Please try again.",
+        });
+      } else if (importData?.error) {
+        toast({
+          title: "Webhook Fixed",
+          description: "Webhook recreated but couldn't import appointments. Please try again.",
+        });
+      } else {
+        toast({
+          title: "Fixed & Synced",
+          description: `Webhook fixed and imported ${importData.imported || 0} appointments (${importData.skipped || 0} skipped)`,
+        });
+      }
       
       onUpdate();
     } catch (error: any) {
