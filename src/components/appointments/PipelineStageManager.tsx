@@ -86,11 +86,9 @@ function StageItem({ stage, onEdit, onDelete }: {
         <Button size="icon" variant="ghost" onClick={onEdit} className="h-8 w-8">
           <Edit className="h-3.5 w-3.5" />
         </Button>
-        {!stage.is_default && (
-          <Button size="icon" variant="ghost" onClick={onDelete} className="h-8 w-8">
-            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-          </Button>
-        )}
+        <Button size="icon" variant="ghost" onClick={onDelete} className="h-8 w-8">
+          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+        </Button>
       </div>
     </div>
   );
@@ -173,10 +171,30 @@ export function PipelineStageManager({
     if (!stageToDelete) return;
 
     try {
-      // Move appointments to "new" stage before deleting
+      // Check how many appointments are in this stage
+      const { data: appointmentsData, error: countError } = await supabase
+        .from("appointments")
+        .select("id", { count: 'exact', head: true })
+        .eq("team_id", teamId)
+        .eq("pipeline_stage", stageToDelete.stage_id);
+
+      if (countError) throw countError;
+
+      // Move appointments to "booked" stage before deleting (or first available stage)
+      const { data: fallbackStage } = await supabase
+        .from("team_pipeline_stages")
+        .select("stage_id")
+        .eq("team_id", teamId)
+        .neq("id", stageToDelete.id)
+        .order("order_index")
+        .limit(1)
+        .maybeSingle();
+
+      const targetStage = fallbackStage?.stage_id || "booked";
+
       await supabase
         .from("appointments")
-        .update({ pipeline_stage: "new" })
+        .update({ pipeline_stage: targetStage })
         .eq("team_id", teamId)
         .eq("pipeline_stage", stageToDelete.stage_id);
 
@@ -187,7 +205,9 @@ export function PipelineStageManager({
 
       if (error) throw error;
 
-      toast.success("Stage deleted successfully");
+      toast.success("Stage deleted successfully", {
+        description: appointmentsData ? `Moved appointments to ${targetStage}` : undefined
+      });
       loadStages();
       onStagesUpdated();
     } catch (error) {
@@ -265,15 +285,29 @@ export function PipelineStageManager({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Stage</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{stageToDelete?.stage_label}"? All deals in this
-              stage will be moved to "New Leads".
+            <AlertDialogTitle>Delete Pipeline Stage</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Are you sure you want to delete <strong>"{stageToDelete?.stage_label}"</strong>?
+              </p>
+              {stageToDelete?.is_default && (
+                <p className="text-orange-600 dark:text-orange-400 font-semibold">
+                  ⚠️ Warning: This is a default stage. Deleting it may affect your team's workflow.
+                </p>
+              )}
+              <p className="text-sm">
+                All appointments currently in this stage will be automatically moved to the first available stage.
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Stage
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
