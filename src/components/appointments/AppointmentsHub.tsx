@@ -10,6 +10,7 @@ import { DealPipeline } from "./DealPipeline";
 import { TaskBasedConfirmToday } from "./TaskBasedConfirmToday";
 import { OperatorControls } from "./OperatorControls";
 import { MRRFollowUps } from "./MRRFollowUps";
+import { MRRScheduleList } from "./MRRScheduleList";
 import { RetargetTab } from "./RetargetTab";
 import { StageWorkspaceView } from "./StageWorkspaceView";
 import { StageWorkspaceList } from "./StageWorkspaceList";
@@ -103,13 +104,14 @@ export function AppointmentsHub({
         </div>
         
         <Tabs defaultValue="mine" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 h-12">
+          <TabsList className="grid w-full grid-cols-6 h-12">
             <TabsTrigger value="mine" className="text-base">My Deals</TabsTrigger>
             <TabsTrigger value="all" className="text-base">All Appointments</TabsTrigger>
             <TabsTrigger value="pipeline" className="text-base">Deal Pipeline</TabsTrigger>
-            <TabsTrigger value="mrr" className="text-base">
-              MRR {counts.mrrDue > 0 && <Badge className="ml-2" variant="secondary">{counts.mrrDue}</Badge>}
+            <TabsTrigger value="mrr-tasks" className="text-base">
+              MRR Tasks {counts.mrrDue > 0 && <Badge className="ml-2" variant="secondary">{counts.mrrDue}</Badge>}
             </TabsTrigger>
+            <TabsTrigger value="mrr-deals" className="text-base">MRR Deals</TabsTrigger>
             <TabsTrigger value="stages" className="text-base">Stage Views</TabsTrigger>
           </TabsList>
 
@@ -129,8 +131,12 @@ export function AppointmentsHub({
             />
           </TabsContent>
 
-          <TabsContent value="mrr" className="mt-6">
+          <TabsContent value="mrr-tasks" className="mt-6">
             <MRRFollowUps teamId={teamId} userRole={userRole} currentUserId={user?.id || ''} />
+          </TabsContent>
+
+          <TabsContent value="mrr-deals" className="mt-6">
+            <MRRScheduleList teamId={teamId} userRole={userRole} currentUserId={user?.id || ''} />
           </TabsContent>
 
           <TabsContent value="pipeline" className="mt-6">
@@ -194,20 +200,21 @@ export function AppointmentsHub({
       </div>
       
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-8 h-12">
-          <TabsTrigger value="overview" className="text-base">Overview</TabsTrigger>
-          <TabsTrigger value="unassigned" className="text-base">Unassigned</TabsTrigger>
-          <TabsTrigger value="assigned" className="text-base">All Assigned</TabsTrigger>
-          <TabsTrigger value="pipeline" className="text-base">Pipeline</TabsTrigger>
-          <TabsTrigger value="tasks" className="text-base">
-            Tasks {(counts.myTasks + counts.queueTasks) > 0 && <Badge className="ml-2" variant="secondary">{counts.myTasks + counts.queueTasks}</Badge>}
+        <TabsList className="grid w-full grid-cols-9 h-12 text-xs">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="unassigned">Unassigned</TabsTrigger>
+          <TabsTrigger value="assigned">All Assigned</TabsTrigger>
+          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="tasks">
+            Tasks {(counts.myTasks + counts.queueTasks) > 0 && <Badge className="ml-1" variant="secondary">{counts.myTasks + counts.queueTasks}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="mrr" className="text-base">
-            MRR {counts.mrrDue > 0 && <Badge className="ml-2" variant="secondary">{counts.mrrDue}</Badge>}
+          <TabsTrigger value="mrr-tasks">
+            MRR Tasks {counts.mrrDue > 0 && <Badge className="ml-1" variant="secondary">{counts.mrrDue}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="stages" className="text-base">Stages</TabsTrigger>
-          <TabsTrigger value="retarget" className="text-base">
-            Follow-Ups {counts.followUps > 0 && <Badge className="ml-2" variant="secondary">{counts.followUps}</Badge>}
+          <TabsTrigger value="mrr-deals">MRR Deals</TabsTrigger>
+          <TabsTrigger value="stages">Stages</TabsTrigger>
+          <TabsTrigger value="retarget">
+            Follow-Ups {counts.followUps > 0 && <Badge className="ml-1" variant="secondary">{counts.followUps}</Badge>}
           </TabsTrigger>
         </TabsList>
 
@@ -236,10 +243,13 @@ export function AppointmentsHub({
           <TaskBasedConfirmToday teamId={teamId} />
         </TabsContent>
 
-        <TabsContent value="mrr" className="mt-6">
+        <TabsContent value="mrr-tasks" className="mt-6">
           <MRRFollowUps teamId={teamId} userRole={userRole} currentUserId={user?.id || ''} />
         </TabsContent>
 
+        <TabsContent value="mrr-deals" className="mt-6">
+          <MRRScheduleList teamId={teamId} userRole={userRole} currentUserId={user?.id || ''} />
+        </TabsContent>
 
         <TabsContent value="pipeline" className="mt-6">
           <DealPipeline
