@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { DroppableStageColumn } from "./DroppableStageColumn";
 import { RescheduleDialog } from "./RescheduleDialog";
 import { FollowUpDialog } from "./FollowUpDialog";
+import { DepositCollectedDialog } from "./DepositCollectedDialog";
 import { format } from "date-fns";
 
 interface Appointment {
@@ -74,6 +75,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   const [managerOpen, setManagerOpen] = useState(false);
   const [rescheduleDialog, setRescheduleDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
   const [followUpDialog, setFollowUpDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; stage: "cancelled" | "no_show" } | null>(null);
+  const [depositDialog, setDepositDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -228,6 +230,16 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     if (!appointment || appointment.pipeline_stage === newStage) return;
 
     // Check if moving to stages that require additional info
+    if (newStage === "deposit") {
+      setDepositDialog({ 
+        open: true, 
+        appointmentId, 
+        stageId: newStage,
+        dealName: appointment.lead_name 
+      });
+      return;
+    }
+
     if (newStage === "rescheduled") {
       setRescheduleDialog({ 
         open: true, 
@@ -368,11 +380,70 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     setFollowUpDialog(null);
   };
 
+  const handleDepositConfirm = async (depositAmount: number, notes: string, followUpDate: Date) => {
+    if (!depositDialog) return;
+    
+    const appointment = appointments.find((a) => a.id === depositDialog.appointmentId);
+    if (!appointment) return;
+
+    try {
+      // Update appointment with deposit amount, notes, and move to deposit stage
+      const { error: updateError } = await supabase
+        .from("appointments")
+        .update({ 
+          pipeline_stage: "deposit",
+          cc_collected: depositAmount,
+          setter_notes: notes
+        })
+        .eq("id", depositDialog.appointmentId);
+
+      if (updateError) throw updateError;
+
+      // Create follow-up task
+      await supabase.rpc("create_task_with_assignment", {
+        p_team_id: appointment.team_id,
+        p_appointment_id: depositDialog.appointmentId,
+        p_task_type: "follow_up",
+        p_follow_up_date: format(followUpDate, "yyyy-MM-dd"),
+        p_follow_up_reason: `Deposit collected: $${depositAmount}. ${notes}`
+      });
+
+      // Log activity
+      await supabase
+        .from("activity_logs")
+        .insert({
+          team_id: appointment.team_id,
+          appointment_id: depositDialog.appointmentId,
+          actor_name: "System",
+          action_type: "Deposit Collected",
+          note: `$${depositAmount} - Follow-up scheduled for ${format(followUpDate, "PPP")}`
+        });
+
+      toast.success("Deposit recorded successfully");
+      await loadDeals();
+    } catch (error: any) {
+      console.error("Error recording deposit:", error);
+      toast.error(error.message || "Failed to record deposit");
+    }
+
+    setDepositDialog(null);
+  };
+
   const handleMoveTo = async (appointmentId: string, stage: string) => {
     const appointment = appointments.find((a) => a.id === appointmentId);
     if (!appointment) return;
 
     // Check if moving to stages that require additional info
+    if (stage === "deposit") {
+      setDepositDialog({ 
+        open: true, 
+        appointmentId, 
+        stageId: stage,
+        dealName: appointment.lead_name 
+      });
+      return;
+    }
+
     if (stage === "rescheduled") {
       setRescheduleDialog({ 
         open: true, 
@@ -630,6 +701,15 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           onConfirm={handleFollowUpConfirm}
           dealName={followUpDialog.dealName}
           stage={followUpDialog.stage}
+        />
+      )}
+
+      {depositDialog && (
+        <DepositCollectedDialog
+          open={depositDialog.open}
+          onOpenChange={(open) => !open && setDepositDialog(null)}
+          onConfirm={handleDepositConfirm}
+          dealName={depositDialog.dealName}
         />
       )}
     </div>
