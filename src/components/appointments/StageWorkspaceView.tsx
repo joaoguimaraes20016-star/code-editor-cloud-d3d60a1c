@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { StageActionMenu } from "./StageActionMenu";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { Loader2 } from "lucide-react";
+import { StageActionMenu } from "./StageActionMenu";
+import { FollowUpDialog } from "./FollowUpDialog";
 
 interface Appointment {
   id: string;
@@ -36,6 +37,7 @@ export function StageWorkspaceView({
 }: StageWorkspaceViewProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [followUpDialog, setFollowUpDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; stage: "cancelled" | "no_show" } | null>(null);
 
   useEffect(() => {
     loadStageAppointments();
@@ -96,19 +98,17 @@ export function StageWorkspaceView({
   };
 
   const handleNoShow = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ status: 'CANCELLED', pipeline_stage: 'no_show' })
-        .eq('id', id);
+    const appointment = appointments.find(apt => apt.id === id);
+    if (!appointment) return;
 
-      if (error) throw error;
-      toast.success('Marked as no-show');
-      loadStageAppointments();
-    } catch (error) {
-      console.error('Error marking no-show:', error);
-      toast.error('Failed to mark as no-show');
-    }
+    // Open follow-up dialog instead of direct update
+    setFollowUpDialog({
+      open: true,
+      appointmentId: id,
+      stageId: 'no_show',
+      dealName: appointment.lead_name,
+      stage: 'no_show'
+    });
   };
 
   const handleRetarget = async (id: string) => {
@@ -162,6 +162,43 @@ export function StageWorkspaceView({
     } catch (error) {
       console.error('Error moving to closed:', error);
       toast.error('Failed to move to closed');
+    }
+  };
+
+  const handleFollowUpConfirm = async (followUpDate: Date, reason: string) => {
+    if (!followUpDialog) return;
+
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({
+          status: 'CANCELLED',
+          pipeline_stage: followUpDialog.stageId,
+          retarget_date: format(followUpDate, "yyyy-MM-dd"),
+          retarget_reason: reason
+        })
+        .eq('id', followUpDialog.appointmentId);
+
+      if (error) throw error;
+
+      // Create follow-up task
+      const appointment = appointments.find(a => a.id === followUpDialog.appointmentId);
+      if (appointment) {
+        await supabase.rpc("create_task_with_assignment", {
+          p_team_id: teamId,
+          p_appointment_id: followUpDialog.appointmentId,
+          p_task_type: "follow_up",
+          p_follow_up_date: format(followUpDate, "yyyy-MM-dd"),
+          p_follow_up_reason: reason
+        });
+      }
+
+      toast.success("Follow-up scheduled successfully");
+      setFollowUpDialog(null);
+      loadStageAppointments();
+    } catch (error: any) {
+      console.error("Error scheduling follow-up:", error);
+      toast.error(error.message || "Failed to schedule follow-up");
     }
   };
 
@@ -245,6 +282,14 @@ export function StageWorkspaceView({
           ))
         )}
       </div>
+
+      <FollowUpDialog
+        open={followUpDialog?.open || false}
+        onOpenChange={(open) => !open && setFollowUpDialog(null)}
+        onConfirm={handleFollowUpConfirm}
+        dealName={followUpDialog?.dealName || ""}
+        stage={followUpDialog?.stage || "no_show"}
+      />
     </div>
   );
 }

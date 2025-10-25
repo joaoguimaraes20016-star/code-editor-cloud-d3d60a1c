@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, UserPlus, CalendarCheck, CalendarX, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { FollowUpDialog } from "./FollowUpDialog";
 
 interface Appointment {
   id: string;
@@ -32,6 +33,7 @@ export function ConfirmTodayWorkspace({ teamId, userRole }: ConfirmTodayWorkspac
   const [unassigned, setUnassigned] = useState<Appointment[]>([]);
   const [myAssigned, setMyAssigned] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [followUpDialog, setFollowUpDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; stage: "cancelled" | "no_show" } | null>(null);
 
   useEffect(() => {
     loadTodaysAppointments();
@@ -135,22 +137,51 @@ export function ConfirmTodayWorkspace({ teamId, userRole }: ConfirmTodayWorkspac
   };
 
   const handleNoShow = async (appointmentId: string) => {
+    // Find appointment in either unassigned or myAssigned
+    const appointment = [...unassigned, ...myAssigned].find(apt => apt.id === appointmentId);
+    if (!appointment) return;
+
+    // Open follow-up dialog instead of direct update
+    setFollowUpDialog({
+      open: true,
+      appointmentId,
+      stageId: 'no_show',
+      dealName: appointment.lead_name,
+      stage: 'no_show'
+    });
+  };
+
+  const handleFollowUpConfirm = async (followUpDate: Date, reason: string) => {
+    if (!followUpDialog) return;
+
     try {
       const { error } = await supabase
         .from('appointments')
-        .update({ 
+        .update({
           status: 'CANCELLED',
-          pipeline_stage: 'no_show'
+          pipeline_stage: 'no_show',
+          retarget_date: format(followUpDate, "yyyy-MM-dd"),
+          retarget_reason: reason
         })
-        .eq('id', appointmentId);
+        .eq('id', followUpDialog.appointmentId);
 
       if (error) throw error;
 
-      toast.success('Marked as no-show');
+      // Create follow-up task
+      await supabase.rpc("create_task_with_assignment", {
+        p_team_id: teamId,
+        p_appointment_id: followUpDialog.appointmentId,
+        p_task_type: "follow_up",
+        p_follow_up_date: format(followUpDate, "yyyy-MM-dd"),
+        p_follow_up_reason: reason
+      });
+
+      toast.success("Follow-up scheduled successfully");
+      setFollowUpDialog(null);
       loadTodaysAppointments();
-    } catch (error) {
-      console.error('Error marking no-show:', error);
-      toast.error('Failed to mark as no-show');
+    } catch (error: any) {
+      console.error("Error scheduling follow-up:", error);
+      toast.error(error.message || "Failed to schedule follow-up");
     }
   };
 
@@ -319,6 +350,14 @@ export function ConfirmTodayWorkspace({ teamId, userRole }: ConfirmTodayWorkspac
           )}
         </CardContent>
       </Card>
+
+      <FollowUpDialog
+        open={followUpDialog?.open || false}
+        onOpenChange={(open) => !open && setFollowUpDialog(null)}
+        onConfirm={handleFollowUpConfirm}
+        dealName={followUpDialog?.dealName || ""}
+        stage={followUpDialog?.stage || "no_show"}
+      />
     </div>
   );
 }
