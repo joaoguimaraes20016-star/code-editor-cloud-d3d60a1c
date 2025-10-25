@@ -8,13 +8,12 @@ interface InitializeDefaultStagesProps {
 
 const DEFAULT_STAGES = [
   { stage_id: 'booked', stage_label: 'Appointment Booked', stage_color: '#3b82f6', order_index: 0 },
-  { stage_id: 'confirmed', stage_label: 'Confirmed', stage_color: '#8b5cf6', order_index: 1 },
-  { stage_id: 'no_show', stage_label: 'No-Show', stage_color: '#f97316', order_index: 2 },
-  { stage_id: 'canceled', stage_label: 'Canceled', stage_color: '#6b7280', order_index: 3 },
-  { stage_id: 'rescheduled', stage_label: 'Rescheduled', stage_color: '#eab308', order_index: 4 },
-  { stage_id: 'deposit', stage_label: 'Deposit Collected', stage_color: '#14b8a6', order_index: 5 },
-  { stage_id: 'won', stage_label: 'Closed', stage_color: '#22c55e', order_index: 6 },
-  { stage_id: 'disqualified', stage_label: 'Disqualified', stage_color: '#ef4444', order_index: 7 },
+  { stage_id: 'no_show', stage_label: 'No-Show', stage_color: '#f97316', order_index: 1 },
+  { stage_id: 'canceled', stage_label: 'Canceled', stage_color: '#6b7280', order_index: 2 },
+  { stage_id: 'rescheduled', stage_label: 'Rescheduled', stage_color: '#eab308', order_index: 3 },
+  { stage_id: 'deposit', stage_label: 'Deposit Collected', stage_color: '#14b8a6', order_index: 4 },
+  { stage_id: 'won', stage_label: 'Closed', stage_color: '#22c55e', order_index: 5 },
+  { stage_id: 'disqualified', stage_label: 'Disqualified', stage_color: '#ef4444', order_index: 6 },
 ];
 
 export function InitializeDefaultStages({ teamId }: InitializeDefaultStagesProps) {
@@ -34,10 +33,13 @@ export function InitializeDefaultStages({ teamId }: InitializeDefaultStagesProps
 
       if (fetchError) throw fetchError;
 
-      // Update existing stages that need label corrections
+      // Update existing stages that need label corrections or removal
       const stagesToUpdate = existingStages?.filter(stage => {
         if (stage.stage_label === 'Closed Won') return true;
         if (stage.stage_label === 'Closed Lost') return true;
+        if (stage.stage_id === 'confirmed') return true;
+        if (stage.stage_label === 'Confirmed') return true;
+        if (stage.stage_label === 'Contacted') return true;
         return false;
       }) || [];
 
@@ -47,11 +49,11 @@ export function InitializeDefaultStages({ teamId }: InitializeDefaultStagesProps
             .from('team_pipeline_stages')
             .update({ stage_label: 'Closed' })
             .eq('id', stage.id);
-        } else if (stage.stage_label === 'Closed Lost') {
-          // Delete "Closed Lost" and move appointments to "disqualified"
+        } else if (stage.stage_label === 'Closed Lost' || stage.stage_id === 'confirmed' || stage.stage_label === 'Confirmed' || stage.stage_label === 'Contacted') {
+          // Delete these stages and move appointments to "booked"
           await supabase
             .from('appointments')
-            .update({ pipeline_stage: 'disqualified' })
+            .update({ pipeline_stage: 'booked' })
             .eq('team_id', teamId)
             .eq('pipeline_stage', stage.stage_id);
           

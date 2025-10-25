@@ -109,7 +109,7 @@ export function ConfirmTodayWorkspace({ teamId, userRole }: ConfirmTodayWorkspac
     try {
       const updateData: any = { 
         status: 'CONFIRMED',
-        pipeline_stage: 'confirmed'
+        pipeline_stage: 'booked' // Keep in booked stage when confirmed
       };
       
       // If unassigned, auto-assign to current user

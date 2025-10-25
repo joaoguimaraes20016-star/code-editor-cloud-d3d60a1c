@@ -83,7 +83,7 @@ export function StageWorkspaceView({
     try {
       const { error } = await supabase
         .from('appointments')
-        .update({ status: 'CONFIRMED', pipeline_stage: 'confirmed' })
+        .update({ status: 'CONFIRMED', pipeline_stage: 'booked' })
         .eq('id', id);
 
       if (error) throw error;
