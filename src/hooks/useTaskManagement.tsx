@@ -46,8 +46,10 @@ export function useTaskManagement(teamId: string, userId: string) {
       });
       
       const uniqueTasks = Array.from(uniqueTasksMap.values());
-      const my = uniqueTasks.filter(t => t.assigned_to === userId);
-      const queue = uniqueTasks.filter(t => !t.assigned_to);
+      // My tasks: appointments assigned to me (based on appointment.setter_id)
+      const my = uniqueTasks.filter(t => t.appointment?.setter_id === userId);
+      // Queue tasks: unassigned appointments only (no setter_id)
+      const queue = uniqueTasks.filter(t => !t.appointment?.setter_id);
 
       setMyTasks(my);
       setQueueTasks(queue);
@@ -82,7 +84,8 @@ export function useTaskManagement(teamId: string, userId: string) {
 
   const claimTask = async (taskId: string, appointmentId: string) => {
     try {
-      const { error } = await supabase
+      // Update task assignment
+      const { error: taskError } = await supabase
         .from('confirmation_tasks')
         .update({
           assigned_to: userId,
@@ -92,10 +95,19 @@ export function useTaskManagement(teamId: string, userId: string) {
         })
         .eq('id', taskId);
 
-      if (error) throw error;
+      if (taskError) throw taskError;
 
-      await logActivity(appointmentId, 'Task Claimed');
-      toast.success('Task claimed');
+      // Assign appointment to me if it's unassigned
+      const { error: aptError } = await supabase
+        .from('appointments')
+        .update({ setter_id: userId })
+        .eq('id', appointmentId)
+        .is('setter_id', null);
+
+      if (aptError) throw aptError;
+
+      await logActivity(appointmentId, 'Task Claimed & Assigned');
+      toast.success('Task claimed and assigned to you');
       loadTasks();
     } catch (error) {
       console.error('Error claiming task:', error);
