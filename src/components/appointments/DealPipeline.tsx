@@ -24,6 +24,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DroppableStageColumn } from "./DroppableStageColumn";
+import { RescheduleDialog } from "./RescheduleDialog";
+import { FollowUpDialog } from "./FollowUpDialog";
+import { format } from "date-fns";
 
 interface Appointment {
   id: string;
@@ -69,6 +72,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   const [statusFilter, setStatusFilter] = useState("all");
   const [eventTypeFilter, setEventTypeFilter] = useState("all");
   const [managerOpen, setManagerOpen] = useState(false);
+  const [rescheduleDialog, setRescheduleDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
+  const [followUpDialog, setFollowUpDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; stage: "cancelled" | "no_show" } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -222,6 +227,28 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment || appointment.pipeline_stage === newStage) return;
 
+    // Check if moving to stages that require additional info
+    if (newStage === "rescheduled") {
+      setRescheduleDialog({ 
+        open: true, 
+        appointmentId, 
+        stageId: newStage,
+        dealName: appointment.lead_name 
+      });
+      return;
+    }
+
+    if (newStage === "canceled" || newStage === "no_show") {
+      setFollowUpDialog({ 
+        open: true, 
+        appointmentId, 
+        stageId: newStage,
+        dealName: appointment.lead_name,
+        stage: newStage === "canceled" ? "cancelled" : "no_show"
+      });
+      return;
+    }
+
     // Check if dropping into a "won" or "closed" stage
     const targetStageData = stages.find(s => s.stage_id === newStage);
     const isClosedStage = targetStageData && 
@@ -259,7 +286,115 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     }
   };
 
+  const performStageMove = async (
+    appointmentId: string, 
+    newStageId: string, 
+    appointment: Appointment,
+    additionalData?: { rescheduleDate?: Date; followUpDate?: Date; followUpReason?: string }
+  ) => {
+    try {
+      const updateData: any = { pipeline_stage: newStageId };
+      
+      // Add retarget_date for rescheduled
+      if (newStageId === "rescheduled" && additionalData?.rescheduleDate) {
+        updateData.retarget_date = format(additionalData.rescheduleDate, "yyyy-MM-dd");
+        updateData.retarget_reason = "Rescheduled by user";
+      }
+
+      const { error } = await supabase
+        .from("appointments")
+        .update(updateData)
+        .eq("id", appointmentId);
+
+      if (error) throw error;
+
+      // Create follow-up or reschedule task if needed
+      if (additionalData?.rescheduleDate) {
+        await supabase.rpc("create_task_with_assignment", {
+          p_team_id: appointment.team_id,
+          p_appointment_id: appointmentId,
+          p_task_type: "reschedule",
+          p_reschedule_date: format(additionalData.rescheduleDate, "yyyy-MM-dd")
+        });
+      } else if (additionalData?.followUpDate && additionalData?.followUpReason) {
+        await supabase.rpc("create_task_with_assignment", {
+          p_team_id: appointment.team_id,
+          p_appointment_id: appointmentId,
+          p_task_type: "follow_up",
+          p_follow_up_date: format(additionalData.followUpDate, "yyyy-MM-dd"),
+          p_follow_up_reason: additionalData.followUpReason
+        });
+      }
+
+      toast.success("Deal moved successfully");
+      await loadDeals();
+    } catch (error: any) {
+      console.error("Error moving deal:", error);
+      toast.error(error.message || "Failed to move deal");
+    }
+  };
+
+  const handleRescheduleConfirm = async (rescheduleDate: Date) => {
+    if (!rescheduleDialog) return;
+    
+    const appointment = appointments.find((a) => a.id === rescheduleDialog.appointmentId);
+    
+    if (appointment) {
+      await performStageMove(
+        rescheduleDialog.appointmentId,
+        rescheduleDialog.stageId,
+        appointment,
+        { rescheduleDate }
+      );
+    }
+    
+    setRescheduleDialog(null);
+  };
+
+  const handleFollowUpConfirm = async (followUpDate: Date, reason: string) => {
+    if (!followUpDialog) return;
+    
+    const appointment = appointments.find((a) => a.id === followUpDialog.appointmentId);
+    
+    if (appointment) {
+      await performStageMove(
+        followUpDialog.appointmentId,
+        followUpDialog.stageId,
+        appointment,
+        { followUpDate, followUpReason: reason }
+      );
+    }
+    
+    setFollowUpDialog(null);
+  };
+
   const handleMoveTo = async (appointmentId: string, stage: string) => {
+    const appointment = appointments.find((a) => a.id === appointmentId);
+    if (!appointment) return;
+
+    // Check if moving to stages that require additional info
+    if (stage === "rescheduled") {
+      setRescheduleDialog({ 
+        open: true, 
+        appointmentId, 
+        stageId: stage,
+        dealName: appointment.lead_name 
+      });
+      return;
+    }
+
+    if (stage === "canceled" || stage === "no_show") {
+      setFollowUpDialog({ 
+        open: true, 
+        appointmentId, 
+        stageId: stage,
+        dealName: appointment.lead_name,
+        stage: stage === "canceled" ? "cancelled" : "no_show"
+      });
+      return;
+    }
+
+    // Normal move without dialog
     setAppointments((prev) =>
       prev.map((app) =>
         app.id === appointmentId ? { ...app, pipeline_stage: stage } : app
@@ -478,6 +613,25 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           loadDeals();
         }}
       />
+
+      {rescheduleDialog && (
+        <RescheduleDialog
+          open={rescheduleDialog.open}
+          onOpenChange={(open) => !open && setRescheduleDialog(null)}
+          onConfirm={handleRescheduleConfirm}
+          dealName={rescheduleDialog.dealName}
+        />
+      )}
+
+      {followUpDialog && (
+        <FollowUpDialog
+          open={followUpDialog.open}
+          onOpenChange={(open) => !open && setFollowUpDialog(null)}
+          onConfirm={handleFollowUpConfirm}
+          dealName={followUpDialog.dealName}
+          stage={followUpDialog.stage}
+        />
+      )}
     </div>
   );
 }

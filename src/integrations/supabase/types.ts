@@ -415,8 +415,12 @@ export type Database = {
           claimed_manually: boolean | null
           completed_at: string | null
           created_at: string
+          follow_up_date: string | null
+          follow_up_reason: string | null
           id: string
+          reschedule_date: string | null
           status: string
+          task_type: Database["public"]["Enums"]["task_type"]
           team_id: string
         }
         Insert: {
@@ -427,8 +431,12 @@ export type Database = {
           claimed_manually?: boolean | null
           completed_at?: string | null
           created_at?: string
+          follow_up_date?: string | null
+          follow_up_reason?: string | null
           id?: string
+          reschedule_date?: string | null
           status?: string
+          task_type?: Database["public"]["Enums"]["task_type"]
           team_id: string
         }
         Update: {
@@ -439,8 +447,12 @@ export type Database = {
           claimed_manually?: boolean | null
           completed_at?: string | null
           created_at?: string
+          follow_up_date?: string | null
+          follow_up_reason?: string | null
           id?: string
+          reschedule_date?: string | null
           status?: string
+          task_type?: Database["public"]["Enums"]["task_type"]
           team_id?: string
         }
         Relationships: []
@@ -1108,6 +1120,17 @@ export type Database = {
       }
       can_create_teams: { Args: { _user_id: string }; Returns: boolean }
       cleanup_expired_reset_tokens: { Args: never; Returns: undefined }
+      create_task_with_assignment: {
+        Args: {
+          p_appointment_id: string
+          p_follow_up_date?: string
+          p_follow_up_reason?: string
+          p_reschedule_date?: string
+          p_task_type: Database["public"]["Enums"]["task_type"]
+          p_team_id: string
+        }
+        Returns: string
+      }
       get_team_role: {
         Args: { _team_id: string; _user_id: string }
         Returns: string
@@ -1147,6 +1170,7 @@ export type Database = {
         | "RESCHEDULED"
         | "CONFIRMED"
       global_role: "super_admin" | "member" | "creator"
+      task_type: "call_confirmation" | "follow_up" | "reschedule"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1284,6 +1308,7 @@ export const Constants = {
         "CONFIRMED",
       ],
       global_role: ["super_admin", "member", "creator"],
+      task_type: ["call_confirmation", "follow_up", "reschedule"],
     },
   },
 } as const

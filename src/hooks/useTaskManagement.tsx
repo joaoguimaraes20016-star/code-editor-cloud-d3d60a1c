@@ -10,6 +10,10 @@ interface Task {
   created_at: string;
   assigned_at: string | null;
   auto_return_at: string | null;
+  task_type: 'call_confirmation' | 'follow_up' | 'reschedule';
+  follow_up_date: string | null;
+  follow_up_reason: string | null;
+  reschedule_date: string | null;
   appointment?: any;
 }
 
