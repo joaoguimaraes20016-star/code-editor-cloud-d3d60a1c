@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Settings } from "lucide-react";
 
 interface Appointment {
   id: string;
@@ -262,7 +263,8 @@ export function DealPipeline({ teamId, onCloseDeal }: DealPipelineProps) {
           />
         </div>
         <Button onClick={() => setManagerOpen(true)} variant="outline" className="whitespace-nowrap">
-          ⚙️ Manage Pipeline
+          <Settings className="h-4 w-4 mr-2" />
+          Manage Pipeline
         </Button>
       </div>
 
@@ -272,7 +274,7 @@ export function DealPipeline({ teamId, onCloseDeal }: DealPipelineProps) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {stages.map((stage) => {
             const stageAppointments = dealsByStage[stage.stage_id] || [];
             const stageValue = stageAppointments.reduce(
@@ -280,48 +282,19 @@ export function DealPipeline({ teamId, onCloseDeal }: DealPipelineProps) {
               0
             );
 
-            const colorClasses = {
-              blue: "border-blue-200 dark:border-blue-800",
-              purple: "border-purple-200 dark:border-purple-800",
-              indigo: "border-indigo-200 dark:border-indigo-800",
-              cyan: "border-cyan-200 dark:border-cyan-800",
-              amber: "border-amber-200 dark:border-amber-800",
-              green: "border-green-200 dark:border-green-800",
-              red: "border-red-200 dark:border-red-800",
-              orange: "border-orange-200 dark:border-orange-800",
-              pink: "border-pink-200 dark:border-pink-800",
-              teal: "border-teal-200 dark:border-teal-800",
-            };
-
-            const headerColorClasses = {
-              blue: "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30",
-              purple: "bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30",
-              indigo: "bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950/50 dark:to-indigo-900/30",
-              cyan: "bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950/50 dark:to-cyan-900/30",
-              amber: "bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/50 dark:to-amber-900/30",
-              green: "bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30",
-              red: "bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/50 dark:to-red-900/30",
-              orange: "bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/50 dark:to-orange-900/30",
-              pink: "bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/50 dark:to-pink-900/30",
-              teal: "bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950/50 dark:to-teal-900/30",
-            };
-
             return (
               <Card
                 key={stage.id}
-                className={`flex flex-col max-w-[320px] ${
-                  colorClasses[stage.stage_color as keyof typeof colorClasses] || colorClasses.blue
-                }`}
+                className="flex flex-col max-w-[320px] border-t-4"
+                style={{ borderTopColor: `hsl(var(--${stage.stage_color}))` }}
               >
-                <div
-                  className={`p-4 rounded-t-lg border-b sticky top-0 z-10 ${
-                    headerColorClasses[stage.stage_color as keyof typeof headerColorClasses] ||
-                    headerColorClasses.blue
-                  }`}
-                >
-                  <h3 className="font-bold text-lg mb-2">{stage.stage_label}</h3>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{stageAppointments.length} deals</span>
+                <div className="p-4 rounded-t-lg border-b bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-2.5 h-2.5 rounded-full bg-${stage.stage_color}-500`} />
+                    <h3 className="font-semibold text-sm">{stage.stage_label}</h3>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{stageAppointments.length} {stageAppointments.length === 1 ? 'deal' : 'deals'}</span>
                     {stageValue > 0 && (
                       <span className="font-semibold text-foreground">
                         ${stageValue.toLocaleString()}
@@ -335,7 +308,7 @@ export function DealPipeline({ teamId, onCloseDeal }: DealPipelineProps) {
                     strategy={verticalListSortingStrategy}
                     id={stage.stage_id}
                   >
-                    <div className="space-y-3 min-h-[120px]">
+                    <div className="space-y-2 min-h-[100px]">
                       {stageAppointments.map((appointment) => (
                         <DealCard
                           key={appointment.id}
@@ -346,8 +319,8 @@ export function DealPipeline({ teamId, onCloseDeal }: DealPipelineProps) {
                         />
                       ))}
                       {stageAppointments.length === 0 && (
-                        <div className="text-center py-12 text-muted-foreground text-sm">
-                          No deals yet
+                        <div className="text-center py-8 text-muted-foreground text-xs">
+                          No deals
                         </div>
                       )}
                     </div>
@@ -360,8 +333,8 @@ export function DealPipeline({ teamId, onCloseDeal }: DealPipelineProps) {
 
         <DragOverlay>
           {activeId ? (
-            <Card className="p-4 opacity-90 rotate-2 shadow-2xl scale-105">
-              <div className="font-semibold text-base">
+            <Card className="p-3 opacity-80 shadow-lg border-primary">
+              <div className="font-medium text-sm">
                 {appointments.find((apt) => apt.id === activeId)?.lead_name}
               </div>
             </Card>

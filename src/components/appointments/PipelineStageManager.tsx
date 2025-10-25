@@ -66,30 +66,29 @@ function StageItem({ stage, onEdit, onDelete }: {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 p-3 bg-card border rounded-lg"
+      className="flex items-center gap-3 p-3 bg-card border rounded-lg hover:border-primary/50 transition-colors"
     >
       <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
-        <GripVertical className="h-5 w-5 text-muted-foreground" />
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
       </div>
       
-      <div
-        className={`flex-1 px-3 py-2 rounded-md font-medium ${
-          colorClasses[stage.stage_color as keyof typeof colorClasses] || colorClasses.blue
-        }`}
-      >
-        {stage.stage_label}
+      <div className="flex items-center gap-2 flex-1">
+        <div className={`w-2.5 h-2.5 rounded-full bg-${stage.stage_color}-500`} />
+        <span className="font-medium text-sm">
+          {stage.stage_label}
+        </span>
         {stage.is_default && (
-          <span className="ml-2 text-xs opacity-60">(Default)</span>
+          <span className="text-xs text-muted-foreground">(Default)</span>
         )}
       </div>
 
-      <div className="flex gap-2">
-        <Button size="icon" variant="ghost" onClick={onEdit}>
-          <Edit className="h-4 w-4" />
+      <div className="flex gap-1">
+        <Button size="icon" variant="ghost" onClick={onEdit} className="h-8 w-8">
+          <Edit className="h-3.5 w-3.5" />
         </Button>
         {!stage.is_default && (
-          <Button size="icon" variant="ghost" onClick={onDelete}>
-            <Trash2 className="h-4 w-4 text-destructive" />
+          <Button size="icon" variant="ghost" onClick={onDelete} className="h-8 w-8">
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
           </Button>
         )}
       </div>
@@ -224,9 +223,9 @@ export function PipelineStageManager({
           </SheetHeader>
 
           <div className="mt-6 space-y-4">
-            <Button onClick={handleAdd} className="w-full">
+            <Button onClick={handleAdd} className="w-full" variant="default">
               <Plus className="h-4 w-4 mr-2" />
-              Add New Stage
+              Add Stage
             </Button>
 
             {loading ? (
