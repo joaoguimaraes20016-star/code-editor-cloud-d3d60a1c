@@ -538,6 +538,90 @@ export type Database = {
           },
         ]
       }
+      mrr_follow_up_tasks: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          due_date: string
+          id: string
+          mrr_schedule_id: string
+          notes: string | null
+          status: string
+          team_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          due_date: string
+          id?: string
+          mrr_schedule_id: string
+          notes?: string | null
+          status?: string
+          team_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          mrr_schedule_id?: string
+          notes?: string | null
+          status?: string
+          team_id?: string
+        }
+        Relationships: []
+      }
+      mrr_schedules: {
+        Row: {
+          appointment_id: string
+          assigned_to: string | null
+          client_email: string
+          client_name: string
+          created_at: string
+          first_charge_date: string
+          id: string
+          mrr_amount: number
+          next_renewal_date: string
+          notes: string | null
+          status: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          assigned_to?: string | null
+          client_email: string
+          client_name: string
+          created_at?: string
+          first_charge_date: string
+          id?: string
+          mrr_amount: number
+          next_renewal_date: string
+          notes?: string | null
+          status?: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          assigned_to?: string | null
+          client_email?: string
+          client_name?: string
+          created_at?: string
+          first_charge_date?: string
+          id?: string
+          mrr_amount?: number
+          next_renewal_date?: string
+          notes?: string | null
+          status?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       password_reset_tokens: {
         Row: {
           created_at: string
