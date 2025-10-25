@@ -70,7 +70,6 @@ export function UnassignedAppointments({ teamId, onUpdate }: UnassignedAppointme
         .select("*")
         .eq("team_id", teamId)
         .is("setter_id", null)
-        .is("closer_id", null)
         .order("start_at_utc", { ascending: true });
 
       if (error) throw error;
