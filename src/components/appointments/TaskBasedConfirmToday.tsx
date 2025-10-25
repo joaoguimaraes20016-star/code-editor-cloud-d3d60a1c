@@ -12,12 +12,20 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { useState } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface TaskBasedConfirmTodayProps {
   teamId: string;
+}
+
+interface TeamMember {
+  user_id: string;
+  profiles: {
+    full_name: string | null;
+  } | null;
 }
 
 export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
@@ -33,6 +41,34 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     rescheduleTask,
     refreshTasks
   } = useTaskManagement(teamId, user?.id || '', userRole || '');
+
+  const [selectedMember, setSelectedMember] = useState<string>('all');
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    if (userRole === 'admin' || userRole === 'offer_owner') {
+      loadTeamMembers();
+    }
+  }, [teamId, userRole]);
+
+  const loadTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('user_id, profiles(full_name)')
+        .eq('team_id', teamId)
+        .in('role', ['setter', 'closer', 'admin', 'offer_owner']);
+
+      if (error) throw error;
+      setTeamMembers(data || []);
+    } catch (error) {
+      console.error('Error loading team members:', error);
+    }
+  };
+
+  const filteredTasks = selectedMember === 'all' 
+    ? myTasks 
+    : myTasks.filter(task => task.appointment?.setter_id === selectedMember);
 
   const [rescheduleDialog, setRescheduleDialog] = useState<{
     open: boolean;
@@ -145,19 +181,36 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
       {/* My Tasks */}
       <Card className="card-hover border-info/20 bg-info/5">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarCheck className="h-5 w-5 text-info" />
-            {userRole === 'admin' || userRole === 'offer_owner' ? 'All Team Tasks (Today)' : 'My Tasks (Today)'}
-            <Badge variant="info" className="ml-auto">
-              {myTasks.length}
-            </Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <CalendarCheck className="h-5 w-5 text-info" />
+              {userRole === 'admin' || userRole === 'offer_owner' ? 'All Team Tasks (Today)' : 'My Tasks (Today)'}
+              <Badge variant="info" className="ml-2">
+                {filteredTasks.length}
+              </Badge>
+            </CardTitle>
+            {(userRole === 'admin' || userRole === 'offer_owner') && (
+              <Select value={selectedMember} onValueChange={setSelectedMember}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by member" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Team Members</SelectItem>
+                  {teamMembers.map((member) => (
+                    <SelectItem key={member.user_id} value={member.user_id}>
+                      {member.profiles?.full_name || 'Unknown'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {myTasks.length === 0 ? (
+          {filteredTasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">No tasks assigned</p>
           ) : (
-            myTasks.map((task) => {
+            filteredTasks.map((task) => {
               const apt = task.appointment;
               const taskColor = task.task_type === 'call_confirmation' ? 'border-blue-200 dark:border-blue-900' 
                 : task.task_type === 'follow_up' ? 'border-purple-200 dark:border-purple-900'

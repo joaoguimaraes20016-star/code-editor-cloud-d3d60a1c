@@ -123,12 +123,9 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
     try {
       const updateData: any = {
         status: 'CONFIRMED',
-        pipeline_stage: 'booked'
+        pipeline_stage: 'booked',
+        setter_id: userId // Always assign to the person confirming
       };
-
-      if (!setterId) {
-        updateData.setter_id = userId;
-      }
 
       const { error: aptError } = await supabase
         .from('appointments')
@@ -147,8 +144,8 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
 
       if (taskError) throw taskError;
 
-      await logActivity(appointmentId, 'Confirmed', setterId ? undefined : 'Auto-assigned to setter');
-      toast.success(setterId ? 'Appointment confirmed' : 'Confirmed & Assigned to You');
+      await logActivity(appointmentId, 'Confirmed', 'Assigned to you');
+      toast.success('Confirmed & Assigned to You');
       loadTasks();
     } catch (error) {
       console.error('Error confirming task:', error);
