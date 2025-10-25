@@ -93,14 +93,23 @@ export function AppointmentsHub({
         </div>
         
         <Tabs defaultValue="mine" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-12">
+          <TabsList className="grid w-full grid-cols-4 h-12">
             <TabsTrigger value="mine" className="text-base">My Deals</TabsTrigger>
+            <TabsTrigger value="all" className="text-base">All Appointments</TabsTrigger>
             <TabsTrigger value="pipeline" className="text-base">Deal Pipeline</TabsTrigger>
             <TabsTrigger value="stages" className="text-base">Stage Views</TabsTrigger>
           </TabsList>
 
           <TabsContent value="mine" className="mt-6">
             <AllClaimed
+              teamId={teamId}
+              closerCommissionPct={closerCommissionPct}
+              setterCommissionPct={setterCommissionPct}
+            />
+          </TabsContent>
+
+          <TabsContent value="all" className="mt-6">
+            <AllNewAppointments
               teamId={teamId}
               closerCommissionPct={closerCommissionPct}
               setterCommissionPct={setterCommissionPct}
@@ -168,8 +177,10 @@ export function AppointmentsHub({
       </div>
       
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 h-12">
+        <TabsList className="grid w-full grid-cols-7 h-12">
           <TabsTrigger value="overview" className="text-base">Overview</TabsTrigger>
+          <TabsTrigger value="unassigned" className="text-base">Unassigned</TabsTrigger>
+          <TabsTrigger value="assigned" className="text-base">All Assigned</TabsTrigger>
           <TabsTrigger value="pipeline" className="text-base">Pipeline</TabsTrigger>
           <TabsTrigger value="tasks" className="text-base">Tasks</TabsTrigger>
           <TabsTrigger value="stages" className="text-base">Stages</TabsTrigger>
@@ -179,6 +190,22 @@ export function AppointmentsHub({
         <TabsContent value="overview" className="mt-6 space-y-6">
           <OperatorControls teamId={teamId} />
           <TaskBasedConfirmToday teamId={teamId} />
+        </TabsContent>
+
+        <TabsContent value="unassigned" className="mt-6">
+          <AllNewAppointments
+            teamId={teamId}
+            closerCommissionPct={closerCommissionPct}
+            setterCommissionPct={setterCommissionPct}
+          />
+        </TabsContent>
+
+        <TabsContent value="assigned" className="mt-6">
+          <AllClaimed
+            teamId={teamId}
+            closerCommissionPct={closerCommissionPct}
+            setterCommissionPct={setterCommissionPct}
+          />
         </TabsContent>
 
         <TabsContent value="tasks" className="mt-6">
