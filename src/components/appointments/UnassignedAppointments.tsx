@@ -12,6 +12,7 @@ interface Appointment {
   id: string;
   lead_name: string;
   lead_email: string;
+  lead_phone: string | null;
   start_at_utc: string;
   status: string;
   setter_name: string | null;

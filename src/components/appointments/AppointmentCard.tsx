@@ -16,6 +16,7 @@ interface AppointmentCardProps {
     id: string;
     lead_name: string;
     lead_email: string;
+    lead_phone?: string | null;
     start_at_utc: string;
     status: string;
     setter_name: string | null;
@@ -57,10 +58,15 @@ export function AppointmentCard({
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
           <h3 className="text-xl font-semibold mb-1 truncate group-hover:text-primary transition-colors">{appointment.lead_name}</h3>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
             <Mail className="w-4 h-4" />
             <span className="truncate">{appointment.lead_email}</span>
           </div>
+          {appointment.lead_phone && (
+            <div className="text-sm text-muted-foreground">
+              {appointment.lead_phone}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 ml-3">
           <Badge variant={statusColors[appointment.status] as any || "secondary"}>

@@ -31,6 +31,10 @@ interface CalendlyInvitee {
   created_at: string;
   updated_at: string;
   event: string;
+  questions_and_answers?: Array<{
+    question?: string;
+    answer?: string;
+  }>;
   tracking?: {
     utm_campaign?: string;
     utm_source?: string;
@@ -342,6 +346,18 @@ Deno.serve(async (req) => {
             continue;
           }
 
+          // Extract phone number from questions_and_answers
+          let leadPhone = null;
+          if (invitee.questions_and_answers && Array.isArray(invitee.questions_and_answers)) {
+            const phoneQuestion = invitee.questions_and_answers.find((qa: any) => 
+              qa.question?.toLowerCase().includes('phone') || 
+              qa.question?.toLowerCase().includes('number')
+            );
+            if (phoneQuestion?.answer) {
+              leadPhone = phoneQuestion.answer;
+            }
+          }
+
           // Auto-assign setter based on UTM parameters (same logic as webhook)
           let setterId = null;
           let setterName = null;
@@ -384,6 +400,7 @@ Deno.serve(async (req) => {
             team_id: teamId,
             lead_name: invitee.name,
             lead_email: invitee.email,
+            lead_phone: leadPhone,
             start_at_utc: event.start_time,
             closer_id: closerId,
             closer_name: closerName,

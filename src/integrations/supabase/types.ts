@@ -58,6 +58,7 @@ export type Database = {
           id: string
           lead_email: string
           lead_name: string
+          lead_phone: string | null
           mrr_amount: number | null
           mrr_months: number | null
           pipeline_stage: string | null
@@ -83,6 +84,7 @@ export type Database = {
           id?: string
           lead_email: string
           lead_name: string
+          lead_phone?: string | null
           mrr_amount?: number | null
           mrr_months?: number | null
           pipeline_stage?: string | null
@@ -108,6 +110,7 @@ export type Database = {
           id?: string
           lead_email?: string
           lead_name?: string
+          lead_phone?: string | null
           mrr_amount?: number | null
           mrr_months?: number | null
           pipeline_stage?: string | null

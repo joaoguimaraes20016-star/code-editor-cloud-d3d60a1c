@@ -42,6 +42,7 @@ interface Appointment {
   start_at_utc: string;
   lead_name: string;
   lead_email: string;
+  lead_phone: string | null;
   status: string;
   setter_name: string | null;
   setter_notes: string | null;
@@ -330,6 +331,11 @@ export function AllClaimed({ teamId, closerCommissionPct, setterCommissionPct }:
                       <Mail className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="truncate">{apt.lead_email}</span>
                     </div>
+                    {apt.lead_phone && (
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                        <span className="truncate">{apt.lead_phone}</span>
+                      </div>
+                    )}
                   </div>
                   <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-medium flex-shrink-0 ${
                     apt.status === 'SHOWED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
@@ -409,6 +415,7 @@ export function AllClaimed({ teamId, closerCommissionPct, setterCommissionPct }:
             <TableHead>Start Time</TableHead>
             <TableHead>Lead Name</TableHead>
             <TableHead>Email</TableHead>
+            <TableHead>Phone</TableHead>
             <TableHead>Setter</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Setter Notes</TableHead>
@@ -428,6 +435,7 @@ export function AllClaimed({ teamId, closerCommissionPct, setterCommissionPct }:
               <TableCell>{formatLocalTime(apt.start_at_utc)}</TableCell>
               <TableCell className="font-medium">{apt.lead_name}</TableCell>
               <TableCell>{apt.lead_email}</TableCell>
+              <TableCell>{apt.lead_phone || '-'}</TableCell>
               <TableCell>
                 <span className="font-medium text-primary">{apt.setter_name}</span>
               </TableCell>

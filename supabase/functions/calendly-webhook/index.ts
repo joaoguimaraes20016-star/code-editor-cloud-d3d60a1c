@@ -49,6 +49,10 @@ const webhookPayloadSchema = z.object({
     name: z.string().min(1).max(255),
     email: z.string().email().max(255),
     status: z.string().optional(),
+    questions_and_answers: z.array(z.object({
+      question: z.string().optional(),
+      answer: z.string().optional(),
+    })).optional(),
     scheduled_event: z.object({
       uri: z.string().url().optional(),
       start_time: z.string(),
@@ -266,6 +270,18 @@ serve(async (req) => {
     const startTime = inviteeData.scheduled_event?.start_time;
     const status = inviteeData.status;
     
+    // Extract phone number from questions_and_answers
+    let leadPhone = null;
+    if (inviteeData.questions_and_answers && Array.isArray(inviteeData.questions_and_answers)) {
+      const phoneQuestion = inviteeData.questions_and_answers.find((qa: any) => 
+        qa.question?.toLowerCase().includes('phone') || 
+        qa.question?.toLowerCase().includes('number')
+      );
+      if (phoneQuestion?.answer) {
+        leadPhone = phoneQuestion.answer;
+      }
+    }
+    
     console.log('Processing appointment for team:', teamId);
 
     // Get event organizer email
@@ -374,6 +390,7 @@ serve(async (req) => {
       const appointmentData: any = {
         lead_name: leadName,
         lead_email: leadEmail,
+        lead_phone: leadPhone,
         start_at_utc: startTime,
         closer_id: closerId,
         closer_name: closerName,
