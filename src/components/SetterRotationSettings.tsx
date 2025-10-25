@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Loader2, Users } from 'lucide-react';
 import { useTeamRole } from '@/hooks/useTeamRole';
@@ -18,6 +19,7 @@ interface Setter {
     full_name: string | null;
   } | null;
   is_in_rotation: boolean;
+  pending_tasks_count: number;
 }
 
 export function SetterRotationSettings({ teamId }: SetterRotationSettingsProps) {
@@ -50,12 +52,30 @@ export function SetterRotationSettings({ teamId }: SetterRotationSettingsProps) 
 
       if (settingsError) throw settingsError;
 
+      // Get pending task counts for each setter
+      const { data: taskCounts, error: taskCountsError } = await supabase
+        .from('confirmation_tasks')
+        .select('assigned_to')
+        .eq('team_id', teamId)
+        .eq('status', 'pending');
+
+      if (taskCountsError) throw taskCountsError;
+
+      // Count tasks per setter
+      const taskCountMap = new Map<string, number>();
+      taskCounts?.forEach(task => {
+        if (task.assigned_to) {
+          taskCountMap.set(task.assigned_to, (taskCountMap.get(task.assigned_to) || 0) + 1);
+        }
+      });
+
       // Merge the data - default to in rotation if no setting exists
       const settersWithRotation = teamSetters?.map(setter => {
         const setting = rotationSettings?.find(s => s.setter_id === setter.user_id);
         return {
           ...setter,
-          is_in_rotation: setting ? setting.is_in_rotation : true
+          is_in_rotation: setting ? setting.is_in_rotation : true,
+          pending_tasks_count: taskCountMap.get(setter.user_id) || 0
         };
       }) || [];
 
@@ -134,29 +154,47 @@ export function SetterRotationSettings({ teamId }: SetterRotationSettingsProps) 
         {setters.length === 0 ? (
           <p className="text-sm text-muted-foreground">No active setters found</p>
         ) : (
-          setters.map((setter) => (
-            <div 
-              key={setter.user_id} 
-              className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <Label htmlFor={`setter-${setter.user_id}`} className="flex-1 cursor-pointer">
-                <span className="font-medium">
-                  {setter.profiles?.full_name || 'Unknown'}
-                </span>
-                {setter.is_in_rotation && (
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    (Active in rotation)
-                  </span>
-                )}
-              </Label>
-              <Switch
-                id={`setter-${setter.user_id}`}
-                checked={setter.is_in_rotation}
-                onCheckedChange={() => toggleRotation(setter.user_id, setter.is_in_rotation)}
-                disabled={saving}
-              />
+          <>
+            <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+              <p className="text-sm font-medium mb-1">Task Distribution</p>
+              <p className="text-xs text-muted-foreground">
+                Current pending tasks assigned to each setter
+              </p>
             </div>
-          ))
+            {setters.map((setter) => (
+              <div 
+                key={setter.user_id} 
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex-1">
+                  <Label htmlFor={`setter-${setter.user_id}`} className="cursor-pointer">
+                    <span className="font-medium">
+                      {setter.profiles?.full_name || 'Unknown'}
+                    </span>
+                    {setter.is_in_rotation && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        (Active in rotation)
+                      </span>
+                    )}
+                  </Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-muted-foreground">
+                      Pending tasks:
+                    </span>
+                    <Badge variant={setter.pending_tasks_count === 0 ? "secondary" : "default"} className="text-xs">
+                      {setter.pending_tasks_count}
+                    </Badge>
+                  </div>
+                </div>
+                <Switch
+                  id={`setter-${setter.user_id}`}
+                  checked={setter.is_in_rotation}
+                  onCheckedChange={() => toggleRotation(setter.user_id, setter.is_in_rotation)}
+                  disabled={saving}
+                />
+              </div>
+            ))}
+          </>
         )}
       </CardContent>
     </Card>
