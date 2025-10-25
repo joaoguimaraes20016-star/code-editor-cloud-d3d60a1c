@@ -52,12 +52,13 @@ export function AppointmentsHub({
         </div>
         
         <Tabs defaultValue="confirm" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-12">
+          <TabsList className="grid w-full grid-cols-5 h-12">
             <TabsTrigger value="confirm" className="text-base">
               Confirm Today {counts.myTasks > 0 && <Badge className="ml-2" variant="secondary">{counts.myTasks}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="new" className="text-base">New Leads</TabsTrigger>
             <TabsTrigger value="mine" className="text-base">My Appointments</TabsTrigger>
+            <TabsTrigger value="all" className="text-base">All Assigned</TabsTrigger>
             <TabsTrigger value="retarget" className="text-base">
               Retarget {counts.followUps > 0 && <Badge className="ml-2" variant="secondary">{counts.followUps}</Badge>}
             </TabsTrigger>
@@ -77,6 +78,14 @@ export function AppointmentsHub({
 
           <TabsContent value="mine" className="mt-6">
             <MyClaimed
+              teamId={teamId}
+              closerCommissionPct={closerCommissionPct}
+              setterCommissionPct={setterCommissionPct}
+            />
+          </TabsContent>
+
+          <TabsContent value="all" className="mt-6">
+            <AllClaimed
               teamId={teamId}
               closerCommissionPct={closerCommissionPct}
               setterCommissionPct={setterCommissionPct}
