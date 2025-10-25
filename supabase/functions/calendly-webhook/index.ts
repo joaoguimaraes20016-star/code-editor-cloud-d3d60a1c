@@ -447,6 +447,27 @@ serve(async (req) => {
         console.warn('Error during auto-assignment attempt:', error);
       }
 
+      // Check for duplicate before creating appointment
+      const { data: existingAppointment } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('team_id', teamId)
+        .eq('lead_email', leadEmail)
+        .eq('start_at_utc', startTime)
+        .maybeSingle();
+
+      if (existingAppointment) {
+        console.log(`⚠️ Duplicate appointment detected - skipping (ID: ${existingAppointment.id})`);
+        await logWebhookEvent(supabase, teamId, event, 'success', { 
+          appointmentId: existingAppointment.id,
+          note: 'Duplicate skipped'
+        });
+        return new Response(JSON.stringify({ success: true, duplicate: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       // Create new appointment (with or without auto-assignment)
       const { data: appointment, error } = await supabase
         .from('appointments')

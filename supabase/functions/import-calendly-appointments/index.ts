@@ -401,21 +401,56 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Batch insert all appointments at once (much faster, triggers realtime only once)
+    // Check for duplicates before inserting
     if (appointmentsToInsert.length > 0) {
-      console.log(`Batch inserting ${appointmentsToInsert.length} appointments...`);
-      const { error: batchError } = await supabaseClient
+      console.log(`Checking for duplicates among ${appointmentsToInsert.length} appointments...`);
+      
+      // Get existing appointments for this team
+      const { data: existingAppointments, error: fetchError } = await supabaseClient
         .from('appointments')
-        .insert(appointmentsToInsert);
+        .select('lead_email, start_at_utc')
+        .eq('team_id', teamId);
 
-      if (batchError) {
-        console.error('Batch insert error:', batchError);
-        return new Response(
-          JSON.stringify({ error: `Failed to insert appointments: ${batchError.message}` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (fetchError) {
+        console.error('Error fetching existing appointments:', fetchError);
       }
-      console.log(`✓ Successfully inserted ${appointmentsToInsert.length} appointments`);
+
+      // Create a set of existing appointment keys for fast lookup
+      const existingKeys = new Set(
+        (existingAppointments || []).map(apt => 
+          `${apt.lead_email.toLowerCase()}|${apt.start_at_utc}`
+        )
+      );
+
+      // Filter out duplicates
+      const uniqueAppointments = appointmentsToInsert.filter(apt => {
+        const key = `${apt.lead_email.toLowerCase()}|${apt.start_at_utc}`;
+        return !existingKeys.has(key);
+      });
+
+      const duplicatesSkipped = appointmentsToInsert.length - uniqueAppointments.length;
+      if (duplicatesSkipped > 0) {
+        console.log(`⚠️ Skipped ${duplicatesSkipped} duplicate appointments`);
+      }
+
+      // Batch insert only unique appointments
+      if (uniqueAppointments.length > 0) {
+        console.log(`Batch inserting ${uniqueAppointments.length} unique appointments...`);
+        const { error: batchError } = await supabaseClient
+          .from('appointments')
+          .insert(uniqueAppointments);
+
+        if (batchError) {
+          console.error('Batch insert error:', batchError);
+          return new Response(
+            JSON.stringify({ error: `Failed to insert appointments: ${batchError.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        console.log(`✓ Successfully inserted ${uniqueAppointments.length} unique appointments`);
+      } else {
+        console.log('No new appointments to insert (all were duplicates)');
+      }
     }
 
     console.log(`Import complete: ${importedCount} imported, ${skippedCount} skipped`);
