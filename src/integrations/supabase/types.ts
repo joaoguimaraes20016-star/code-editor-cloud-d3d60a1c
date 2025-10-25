@@ -29,6 +29,8 @@ export type Database = {
           mrr_months: number | null
           pipeline_stage: string | null
           product_name: string | null
+          retarget_date: string | null
+          retarget_reason: string | null
           revenue: number | null
           setter_id: string | null
           setter_name: string | null
@@ -52,6 +54,8 @@ export type Database = {
           mrr_months?: number | null
           pipeline_stage?: string | null
           product_name?: string | null
+          retarget_date?: string | null
+          retarget_reason?: string | null
           revenue?: number | null
           setter_id?: string | null
           setter_name?: string | null
@@ -75,6 +79,8 @@ export type Database = {
           mrr_months?: number | null
           pipeline_stage?: string | null
           product_name?: string | null
+          retarget_date?: string | null
+          retarget_reason?: string | null
           revenue?: number | null
           setter_id?: string | null
           setter_name?: string | null

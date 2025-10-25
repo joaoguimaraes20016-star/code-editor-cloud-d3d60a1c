@@ -1,0 +1,314 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Clock, UserPlus, CalendarCheck, CalendarX, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { format, parseISO } from "date-fns";
+
+interface Appointment {
+  id: string;
+  lead_name: string;
+  lead_email: string;
+  start_at_utc: string;
+  status: string;
+  setter_id: string | null;
+  setter_name: string | null;
+  closer_id: string | null;
+  closer_name: string | null;
+  setter_notes: string | null;
+  event_type_name: string | null;
+}
+
+interface ConfirmTodayWorkspaceProps {
+  teamId: string;
+  userRole: string;
+}
+
+export function ConfirmTodayWorkspace({ teamId, userRole }: ConfirmTodayWorkspaceProps) {
+  const { user } = useAuth();
+  const [unassigned, setUnassigned] = useState<Appointment[]>([]);
+  const [myAssigned, setMyAssigned] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadTodaysAppointments();
+
+    const channel = supabase
+      .channel('confirm-today-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `team_id=eq.${teamId}`
+        },
+        () => loadTodaysAppointments()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [teamId, user?.id]);
+
+  const loadTodaysAppointments = async () => {
+    if (!user) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('team_id', teamId)
+        .gte('start_at_utc', `${today}T00:00:00Z`)
+        .lt('start_at_utc', `${today}T23:59:59Z`)
+        .order('start_at_utc', { ascending: true });
+
+      if (error) throw error;
+
+      const unassignedAppts = data?.filter(apt => !apt.setter_id) || [];
+      const myAppts = data?.filter(apt => apt.setter_id === user.id) || [];
+
+      setUnassigned(unassignedAppts);
+      setMyAssigned(myAppts);
+    } catch (error) {
+      console.error('Error loading today\'s appointments:', error);
+      toast.error('Failed to load appointments');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignToMe = async (appointmentId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ setter_id: user.id })
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      toast.success('Appointment assigned to you');
+      loadTodaysAppointments();
+    } catch (error) {
+      console.error('Error assigning appointment:', error);
+      toast.error('Failed to assign appointment');
+    }
+  };
+
+  const handleConfirm = async (appointmentId: string, setterId: string | null) => {
+    if (!user) return;
+
+    try {
+      const updateData: any = { status: 'CONFIRMED' };
+      
+      // If unassigned, auto-assign to current user
+      if (!setterId) {
+        updateData.setter_id = user.id;
+      }
+
+      const { error } = await supabase
+        .from('appointments')
+        .update(updateData)
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      toast.success(setterId ? 'Appointment confirmed' : 'Appointment confirmed and assigned to you');
+      loadTodaysAppointments();
+    } catch (error) {
+      console.error('Error confirming appointment:', error);
+      toast.error('Failed to confirm appointment');
+    }
+  };
+
+  const handleNoShow = async (appointmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ 
+          status: 'CANCELLED',
+          pipeline_stage: 'no_show'
+        })
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      toast.success('Marked as no-show');
+      loadTodaysAppointments();
+    } catch (error) {
+      console.error('Error marking no-show:', error);
+      toast.error('Failed to mark as no-show');
+    }
+  };
+
+  const formatTime = (utcDate: string) => {
+    try {
+      return format(parseISO(utcDate), 'h:mm a');
+    } catch {
+      return utcDate;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Calendar className="h-5 w-5" />
+        <span>{format(new Date(), 'EEEE, MMMM d, yyyy')}</span>
+      </div>
+
+      {/* Unassigned Today Section */}
+      <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-orange-600" />
+            Unassigned Today
+            <Badge variant="secondary" className="ml-auto">
+              {unassigned.length}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {unassigned.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No unassigned appointments today</p>
+          ) : (
+            unassigned.map((apt) => (
+              <Card key={apt.id} className="bg-background">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <p className="font-semibold">{apt.lead_name}</p>
+                      <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
+                      {apt.event_type_name && (
+                        <Badge variant="outline" className="text-xs">
+                          {apt.event_type_name}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      {formatTime(apt.start_at_utc)}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleAssignToMe(apt.id)}
+                      className="flex-1"
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Assign to Me
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleConfirm(apt.id, apt.setter_id)}
+                    >
+                      <CalendarCheck className="h-4 w-4 mr-1" />
+                      Confirm
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleNoShow(apt.id)}
+                    >
+                      <CalendarX className="h-4 w-4 mr-1" />
+                      No-Show
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* My Assigned Today Section */}
+      <Card className="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarCheck className="h-5 w-5 text-green-600" />
+            My Assigned Today
+            <Badge variant="secondary" className="ml-auto">
+              {myAssigned.length}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {myAssigned.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No assigned appointments today</p>
+          ) : (
+            myAssigned.map((apt) => (
+              <Card key={apt.id} className="bg-background">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <p className="font-semibold">{apt.lead_name}</p>
+                      <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
+                      {apt.event_type_name && (
+                        <Badge variant="outline" className="text-xs">
+                          {apt.event_type_name}
+                        </Badge>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant={apt.status === 'CONFIRMED' ? 'default' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {apt.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      {formatTime(apt.start_at_utc)}
+                    </div>
+                  </div>
+                  {apt.setter_notes && (
+                    <p className="text-sm text-muted-foreground border-l-2 pl-3">
+                      {apt.setter_notes}
+                    </p>
+                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    {apt.status !== 'CONFIRMED' && (
+                      <Button 
+                        size="sm"
+                        onClick={() => handleConfirm(apt.id, apt.setter_id)}
+                      >
+                        <CalendarCheck className="h-4 w-4 mr-1" />
+                        Confirm
+                      </Button>
+                    )}
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleNoShow(apt.id)}
+                    >
+                      <CalendarX className="h-4 w-4 mr-1" />
+                      No-Show
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

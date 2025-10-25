@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { NewAppointments } from "@/components/NewAppointments";
 import { MyClaimed } from "@/components/MyClaimed";
 import { AllClaimed } from "@/components/AllClaimed";
 import { AllNewAppointments } from "@/components/AllNewAppointments";
 import { DealPipeline } from "./DealPipeline";
+import { ConfirmTodayWorkspace } from "./ConfirmTodayWorkspace";
+import { RetargetTab } from "./RetargetTab";
+import { StageWorkspaceView } from "./StageWorkspaceView";
+import { StageWorkspaceList } from "./StageWorkspaceList";
 
 interface AppointmentsHubProps {
   teamId: string;
@@ -20,7 +26,7 @@ export function AppointmentsHub({
   setterCommissionPct,
   onUpdate,
 }: AppointmentsHubProps) {
-  // Setter sees: New Leads (claim) and My Appointments (manage & confirm)
+  // Setter sees: Confirm Today, New Leads, My Appointments, and Retarget
   if (userRole === "setter") {
     return (
       <div className="space-y-6">
@@ -28,14 +34,20 @@ export function AppointmentsHub({
           <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Setter Dashboard
           </h2>
-          <p className="text-muted-foreground mt-1">Claim new leads and manage your appointments</p>
+          <p className="text-muted-foreground mt-1">Manage your daily appointments and retarget leads</p>
         </div>
         
-        <Tabs defaultValue="new" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-12">
+        <Tabs defaultValue="confirm" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 h-12">
+            <TabsTrigger value="confirm" className="text-base">Confirm Today</TabsTrigger>
             <TabsTrigger value="new" className="text-base">New Leads</TabsTrigger>
             <TabsTrigger value="mine" className="text-base">My Appointments</TabsTrigger>
+            <TabsTrigger value="retarget" className="text-base">Retarget</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="confirm" className="mt-6">
+            <ConfirmTodayWorkspace teamId={teamId} userRole={userRole} />
+          </TabsContent>
 
           <TabsContent value="new" className="mt-6">
             <NewAppointments
@@ -52,12 +64,18 @@ export function AppointmentsHub({
               setterCommissionPct={setterCommissionPct}
             />
           </TabsContent>
+
+          <TabsContent value="retarget" className="mt-6">
+            <RetargetTab teamId={teamId} />
+          </TabsContent>
         </Tabs>
       </div>
     );
   }
 
-  // Closer sees: My Deals and Deal Pipeline
+  // Closer sees: My Deals, Deal Pipeline, and Stage Views
+  const [selectedStage, setSelectedStage] = useState<{ id: string; name: string; color: string } | null>(null);
+
   if (userRole === "closer") {
     return (
       <div className="space-y-6">
@@ -69,9 +87,10 @@ export function AppointmentsHub({
         </div>
         
         <Tabs defaultValue="mine" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-12">
+          <TabsList className="grid w-full grid-cols-3 h-12">
             <TabsTrigger value="mine" className="text-base">My Deals</TabsTrigger>
             <TabsTrigger value="pipeline" className="text-base">Deal Pipeline</TabsTrigger>
+            <TabsTrigger value="stages" className="text-base">Stage Views</TabsTrigger>
           </TabsList>
 
           <TabsContent value="mine" className="mt-6">
@@ -90,12 +109,39 @@ export function AppointmentsHub({
               onCloseDeal={() => onUpdate()}
             />
           </TabsContent>
+
+          <TabsContent value="stages" className="mt-6">
+            {selectedStage ? (
+              <div className="space-y-4">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setSelectedStage(null)}
+                >
+                  ← Back to All Stages
+                </Button>
+                <StageWorkspaceView 
+                  teamId={teamId} 
+                  stageId={selectedStage.id} 
+                  stageName={selectedStage.name}
+                  stageColor={selectedStage.color}
+                />
+              </div>
+            ) : (
+              <StageWorkspaceList 
+                teamId={teamId} 
+                onSelectStage={(id, name, color) => setSelectedStage({ id, name, color })}
+              />
+            )}
+          </TabsContent>
         </Tabs>
       </div>
     );
   }
 
-  // Admin/Offer Owner sees: Unassigned, All Assigned, and Pipeline
+  // Admin/Offer Owner sees: Unassigned, All Assigned, Pipeline, Stages, and Retarget
+  const [adminSelectedStage, setAdminSelectedStage] = useState<{ id: string; name: string; color: string } | null>(null);
+
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-br from-primary/15 via-accent/15 to-primary/10 rounded-xl p-6 border border-primary/40 shadow-lg">
@@ -106,10 +152,12 @@ export function AppointmentsHub({
       </div>
       
       <Tabs defaultValue="unassigned" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-12">
+        <TabsList className="grid w-full grid-cols-5 h-12">
           <TabsTrigger value="unassigned" className="text-base">Unassigned</TabsTrigger>
           <TabsTrigger value="assigned" className="text-base">All Assigned</TabsTrigger>
-          <TabsTrigger value="pipeline" className="text-base">Deal Pipeline</TabsTrigger>
+          <TabsTrigger value="pipeline" className="text-base">Pipeline</TabsTrigger>
+          <TabsTrigger value="stages" className="text-base">Stages</TabsTrigger>
+          <TabsTrigger value="retarget" className="text-base">Retarget</TabsTrigger>
         </TabsList>
 
         <TabsContent value="unassigned" className="mt-6">
@@ -135,6 +183,35 @@ export function AppointmentsHub({
             currentUserId=""
             onCloseDeal={() => onUpdate()}
           />
+        </TabsContent>
+
+        <TabsContent value="stages" className="mt-6">
+          {adminSelectedStage ? (
+            <div className="space-y-4">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setAdminSelectedStage(null)}
+              >
+                ← Back to All Stages
+              </Button>
+              <StageWorkspaceView 
+                teamId={teamId} 
+                stageId={adminSelectedStage.id} 
+                stageName={adminSelectedStage.name}
+                stageColor={adminSelectedStage.color}
+              />
+            </div>
+          ) : (
+            <StageWorkspaceList 
+              teamId={teamId} 
+              onSelectStage={(id, name, color) => setAdminSelectedStage({ id, name, color })}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="retarget" className="mt-6">
+          <RetargetTab teamId={teamId} />
         </TabsContent>
       </Tabs>
     </div>
