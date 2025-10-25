@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useUndoAction } from "@/hooks/useUndoAction";
 import {
   DndContext,
   DragEndEvent,
@@ -76,6 +77,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   const [rescheduleDialog, setRescheduleDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
   const [followUpDialog, setFollowUpDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; stage: "cancelled" | "no_show" } | null>(null);
   const [depositDialog, setDepositDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
+  
+  const { trackAction, showUndoToast } = useUndoAction();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -277,6 +280,14 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     );
 
     try {
+      // Track the action for undo
+      trackAction({
+        table: "appointments",
+        recordId: appointmentId,
+        previousData: { pipeline_stage: appointment.pipeline_stage },
+        description: `Moved ${appointment.lead_name} to ${newStage}`,
+      });
+
       // Update only the pipeline_stage - don't change status or visibility
       const { error } = await supabase
         .from("appointments")
@@ -285,7 +296,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
       if (error) throw error;
 
-      toast.success("Deal moved successfully");
+      showUndoToast(`Moved ${appointment.lead_name} to ${newStage}`);
     } catch (error) {
       console.error("Error updating deal stage:", error);
       toast.error("Failed to move deal");
@@ -482,13 +493,21 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     );
 
     try {
+      // Track the action for undo
+      trackAction({
+        table: "appointments",
+        recordId: appointmentId,
+        previousData: { pipeline_stage: appointment.pipeline_stage },
+        description: `Moved ${appointment.lead_name} to ${stage}`,
+      });
+
       const { error } = await supabase
         .from("appointments")
         .update({ pipeline_stage: stage })
         .eq("id", appointmentId);
 
       if (error) throw error;
-      toast.success(`Deal moved successfully`);
+      showUndoToast(`Moved ${appointment.lead_name} to ${stage}`);
     } catch (error) {
       console.error("Error updating deal stage:", error);
       toast.error("Failed to move deal");
