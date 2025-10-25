@@ -131,14 +131,16 @@ export default function TeamSettings() {
         .from('teams')
         .select('name, calendly_access_token, calendly_organization_uri, calendly_webhook_id, calendly_event_types')
         .eq('id', teamId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      setTeamName(data.name);
-      setCalendlyAccessToken(data.calendly_access_token);
-      setCalendlyOrgUri(data.calendly_organization_uri);
-      setCalendlyWebhookId(data.calendly_webhook_id);
-      setCalendlyEventTypes(data.calendly_event_types);
+      if (data) {
+        setTeamName(data.name);
+        setCalendlyAccessToken(data.calendly_access_token);
+        setCalendlyOrgUri(data.calendly_organization_uri);
+        setCalendlyWebhookId(data.calendly_webhook_id);
+        setCalendlyEventTypes(data.calendly_event_types);
+      }
     } catch (error: any) {
       toast({
         title: 'Error loading team',

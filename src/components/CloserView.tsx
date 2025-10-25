@@ -110,10 +110,12 @@ export function CloserView({ teamId }: CloserViewProps) {
         .from('profiles')
         .select('full_name')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      setUserProfile(data);
+      if (data) {
+        setUserProfile(data);
+      }
     } catch (error: any) {
       // Error loading profile - no action needed as it's not critical
     }
@@ -125,7 +127,7 @@ export function CloserView({ teamId }: CloserViewProps) {
         .from('teams')
         .select('setter_commission_percentage, closer_commission_percentage')
         .eq('id', teamId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       if (data) {
@@ -241,7 +243,7 @@ export function CloserView({ teamId }: CloserViewProps) {
         .select('role')
         .eq('user_id', user.id)
         .eq('team_id', teamId)
-        .single();
+        .maybeSingle();
       
       const isOfferOwner = teamMemberData?.role === 'offer_owner';
       
@@ -253,7 +255,7 @@ export function CloserView({ teamId }: CloserViewProps) {
           .select('role')
           .eq('user_id', selectedAppointment.setter_id)
           .eq('team_id', teamId)
-          .single();
+          .maybeSingle();
         isSetterOfferOwner = setterData?.role === 'offer_owner';
       }
       
@@ -414,7 +416,7 @@ export function CloserView({ teamId }: CloserViewProps) {
         .select('role')
         .eq('user_id', user.id)
         .eq('team_id', teamId)
-        .single();
+        .maybeSingle();
       
       const isOfferOwner = teamMemberData?.role === 'offer_owner';
       

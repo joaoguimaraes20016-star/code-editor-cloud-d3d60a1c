@@ -142,7 +142,7 @@ export function ClientAssetsList({ teamIds }: ClientAssetsListProps) {
         .from('client_assets')
         .select('team_id, client_email')
         .eq('id', deleteAssetId)
-        .single();
+        .maybeSingle();
 
       if (!asset) {
         throw new Error('Client asset not found');

@@ -109,9 +109,13 @@ export function OperatorControls({ teamId }: OperatorControlsProps) {
         .eq('status', 'pending')
         .order('created_at', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (taskError) throw taskError;
+      if (!taskToMove) {
+        toast.info('No tasks to rebalance');
+        return;
+      }
 
       // Return task to queue
       const { error: updateError } = await supabase

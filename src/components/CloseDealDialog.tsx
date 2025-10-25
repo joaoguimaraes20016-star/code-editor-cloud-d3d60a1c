@@ -71,13 +71,13 @@ export function CloseDealDialog({
     if (!user || !appointment) return;
 
     // Get user profile
-    const { data: userProfile } = await supabase
+    const { data: userProfile, error: profileError } = await supabase
       .from('profiles')
       .select('full_name')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (!userProfile) {
+    if (profileError || !userProfile) {
       toast({
         title: 'Error',
         description: 'Could not load user profile',
@@ -116,7 +116,7 @@ export function CloseDealDialog({
         .select('role')
         .eq('user_id', user.id)
         .eq('team_id', teamId)
-        .single();
+        .maybeSingle();
       
       const isOfferOwner = teamMemberData?.role === 'offer_owner';
       
@@ -128,7 +128,7 @@ export function CloseDealDialog({
           .select('role')
           .eq('user_id', appointment.setter_id)
           .eq('team_id', teamId)
-          .single();
+          .maybeSingle();
         isSetterOfferOwner = setterData?.role === 'offer_owner';
       }
       

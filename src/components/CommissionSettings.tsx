@@ -40,7 +40,7 @@ export function CommissionSettings({ teamId }: CommissionSettingsProps) {
         .from('teams')
         .select('setter_commission_percentage, closer_commission_percentage')
         .eq('id', teamId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 

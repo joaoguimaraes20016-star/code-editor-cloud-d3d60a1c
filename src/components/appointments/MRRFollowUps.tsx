@@ -180,7 +180,7 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
           .from('profiles')
           .select('full_name')
           .eq('id', user?.id || '')
-          .single();
+          .maybeSingle();
 
         await supabase.from('activity_logs').insert({
           team_id: teamId,

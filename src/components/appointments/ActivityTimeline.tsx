@@ -90,7 +90,7 @@ export function ActivityTimeline({ appointmentId, teamId, onClose }: ActivityTim
         .from('profiles')
         .select('full_name')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       const { error } = await supabase.from('activity_logs').insert({
         team_id: teamId,

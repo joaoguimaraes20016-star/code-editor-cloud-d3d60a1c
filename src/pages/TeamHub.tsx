@@ -26,10 +26,12 @@ export default function TeamHub() {
           .from('teams')
           .select('name')
           .eq('id', teamId)
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
-        setTeamName(data.name);
+        if (data) {
+          setTeamName(data.name);
+        }
       } catch (error) {
         console.error('Error loading team:', error);
       } finally {

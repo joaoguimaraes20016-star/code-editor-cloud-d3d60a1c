@@ -67,9 +67,9 @@ export default function OnboardingForm() {
         .from('client_assets')
         .select('*')
         .eq('access_token', token)
-        .single();
+        .maybeSingle();
 
-      if (assetError) {
+      if (assetError || !assetData) {
         if (import.meta.env.DEV) {
           console.error('Asset error:', assetError);
         }

@@ -44,10 +44,12 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
         .from('teams')
         .select('name')
         .eq('id', teamId)
-        .single();
+        .maybeSingle();
 
       if (teamError) throw teamError;
-      setTeamName(teamData.name || 'Team Hub');
+      if (teamData) {
+        setTeamName(teamData.name || 'Team Hub');
+      }
     } catch (error) {
       console.error('Error loading team data:', error);
     }

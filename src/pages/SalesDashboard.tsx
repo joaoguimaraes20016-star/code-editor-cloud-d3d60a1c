@@ -114,7 +114,7 @@ const Index = () => {
         .from('profiles')
         .select('full_name')
         .eq('id', user?.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       setCurrentUserName(data?.full_name || null);

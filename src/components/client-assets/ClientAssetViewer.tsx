@@ -58,9 +58,9 @@ export function ClientAssetViewer({ assetId, onClose }: ClientAssetViewerProps) 
       .from('client_assets')
       .select('*')
       .eq('id', assetId)
-      .single();
+      .maybeSingle();
 
-    if (assetError) {
+    if (assetError || !assetData) {
       console.error('Error loading asset:', assetError);
       toast.error('Failed to load asset details');
       return;

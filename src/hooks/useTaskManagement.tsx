@@ -55,7 +55,7 @@ export function useTaskManagement(teamId: string, userId: string) {
         .from('profiles')
         .select('full_name')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       await supabase.from('activity_logs').insert({
         team_id: teamId,

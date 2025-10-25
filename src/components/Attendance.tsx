@@ -49,10 +49,12 @@ export function Attendance({ teamId }: AttendanceProps) {
         .from('profiles')
         .select('full_name')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      setUserProfile(data);
+      if (data) {
+        setUserProfile(data);
+      }
     } catch (error: any) {
       console.error('Error loading profile:', error);
     }
