@@ -6,6 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, UserPlus, CalendarCheck, CalendarX, Loader2, AlertCircle, Phone, RefreshCw } from 'lucide-react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface TaskBasedConfirmTodayProps {
   teamId: string;
@@ -20,8 +28,60 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     claimTask,
     confirmTask,
     noShowTask,
-    rescheduleTask
+    rescheduleTask,
+    refreshTasks
   } = useTaskManagement(teamId, user?.id || '');
+
+  const [rescheduleDialog, setRescheduleDialog] = useState<{
+    open: boolean;
+    taskId: string;
+    appointmentId: string;
+    appointmentName: string;
+  } | null>(null);
+  const [rescheduleDateTime, setRescheduleDateTime] = useState<Date>();
+
+  const handleRescheduleFollowUp = (taskId: string, appointmentId: string, appointmentName: string) => {
+    setRescheduleDialog({ open: true, taskId, appointmentId, appointmentName });
+    setRescheduleDateTime(undefined);
+  };
+
+  const handleRescheduleConfirm = async () => {
+    if (!rescheduleDialog || !rescheduleDateTime || !user) return;
+
+    try {
+      // Update appointment with new date and assign to current user
+      const { error: aptError } = await supabase
+        .from('appointments')
+        .update({
+          start_at_utc: rescheduleDateTime.toISOString(),
+          status: 'CONFIRMED',
+          pipeline_stage: 'booked',
+          setter_id: user.id
+        })
+        .eq('id', rescheduleDialog.appointmentId);
+
+      if (aptError) throw aptError;
+
+      // Complete the task
+      const { error: taskError } = await supabase
+        .from('confirmation_tasks')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', rescheduleDialog.taskId);
+
+      if (taskError) throw taskError;
+
+      toast.success('Appointment rescheduled and assigned to you');
+      setRescheduleDialog(null);
+      setRescheduleDateTime(undefined);
+      refreshTasks();
+    } catch (error) {
+      console.error('Error rescheduling:', error);
+      toast.error('Failed to reschedule');
+    }
+  };
 
   const formatTime = (utcDate: string) => {
     try {
@@ -178,7 +238,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                         <>
                           <Button 
                             size="sm"
-                            onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
+                            onClick={() => handleRescheduleFollowUp(task.id, apt.id, apt.lead_name)}
                           >
                             <CalendarCheck className="h-4 w-4 mr-1" />
                             Reconnected
@@ -295,6 +355,85 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Reschedule Dialog */}
+      {rescheduleDialog && (
+        <Dialog open={rescheduleDialog.open} onOpenChange={(open) => !open && setRescheduleDialog(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Reschedule Appointment</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                Setting new appointment date/time for <span className="font-semibold">{rescheduleDialog.appointmentName}</span>
+              </p>
+              
+              <div className="space-y-2">
+                <Label>Select New Date & Time</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <Clock className="mr-2 h-4 w-4" />
+                      {rescheduleDateTime ? format(rescheduleDateTime, "PPP 'at' p") : "Pick a date and time"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={rescheduleDateTime}
+                      onSelect={(date) => {
+                        if (date) {
+                          const newDate = rescheduleDateTime ? new Date(date) : new Date(date.setHours(9, 0, 0, 0));
+                          if (rescheduleDateTime) {
+                            newDate.setHours(rescheduleDateTime.getHours(), rescheduleDateTime.getMinutes());
+                          }
+                          setRescheduleDateTime(newDate);
+                        }
+                      }}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                    {rescheduleDateTime && (
+                      <div className="p-3 border-t">
+                        <Label className="text-xs">Time</Label>
+                        <div className="flex gap-2 mt-2">
+                          <Input
+                            type="time"
+                            value={rescheduleDateTime ? format(rescheduleDateTime, "HH:mm") : ""}
+                            onChange={(e) => {
+                              if (rescheduleDateTime && e.target.value) {
+                                const [hours, minutes] = e.target.value.split(':');
+                                const newDate = new Date(rescheduleDateTime);
+                                newDate.setHours(parseInt(hours), parseInt(minutes));
+                                setRescheduleDateTime(newDate);
+                              }
+                            }}
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRescheduleDialog(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleRescheduleConfirm} disabled={!rescheduleDateTime}>
+                Confirm & Assign to Me
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
