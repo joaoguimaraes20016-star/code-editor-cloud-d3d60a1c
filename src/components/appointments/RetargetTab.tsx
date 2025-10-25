@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Target, MessageCircle, Calendar as CalendarIcon, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Appointment {
   id: string;
@@ -359,7 +360,7 @@ export function RetargetTab({ teamId }: RetargetTabProps) {
                       }}
                       disabled={(date) => date < new Date()}
                       initialFocus
-                      className="pointer-events-auto"
+                      className={cn("p-3 pointer-events-auto")}
                     />
                     {rebookDateTime && (
                       <div className="p-3 border-t">

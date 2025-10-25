@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CalendarIcon } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface FollowUpDialogProps {
   open: boolean;
@@ -65,6 +66,7 @@ export function FollowUpDialog({ open, onOpenChange, onConfirm, dealName, stage 
                   onSelect={(date) => date && setFollowUpDate(date)}
                   disabled={(date) => date < new Date()}
                   initialFocus
+                  className={cn("p-3 pointer-events-auto")}
                 />
               </PopoverContent>
             </Popover>
