@@ -53,7 +53,7 @@ export function AppointmentsHub({
     setDealToClose(null);
     onUpdate();
   };
-  // Setter sees: Confirm Today, New Leads, My Appointments, and Retarget
+  // Setter sees: Confirm Today, My Appointments, All Assigned, and Retarget
   if (userRole === "setter") {
     return (
       <div className="space-y-6">
@@ -66,11 +66,10 @@ export function AppointmentsHub({
         </div>
         
         <Tabs defaultValue="confirm" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 h-12">
+          <TabsList className="grid w-full grid-cols-4 h-12">
             <TabsTrigger value="confirm" className="text-base">
               Confirm Today {counts.myTasks > 0 && <Badge className="ml-2" variant="secondary">{counts.myTasks}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="new" className="text-base">New Leads</TabsTrigger>
             <TabsTrigger value="mine" className="text-base">My Appointments</TabsTrigger>
             <TabsTrigger value="all" className="text-base">All Assigned</TabsTrigger>
             <TabsTrigger value="retarget" className="text-base">
@@ -80,14 +79,6 @@ export function AppointmentsHub({
 
           <TabsContent value="confirm" className="mt-6">
             <TaskBasedConfirmToday teamId={teamId} />
-          </TabsContent>
-
-          <TabsContent value="new" className="mt-6">
-            <NewAppointments
-              teamId={teamId}
-              closerCommissionPct={closerCommissionPct}
-              setterCommissionPct={setterCommissionPct}
-            />
           </TabsContent>
 
           <TabsContent value="mine" className="mt-6">
