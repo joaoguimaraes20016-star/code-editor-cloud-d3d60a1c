@@ -51,90 +51,118 @@ export function AppointmentCard({
   const formattedDate = format(new Date(appointment.start_at_utc), "MMM dd, yyyy 'at' h:mm a");
 
   return (
-    <Card className="p-4 hover:shadow-md transition-shadow animate-fade-in">
-      <div className="flex items-start justify-between mb-3">
+    <Card className="p-5 hover:shadow-md transition-shadow animate-fade-in border-l-4 border-l-primary/20">
+      <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-medium truncate">{appointment.lead_name}</h3>
-          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-            <Mail className="w-3 h-3" />
+          <h3 className="text-xl font-semibold mb-1 truncate">{appointment.lead_name}</h3>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Mail className="w-4 h-4" />
             <span className="truncate">{appointment.lead_email}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 ml-2">
-          <Badge className={statusColors[appointment.status] || ""}>{appointment.status}</Badge>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {onAssign && (
-                <DropdownMenuItem onClick={onAssign}>
-                  Assign
-                </DropdownMenuItem>
-              )}
-              {onViewDetails && (
-                <DropdownMenuItem onClick={() => onViewDetails(appointment)}>
-                  View Details
-                </DropdownMenuItem>
-              )}
-              {onCloseDeal && appointment.status !== 'CLOSED' && (
-                <DropdownMenuItem onClick={() => onCloseDeal(appointment)}>
-                  Close Deal
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex items-center gap-2 ml-3">
+          <Badge className={statusColors[appointment.status] || ""} variant="secondary">
+            {appointment.status}
+          </Badge>
+          {onAssign ? (
+            <Button onClick={onAssign} size="sm" className="shrink-0">
+              Assign to Setter
+            </Button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onViewDetails && (
+                  <DropdownMenuItem onClick={() => onViewDetails(appointment)}>
+                    View Details
+                  </DropdownMenuItem>
+                )}
+                {onCloseDeal && appointment.status !== 'CLOSED' && (
+                  <DropdownMenuItem onClick={() => onCloseDeal(appointment)}>
+                    Close Deal
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
-      <div className="space-y-2 text-sm">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Clock className="w-4 h-4" />
-          <span>{formattedDate}</span>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1 p-2.5 bg-muted/50 rounded-lg">
+            <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Appointment Time</span>
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-primary" />
+              <span className="text-sm font-medium">{formattedDate}</span>
+            </div>
+          </div>
+
+          {appointment.event_type_name && (
+            <div className="flex flex-col gap-1 p-2.5 bg-muted/50 rounded-lg">
+              <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Event Type</span>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span className="text-sm font-medium truncate">{appointment.event_type_name}</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {appointment.event_type_name && (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Calendar className="w-4 h-4" />
-            <span>{appointment.event_type_name}</span>
-          </div>
-        )}
+        {(appointment.setter_name || appointment.closer_name) && (
+          <div className="grid grid-cols-2 gap-3">
+            {appointment.setter_name && (
+              <div className="flex flex-col gap-1 p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <span className="text-[10px] uppercase tracking-wider font-medium text-blue-700 dark:text-blue-400">Setter</span>
+                <div className="flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" />
+                  <span className="text-sm font-medium truncate">{appointment.setter_name}</span>
+                </div>
+              </div>
+            )}
 
-        {appointment.setter_name && (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <User className="w-4 h-4" />
-            <span>Setter: {appointment.setter_name}</span>
-          </div>
-        )}
-
-        {appointment.closer_name && (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <User className="w-4 h-4" />
-            <span>Closer: {appointment.closer_name}</span>
+            {appointment.closer_name && (
+              <div className="flex flex-col gap-1 p-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                <span className="text-[10px] uppercase tracking-wider font-medium text-purple-700 dark:text-purple-400">Closer</span>
+                <div className="flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-purple-700 dark:text-purple-400" />
+                  <span className="text-sm font-medium truncate">{appointment.closer_name}</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {appointment.setter_notes && (
-          <div className="flex items-start gap-2 text-muted-foreground mt-3 p-2 bg-muted/50 rounded">
-            <MessageSquare className="w-4 h-4 mt-0.5" />
-            <span className="text-xs">{appointment.setter_notes}</span>
+          <div className="flex flex-col gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+              <span className="text-[10px] uppercase tracking-wider font-medium text-amber-700 dark:text-amber-400">Setter Notes</span>
+            </div>
+            <p className="text-sm text-foreground leading-relaxed">{appointment.setter_notes}</p>
           </div>
         )}
 
         {(appointment.cc_collected || appointment.mrr_amount) && (
-          <div className="flex gap-3 mt-3 pt-3 border-t">
+          <div className="grid grid-cols-2 gap-3 pt-2 border-t">
             {appointment.cc_collected && (
-              <div>
-                <span className="text-xs text-muted-foreground">CC:</span>
-                <span className="ml-1 font-medium">${appointment.cc_collected.toLocaleString()}</span>
+              <div className="flex flex-col gap-1 p-2.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <span className="text-[10px] uppercase tracking-wider font-medium text-green-700 dark:text-green-400">Cash Collected</span>
+                <span className="text-lg font-bold text-green-700 dark:text-green-400 tabular-nums">
+                  ${appointment.cc_collected.toLocaleString()}
+                </span>
               </div>
             )}
             {appointment.mrr_amount && (
-              <div>
-                <span className="text-xs text-muted-foreground">MRR:</span>
-                <span className="ml-1 font-medium">${appointment.mrr_amount.toLocaleString()}/mo</span>
+              <div className="flex flex-col gap-1 p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                <span className="text-[10px] uppercase tracking-wider font-medium text-emerald-700 dark:text-emerald-400">Monthly Revenue</span>
+                <span className="text-lg font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                  ${appointment.mrr_amount.toLocaleString()}/mo
+                </span>
               </div>
             )}
           </div>

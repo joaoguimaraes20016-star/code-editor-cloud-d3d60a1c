@@ -60,7 +60,7 @@ export function DealCard({ id, appointment, onCloseDeal, onMoveTo }: DealCardPro
       style={style}
       className="group bg-card p-4 cursor-grab active:cursor-grabbing hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 transition-all duration-200"
     >
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="flex items-start justify-between gap-2 mb-3">
         <div 
           {...attributes} 
           {...listeners} 
@@ -70,8 +70,9 @@ export function DealCard({ id, appointment, onCloseDeal, onMoveTo }: DealCardPro
         </div>
         
         {dealValue > 0 && (
-          <div className="flex-1 inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 text-green-700 dark:text-green-400 rounded-md">
-            <span className="text-lg font-semibold tabular-nums">${dealValue.toLocaleString()}</span>
+          <div className="flex-1 flex flex-col items-start gap-0.5 px-2.5 py-1.5 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 rounded-md">
+            <span className="text-[10px] uppercase tracking-wider font-medium opacity-70">Deal Value</span>
+            <span className="text-lg font-bold tabular-nums">${dealValue.toLocaleString()}</span>
           </div>
         )}
 
@@ -99,20 +100,29 @@ export function DealCard({ id, appointment, onCloseDeal, onMoveTo }: DealCardPro
         </div>
 
         {appointment.setter_name && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
             <DealAvatar name={appointment.setter_name} className="h-7 w-7" />
-            <span className="text-sm truncate">{appointment.setter_name}</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Closer</span>
+              <span className="text-sm font-medium truncate">{appointment.setter_name}</span>
+            </div>
           </div>
         )}
 
-        <div className="flex items-center justify-between text-sm pt-2 border-t border-border/50">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>{format(new Date(appointment.start_at_utc), "MMM dd, yyyy")}</span>
+        <div className="flex items-center justify-between text-xs pt-2 border-t border-border/50">
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Appointment</span>
+            <div className="flex items-center gap-1.5 text-foreground font-medium">
+              <Calendar className="h-3 w-3" />
+              <span>{format(new Date(appointment.start_at_utc), "MMM dd")}</span>
+            </div>
           </div>
-          <div className={`flex items-center gap-1.5 font-medium ${getDaysColor(daysInStage)}`}>
-            <div className="h-2 w-2 rounded-full bg-current" />
-            {daysInStage}d
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">In Stage</span>
+            <div className={`flex items-center gap-1.5 font-bold ${getDaysColor(daysInStage)}`}>
+              <div className="h-2 w-2 rounded-full bg-current" />
+              {daysInStage} {daysInStage === 1 ? 'day' : 'days'}
+            </div>
           </div>
         </div>
       </div>
