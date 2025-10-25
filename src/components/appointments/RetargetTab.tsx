@@ -303,7 +303,7 @@ export function RetargetTab({ teamId }: RetargetTabProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
+            <CalendarIcon className="h-5 w-5" />
             Upcoming
             <Badge variant="secondary" className="ml-auto">
               {upcoming.length}
