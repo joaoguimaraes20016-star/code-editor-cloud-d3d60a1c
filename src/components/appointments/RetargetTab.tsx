@@ -92,6 +92,11 @@ export function RetargetTab({ teamId }: RetargetTabProps) {
 
   const handleDismiss = async (appointmentId: string) => {
     try {
+      // Store original values before dismissing
+      const appointment = [...dueToday, ...upcoming].find(apt => apt.id === appointmentId);
+      const originalRetargetDate = appointment?.retarget_date;
+      const originalRetargetReason = appointment?.retarget_reason;
+      
       const { error } = await supabase
         .from('appointments')
         .update({ 
@@ -102,7 +107,32 @@ export function RetargetTab({ teamId }: RetargetTabProps) {
 
       if (error) throw error;
 
-      toast.success('Removed from retarget queue');
+      // Show toast with undo action
+      toast.success('Removed from retarget queue', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              const { error: undoError } = await supabase
+                .from('appointments')
+                .update({ 
+                  retarget_date: originalRetargetDate,
+                  retarget_reason: originalRetargetReason
+                })
+                .eq('id', appointmentId);
+
+              if (undoError) throw undoError;
+              
+              toast.success('Restored to retarget queue');
+              loadRetargetQueue();
+            } catch (error) {
+              console.error('Error undoing dismiss:', error);
+              toast.error('Failed to undo');
+            }
+          }
+        }
+      });
+      
       loadRetargetQueue();
     } catch (error) {
       console.error('Error dismissing retarget:', error);
