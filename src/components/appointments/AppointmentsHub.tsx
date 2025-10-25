@@ -130,14 +130,14 @@ export function AppointmentsHub({
           </TabsContent>
 
           <TabsContent value="mrr" className="mt-6">
-            <MRRFollowUps teamId={teamId} />
+            <MRRFollowUps teamId={teamId} userRole={userRole} currentUserId={user?.id || ''} />
           </TabsContent>
 
           <TabsContent value="pipeline" className="mt-6">
             <DealPipeline
               teamId={teamId}
               userRole={userRole}
-              currentUserId=""
+              currentUserId={user?.id || ''}
               onCloseDeal={() => onUpdate()}
             />
           </TabsContent>
@@ -237,7 +237,7 @@ export function AppointmentsHub({
         </TabsContent>
 
         <TabsContent value="mrr" className="mt-6">
-          <MRRFollowUps teamId={teamId} />
+          <MRRFollowUps teamId={teamId} userRole={userRole} currentUserId={user?.id || ''} />
         </TabsContent>
 
 
@@ -245,7 +245,7 @@ export function AppointmentsHub({
           <DealPipeline
             teamId={teamId}
             userRole={userRole}
-            currentUserId=""
+            currentUserId={user?.id || ''}
             onCloseDeal={() => onUpdate()}
           />
         </TabsContent>

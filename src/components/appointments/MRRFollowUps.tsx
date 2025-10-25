@@ -31,9 +31,11 @@ interface MRRTask {
 
 interface MRRFollowUpsProps {
   teamId: string;
+  userRole: string;
+  currentUserId: string;
 }
 
-export function MRRFollowUps({ teamId }: MRRFollowUpsProps) {
+export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsProps) {
   const [tasks, setTasks] = useState<MRRTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<MRRTask | null>(null);
@@ -63,22 +65,36 @@ export function MRRFollowUps({ teamId }: MRRFollowUpsProps) {
 
   const loadTasks = async () => {
     try {
+      // Load schedules first with proper filtering
+      let schedulesQuery = supabase
+        .from('mrr_schedules')
+        .select('*')
+        .eq('team_id', teamId);
+
+      // Filter by assigned closer for closers (not admins/offer owners)
+      if (userRole === 'closer' && currentUserId) {
+        schedulesQuery = schedulesQuery.eq('assigned_to', currentUserId);
+      }
+
+      const { data: schedulesData, error: schedulesError } = await schedulesQuery;
+      if (schedulesError) throw schedulesError;
+
+      const scheduleIds = schedulesData?.map(s => s.id) || [];
+      if (scheduleIds.length === 0) {
+        setTasks([]);
+        setLoading(false);
+        return;
+      }
+
+      // Load tasks only for filtered schedules
       const { data: tasksData, error: tasksError } = await supabase
         .from('mrr_follow_up_tasks')
         .select('*')
         .eq('team_id', teamId)
+        .in('mrr_schedule_id', scheduleIds)
         .order('due_date', { ascending: true });
 
       if (tasksError) throw tasksError;
-
-      // Load schedules separately
-      const scheduleIds = tasksData?.map(t => t.mrr_schedule_id) || [];
-      const { data: schedulesData, error: schedulesError } = await supabase
-        .from('mrr_schedules')
-        .select('*')
-        .in('id', scheduleIds);
-
-      if (schedulesError) throw schedulesError;
 
       // Combine data
       const schedulesMap = new Map(schedulesData?.map(s => [s.id, s]) || []);
