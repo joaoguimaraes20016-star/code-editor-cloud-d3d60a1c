@@ -16,6 +16,7 @@ import { StageWorkspaceView } from "./StageWorkspaceView";
 import { StageWorkspaceList } from "./StageWorkspaceList";
 import { InitializeDefaultStages } from "./InitializeDefaultStages";
 import { PipelineStageManager } from "./PipelineStageManager";
+import { CloseDealDialog } from "@/components/CloseDealDialog";
 import { useTabCounts } from "@/hooks/useTabCounts";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -39,6 +40,19 @@ export function AppointmentsHub({
   const [selectedStage, setSelectedStage] = useState<{ id: string; name: string; color: string } | null>(null);
   const [adminSelectedStage, setAdminSelectedStage] = useState<{ id: string; name: string; color: string } | null>(null);
   const [showStageManager, setShowStageManager] = useState(false);
+  const [dealToClose, setDealToClose] = useState<any>(null);
+  const [showCloseDealDialog, setShowCloseDealDialog] = useState(false);
+
+  const handleCloseDeal = (appointment: any) => {
+    setDealToClose(appointment);
+    setShowCloseDealDialog(true);
+  };
+
+  const handleCloseDealSuccess = () => {
+    setShowCloseDealDialog(false);
+    setDealToClose(null);
+    onUpdate();
+  };
   // Setter sees: Confirm Today, New Leads, My Appointments, and Retarget
   if (userRole === "setter") {
     return (
@@ -153,7 +167,7 @@ export function AppointmentsHub({
               teamId={teamId}
               userRole={userRole}
               currentUserId={user?.id || ''}
-              onCloseDeal={() => onUpdate()}
+              onCloseDeal={handleCloseDeal}
             />
           </TabsContent>
 
@@ -182,6 +196,16 @@ export function AppointmentsHub({
             )}
           </TabsContent>
         </Tabs>
+
+        <CloseDealDialog
+          appointment={dealToClose}
+          teamId={teamId}
+          open={showCloseDealDialog}
+          onOpenChange={setShowCloseDealDialog}
+          onSuccess={handleCloseDealSuccess}
+          closerCommissionPct={closerCommissionPct}
+          setterCommissionPct={setterCommissionPct}
+        />
       </div>
     );
   }
@@ -265,7 +289,7 @@ export function AppointmentsHub({
             teamId={teamId}
             userRole={userRole}
             currentUserId={user?.id || ''}
-            onCloseDeal={() => onUpdate()}
+            onCloseDeal={handleCloseDeal}
             viewFilter="all"
           />
         </TabsContent>
@@ -308,6 +332,16 @@ export function AppointmentsHub({
           setShowStageManager(false);
           onUpdate();
         }}
+      />
+
+      <CloseDealDialog
+        appointment={dealToClose}
+        teamId={teamId}
+        open={showCloseDealDialog}
+        onOpenChange={setShowCloseDealDialog}
+        onSuccess={handleCloseDealSuccess}
+        closerCommissionPct={closerCommissionPct}
+        setterCommissionPct={setterCommissionPct}
       />
     </div>
   );
