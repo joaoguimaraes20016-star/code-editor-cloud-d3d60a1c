@@ -766,6 +766,50 @@ export type Database = {
           },
         ]
       }
+      team_pipeline_stages: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          order_index: number
+          stage_color: string
+          stage_id: string
+          stage_label: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          order_index: number
+          stage_color: string
+          stage_id: string
+          stage_label: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          order_index?: number
+          stage_color?: string
+          stage_id?: string
+          stage_label?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_pipeline_stages_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           calendly_access_token: string | null
