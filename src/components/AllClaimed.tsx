@@ -124,10 +124,18 @@ export function AllClaimed({ teamId, closerCommissionPct, setterCommissionPct }:
           filter: `team_id=eq.${teamId}`
         },
         (payload) => {
-          // Update specific appointment in local state
-          setAppointments(prev => 
-            prev.map(apt => apt.id === payload.new.id ? payload.new as Appointment : apt)
-          );
+          const updatedApt = payload.new as Appointment;
+          
+          // If appointment still has a setter, update it
+          if (updatedApt.setter_id) {
+            setAppointments(prev => 
+              prev.map(apt => apt.id === updatedApt.id ? updatedApt : apt)
+            );
+          } else {
+            // If setter was removed, remove from assigned list
+            setAppointments(prev => prev.filter(apt => apt.id !== updatedApt.id));
+            setTotalCount(prev => Math.max(0, prev - 1));
+          }
         }
       )
       .subscribe((status) => {
