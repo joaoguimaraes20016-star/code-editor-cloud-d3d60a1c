@@ -148,10 +148,9 @@ export function AssignDialog({
             <Label htmlFor="closer">Closer (Optional)</Label>
             <Select value={selectedCloser} onValueChange={setSelectedCloser}>
               <SelectTrigger id="closer">
-                <SelectValue placeholder="Select closer (optional)" />
+                <SelectValue placeholder="No closer assigned (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
                 {closers.map((member) => (
                   <SelectItem key={member.id} value={member.id}>
                     {member.name}
