@@ -29,10 +29,38 @@ export function InitializeDefaultStages({ teamId }: InitializeDefaultStagesProps
       // Check if stages already exist
       const { data: existingStages, error: fetchError } = await supabase
         .from('team_pipeline_stages')
-        .select('stage_id')
+        .select('*')
         .eq('team_id', teamId);
 
       if (fetchError) throw fetchError;
+
+      // Update existing stages that need label corrections
+      const stagesToUpdate = existingStages?.filter(stage => {
+        if (stage.stage_label === 'Closed Won') return true;
+        if (stage.stage_label === 'Closed Lost') return true;
+        return false;
+      }) || [];
+
+      for (const stage of stagesToUpdate) {
+        if (stage.stage_label === 'Closed Won') {
+          await supabase
+            .from('team_pipeline_stages')
+            .update({ stage_label: 'Closed' })
+            .eq('id', stage.id);
+        } else if (stage.stage_label === 'Closed Lost') {
+          // Delete "Closed Lost" and move appointments to "disqualified"
+          await supabase
+            .from('appointments')
+            .update({ pipeline_stage: 'disqualified' })
+            .eq('team_id', teamId)
+            .eq('pipeline_stage', stage.stage_id);
+          
+          await supabase
+            .from('team_pipeline_stages')
+            .delete()
+            .eq('id', stage.id);
+        }
+      }
 
       const existingStageIds = new Set(existingStages?.map(s => s.stage_id) || []);
       
@@ -53,6 +81,10 @@ export function InitializeDefaultStages({ teamId }: InitializeDefaultStagesProps
         if (insertError) throw insertError;
         
         console.log(`Initialized ${stagesToInsert.length} default stages`);
+      }
+
+      if (stagesToUpdate.length > 0) {
+        console.log(`Updated ${stagesToUpdate.length} stage labels`);
       }
 
       setInitialized(true);
