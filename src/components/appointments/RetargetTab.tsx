@@ -25,6 +25,7 @@ interface Appointment {
   pipeline_stage: string | null;
   retarget_date: string | null;
   retarget_reason: string | null;
+  setter_notes: string | null;
 }
 
 interface RetargetTabProps {
@@ -143,12 +144,11 @@ export function RetargetTab({ teamId }: RetargetTabProps) {
 
   const handleFollowedUp = async (appointmentId: string) => {
     try {
+      const timestamp = new Date().toISOString();
       const { error } = await supabase
         .from('appointments')
         .update({ 
-          retarget_date: null,
-          retarget_reason: null,
-          setter_notes: 'Followed up from retarget queue'
+          setter_notes: `[FOLLOWED_UP:${timestamp}] Followed up from retarget queue`
         })
         .eq('id', appointmentId);
 
@@ -205,9 +205,10 @@ export function RetargetTab({ teamId }: RetargetTabProps) {
 
   const AppointmentCard = ({ apt, isDue }: { apt: Appointment; isDue: boolean }) => {
     const isCloseDue = apt.retarget_reason?.toLowerCase().includes('close due');
+    const isFollowedUp = apt.setter_notes?.includes('[FOLLOWED_UP:');
     
     return (
-      <Card key={apt.id} className="bg-background">
+      <Card key={apt.id} className={cn("bg-background", isFollowedUp && "border-green-200 dark:border-green-900")}>
         <CardContent className="p-4 space-y-3">
           <div className="flex items-start justify-between">
             <div className="space-y-1 flex-1">
@@ -227,6 +228,11 @@ export function RetargetTab({ teamId }: RetargetTabProps) {
                     {isDue ? 'Due Today' : `Due ${formatDate(apt.retarget_date)}`}
                   </Badge>
                 )}
+                {isFollowedUp && (
+                  <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
+                    ✓ Followed Up
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
@@ -235,6 +241,7 @@ export function RetargetTab({ teamId }: RetargetTabProps) {
               <Button 
                 size="sm"
                 onClick={() => handleFollowedUp(apt.id)}
+                disabled={isFollowedUp}
               >
                 <MessageCircle className="h-4 w-4 mr-1" />
                 Close Deal
@@ -250,11 +257,12 @@ export function RetargetTab({ teamId }: RetargetTabProps) {
             )}
             <Button 
               size="sm" 
-              variant="outline"
+              variant={isFollowedUp ? "default" : "outline"}
               onClick={() => handleFollowedUp(apt.id)}
+              disabled={isFollowedUp}
             >
               <MessageCircle className="h-4 w-4 mr-1" />
-              Followed Up
+              {isFollowedUp ? 'Followed Up ✓' : 'Mark Followed Up'}
             </Button>
             <Button 
               size="sm" 
