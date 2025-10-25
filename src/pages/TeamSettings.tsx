@@ -35,6 +35,7 @@ import { CalendlyConfig } from '@/components/CalendlyConfig';
 import { SetterBookingLinks } from '@/components/SetterBookingLinks';
 import { CommissionSettings } from '@/components/CommissionSettings';
 import { SetterRotationSettings } from '@/components/SetterRotationSettings';
+import { ClearTeamData } from '@/components/ClearTeamData';
 import { getUserFriendlyError } from '@/lib/errorUtils';
 
 interface TeamMember {
@@ -485,6 +486,19 @@ export default function TeamSettings() {
           <>
             <CommissionSettings teamId={teamId!} />
             <SetterRotationSettings teamId={teamId!} />
+            
+            {/* Danger Zone - Clear All Data */}
+            <Card className="border-destructive/50">
+              <CardHeader>
+                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                <CardDescription>
+                  Clear all operational data (appointments, sales, tasks, etc.) while keeping team structure intact
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ClearTeamData teamId={teamId!} />
+              </CardContent>
+            </Card>
           </>
         )}
 
