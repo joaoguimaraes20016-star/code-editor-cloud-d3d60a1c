@@ -224,10 +224,18 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
     // Check if dropping into a "won" or "closed" stage - trigger close deal dialog
     const targetStageData = stages.find(s => s.stage_id === newStage);
-    if (targetStageData && (targetStageData.stage_id === 'won' || targetStageData.stage_label.toLowerCase().includes('won') || targetStageData.stage_label.toLowerCase().includes('closed'))) {
-      // Trigger the close deal dialog instead of just moving
-      onCloseDeal(appointment);
-      return;
+    console.log('Target stage:', targetStageData);
+    
+    if (targetStageData) {
+      const label = targetStageData.stage_label.toLowerCase();
+      const stageId = targetStageData.stage_id.toLowerCase();
+      
+      // Check if it's a won/closed stage
+      if (stageId === 'won' || label.includes('won') || label.includes('closed') || label.includes('close')) {
+        console.log('Triggering close deal dialog');
+        onCloseDeal(appointment);
+        return;
+      }
     }
 
     // Optimistically update UI
