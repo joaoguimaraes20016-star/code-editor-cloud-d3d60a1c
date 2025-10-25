@@ -29,13 +29,15 @@ interface EventTypeFilterProps {
   calendlyAccessToken?: string | null;
   calendlyOrgUri?: string | null;
   onFilterChange: (eventTypeUri: string | null) => void;
+  showManualAdd?: boolean;
 }
 
 export function EventTypeFilter({ 
   teamId, 
   calendlyAccessToken, 
   calendlyOrgUri, 
-  onFilterChange 
+  onFilterChange,
+  showManualAdd = true
 }: EventTypeFilterProps) {
   const [eventTypes, setEventTypes] = useState<EventTypeDetails[]>([]);
   const [selectedEventType, setSelectedEventType] = useState<string>("all");
@@ -167,7 +169,7 @@ export function EventTypeFilter({
   }
 
   return (
-    <div className="flex flex-col gap-2 min-w-[200px]">
+    <div className="flex flex-col gap-2 w-full sm:w-[200px]">
       <Select value={selectedEventType} onValueChange={handleFilterChange}>
         <SelectTrigger className="w-full bg-background h-10">
           <SelectValue placeholder="All Event Types" />
@@ -188,35 +190,37 @@ export function EventTypeFilter({
         </SelectContent>
       </Select>
 
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs text-muted-foreground">
-            <Plus className="h-3 w-3" />
-            Don't see your event type?
-            <ChevronDown className={`ml-auto h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-2 pt-2">
-          <p className="text-xs text-muted-foreground">
-            Paste your Calendly event URL to manually fetch it:
-          </p>
-          <div className="flex gap-2">
-            <Input
-              placeholder="https://calendly.com/..."
-              value={manualUrl}
-              onChange={(e) => setManualUrl(e.target.value)}
-              className="flex-1 text-sm"
-            />
-            <Button 
-              onClick={handleFetchByUrl} 
-              disabled={isFetching || !manualUrl.trim()}
-              size="sm"
-            >
-              {isFetching ? "Fetching..." : "Fetch"}
+      {showManualAdd && (
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs text-muted-foreground">
+              <Plus className="h-3 w-3" />
+              Don't see your event type?
+              <ChevronDown className={`ml-auto h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </Button>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 pt-2">
+            <p className="text-xs text-muted-foreground">
+              Paste your Calendly event URL to manually fetch it:
+            </p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://calendly.com/..."
+                value={manualUrl}
+                onChange={(e) => setManualUrl(e.target.value)}
+                className="flex-1 text-sm"
+              />
+              <Button 
+                onClick={handleFetchByUrl} 
+                disabled={isFetching || !manualUrl.trim()}
+                size="sm"
+              >
+                {isFetching ? "Fetching..." : "Fetch"}
+              </Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }

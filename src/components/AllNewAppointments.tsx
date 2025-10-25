@@ -564,6 +564,7 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
               onFilterChange={setEventTypeFilter}
               calendlyAccessToken={teamData?.calendly_access_token}
               calendlyOrgUri={teamData?.calendly_organization_uri}
+              showManualAdd={false}
             />
           </div>
         </div>
