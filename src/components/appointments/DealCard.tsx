@@ -54,6 +54,9 @@ export function DealCard({ id, appointment, onCloseDeal, onMoveTo }: DealCardPro
     return "text-red-600 dark:text-red-400";
   };
 
+  // Show revenue clearly
+  const hasRevenue = (appointment.cc_collected || 0) > 0 || (appointment.mrr_amount || 0) > 0;
+
   return (
     <Card
       ref={setNodeRef}
@@ -69,10 +72,24 @@ export function DealCard({ id, appointment, onCloseDeal, onMoveTo }: DealCardPro
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
         
-        {dealValue > 0 && (
-          <div className="flex-1 flex flex-col items-start gap-0.5 px-2.5 py-1.5 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 rounded-md">
-            <span className="text-[10px] uppercase tracking-wider font-medium opacity-70">Deal Value</span>
-            <span className="text-lg font-bold tabular-nums">${dealValue.toLocaleString()}</span>
+        {hasRevenue && (
+          <div className="flex-1 grid grid-cols-2 gap-2">
+            {appointment.cc_collected && appointment.cc_collected > 0 && (
+              <div className="flex flex-col items-center px-2 py-1.5 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900/30 rounded-md">
+                <span className="text-xs text-green-600 dark:text-green-500 font-medium">Cash</span>
+                <span className="text-lg font-bold text-green-700 dark:text-green-400 tabular-nums">
+                  ${appointment.cc_collected.toLocaleString()}
+                </span>
+              </div>
+            )}
+            {appointment.mrr_amount && appointment.mrr_amount > 0 && (
+              <div className="flex flex-col items-center px-2 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/30 rounded-md">
+                <span className="text-xs text-emerald-600 dark:text-emerald-500 font-medium">Monthly</span>
+                <span className="text-lg font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                  ${appointment.mrr_amount.toLocaleString()}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -100,29 +117,20 @@ export function DealCard({ id, appointment, onCloseDeal, onMoveTo }: DealCardPro
         </div>
 
         {appointment.setter_name && (
-          <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+          <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-md">
             <DealAvatar name={appointment.setter_name} className="h-7 w-7" />
-            <div className="flex flex-col min-w-0">
-              <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Closer</span>
-              <span className="text-sm font-medium truncate">{appointment.setter_name}</span>
-            </div>
+            <span className="text-sm font-medium truncate">{appointment.setter_name}</span>
           </div>
         )}
 
         <div className="flex items-center justify-between text-xs pt-2 border-t border-border/50">
-          <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Appointment</span>
-            <div className="flex items-center gap-1.5 text-foreground font-medium">
-              <Calendar className="h-3 w-3" />
-              <span>{format(new Date(appointment.start_at_utc), "MMM dd")}</span>
-            </div>
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Calendar className="h-3 w-3" />
+            <span>{format(new Date(appointment.start_at_utc), "MMM dd")}</span>
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">In Stage</span>
-            <div className={`flex items-center gap-1.5 font-bold ${getDaysColor(daysInStage)}`}>
-              <div className="h-2 w-2 rounded-full bg-current" />
-              {daysInStage} {daysInStage === 1 ? 'day' : 'days'}
-            </div>
+          <div className={`flex items-center gap-1.5 font-bold ${getDaysColor(daysInStage)}`}>
+            <div className="h-2 w-2 rounded-full bg-current" />
+            {daysInStage} {daysInStage === 1 ? 'day' : 'days'} ago
           </div>
         </div>
       </div>
