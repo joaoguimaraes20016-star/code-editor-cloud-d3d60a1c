@@ -45,6 +45,7 @@ interface DealPipelineProps {
   userRole: string;
   currentUserId: string;
   onCloseDeal: (appointment: Appointment) => void;
+  viewFilter?: 'all' | string; // 'all' or specific closer_id
 }
 
 interface PipelineStage {
@@ -56,7 +57,7 @@ interface PipelineStage {
   is_default: boolean;
 }
 
-export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal }: DealPipelineProps) {
+export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, viewFilter = 'all' }: DealPipelineProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,8 +97,14 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal }: D
         .eq("team_id", teamId)
         .not('setter_id', 'is', null);
 
-      // Filter by closer_id for closers (not admins/offer owners)
-      if (userRole === 'closer' && currentUserId) {
+      // Apply view filter
+      if (viewFilter === 'all') {
+        // Show all deals (no filtering) - for admins viewing main pipeline
+      } else if (viewFilter) {
+        // Filter by specific closer_id
+        query = query.eq('closer_id', viewFilter);
+      } else if (userRole === 'closer' && currentUserId) {
+        // Default: closers see only their own deals
         query = query.eq('closer_id', currentUserId);
       }
 

@@ -247,6 +247,7 @@ export function AppointmentsHub({
             userRole={userRole}
             currentUserId={user?.id || ''}
             onCloseDeal={() => onUpdate()}
+            viewFilter="all"
           />
         </TabsContent>
 
