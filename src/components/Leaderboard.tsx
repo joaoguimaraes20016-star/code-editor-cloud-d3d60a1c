@@ -17,17 +17,19 @@ interface LeaderboardProps {
 
 export function Leaderboard({ title, entries, type }: LeaderboardProps) {
   const getMedalIcon = (index: number) => {
-    if (index === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
-    if (index === 1) return <Award className="h-5 w-5 text-gray-400" />;
-    if (index === 2) return <Award className="h-5 w-5 text-amber-600" />;
+    if (index === 0) return <Trophy className="h-5 w-5 text-primary" />;
+    if (index === 1) return <Award className="h-5 w-5 text-chart-2" />;
+    if (index === 2) return <Award className="h-5 w-5 text-chart-3" />;
     return <span className="text-muted-foreground font-semibold">#{index + 1}</span>;
   };
 
   return (
-    <Card>
+    <Card className="card-hover">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary" />
+          <div className="p-2 rounded-lg bg-primary/10">
+            <TrendingUp className="h-5 w-5 text-primary" />
+          </div>
           <CardTitle>{title}</CardTitle>
         </div>
       </CardHeader>
@@ -37,25 +39,26 @@ export function Leaderboard({ title, entries, type }: LeaderboardProps) {
             No {type}s yet. Start adding sales to see the leaderboard!
           </p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {entries.map((entry, index) => (
               <div
                 key={entry.name}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                className="group relative overflow-hidden flex items-center justify-between p-4 rounded-lg bg-gradient-to-br from-card to-secondary/30 border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-glow"
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8">
+                <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative z-10 flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted/50 group-hover:bg-primary/20 transition-colors">
                     {getMedalIcon(index)}
                   </div>
                   <div>
-                    <p className="font-semibold">{entry.name}</p>
+                    <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{entry.name}</p>
                     <p className="text-sm text-muted-foreground">
                       {entry.sales} {entry.sales === 1 ? 'sale' : 'sales'}
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-lg">
+                <div className="relative z-10 text-right">
+                  <p className="font-bold text-lg text-primary">
                     ${entry.commission.toLocaleString()}
                   </p>
                   <p className="text-sm text-muted-foreground">

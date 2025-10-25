@@ -59,9 +59,9 @@ export function DealCard({ id, teamId, appointment, onCloseDeal, onMoveTo, onDel
   const daysInStage = differenceInDays(new Date(), new Date(appointment.updated_at));
   
   const getDaysColor = (days: number) => {
-    if (days < 7) return "text-green-600 dark:text-green-400";
-    if (days < 14) return "text-yellow-600 dark:text-yellow-400";
-    return "text-red-600 dark:text-red-400";
+    if (days < 7) return "text-success";
+    if (days < 14) return "text-chart-2";
+    return "text-destructive";
   };
 
   // Show revenue clearly
@@ -90,17 +90,17 @@ export function DealCard({ id, teamId, appointment, onCloseDeal, onMoveTo, onDel
           {hasRevenue && (
             <div className="flex-1 space-y-2">
               {appointment.cc_collected && appointment.cc_collected > 0 && (
-                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-500/20 to-emerald-500/10 border border-green-500/30 rounded-lg">
+                <div className="flex items-center justify-between px-4 py-3 bg-success/10 border border-success/30 rounded-lg backdrop-blur-sm">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-green-400 font-bold uppercase tracking-wider">Cash Collected</span>
-                    <span className="text-2xl font-black text-green-300 tabular-nums">
+                    <span className="text-[10px] text-success font-bold uppercase tracking-wider">Cash Collected</span>
+                    <span className="text-2xl font-black text-success tabular-nums">
                       ${appointment.cc_collected.toLocaleString()}
                     </span>
                   </div>
                 </div>
               )}
               {appointment.mrr_amount && appointment.mrr_amount > 0 && (
-                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-primary/20 to-accent/10 border border-primary/30 rounded-lg">
+                <div className="flex items-center justify-between px-4 py-3 bg-primary/10 border border-primary/30 rounded-lg backdrop-blur-sm">
                   <div className="flex flex-col">
                     <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Monthly Recurring</span>
                     <span className="text-2xl font-black text-primary tabular-nums">

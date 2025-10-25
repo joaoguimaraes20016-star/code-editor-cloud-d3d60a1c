@@ -40,21 +40,21 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     switch (taskType) {
       case 'call_confirmation':
         return (
-          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+          <Badge variant="info" className="text-xs">
             <Phone className="h-3 w-3 mr-1" />
             Call Confirmation
           </Badge>
         );
       case 'follow_up':
         return (
-          <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+          <Badge variant="secondary" className="text-xs">
             <RefreshCw className="h-3 w-3 mr-1" />
             Follow-Up
           </Badge>
         );
       case 'reschedule':
         return (
-          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+          <Badge variant="warning" className="text-xs">
             <Calendar className="h-3 w-3 mr-1" />
             Reschedule
           </Badge>
@@ -80,12 +80,12 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
       </div>
 
       {/* My Tasks */}
-      <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+      <Card className="card-hover border-info/20 bg-info/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CalendarCheck className="h-5 w-5 text-blue-600" />
+            <CalendarCheck className="h-5 w-5 text-info" />
             My Tasks (Today)
-            <Badge variant="secondary" className="ml-auto">
+            <Badge variant="info" className="ml-auto">
               {myTasks.length}
             </Badge>
           </CardTitle>
@@ -97,7 +97,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
             myTasks.map((task) => {
               const apt = task.appointment;
               return (
-                <Card key={task.id} className="bg-background">
+                <Card key={task.id} className="bg-card border-border card-hover">
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">

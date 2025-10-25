@@ -16,22 +16,22 @@ export function DealAvatar({ name, className }: DealAvatarProps) {
 
   const getColorFromName = (name: string) => {
     const colors = [
-      'bg-blue-500',
-      'bg-purple-500',
-      'bg-green-500',
-      'bg-orange-500',
-      'bg-pink-500',
-      'bg-indigo-500',
-      'bg-teal-500',
-      'bg-cyan-500',
+      'bg-chart-1',
+      'bg-chart-2',
+      'bg-chart-3',
+      'bg-chart-4',
+      'bg-success',
+      'bg-info',
+      'bg-primary',
+      'bg-destructive',
     ];
     const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return colors[hash % colors.length];
   };
 
   return (
-    <Avatar className={className}>
-      <AvatarFallback className={`${getColorFromName(name)} text-white text-xs font-medium`}>
+    <Avatar className={`${className} ring-2 ring-border shadow-lg`}>
+      <AvatarFallback className={`${getColorFromName(name)} text-primary-foreground text-xs font-bold`}>
         {getInitials(name)}
       </AvatarFallback>
     </Avatar>
