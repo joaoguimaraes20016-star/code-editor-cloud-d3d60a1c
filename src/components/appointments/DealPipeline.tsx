@@ -22,8 +22,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Settings } from "lucide-react";
+import { Settings, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DroppableStageColumn } from "./DroppableStageColumn";
 import { RescheduleDialog } from "./RescheduleDialog";
 import { FollowUpDialog } from "./FollowUpDialog";
@@ -74,6 +81,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [eventTypeFilter, setEventTypeFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"closest" | "furthest">("closest");
   const [managerOpen, setManagerOpen] = useState(false);
   const [rescheduleDialog, setRescheduleDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
   const [followUpDialog, setFollowUpDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; stage: "cancelled" | "no_show" } | null>(null);
@@ -201,12 +209,21 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   const dealsByStage = useMemo(() => {
     const grouped: Record<string, Appointment[]> = {};
     stages.forEach((stage) => {
-      grouped[stage.stage_id] = filteredAppointments.filter(
+      const stageDeals = filteredAppointments.filter(
         (apt) => apt.pipeline_stage === stage.stage_id
       );
+      
+      // Sort by date within each stage
+      stageDeals.sort((a, b) => {
+        const dateA = new Date(a.start_at_utc).getTime();
+        const dateB = new Date(b.start_at_utc).getTime();
+        return sortBy === "closest" ? dateA - dateB : dateB - dateA;
+      });
+      
+      grouped[stage.stage_id] = stageDeals;
     });
     return grouped;
-  }, [filteredAppointments, stages]);
+  }, [filteredAppointments, stages, sortBy]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -678,20 +695,36 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-card via-card/95 to-secondary/30 border border-primary/20 rounded-xl p-5 shadow-md backdrop-blur-sm">
         <div className="flex-1 w-full">
-          <AppointmentFilters
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            eventTypeFilter={eventTypeFilter}
-            onEventTypeFilterChange={setEventTypeFilter}
-            eventTypes={eventTypes}
-            onClearFilters={() => {
-              setSearchQuery("");
-              setStatusFilter("all");
-              setEventTypeFilter("all");
-            }}
-          />
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="flex-1 w-full">
+              <AppointmentFilters
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                eventTypeFilter={eventTypeFilter}
+                onEventTypeFilterChange={setEventTypeFilter}
+                eventTypes={eventTypes}
+                onClearFilters={() => {
+                  setSearchQuery("");
+                  setStatusFilter("all");
+                  setEventTypeFilter("all");
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+              <Select value={sortBy} onValueChange={(value: "closest" | "furthest") => setSortBy(value)}>
+                <SelectTrigger className="w-full sm:w-[180px] h-10 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="closest">Closest Dates First</SelectItem>
+                  <SelectItem value="furthest">Furthest Dates First</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
         <Button 
           onClick={() => setManagerOpen(true)} 
