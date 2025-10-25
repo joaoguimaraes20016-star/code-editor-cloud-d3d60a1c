@@ -70,7 +70,7 @@ export function DealCard({ id, teamId, appointment, onCloseDeal, onMoveTo }: Dea
       <Card
         ref={setNodeRef}
         style={style}
-        className="group relative bg-gradient-to-br from-card via-card/95 to-secondary/50 p-4 cursor-grab active:cursor-grabbing hover:shadow-glow hover:scale-[1.03] hover:border-primary/60 transition-all duration-300 border border-border/50 backdrop-blur-sm overflow-hidden"
+        className="group relative bg-gradient-to-br from-card via-card/95 to-secondary/50 p-4 cursor-grab active:cursor-grabbing hover:shadow-glow hover:scale-[1.03] hover:border-primary/60 transition-all duration-300 border border-border/50 backdrop-blur-sm overflow-hidden select-none"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="relative z-10">
