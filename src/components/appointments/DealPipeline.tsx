@@ -222,27 +222,13 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     const appointment = appointments.find(a => a.id === appointmentId);
     if (!appointment || appointment.pipeline_stage === newStage) return;
 
-    // Check if dropping into a "won" or "closed" stage - trigger close deal dialog
+    // Check if dropping into a "won" or "closed" stage
     const targetStageData = stages.find(s => s.stage_id === newStage);
-    console.log('Target stage:', targetStageData);
-    console.log('Stage ID:', newStage);
-    console.log('Appointment:', appointment);
-    
-    if (targetStageData) {
-      const label = targetStageData.stage_label.toLowerCase();
-      const stageId = targetStageData.stage_id.toLowerCase();
-      
-      console.log('Checking stage - ID:', stageId, 'Label:', label);
-      
-      // Check if it's a won/closed stage
-      if (stageId === 'won' || label.includes('won') || label.includes('closed') || label.includes('close')) {
-        console.log('Match found! Calling onCloseDeal');
-        console.log('onCloseDeal function:', onCloseDeal);
-        console.log('Calling with appointment:', appointment);
-        onCloseDeal(appointment);
-        return;
-      }
-    }
+    const isClosedStage = targetStageData && 
+      (targetStageData.stage_id.toLowerCase() === 'won' || 
+       targetStageData.stage_label.toLowerCase().includes('won') || 
+       targetStageData.stage_label.toLowerCase().includes('closed') || 
+       targetStageData.stage_label.toLowerCase().includes('close'));
 
     // Optimistically update UI
     setAppointments((prev) =>
@@ -259,7 +245,13 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
         .eq("id", appointmentId);
 
       if (error) throw error;
-      toast.success("Deal moved successfully");
+
+      // If it's a closed/won stage, open the close deal dialog
+      if (isClosedStage) {
+        onCloseDeal({ ...appointment, pipeline_stage: newStage });
+      } else {
+        toast.success("Deal moved successfully");
+      }
     } catch (error) {
       console.error("Error updating deal stage:", error);
       toast.error("Failed to move deal");
