@@ -285,6 +285,27 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     onCloseDeal(appointment);
   };
 
+  const handleDelete = async (appointmentId: string) => {
+    if (!confirm('Are you sure you want to delete this deal? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+      
+      toast.success('Deal deleted successfully');
+      loadDeals();
+    } catch (error) {
+      console.error('Error deleting deal:', error);
+      toast.error('Failed to delete deal');
+    }
+  };
+
   const getStageColors = (stageId: string) => {
     const colorMap: Record<string, { bg: string; text: string; badge: string }> = {
       'new': { 
@@ -414,6 +435,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                               appointment={appointment}
                               onCloseDeal={handleCloseDeal}
                               onMoveTo={handleMoveTo}
+                              onDelete={handleDelete}
+                              userRole={userRole}
                             />
                           ))
                         )}
@@ -436,6 +459,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                     appointment={activeAppointment}
                     onCloseDeal={handleCloseDeal}
                     onMoveTo={handleMoveTo}
+                    onDelete={handleDelete}
+                    userRole={userRole}
                   />
                 </div>
               ) : null;

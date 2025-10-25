@@ -32,9 +32,11 @@ interface DealCardProps {
   };
   onCloseDeal: (appointment: any) => void;
   onMoveTo: (id: string, stage: string) => void;
+  onDelete?: (id: string) => void;
+  userRole?: string;
 }
 
-export function DealCard({ id, teamId, appointment, onCloseDeal, onMoveTo }: DealCardProps) {
+export function DealCard({ id, teamId, appointment, onCloseDeal, onMoveTo, onDelete, userRole }: DealCardProps) {
   const [showTimeline, setShowTimeline] = useState(false);
   const {
     attributes,
@@ -44,6 +46,8 @@ export function DealCard({ id, teamId, appointment, onCloseDeal, onMoveTo }: Dea
     transition,
     isDragging,
   } = useSortable({ id });
+
+  const canDelete = userRole === 'admin' || userRole === 'offer_owner';
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -130,6 +134,14 @@ export function DealCard({ id, teamId, appointment, onCloseDeal, onMoveTo }: Dea
                 <DropdownMenuItem onClick={() => onMoveTo(id, 'lost')}>
                   Mark as Lost
                 </DropdownMenuItem>
+                {canDelete && onDelete && (
+                  <DropdownMenuItem 
+                    onClick={() => onDelete(id)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    Delete Deal
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
