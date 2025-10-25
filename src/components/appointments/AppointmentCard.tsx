@@ -28,6 +28,7 @@ interface AppointmentCardProps {
   onUpdateStatus?: (id: string, status: string) => void;
   onCloseDeal?: (appointment: any) => void;
   onViewDetails?: (appointment: any) => void;
+  onAssign?: () => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -45,6 +46,7 @@ export function AppointmentCard({
   onUpdateStatus,
   onCloseDeal,
   onViewDetails,
+  onAssign,
 }: AppointmentCardProps) {
   const formattedDate = format(new Date(appointment.start_at_utc), "MMM dd, yyyy 'at' h:mm a");
 
@@ -67,6 +69,11 @@ export function AppointmentCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {onAssign && (
+                <DropdownMenuItem onClick={onAssign}>
+                  Assign
+                </DropdownMenuItem>
+              )}
               {onViewDetails && (
                 <DropdownMenuItem onClick={() => onViewDetails(appointment)}>
                   View Details

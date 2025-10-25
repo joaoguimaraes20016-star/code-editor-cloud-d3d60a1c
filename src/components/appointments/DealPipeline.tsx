@@ -41,6 +41,8 @@ interface Appointment {
 
 interface DealPipelineProps {
   teamId: string;
+  userRole: string;
+  currentUserId: string;
   onCloseDeal: (appointment: Appointment) => void;
 }
 
@@ -53,7 +55,7 @@ interface PipelineStage {
   is_default: boolean;
 }
 
-export function DealPipeline({ teamId, onCloseDeal }: DealPipelineProps) {
+export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal }: DealPipelineProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,14 +89,18 @@ export function DealPipeline({ teamId, onCloseDeal }: DealPipelineProps) {
 
   const loadDeals = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("appointments")
         .select("*")
         .eq("team_id", teamId)
-        .not("closer_id", "is", null)
-        .order("updated_at", { ascending: false });
+        .not("closer_id", "is", null);
 
-      if (error) throw error;
+      // Filter by closer_id for closers (not admins/offer owners)
+      if (userRole === 'closer' && currentUserId) {
+        query = query.eq('closer_id', currentUserId);
+      }
+
+      const { data, error } = await query.order("updated_at", { ascending: false });
       setAppointments(data || []);
     } catch (error) {
       console.error("Error loading deals:", error);
