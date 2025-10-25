@@ -66,13 +66,13 @@ export function AppointmentsHub({
         </div>
         
         <Tabs defaultValue="confirm" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-12">
-            <TabsTrigger value="confirm" className="text-base">
+          <TabsList className="w-full h-auto md:h-12 flex-col md:flex-row overflow-x-auto">
+            <TabsTrigger value="confirm" className="w-full md:w-auto text-sm md:text-base whitespace-nowrap">
               Confirm Today {counts.myTasks > 0 && <Badge className="ml-2" variant="secondary">{counts.myTasks}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="mine" className="text-base">My Appointments</TabsTrigger>
-            <TabsTrigger value="all" className="text-base">All Assigned</TabsTrigger>
-            <TabsTrigger value="retarget" className="text-base">
+            <TabsTrigger value="mine" className="w-full md:w-auto text-sm md:text-base whitespace-nowrap">My Appointments</TabsTrigger>
+            <TabsTrigger value="all" className="w-full md:w-auto text-sm md:text-base whitespace-nowrap">All Assigned</TabsTrigger>
+            <TabsTrigger value="retarget" className="w-full md:w-auto text-sm md:text-base whitespace-nowrap">
               Retarget {counts.followUps > 0 && <Badge className="ml-2" variant="secondary">{counts.followUps}</Badge>}
             </TabsTrigger>
           </TabsList>
@@ -118,15 +118,15 @@ export function AppointmentsHub({
         </div>
         
         <Tabs defaultValue="mine" className="w-full">
-          <TabsList className="grid w-full grid-cols-6 h-12">
-            <TabsTrigger value="mine" className="text-base">My Deals</TabsTrigger>
-            <TabsTrigger value="all" className="text-base">All Appointments</TabsTrigger>
-            <TabsTrigger value="pipeline" className="text-base">Deal Pipeline</TabsTrigger>
-            <TabsTrigger value="mrr-tasks" className="text-base">
+          <TabsList className="w-full h-auto md:h-12 flex-col md:flex-row overflow-x-auto">
+            <TabsTrigger value="mine" className="w-full md:w-auto text-sm md:text-base whitespace-nowrap">My Deals</TabsTrigger>
+            <TabsTrigger value="all" className="w-full md:w-auto text-sm md:text-base whitespace-nowrap">All Appointments</TabsTrigger>
+            <TabsTrigger value="pipeline" className="w-full md:w-auto text-sm md:text-base whitespace-nowrap">Deal Pipeline</TabsTrigger>
+            <TabsTrigger value="mrr-tasks" className="w-full md:w-auto text-sm md:text-base whitespace-nowrap">
               MRR Tasks {counts.mrrDue > 0 && <Badge className="ml-2" variant="secondary">{counts.mrrDue}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="mrr-deals" className="text-base">MRR Deals</TabsTrigger>
-            <TabsTrigger value="stages" className="text-base">Stage Views</TabsTrigger>
+            <TabsTrigger value="mrr-deals" className="w-full md:w-auto text-sm md:text-base whitespace-nowrap">MRR Deals</TabsTrigger>
+            <TabsTrigger value="stages" className="w-full md:w-auto text-sm md:text-base whitespace-nowrap">Stage Views</TabsTrigger>
           </TabsList>
 
           <TabsContent value="mine" className="mt-6">
@@ -226,20 +226,20 @@ export function AppointmentsHub({
       </div>
       
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-9 h-12 text-xs">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="unassigned">Unassigned</TabsTrigger>
-          <TabsTrigger value="assigned">All Assigned</TabsTrigger>
-          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-          <TabsTrigger value="tasks">
+        <TabsList className="w-full h-auto md:h-12 flex-col md:flex-row overflow-x-auto">
+          <TabsTrigger value="overview" className="w-full md:w-auto text-xs md:text-sm whitespace-nowrap">Overview</TabsTrigger>
+          <TabsTrigger value="unassigned" className="w-full md:w-auto text-xs md:text-sm whitespace-nowrap">Unassigned</TabsTrigger>
+          <TabsTrigger value="assigned" className="w-full md:w-auto text-xs md:text-sm whitespace-nowrap">All Assigned</TabsTrigger>
+          <TabsTrigger value="pipeline" className="w-full md:w-auto text-xs md:text-sm whitespace-nowrap">Pipeline</TabsTrigger>
+          <TabsTrigger value="tasks" className="w-full md:w-auto text-xs md:text-sm whitespace-nowrap">
             Tasks {(counts.myTasks + counts.queueTasks) > 0 && <Badge className="ml-1" variant="secondary">{counts.myTasks + counts.queueTasks}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="mrr-tasks">
+          <TabsTrigger value="mrr-tasks" className="w-full md:w-auto text-xs md:text-sm whitespace-nowrap">
             MRR Tasks {counts.mrrDue > 0 && <Badge className="ml-1" variant="secondary">{counts.mrrDue}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="mrr-deals">MRR Deals</TabsTrigger>
-          <TabsTrigger value="stages">Stages</TabsTrigger>
-          <TabsTrigger value="retarget">
+          <TabsTrigger value="mrr-deals" className="w-full md:w-auto text-xs md:text-sm whitespace-nowrap">MRR Deals</TabsTrigger>
+          <TabsTrigger value="stages" className="w-full md:w-auto text-xs md:text-sm whitespace-nowrap">Stages</TabsTrigger>
+          <TabsTrigger value="retarget" className="w-full md:w-auto text-xs md:text-sm whitespace-nowrap">
             Follow-Ups {counts.followUps > 0 && <Badge className="ml-1" variant="secondary">{counts.followUps}</Badge>}
           </TabsTrigger>
         </TabsList>
