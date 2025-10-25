@@ -188,58 +188,72 @@ export function RetargetTab({ teamId }: RetargetTabProps) {
     );
   }
 
-  const AppointmentCard = ({ apt, isDue }: { apt: Appointment; isDue: boolean }) => (
-    <Card key={apt.id} className="bg-background">
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1 flex-1">
-            <p className="font-semibold">{apt.lead_name}</p>
-            <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
-            {apt.retarget_reason && (
-              <p className="text-sm border-l-2 pl-3 text-muted-foreground">
-                {apt.retarget_reason}
-              </p>
-            )}
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className="text-xs">
-                {apt.pipeline_stage || 'No Stage'}
-              </Badge>
-              {apt.retarget_date && (
-                <Badge variant={isDue ? 'destructive' : 'secondary'} className="text-xs">
-                  {isDue ? 'Due Today' : `Due ${formatDate(apt.retarget_date)}`}
-                </Badge>
+  const AppointmentCard = ({ apt, isDue }: { apt: Appointment; isDue: boolean }) => {
+    const isCloseDue = apt.retarget_reason?.toLowerCase().includes('close due');
+    
+    return (
+      <Card key={apt.id} className="bg-background">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1 flex-1">
+              <p className="font-semibold">{apt.lead_name}</p>
+              <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
+              {apt.retarget_reason && (
+                <p className="text-sm border-l-2 pl-3 text-muted-foreground">
+                  {apt.retarget_reason}
+                </p>
               )}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className="text-xs">
+                  {apt.pipeline_stage || 'No Stage'}
+                </Badge>
+                {apt.retarget_date && (
+                  <Badge variant={isDue ? 'destructive' : 'secondary'} className="text-xs">
+                    {isDue ? 'Due Today' : `Due ${formatDate(apt.retarget_date)}`}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button 
-            size="sm"
-            onClick={() => handleRebook(apt.id)}
-          >
-            <Calendar className="h-4 w-4 mr-1" />
-            Rebook
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline"
-            onClick={() => handleFollowedUp(apt.id)}
-          >
-            <MessageCircle className="h-4 w-4 mr-1" />
-            Followed Up
-          </Button>
-          <Button 
-            size="sm" 
-            variant="ghost"
-            onClick={() => handleDismiss(apt.id)}
-          >
-            <X className="h-4 w-4 mr-1" />
-            Dismiss
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+          <div className="flex gap-2 flex-wrap">
+            {isCloseDue ? (
+              <Button 
+                size="sm"
+                onClick={() => handleFollowedUp(apt.id)}
+              >
+                <MessageCircle className="h-4 w-4 mr-1" />
+                Close Deal
+              </Button>
+            ) : (
+              <Button 
+                size="sm"
+                onClick={() => handleRebook(apt.id)}
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                Rebook
+              </Button>
+            )}
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleFollowedUp(apt.id)}
+            >
+              <MessageCircle className="h-4 w-4 mr-1" />
+              Followed Up
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              onClick={() => handleDismiss(apt.id)}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Dismiss
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="space-y-6">
