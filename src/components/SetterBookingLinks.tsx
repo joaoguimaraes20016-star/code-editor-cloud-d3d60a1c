@@ -39,6 +39,7 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
   const [saving, setSaving] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [eventTypeDetails, setEventTypeDetails] = useState<EventTypeDetails[]>([]);
+  const [fetchingEventTypes, setFetchingEventTypes] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -49,9 +50,14 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
   }, [teamId, calendlyAccessToken, calendlyOrgUri]);
 
   const fetchEventTypeNames = async () => {
-    if (!calendlyAccessToken || !calendlyOrgUri) return;
+    if (!calendlyAccessToken || !calendlyOrgUri) {
+      console.log('Missing Calendly credentials for fetching event types');
+      return;
+    }
 
+    setFetchingEventTypes(true);
     try {
+      console.log('Fetching event types from Calendly API...');
       const response = await fetch(`https://api.calendly.com/event_types?organization=${encodeURIComponent(calendlyOrgUri)}&active=true`, {
         headers: {
           'Authorization': `Bearer ${calendlyAccessToken}`,
@@ -59,7 +65,10 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
         },
       });
 
-      if (!response.ok) return;
+      if (!response.ok) {
+        console.error('Failed to fetch event types:', response.status, response.statusText);
+        return;
+      }
 
       const data = await response.json();
       const details: EventTypeDetails[] = data.collection.map((et: any) => ({
@@ -68,11 +77,18 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
         name: et.name,
       }));
       
-      console.log('Fetched event type details:', details);
+      console.log('✓ Fetched event type details:', details);
       console.log('Database event types:', calendlyEventTypes);
       setEventTypeDetails(details);
     } catch (error) {
       console.error('Error fetching event type names:', error);
+      toast({
+        title: 'Warning',
+        description: 'Could not load event type names from Calendly',
+        variant: 'destructive',
+      });
+    } finally {
+      setFetchingEventTypes(false);
     }
   };
 
@@ -245,25 +261,35 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
     });
   };
 
-  if (loading) {
+  if (loading || fetchingEventTypes) {
     return <div className="text-sm text-muted-foreground">Loading booking links...</div>;
   }
 
   // Convert API URIs to scheduling URLs and filter valid ones
   const validBookingUrls = calendlyEventTypes
     .map(url => {
+      console.log('Processing URL:', url);
       // If it's an API URI, find the corresponding scheduling URL
       if (url.includes('api.calendly.com/event_types/')) {
         const detail = eventTypeDetails.find(et => et.uri === url);
+        console.log('Found detail for API URI:', detail);
+        if (!detail) {
+          console.warn('No scheduling URL found for API URI:', url);
+        }
         return detail?.scheduling_url || null;
       }
       // If it's already a scheduling URL, keep it
       if (url.startsWith('https://calendly.com/') && !url.includes('/event_types/')) {
+        console.log('Valid scheduling URL:', url);
         return url;
       }
+      console.log('URL filtered out:', url);
       return null;
     })
     .filter((url): url is string => url !== null);
+
+  console.log('Valid booking URLs:', validBookingUrls);
+  console.log('Event type details available:', eventTypeDetails.length);
 
   if (!validBookingUrls.length) {
     return (
