@@ -524,7 +524,7 @@ const Index = () => {
     .reduce((sum, sale) => sum + (Number(sale.revenue) || 0), 0);
   const totalCCRevenue = ccFromAppointments + ccFromSales;
   
-  const totalMRR = closedAppointments.reduce((sum, apt) => sum + ((Number(apt.mrr_amount) || 0) * (Number(apt.mrr_months) || 0)), 0);
+  const totalMRR = closedAppointments.reduce((sum, apt) => sum + (Number(apt.mrr_amount) || 0), 0);
   
   // Include commissions from both appointments AND sales
   const commissionsFromAppointments = closedAppointments.reduce((sum, apt) => {
