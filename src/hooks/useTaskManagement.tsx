@@ -154,6 +154,16 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
 
   const confirmTask = async (taskId: string, appointmentId: string, setterId: string | null) => {
     try {
+      // Get current task to store previous state
+      const currentTask = myTasks.find(t => t.id === taskId);
+      const previousState = {
+        taskId,
+        appointmentId,
+        taskStatus: 'pending' as const,
+        appointmentStatus: currentTask?.appointment?.status || 'NEW' as const,
+        appointmentPipelineStage: currentTask?.appointment?.pipeline_stage || 'booked'
+      };
+
       const updateData: any = {
         status: 'CONFIRMED',
         pipeline_stage: 'booked',
@@ -178,7 +188,42 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
       if (taskError) throw taskError;
 
       await logActivity(appointmentId, 'Confirmed', 'Assigned to you');
-      toast.success('Confirmed & Assigned to You');
+      
+      toast.success('Confirmed & Assigned to You', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              // Revert appointment
+              await supabase
+                .from('appointments')
+                .update({
+                  status: previousState.appointmentStatus,
+                  pipeline_stage: previousState.appointmentPipelineStage,
+                  setter_id: setterId
+                })
+                .eq('id', appointmentId);
+
+              // Revert task
+              await supabase
+                .from('confirmation_tasks')
+                .update({
+                  status: 'pending',
+                  completed_at: null
+                })
+                .eq('id', taskId);
+
+              await logActivity(appointmentId, 'Undone', 'Confirmation reverted');
+              toast.success('Confirmation undone');
+              loadTasks();
+            } catch (error) {
+              console.error('Error undoing confirmation:', error);
+              toast.error('Failed to undo');
+            }
+          }
+        }
+      });
+      
       loadTasks();
     } catch (error) {
       console.error('Error confirming task:', error);
