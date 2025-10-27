@@ -70,6 +70,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
 
   // Group tasks by date
   const groupedTasks = useMemo(() => {
+    const overdue: typeof filteredTasks = [];
     const today: typeof filteredTasks = [];
     const tomorrow: typeof filteredTasks = [];
     const upcoming: typeof filteredTasks = [];
@@ -79,7 +80,11 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
       
       try {
         const appointmentDate = parseISO(task.appointment.start_at_utc);
-        if (isToday(appointmentDate)) {
+        const todayStart = startOfDay(new Date());
+        
+        if (appointmentDate < todayStart) {
+          overdue.push(task);
+        } else if (isToday(appointmentDate)) {
           today.push(task);
         } else if (isTomorrow(appointmentDate)) {
           tomorrow.push(task);
@@ -92,7 +97,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
       }
     });
 
-    return { today, tomorrow, upcoming };
+    return { overdue, today, tomorrow, upcoming };
   }, [filteredTasks]);
 
   const [rescheduleDialog, setRescheduleDialog] = useState<{
@@ -358,6 +363,35 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
         </Card>
       ) : (
         <>
+          {/* Overdue Tasks */}
+          {groupedTasks.overdue.length > 0 && (
+            <Card className="card-hover border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                  Overdue
+                  <Badge variant="secondary" className="ml-2 bg-red-600 text-white">
+                    {groupedTasks.overdue.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {groupedTasks.overdue.map((task) => {
+                  const apt = task.appointment;
+                  const appointmentDate = parseISO(apt.start_at_utc);
+                  return (
+                    <div key={task.id}>
+                      <div className="text-xs font-medium text-red-600 mb-2">
+                        Was scheduled: {format(appointmentDate, 'EEEE, MMMM d, yyyy')}
+                      </div>
+                      {renderTaskCard(task)}
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Today's Tasks */}
           {groupedTasks.today.length > 0 && (
             <Card className="card-hover border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20">
