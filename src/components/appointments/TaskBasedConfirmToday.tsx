@@ -212,7 +212,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
       : task.task_type === 'reschedule' ? 'border-amber-200 dark:border-amber-900'
       : '';
     return (
-      <Card key={task.id} className={cn("bg-card card-hover cursor-pointer", taskColor)} onClick={() => setDetailView({ open: true, task })}>
+      <Card key={task.id} className={cn("bg-card card-hover", taskColor)}>
         <CardContent className="p-4 space-y-3">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
@@ -262,15 +262,20 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               {formatTime(apt.start_at_utc)}
             </div>
           </div>
-          <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+          <div className="flex gap-2 flex-wrap">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => setDetailView({ open: true, task })}
+            >
+              <UserPlus className="h-4 w-4 mr-1" />
+              View Details
+            </Button>
             {task.task_type === 'call_confirmation' && (
               <>
                 <Button 
                   size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    confirmTask(task.id, apt.id, apt.setter_id);
-                  }}
+                  onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
                 >
                   <CalendarCheck className="h-4 w-4 mr-1" />
                   Confirm
@@ -278,10 +283,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                 <Button 
                   size="sm" 
                   variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    rescheduleTask(task.id, apt.id);
-                  }}
+                  onClick={() => rescheduleTask(task.id, apt.id)}
                 >
                   <Calendar className="h-4 w-4 mr-1" />
                   Reschedule
@@ -289,10 +291,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                 <Button 
                   size="sm" 
                   variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    noShowTask(task.id, apt.id);
-                  }}
+                  onClick={() => noShowTask(task.id, apt.id)}
                 >
                   <CalendarX className="h-4 w-4 mr-1" />
                   No-Show
@@ -303,10 +302,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               <>
                 <Button 
                   size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRescheduleFollowUp(task.id, apt.id, apt.lead_name);
-                  }}
+                  onClick={() => handleRescheduleFollowUp(task.id, apt.id, apt.lead_name)}
                 >
                   <CalendarCheck className="h-4 w-4 mr-1" />
                   Reconnected
@@ -314,10 +310,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                 <Button 
                   size="sm" 
                   variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    noShowTask(task.id, apt.id);
-                  }}
+                  onClick={() => noShowTask(task.id, apt.id)}
                 >
                   <CalendarX className="h-4 w-4 mr-1" />
                   Still No Response
@@ -328,10 +321,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               <>
                 <Button 
                   size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    confirmTask(task.id, apt.id, apt.setter_id);
-                  }}
+                  onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
                 >
                   <CalendarCheck className="h-4 w-4 mr-1" />
                   Rescheduled
@@ -339,10 +329,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                 <Button 
                   size="sm" 
                   variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    noShowTask(task.id, apt.id);
-                  }}
+                  onClick={() => noShowTask(task.id, apt.id)}
                 >
                   <CalendarX className="h-4 w-4 mr-1" />
                   Still No Response
