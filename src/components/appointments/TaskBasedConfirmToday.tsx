@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, UserPlus, CalendarCheck, CalendarX, Loader2, AlertCircle, Phone, RefreshCw } from 'lucide-react';
-import { format, parseISO, differenceInMinutes } from 'date-fns';
+import { format, parseISO, differenceInMinutes, isToday, isTomorrow, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -67,6 +67,26 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
   const filteredTasks = selectedMember === 'all' 
     ? myTasks 
     : myTasks.filter(task => task.appointment?.setter_id === selectedMember);
+
+  // Group tasks by date
+  const groupedTasks = useMemo(() => {
+    const today: typeof filteredTasks = [];
+    const tomorrow: typeof filteredTasks = [];
+    const upcoming: typeof filteredTasks = [];
+
+    filteredTasks.forEach(task => {
+      const appointmentDate = parseISO(task.appointment.start_at_utc);
+      if (isToday(appointmentDate)) {
+        today.push(task);
+      } else if (isTomorrow(appointmentDate)) {
+        tomorrow.push(task);
+      } else {
+        upcoming.push(task);
+      }
+    });
+
+    return { today, tomorrow, upcoming };
+  }, [filteredTasks]);
 
   const [rescheduleDialog, setRescheduleDialog] = useState<{
     open: boolean;
@@ -169,6 +189,135 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     );
   }
 
+  const renderTaskCard = (task: any) => {
+    const apt = task.appointment;
+    const taskColor = task.task_type === 'call_confirmation' ? 'border-blue-200 dark:border-blue-900' 
+      : task.task_type === 'follow_up' ? 'border-purple-200 dark:border-purple-900'
+      : task.task_type === 'reschedule' ? 'border-amber-200 dark:border-amber-900'
+      : '';
+    return (
+      <Card key={task.id} className={cn("bg-card card-hover", taskColor)}>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <p className="font-semibold">{apt.lead_name}</p>
+              <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {apt.event_type_name && (
+                  <Badge variant="outline" className="text-xs">
+                    {apt.event_type_name}
+                  </Badge>
+                )}
+                {getTaskTypeBadge(task.task_type)}
+                {apt.setter_id === user?.id ? (
+                  <Badge variant="default" className="text-xs bg-blue-600">
+                    Assigned to You
+                  </Badge>
+                ) : (userRole === 'admin' || userRole === 'offer_owner') && apt.setter_name ? (
+                  <Badge variant="secondary" className="text-xs">
+                    Assigned to {apt.setter_name}
+                  </Badge>
+                ) : null}
+                {isReturningSoon(task.auto_return_at) && (
+                  <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Due Soon
+                  </Badge>
+                )}
+              </div>
+              {task.task_type === 'follow_up' && task.follow_up_date && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  📅 Follow up by: {format(parseISO(task.follow_up_date), 'MMM d, yyyy')}
+                </p>
+              )}
+              {task.task_type === 'follow_up' && task.follow_up_reason && (
+                <p className="text-xs text-muted-foreground border-l-2 pl-2 mt-1">
+                  {task.follow_up_reason}
+                </p>
+              )}
+              {task.task_type === 'reschedule' && task.reschedule_date && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  📅 Reschedule date: {format(parseISO(task.reschedule_date), 'MMM d, yyyy')}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              {formatTime(apt.start_at_utc)}
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {task.task_type === 'call_confirmation' && (
+              <>
+                <Button 
+                  size="sm"
+                  onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
+                >
+                  <CalendarCheck className="h-4 w-4 mr-1" />
+                  Confirm
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => rescheduleTask(task.id, apt.id)}
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Reschedule
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => noShowTask(task.id, apt.id)}
+                >
+                  <CalendarX className="h-4 w-4 mr-1" />
+                  No-Show
+                </Button>
+              </>
+            )}
+            {task.task_type === 'follow_up' && (
+              <>
+                <Button 
+                  size="sm"
+                  onClick={() => handleRescheduleFollowUp(task.id, apt.id, apt.lead_name)}
+                >
+                  <CalendarCheck className="h-4 w-4 mr-1" />
+                  Reconnected
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => noShowTask(task.id, apt.id)}
+                >
+                  <CalendarX className="h-4 w-4 mr-1" />
+                  Still No Response
+                </Button>
+              </>
+            )}
+            {task.task_type === 'reschedule' && (
+              <>
+                <Button 
+                  size="sm"
+                  onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
+                >
+                  <CalendarCheck className="h-4 w-4 mr-1" />
+                  Rescheduled
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => noShowTask(task.id, apt.id)}
+                >
+                  <CalendarX className="h-4 w-4 mr-1" />
+                  Still No Response
+                </Button>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-muted-foreground">
@@ -176,169 +325,98 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
         <span>{format(new Date(), 'EEEE, MMMM d, yyyy')}</span>
       </div>
 
-      {/* My Tasks */}
-      <Card className="card-hover border-info/20 bg-info/5">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <CalendarCheck className="h-5 w-5 text-info" />
-              {userRole === 'admin' || userRole === 'offer_owner' ? 'All Team Tasks (Today)' : 'My Tasks (Today)'}
-              <Badge variant="info" className="ml-2">
-                {filteredTasks.length}
-              </Badge>
-            </CardTitle>
-            {(userRole === 'admin' || userRole === 'offer_owner') && (
-              <Select value={selectedMember} onValueChange={setSelectedMember}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Filter by member" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Team Members</SelectItem>
-                  {teamMembers.map((member) => (
-                    <SelectItem key={member.user_id} value={member.user_id}>
-                      {member.profiles?.full_name || 'Unknown'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {filteredTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tasks assigned</p>
-          ) : (
-            filteredTasks.map((task) => {
-              const apt = task.appointment;
-              const taskColor = task.task_type === 'call_confirmation' ? 'border-blue-200 dark:border-blue-900' 
-                : task.task_type === 'follow_up' ? 'border-purple-200 dark:border-purple-900'
-                : task.task_type === 'reschedule' ? 'border-amber-200 dark:border-amber-900'
-                : '';
-              return (
-                <Card key={task.id} className={cn("bg-card card-hover", taskColor)}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <p className="font-semibold">{apt.lead_name}</p>
-                        <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {apt.event_type_name && (
-                            <Badge variant="outline" className="text-xs">
-                              {apt.event_type_name}
-                            </Badge>
-                          )}
-                          {getTaskTypeBadge(task.task_type)}
-                          {apt.setter_id === user?.id ? (
-                            <Badge variant="default" className="text-xs bg-blue-600">
-                              Assigned to You
-                            </Badge>
-                          ) : (userRole === 'admin' || userRole === 'offer_owner') && apt.setter_name ? (
-                            <Badge variant="secondary" className="text-xs">
-                              Assigned to {apt.setter_name}
-                            </Badge>
-                          ) : null}
-                          {isReturningSoon(task.auto_return_at) && (
-                            <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
-                              <AlertCircle className="h-3 w-3 mr-1" />
-                              Due Soon
-                            </Badge>
-                          )}
-                        </div>
-                        {task.task_type === 'follow_up' && task.follow_up_date && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            📅 Follow up by: {format(parseISO(task.follow_up_date), 'MMM d, yyyy')}
-                          </p>
-                        )}
-                        {task.task_type === 'follow_up' && task.follow_up_reason && (
-                          <p className="text-xs text-muted-foreground border-l-2 pl-2 mt-1">
-                            {task.follow_up_reason}
-                          </p>
-                        )}
-                        {task.task_type === 'reschedule' && task.reschedule_date && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            📅 Reschedule date: {format(parseISO(task.reschedule_date), 'MMM d, yyyy')}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        {formatTime(apt.start_at_utc)}
-                      </div>
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      {task.task_type === 'call_confirmation' && (
-                        <>
-                          <Button 
-                            size="sm"
-                            onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
-                          >
-                            <CalendarCheck className="h-4 w-4 mr-1" />
-                            Confirm
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => rescheduleTask(task.id, apt.id)}
-                          >
-                            <Calendar className="h-4 w-4 mr-1" />
-                            Reschedule
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => noShowTask(task.id, apt.id)}
-                          >
-                            <CalendarX className="h-4 w-4 mr-1" />
-                            No-Show
-                          </Button>
-                        </>
-                      )}
-                      {task.task_type === 'follow_up' && (
-                        <>
-                          <Button 
-                            size="sm"
-                            onClick={() => handleRescheduleFollowUp(task.id, apt.id, apt.lead_name)}
-                          >
-                            <CalendarCheck className="h-4 w-4 mr-1" />
-                            Reconnected
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => noShowTask(task.id, apt.id)}
-                          >
-                            <CalendarX className="h-4 w-4 mr-1" />
-                            Still No Response
-                          </Button>
-                        </>
-                      )}
-                      {task.task_type === 'reschedule' && (
-                        <>
-                          <Button 
-                            size="sm"
-                            onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
-                          >
-                            <CalendarCheck className="h-4 w-4 mr-1" />
-                            Rescheduled
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => noShowTask(task.id, apt.id)}
-                          >
-                            <CalendarX className="h-4 w-4 mr-1" />
-                            Still No Response
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
+      {(userRole === 'admin' || userRole === 'offer_owner') && (
+        <div className="flex justify-end">
+          <Select value={selectedMember} onValueChange={setSelectedMember}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by member" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Team Members</SelectItem>
+              {teamMembers.map((member) => (
+                <SelectItem key={member.user_id} value={member.user_id}>
+                  {member.profiles?.full_name || 'Unknown'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {filteredTasks.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-muted-foreground">No tasks assigned</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Today's Tasks */}
+          {groupedTasks.today.length > 0 && (
+            <Card className="card-hover border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarCheck className="h-5 w-5 text-green-600" />
+                  Today
+                  <Badge variant="secondary" className="ml-2 bg-green-600 text-white">
+                    {groupedTasks.today.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {groupedTasks.today.map(renderTaskCard)}
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
+
+          {/* Tomorrow's Tasks */}
+          {groupedTasks.tomorrow.length > 0 && (
+            <Card className="card-hover border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  Tomorrow
+                  <Badge variant="secondary" className="ml-2 bg-blue-600 text-white">
+                    {groupedTasks.tomorrow.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {groupedTasks.tomorrow.map(renderTaskCard)}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Upcoming Tasks */}
+          {groupedTasks.upcoming.length > 0 && (
+            <Card className="card-hover border-info/20 bg-info/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-info" />
+                  Upcoming
+                  <Badge variant="info" className="ml-2">
+                    {groupedTasks.upcoming.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {groupedTasks.upcoming.map((task) => {
+                  const apt = task.appointment;
+                  const appointmentDate = parseISO(apt.start_at_utc);
+                  return (
+                    <div key={task.id}>
+                      <div className="text-xs font-medium text-muted-foreground mb-2">
+                        {format(appointmentDate, 'EEEE, MMMM d')}
+                      </div>
+                      {renderTaskCard(task)}
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
 
 
       {/* Reschedule Dialog */}
