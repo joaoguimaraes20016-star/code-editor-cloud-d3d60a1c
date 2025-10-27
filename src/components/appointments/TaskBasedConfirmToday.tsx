@@ -107,6 +107,10 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     appointmentName: string;
   } | null>(null);
   const [rescheduleDateTime, setRescheduleDateTime] = useState<Date>();
+  const [detailView, setDetailView] = useState<{
+    open: boolean;
+    task: any;
+  } | null>(null);
 
   const handleRescheduleFollowUp = (taskId: string, appointmentId: string, appointmentName: string) => {
     setRescheduleDialog({ open: true, taskId, appointmentId, appointmentName });
@@ -208,7 +212,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
       : task.task_type === 'reschedule' ? 'border-amber-200 dark:border-amber-900'
       : '';
     return (
-      <Card key={task.id} className={cn("bg-card card-hover", taskColor)}>
+      <Card key={task.id} className={cn("bg-card card-hover cursor-pointer", taskColor)} onClick={() => setDetailView({ open: true, task })}>
         <CardContent className="p-4 space-y-3">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
@@ -258,12 +262,15 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               {formatTime(apt.start_at_utc)}
             </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
             {task.task_type === 'call_confirmation' && (
               <>
                 <Button 
                   size="sm"
-                  onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    confirmTask(task.id, apt.id, apt.setter_id);
+                  }}
                 >
                   <CalendarCheck className="h-4 w-4 mr-1" />
                   Confirm
@@ -271,7 +278,10 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                 <Button 
                   size="sm" 
                   variant="outline"
-                  onClick={() => rescheduleTask(task.id, apt.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    rescheduleTask(task.id, apt.id);
+                  }}
                 >
                   <Calendar className="h-4 w-4 mr-1" />
                   Reschedule
@@ -279,7 +289,10 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                 <Button 
                   size="sm" 
                   variant="outline"
-                  onClick={() => noShowTask(task.id, apt.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    noShowTask(task.id, apt.id);
+                  }}
                 >
                   <CalendarX className="h-4 w-4 mr-1" />
                   No-Show
@@ -290,7 +303,10 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               <>
                 <Button 
                   size="sm"
-                  onClick={() => handleRescheduleFollowUp(task.id, apt.id, apt.lead_name)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRescheduleFollowUp(task.id, apt.id, apt.lead_name);
+                  }}
                 >
                   <CalendarCheck className="h-4 w-4 mr-1" />
                   Reconnected
@@ -298,7 +314,10 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                 <Button 
                   size="sm" 
                   variant="outline"
-                  onClick={() => noShowTask(task.id, apt.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    noShowTask(task.id, apt.id);
+                  }}
                 >
                   <CalendarX className="h-4 w-4 mr-1" />
                   Still No Response
@@ -309,7 +328,10 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               <>
                 <Button 
                   size="sm"
-                  onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    confirmTask(task.id, apt.id, apt.setter_id);
+                  }}
                 >
                   <CalendarCheck className="h-4 w-4 mr-1" />
                   Rescheduled
@@ -317,7 +339,10 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                 <Button 
                   size="sm" 
                   variant="outline"
-                  onClick={() => noShowTask(task.id, apt.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    noShowTask(task.id, apt.id);
+                  }}
                 >
                   <CalendarX className="h-4 w-4 mr-1" />
                   Still No Response
@@ -471,82 +496,174 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
       )}
 
 
-      {/* Reschedule Dialog */}
-      {rescheduleDialog && (
-        <Dialog open={rescheduleDialog.open} onOpenChange={(open) => !open && setRescheduleDialog(null)}>
-          <DialogContent className="sm:max-w-md">
+      {/* Lead Detail Dialog */}
+      {detailView && (
+        <Dialog open={detailView.open} onOpenChange={(open) => !open && setDetailView(null)}>
+          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Reschedule Appointment</DialogTitle>
+              <DialogTitle>Lead Details</DialogTitle>
             </DialogHeader>
             
-            <div className="space-y-4 py-4">
-              <p className="text-sm text-muted-foreground">
-                Setting new appointment date/time for <span className="font-semibold">{rescheduleDialog.appointmentName}</span>
-              </p>
-              
-              <div className="space-y-2">
-                <Label>Select New Date & Time</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                    >
-                      <Clock className="mr-2 h-4 w-4" />
-                      {rescheduleDateTime ? format(rescheduleDateTime, "PPP 'at' p") : "Pick a date and time"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={rescheduleDateTime}
-                      onSelect={(date) => {
-                        if (date) {
-                          const newDate = rescheduleDateTime ? new Date(date) : new Date(date.setHours(9, 0, 0, 0));
-                          if (rescheduleDateTime) {
-                            newDate.setHours(rescheduleDateTime.getHours(), rescheduleDateTime.getMinutes());
-                          }
-                          setRescheduleDateTime(newDate);
-                        }
-                      }}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                    {rescheduleDateTime && (
-                      <div className="p-3 border-t">
-                        <Label className="text-xs">Time</Label>
-                        <div className="flex gap-2 mt-2">
-                          <Input
-                            type="time"
-                            value={rescheduleDateTime ? format(rescheduleDateTime, "HH:mm") : ""}
-                            onChange={(e) => {
-                              if (rescheduleDateTime && e.target.value) {
-                                const [hours, minutes] = e.target.value.split(':');
-                                const newDate = new Date(rescheduleDateTime);
-                                newDate.setHours(parseInt(hours), parseInt(minutes));
-                                setRescheduleDateTime(newDate);
-                              }
-                            }}
-                            className="flex-1"
-                          />
-                        </div>
+            <div className="space-y-6 py-4">
+              {/* Contact Information */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Contact Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Name</Label>
+                    <p className="font-medium">{detailView.task.appointment.lead_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Email</Label>
+                    <p className="font-medium">{detailView.task.appointment.lead_email}</p>
+                  </div>
+                  {detailView.task.appointment.lead_phone && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Phone</Label>
+                      <p className="font-medium">{detailView.task.appointment.lead_phone}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Appointment Details */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Appointment Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Scheduled Time</Label>
+                    <p className="font-medium">{format(parseISO(detailView.task.appointment.start_at_utc), 'PPP p')}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Event Type</Label>
+                    <p className="font-medium">{detailView.task.appointment.event_type_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Status</Label>
+                    <Badge variant="outline">{detailView.task.appointment.status}</Badge>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Pipeline Stage</Label>
+                    <Badge variant="secondary">{detailView.task.appointment.pipeline_stage}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Team Assignment */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Team Assignment</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Setter</Label>
+                    <p className="font-medium">{detailView.task.appointment.setter_name || 'Unassigned'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Closer</Label>
+                    <p className="font-medium">{detailView.task.appointment.closer_name || 'Unassigned'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Information */}
+              {(detailView.task.appointment.revenue > 0 || detailView.task.appointment.product_name) && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg">Financial Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {detailView.task.appointment.product_name && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Product</Label>
+                        <p className="font-medium">{detailView.task.appointment.product_name}</p>
                       </div>
                     )}
-                  </PopoverContent>
-                </Popover>
+                    {detailView.task.appointment.revenue > 0 && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Revenue</Label>
+                        <p className="font-medium">${detailView.task.appointment.revenue}</p>
+                      </div>
+                    )}
+                    {detailView.task.appointment.cc_collected > 0 && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">CC Collected</Label>
+                        <p className="font-medium">${detailView.task.appointment.cc_collected}</p>
+                      </div>
+                    )}
+                    {detailView.task.appointment.mrr_amount > 0 && (
+                      <>
+                        <div>
+                          <Label className="text-muted-foreground text-xs">MRR Amount</Label>
+                          <p className="font-medium">${detailView.task.appointment.mrr_amount}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground text-xs">MRR Months</Label>
+                          <p className="font-medium">{detailView.task.appointment.mrr_months}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes & Follow-up */}
+              {(detailView.task.appointment.setter_notes || detailView.task.appointment.retarget_date) && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg">Notes & Follow-up</h3>
+                  {detailView.task.appointment.setter_notes && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Setter Notes</Label>
+                      <p className="mt-1 p-3 bg-muted rounded-md">{detailView.task.appointment.setter_notes}</p>
+                    </div>
+                  )}
+                  {detailView.task.appointment.retarget_date && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Retarget Date</Label>
+                      <p className="font-medium">{format(parseISO(detailView.task.appointment.retarget_date), 'PPP')}</p>
+                      {detailView.task.appointment.retarget_reason && (
+                        <p className="text-sm text-muted-foreground mt-1">{detailView.task.appointment.retarget_reason}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Task Information */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Task Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Task Type</Label>
+                    <div className="mt-1">{getTaskTypeBadge(detailView.task.task_type)}</div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Created</Label>
+                    <p className="font-medium">{format(parseISO(detailView.task.created_at), 'PPP')}</p>
+                  </div>
+                  {detailView.task.follow_up_date && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Follow-up Date</Label>
+                      <p className="font-medium">{format(parseISO(detailView.task.follow_up_date), 'PPP')}</p>
+                    </div>
+                  )}
+                  {detailView.task.follow_up_reason && (
+                    <div className="col-span-2">
+                      <Label className="text-muted-foreground text-xs">Follow-up Reason</Label>
+                      <p className="mt-1 p-3 bg-muted rounded-md">{detailView.task.follow_up_reason}</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setRescheduleDialog(null)}>
-                Cancel
-              </Button>
-              <Button onClick={handleRescheduleConfirm} disabled={!rescheduleDateTime}>
-                Confirm & Assign to Me
-              </Button>
+              <Button variant="outline" onClick={() => setDetailView(null)}>Close</Button>
             </DialogFooter>
           </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Reschedule Dialog */}
+      {rescheduleDialog && (
+        <Dialog open={rescheduleDialog.open} onOpenChange={(open) => !open && setRescheduleDialog(null)}>
+...
         </Dialog>
       )}
     </div>
