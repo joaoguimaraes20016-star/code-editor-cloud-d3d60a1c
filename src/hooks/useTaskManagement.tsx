@@ -73,6 +73,10 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
       
       const uniqueTasks = Array.from(uniqueTasksMap.values());
       
+      console.log('Total unique tasks after filtering:', uniqueTasks.length);
+      console.log('User role:', userRole);
+      console.log('User ID:', userId);
+      
       // Filter tasks based on who they're assigned to
       const my = userRole === 'admin' || userRole === 'offer_owner'
         ? uniqueTasks.filter(t => t.assigned_to !== null) // All assigned tasks
@@ -80,6 +84,9 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
       
       // Queue tasks: completely unassigned (no assigned_to)
       const queue = uniqueTasks.filter(t => t.assigned_to === null);
+
+      console.log('My tasks count:', my.length);
+      console.log('Queue tasks count:', queue.length);
 
       setMyTasks(my);
       setQueueTasks(queue);
