@@ -418,27 +418,26 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     if (!appointment) return;
 
     try {
-      // Update appointment with deposit amount, notes, retarget date, and move to won/closed stage
+      // Update appointment with deposit amount and notes, but DON'T move to closed stage
       const { error: updateError } = await supabase
         .from("appointments")
         .update({ 
-          pipeline_stage: depositDialog.stageId, // Use the target stage (won/closed)
           cc_collected: depositAmount,
           setter_notes: notes,
           retarget_date: format(followUpDate, "yyyy-MM-dd"),
-          retarget_reason: `Close due: $${depositAmount} deposit collected`
+          retarget_reason: `Deposit collected: $${depositAmount}. Ready to close.`
         })
         .eq("id", depositDialog.appointmentId);
 
       if (updateError) throw updateError;
 
-      // Create follow-up task
+      // Create follow-up task for the closer
       await supabase.rpc("create_task_with_assignment", {
         p_team_id: appointment.team_id,
         p_appointment_id: depositDialog.appointmentId,
         p_task_type: "follow_up",
         p_follow_up_date: format(followUpDate, "yyyy-MM-dd"),
-        p_follow_up_reason: `Deposit collected: $${depositAmount}. ${notes}`
+        p_follow_up_reason: `Deposit collected: $${depositAmount}. ${notes} - Move to closed when ready.`
       });
 
       // Log activity
@@ -449,13 +448,10 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           appointment_id: depositDialog.appointmentId,
           actor_name: "System",
           action_type: "Deposit Collected",
-          note: `$${depositAmount} - Follow-up scheduled for ${format(followUpDate, "PPP")}`
+          note: `$${depositAmount} - Follow-up scheduled for ${format(followUpDate, "PPP")}. Ready to move to closed.`
         });
 
-      toast.success("Deposit recorded successfully");
-      
-      // Trigger the close deal dialog for final sale details
-      onCloseDeal({ ...appointment, pipeline_stage: depositDialog.stageId });
+      toast.success("Deposit recorded successfully - Deal can now be moved to closed");
       
       await loadDeals();
     } catch (error: any) {
@@ -470,7 +466,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     const appointment = appointments.find((a) => a.id === appointmentId);
     if (!appointment) return;
 
-    // Check if moving to won/closed stage - collect deposit info
+    // Check if moving to won/closed stage - open close deal dialog
     const targetStageData = stages.find(s => s.stage_id === stage);
     const isClosedStage = targetStageData && 
       (targetStageData.stage_id === 'won' || 
@@ -479,12 +475,22 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
        targetStageData.stage_label.toLowerCase().includes('close'));
 
     if (isClosedStage) {
-      setDepositDialog({ 
-        open: true, 
-        appointmentId, 
-        stageId: stage,
-        dealName: appointment.lead_name 
-      });
+      // Move to closed stage and open the close deal dialog
+      await performStageMove(appointmentId, stage, appointment);
+      
+      // Create a follow-up task for the closer
+      if (appointment.closer_id) {
+        await supabase.rpc("create_task_with_assignment", {
+          p_team_id: appointment.team_id,
+          p_appointment_id: appointmentId,
+          p_task_type: "follow_up",
+          p_follow_up_date: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
+          p_follow_up_reason: "Deal closed - Schedule follow-up for retention and upsell"
+        });
+      }
+      
+      // Open the close deal dialog to finalize details
+      onCloseDeal({ ...appointment, pipeline_stage: stage });
       return;
     }
 

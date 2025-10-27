@@ -122,7 +122,7 @@ export function AppointmentsHub({
         <Tabs defaultValue="mine" className="w-full">
           <div className="w-full overflow-x-auto">
             <TabsList className="w-max min-w-full h-12">
-              <TabsTrigger value="mine" className="text-sm md:text-base whitespace-nowrap">My Deals</TabsTrigger>
+              <TabsTrigger value="mine" className="text-sm md:text-base whitespace-nowrap">My Appointments</TabsTrigger>
               <TabsTrigger value="all" className="text-sm md:text-base whitespace-nowrap">All Appointments</TabsTrigger>
               <TabsTrigger value="pipeline" className="text-sm md:text-base whitespace-nowrap">Deal Pipeline</TabsTrigger>
               <TabsTrigger value="mrr-tasks" className="text-sm md:text-base whitespace-nowrap">

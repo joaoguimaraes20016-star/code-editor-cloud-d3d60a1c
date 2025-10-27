@@ -22,13 +22,13 @@ interface Appointment {
   closer_id: string | null;
 }
 
-interface MyLeadsProps {
+interface MyAppointmentsProps {
   teamId: string;
   currentUserId: string;
   onCloseDeal?: (appointment: Appointment) => void;
 }
 
-export function MyLeads({ teamId, currentUserId, onCloseDeal }: MyLeadsProps) {
+export function MyLeads({ teamId, currentUserId, onCloseDeal }: MyAppointmentsProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,7 +39,7 @@ export function MyLeads({ teamId, currentUserId, onCloseDeal }: MyLeadsProps) {
     loadAppointments();
 
     const channel = supabase
-      .channel('my-leads-changes')
+      .channel('my-appointments-changes')
       .on(
         'postgres_changes',
         {
@@ -57,7 +57,7 @@ export function MyLeads({ teamId, currentUserId, onCloseDeal }: MyLeadsProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [teamId, currentUserId]);
+  }, [teamId]);
 
   const loadAppointments = async () => {
     try {
@@ -65,13 +65,12 @@ export function MyLeads({ teamId, currentUserId, onCloseDeal }: MyLeadsProps) {
         .from("appointments")
         .select("*")
         .eq("team_id", teamId)
-        .eq("setter_id", currentUserId)
         .order("start_at_utc", { ascending: false });
 
       if (error) throw error;
       setAppointments(data || []);
     } catch (error) {
-      console.error("Error loading my leads:", error);
+      console.error("Error loading appointments:", error);
     } finally {
       setLoading(false);
     }
@@ -123,7 +122,7 @@ export function MyLeads({ teamId, currentUserId, onCloseDeal }: MyLeadsProps) {
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
         <Users className="h-5 w-5 text-primary" />
-        <h3 className="text-lg font-semibold">My Leads</h3>
+        <h3 className="text-lg font-semibold">My Appointments</h3>
       </div>
 
       <AppointmentFilters
@@ -141,14 +140,14 @@ export function MyLeads({ teamId, currentUserId, onCloseDeal }: MyLeadsProps) {
         <Alert>
           <InfoIcon className="h-4 w-4" />
           <AlertDescription>
-            No leads assigned to you yet. They'll appear here when leads book through your personal link.
+            No appointments scheduled yet.
           </AlertDescription>
         </Alert>
       ) : filteredAppointments.length === 0 ? (
         <Alert>
           <InfoIcon className="h-4 w-4" />
           <AlertDescription>
-            No leads match your current filters.
+            No appointments match your current filters.
           </AlertDescription>
         </Alert>
       ) : (
