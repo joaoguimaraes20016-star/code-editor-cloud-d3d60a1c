@@ -33,9 +33,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
   const { role: userRole } = useTeamRole(teamId);
   const {
     myTasks,
-    queueTasks,
     loading,
-    claimTask,
     confirmTask,
     noShowTask,
     rescheduleTask,
@@ -342,80 +340,6 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
         </CardContent>
       </Card>
 
-      {/* Team Queue */}
-      <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-orange-600" />
-            Team Queue (Unassigned)
-            <Badge variant="secondary" className="ml-auto">
-              {queueTasks.length}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {queueTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No unassigned tasks</p>
-          ) : (
-            queueTasks.map((task) => {
-              const apt = task.appointment;
-              const taskColor = task.task_type === 'call_confirmation' ? 'border-blue-200 dark:border-blue-900' 
-                : task.task_type === 'follow_up' ? 'border-purple-200 dark:border-purple-900'
-                : task.task_type === 'reschedule' ? 'border-amber-200 dark:border-amber-900'
-                : '';
-              return (
-                <Card key={task.id} className={cn("bg-background", taskColor)}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <p className="font-semibold">{apt.lead_name}</p>
-                        <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {apt.event_type_name && (
-                            <Badge variant="outline" className="text-xs">
-                              {apt.event_type_name}
-                            </Badge>
-                          )}
-                          {getTaskTypeBadge(task.task_type)}
-                        </div>
-                        {task.task_type === 'follow_up' && task.follow_up_date && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            📅 Follow up by: {format(parseISO(task.follow_up_date), 'MMM d, yyyy')}
-                          </p>
-                        )}
-                        {task.task_type === 'follow_up' && task.follow_up_reason && (
-                          <p className="text-xs text-muted-foreground border-l-2 pl-2 mt-1">
-                            {task.follow_up_reason}
-                          </p>
-                        )}
-                        {task.task_type === 'reschedule' && task.reschedule_date && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            📅 Reschedule date: {format(parseISO(task.reschedule_date), 'MMM d, yyyy')}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        {formatTime(apt.start_at_utc)}
-                      </div>
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      <Button 
-                        size="sm" 
-                        onClick={() => claimTask(task.id, apt.id)}
-                        className="flex-1"
-                      >
-                        <UserPlus className="h-4 w-4 mr-1" />
-                        Claim Task
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
 
       {/* Reschedule Dialog */}
       {rescheduleDialog && (

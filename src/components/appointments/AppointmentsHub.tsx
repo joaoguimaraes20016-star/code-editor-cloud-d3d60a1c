@@ -237,7 +237,7 @@ export function AppointmentsHub({
             <TabsTrigger value="assigned" className="text-xs md:text-sm whitespace-nowrap">All Assigned</TabsTrigger>
             <TabsTrigger value="pipeline" className="text-xs md:text-sm whitespace-nowrap">Pipeline</TabsTrigger>
             <TabsTrigger value="tasks" className="text-xs md:text-sm whitespace-nowrap">
-              Tasks {(counts.myTasks + counts.queueTasks) > 0 && <Badge className="ml-1" variant="secondary">{counts.myTasks + counts.queueTasks}</Badge>}
+              Tasks {counts.myTasks > 0 && <Badge className="ml-1" variant="secondary">{counts.myTasks}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="mrr-tasks" className="text-xs md:text-sm whitespace-nowrap">
               MRR Tasks {counts.mrrDue > 0 && <Badge className="ml-1" variant="secondary">{counts.mrrDue}</Badge>}
