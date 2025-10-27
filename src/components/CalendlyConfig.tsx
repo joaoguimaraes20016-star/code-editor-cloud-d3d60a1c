@@ -469,13 +469,7 @@ export function CalendlyConfig({
   const handleFixWebhook = async () => {
     setFixingWebhook(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Please log in to continue');
-      }
-
-      // First, fix the webhook
+      // Fix the webhook with correct configuration
       const { data: webhookData, error: webhookError } = await supabase.functions.invoke("fix-webhook", {
         body: { teamId }
       });
@@ -483,35 +477,17 @@ export function CalendlyConfig({
       if (webhookError) throw webhookError;
       if (webhookData?.error) throw new Error(webhookData.error);
 
-      // Then, import any appointments that were missed
-      const { data: importData, error: importError } = await supabase.functions.invoke("import-calendly-appointments", {
-        body: { teamId }
+      toast({
+        title: "Webhook Fixed",
+        description: `Webhook recreated successfully. New appointments will now sync automatically.`,
       });
 
-      if (importError) {
-        // Don't fail completely if import fails, webhook is still fixed
-        console.error('Import error:', importError);
-        toast({
-          title: "Webhook Fixed",
-          description: "Webhook recreated but couldn't import appointments. Please try again.",
-        });
-      } else if (importData?.error) {
-        toast({
-          title: "Webhook Fixed",
-          description: "Webhook recreated but couldn't import appointments. Please try again.",
-        });
-      } else {
-        toast({
-          title: "Fixed & Synced",
-          description: `Webhook fixed and imported ${importData.imported || 0} appointments (${importData.skipped || 0} skipped)`,
-        });
-      }
-      
       onUpdate();
     } catch (error: any) {
+      console.error('Fix webhook error:', error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Fix Failed",
+        description: error.message || "Failed to fix webhook. Please try reconnecting Calendly.",
         variant: "destructive",
       });
     } finally {

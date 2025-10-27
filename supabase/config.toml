@@ -12,6 +12,12 @@ verify_jwt = false
 [functions.setup-calendly]
 verify_jwt = true
 
+[functions.fix-webhook]
+verify_jwt = true
+
+[functions.refresh-calendly-token]
+verify_jwt = true
+
 [functions.import-calendly-appointments]
 verify_jwt = true
 
