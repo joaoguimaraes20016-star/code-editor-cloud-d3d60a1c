@@ -145,6 +145,60 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
     }
   };
 
+  const pauseSchedule = async (scheduleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('mrr_schedules')
+        .update({ status: 'paused' })
+        .eq('id', scheduleId);
+
+      if (error) throw error;
+
+      toast.success('Schedule paused');
+      setSelectedSchedule(null);
+      loadSchedules();
+    } catch (error) {
+      console.error('Error pausing schedule:', error);
+      toast.error('Failed to pause schedule');
+    }
+  };
+
+  const cancelSchedule = async (scheduleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('mrr_schedules')
+        .update({ status: 'canceled' })
+        .eq('id', scheduleId);
+
+      if (error) throw error;
+
+      toast.success('Schedule canceled');
+      setSelectedSchedule(null);
+      loadSchedules();
+    } catch (error) {
+      console.error('Error canceling schedule:', error);
+      toast.error('Failed to cancel schedule');
+    }
+  };
+
+  const reactivateSchedule = async (scheduleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('mrr_schedules')
+        .update({ status: 'active' })
+        .eq('id', scheduleId);
+
+      if (error) throw error;
+
+      toast.success('Schedule reactivated');
+      setSelectedSchedule(null);
+      loadSchedules();
+    } catch (error) {
+      console.error('Error reactivating schedule:', error);
+      toast.error('Failed to reactivate schedule');
+    }
+  };
+
   const confirmPayment = async (schedule: MRRScheduleWithProgress) => {
     if (!schedule.current_task_id) {
       toast.error('No payment task to confirm');
@@ -588,6 +642,38 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
                   </p>
                 </div>
               )}
+
+              <div className="flex gap-3 pt-4 border-t border-border/50">
+                {selectedSchedule.status === 'active' ? (
+                  <>
+                    <Button
+                      onClick={() => pauseSchedule(selectedSchedule.id)}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <Pause className="h-4 w-4 mr-2" />
+                      Pause Schedule
+                    </Button>
+                    <Button
+                      onClick={() => cancelSchedule(selectedSchedule.id)}
+                      variant="destructive"
+                      className="flex-1"
+                    >
+                      <Ban className="h-4 w-4 mr-2" />
+                      Cancel Schedule
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    onClick={() => reactivateSchedule(selectedSchedule.id)}
+                    variant="default"
+                    className="flex-1"
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Reactivate Schedule
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
