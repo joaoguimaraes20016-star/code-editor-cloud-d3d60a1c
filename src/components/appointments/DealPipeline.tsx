@@ -584,7 +584,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     const appointment = appointments.find((a) => a.id === appointmentId);
     if (!appointment) return;
 
-    // Check if deal is in deposit or closed stage - if so, completely delete it
+    // Check if deal is in deposit or closed stage - if so, clear all closed details
     const currentStage = appointment.pipeline_stage?.toLowerCase() || '';
     const isDepositOrClosed = 
       currentStage === 'deposit' || 
@@ -594,12 +594,12 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
       currentStage.includes('won');
 
     if (isDepositOrClosed) {
-      if (!confirm(`Completely remove ${appointment.lead_name} from the system? This will delete all related data and cannot be undone.`)) {
+      if (!confirm(`Reset ${appointment.lead_name} back to a fresh booked appointment? This will clear all deposit/sale details.`)) {
         return;
       }
 
       try {
-        // Delete related records first (due to foreign key constraints)
+        // Delete related financial records
         // Delete MRR commissions
         await supabase
           .from('mrr_commissions')
@@ -612,18 +612,6 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           .delete()
           .eq('appointment_id', appointmentId);
 
-        // Delete confirmation tasks
-        await supabase
-          .from('confirmation_tasks')
-          .delete()
-          .eq('appointment_id', appointmentId);
-
-        // Delete activity logs
-        await supabase
-          .from('activity_logs')
-          .delete()
-          .eq('appointment_id', appointmentId);
-
         // Delete sales records for this customer
         await supabase
           .from('sales')
@@ -633,19 +621,40 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
             customer_name: appointment.lead_name
           });
 
-        // Finally, delete the appointment
+        // Reset appointment to fresh booked state
         const { error } = await supabase
           .from('appointments')
-          .delete()
+          .update({ 
+            pipeline_stage: 'booked',
+            status: 'NEW',
+            cc_collected: 0,
+            mrr_amount: 0,
+            mrr_months: 0,
+            revenue: 0,
+            product_name: null,
+            retarget_date: null,
+            retarget_reason: null
+          })
           .eq('id', appointmentId);
 
         if (error) throw error;
 
-        toast.success(`${appointment.lead_name} has been completely removed from the system`);
+        // Log the reset action
+        await supabase
+          .from("activity_logs")
+          .insert({
+            team_id: appointment.team_id,
+            appointment_id: appointmentId,
+            actor_name: "User",
+            action_type: "Reset",
+            note: `Reset to fresh booked appointment from ${appointment.pipeline_stage}`
+          });
+
+        toast.success(`${appointment.lead_name} reset to booked appointment`);
         loadDeals();
       } catch (error) {
-        console.error('Error removing deal:', error);
-        toast.error('Failed to remove deal');
+        console.error('Error resetting deal:', error);
+        toast.error('Failed to reset deal');
       }
       return;
     }
