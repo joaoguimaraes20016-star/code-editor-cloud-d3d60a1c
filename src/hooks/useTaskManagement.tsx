@@ -50,7 +50,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
 
       if (error) throw error;
 
-      // Load MRR follow-up tasks (only show ONE card per schedule when a payment is due TODAY)
+      // Load MRR follow-up tasks (only show ONE card per client when a payment is due TODAY)
       const today = new Date().toISOString().split('T')[0];
       const { data: mrrTasks, error: mrrError } = await supabase
         .from('mrr_follow_up_tasks')
@@ -71,14 +71,15 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
 
       if (mrrError) throw mrrError;
 
-      // Group MRR tasks by schedule_id - only keep one task per schedule
-      const mrrTasksBySchedule = new Map();
+      // Group by CLIENT (not schedule) - only keep one task per client name
+      const mrrTasksByClient = new Map();
       (mrrTasks || []).forEach(task => {
-        if (!mrrTasksBySchedule.has(task.mrr_schedule_id)) {
-          mrrTasksBySchedule.set(task.mrr_schedule_id, task);
+        const clientKey = task.mrr_schedule?.client_name || task.mrr_schedule?.client_email;
+        if (!mrrTasksByClient.has(clientKey)) {
+          mrrTasksByClient.set(clientKey, task);
         }
       });
-      const uniqueMrrTasks = Array.from(mrrTasksBySchedule.values());
+      const uniqueMrrTasks = Array.from(mrrTasksByClient.values());
 
       // Convert MRR tasks to match Task interface
       const convertedMrrTasks = await Promise.all(uniqueMrrTasks.map(async (mrrTask) => {
