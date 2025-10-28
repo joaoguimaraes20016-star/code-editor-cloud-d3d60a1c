@@ -46,7 +46,8 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
 
       if (error) throw error;
 
-      // Load MRR follow-up tasks
+      // Load MRR follow-up tasks (only show when due date is today or earlier)
+      const today = new Date().toISOString().split('T')[0];
       const { data: mrrTasks, error: mrrError } = await supabase
         .from('mrr_follow_up_tasks')
         .select(`
@@ -61,6 +62,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
         `)
         .eq('team_id', teamId)
         .in('status', ['due', 'overdue'])
+        .lte('due_date', today)
         .order('due_date', { ascending: true });
 
       if (mrrError) throw mrrError;
