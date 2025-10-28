@@ -14,6 +14,10 @@ interface Task {
   follow_up_date: string | null;
   follow_up_reason: string | null;
   reschedule_date: string | null;
+  mrr_schedule_id?: string;
+  mrr_amount?: number;
+  mrr_confirmed_months?: number;
+  mrr_total_months?: number;
   appointment?: any;
 }
 
@@ -77,6 +81,16 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
           .eq('id', schedule?.appointment_id)
           .maybeSingle();
 
+        // Count total confirmed MRR payments for this schedule
+        const { count: confirmedCount } = await supabase
+          .from('mrr_follow_up_tasks')
+          .select('id', { count: 'exact', head: true })
+          .eq('mrr_schedule_id', mrrTask.mrr_schedule_id)
+          .eq('status', 'confirmed');
+
+        const totalMonths = appointment?.mrr_months || 0;
+        const confirmedMonths = confirmedCount || 0;
+
         return {
           id: mrrTask.id,
           appointment_id: schedule?.appointment_id || '',
@@ -87,8 +101,12 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
           auto_return_at: null,
           task_type: 'follow_up' as const,
           follow_up_date: mrrTask.due_date,
-          follow_up_reason: `MRR Follow-up: $${schedule?.mrr_amount}/mo`,
+          follow_up_reason: `MRR Follow-up: $${schedule?.mrr_amount}/mo (${confirmedMonths}/${totalMonths} months)`,
           reschedule_date: null,
+          mrr_schedule_id: mrrTask.mrr_schedule_id,
+          mrr_amount: schedule?.mrr_amount || 0,
+          mrr_confirmed_months: confirmedMonths,
+          mrr_total_months: totalMonths,
           appointment: appointment || {
             id: schedule?.appointment_id,
             lead_name: schedule?.client_name,
@@ -97,7 +115,9 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
             event_type_name: 'MRR Follow-Up',
             setter_id: schedule?.assigned_to,
             setter_name: null,
-            team_id: teamId
+            team_id: teamId,
+            mrr_months: totalMonths,
+            mrr_amount: schedule?.mrr_amount
           }
         };
       }));
@@ -354,6 +374,46 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
     }
   };
 
+  const confirmMRRPayment = async (taskId: string, appointmentId: string, mrrAmount: number) => {
+    try {
+      // Mark the MRR task as confirmed
+      const { error: taskError } = await supabase
+        .from('mrr_follow_up_tasks')
+        .update({
+          status: 'confirmed',
+          completed_at: new Date().toISOString(),
+          completed_by: userId
+        })
+        .eq('id', taskId);
+
+      if (taskError) throw taskError;
+
+      // Add MRR amount to appointment's cc_collected
+      const { data: appointment } = await supabase
+        .from('appointments')
+        .select('cc_collected')
+        .eq('id', appointmentId)
+        .single();
+
+      const currentCC = appointment?.cc_collected || 0;
+      const { error: aptError } = await supabase
+        .from('appointments')
+        .update({
+          cc_collected: Number(currentCC) + Number(mrrAmount)
+        })
+        .eq('id', appointmentId);
+
+      if (aptError) throw aptError;
+
+      await logActivity(appointmentId, 'MRR Payment Confirmed', `$${mrrAmount} collected`);
+      toast.success(`MRR Payment Confirmed: $${mrrAmount}`);
+      loadTasks();
+    } catch (error) {
+      console.error('Error confirming MRR payment:', error);
+      toast.error('Failed to confirm MRR payment');
+    }
+  };
+
   useEffect(() => {
     loadTasks();
 
@@ -401,6 +461,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
     confirmTask,
     noShowTask,
     rescheduleTask,
+    confirmMRRPayment,
     refreshTasks: loadTasks
   };
 }

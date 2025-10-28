@@ -37,6 +37,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     confirmTask,
     noShowTask,
     rescheduleTask,
+    confirmMRRPayment,
     refreshTasks
   } = useTaskManagement(teamId, user?.id || '', userRole || '');
 
@@ -169,7 +170,16 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     return minutes <= 30 && minutes > 0;
   };
 
-  const getTaskTypeBadge = (taskType: string) => {
+  const getTaskTypeBadge = (taskType: string, isMRRTask?: boolean) => {
+    if (isMRRTask) {
+      return (
+        <Badge className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white border-0">
+          <RefreshCw className="h-3 w-3 mr-1" />
+          MRR Payment
+        </Badge>
+      );
+    }
+    
     switch (taskType) {
       case 'call_confirmation':
         return (
@@ -207,7 +217,9 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
 
   const renderTaskCard = (task: any) => {
     const apt = task.appointment;
-    const taskColor = task.task_type === 'call_confirmation' ? 'border-blue-200 dark:border-blue-900' 
+    const isMRRTask = task.mrr_schedule_id != null;
+    const taskColor = isMRRTask ? 'border-emerald-200 dark:border-emerald-900'
+      : task.task_type === 'call_confirmation' ? 'border-blue-200 dark:border-blue-900' 
       : task.task_type === 'follow_up' ? 'border-purple-200 dark:border-purple-900'
       : task.task_type === 'reschedule' ? 'border-amber-200 dark:border-amber-900'
       : '';
@@ -224,7 +236,12 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                     {apt.event_type_name}
                   </Badge>
                 )}
-                {getTaskTypeBadge(task.task_type)}
+                {getTaskTypeBadge(task.task_type, isMRRTask)}
+                {isMRRTask && (
+                  <Badge className="text-xs bg-emerald-600 text-white border-0">
+                    {task.mrr_confirmed_months}/{task.mrr_total_months} months
+                  </Badge>
+                )}
                 {apt.setter_id === user?.id ? (
                   <Badge variant="default" className="text-xs bg-blue-600">
                     Assigned to You
@@ -241,12 +258,17 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                   </Badge>
                 )}
               </div>
-              {task.task_type === 'follow_up' && task.follow_up_date && (
+              {task.task_type === 'follow_up' && task.follow_up_date && !isMRRTask && (
                 <p className="text-xs text-muted-foreground mt-2">
                   📅 Follow up by: {format(parseISO(task.follow_up_date), 'MMM d, yyyy')}
                 </p>
               )}
-              {task.task_type === 'follow_up' && task.follow_up_reason && (
+              {isMRRTask && (
+                <p className="text-xs font-medium text-emerald-600 mt-2">
+                  💰 MRR Payment Due: ${task.mrr_amount}/month
+                </p>
+              )}
+              {task.task_type === 'follow_up' && task.follow_up_reason && !isMRRTask && (
                 <p className="text-xs text-muted-foreground border-l-2 pl-2 mt-1">
                   {task.follow_up_reason}
                 </p>
@@ -271,7 +293,26 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               <UserPlus className="h-4 w-4 mr-1" />
               View Details
             </Button>
-            {task.task_type === 'call_confirmation' && (
+            {isMRRTask ? (
+              <>
+                <Button 
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => confirmMRRPayment(task.id, apt.id, task.mrr_amount)}
+                >
+                  <CalendarCheck className="h-4 w-4 mr-1" />
+                  Confirm Payment
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => noShowTask(task.id, apt.id)}
+                >
+                  <CalendarX className="h-4 w-4 mr-1" />
+                  Payment Failed
+                </Button>
+              </>
+            ) : task.task_type === 'call_confirmation' ? (
               <>
                 <Button 
                   size="sm"
@@ -297,8 +338,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                   No-Show
                 </Button>
               </>
-            )}
-            {task.task_type === 'follow_up' && (
+            ) : task.task_type === 'follow_up' ? (
               <>
                 <Button 
                   size="sm"
@@ -316,8 +356,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                   Still No Response
                 </Button>
               </>
-            )}
-            {task.task_type === 'reschedule' && (
+            ) : task.task_type === 'reschedule' ? (
               <>
                 <Button 
                   size="sm"
@@ -335,7 +374,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                   Still No Response
                 </Button>
               </>
-            )}
+            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -618,19 +657,30 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-muted-foreground text-xs">Task Type</Label>
-                    <div className="mt-1">{getTaskTypeBadge(detailView.task.task_type)}</div>
+                    <div className="mt-1">{getTaskTypeBadge(detailView.task.task_type, detailView.task.mrr_schedule_id != null)}</div>
                   </div>
                   <div>
                     <Label className="text-muted-foreground text-xs">Created</Label>
                     <p className="font-medium">{format(parseISO(detailView.task.created_at), 'PPP')}</p>
                   </div>
-                  {detailView.task.follow_up_date && (
+                  {detailView.task.mrr_schedule_id && (
+                    <div className="col-span-2">
+                      <Label className="text-muted-foreground text-xs">MRR Progress</Label>
+                      <p className="font-medium text-emerald-600">
+                        {detailView.task.mrr_confirmed_months}/{detailView.task.mrr_total_months} months confirmed
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        ${detailView.task.mrr_amount}/month
+                      </p>
+                    </div>
+                  )}
+                  {detailView.task.follow_up_date && !detailView.task.mrr_schedule_id && (
                     <div>
                       <Label className="text-muted-foreground text-xs">Follow-up Date</Label>
                       <p className="font-medium">{format(parseISO(detailView.task.follow_up_date), 'PPP')}</p>
                     </div>
                   )}
-                  {detailView.task.follow_up_reason && (
+                  {detailView.task.follow_up_reason && !detailView.task.mrr_schedule_id && (
                     <div className="col-span-2">
                       <Label className="text-muted-foreground text-xs">Follow-up Reason</Label>
                       <p className="mt-1 p-3 bg-muted rounded-md">{detailView.task.follow_up_reason}</p>
