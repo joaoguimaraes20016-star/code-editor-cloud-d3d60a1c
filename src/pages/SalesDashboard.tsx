@@ -530,19 +530,15 @@ const Index = () => {
     return sum + closerComm + setterComm;
   }, 0);
   
-  // Calculate appointment-based metrics
+  // Calculate appointment-based metrics (only from appointments, sales are auto-created from appointments)
   const showedAppointments = filteredAppointments.filter(apt => apt.status === 'SHOWED' || apt.status === 'CLOSED');
   const noShowAppointments = filteredAppointments.filter(apt => apt.status === 'NO_SHOW');
   const totalScheduledAppointments = filteredAppointments.length;
+  const totalClosedDeals = closedAppointments.length;
   
-  // Include closed sales in close rate calculation
-  const closedSalesCount = filteredSales.filter(s => s.status === 'closed').length;
-  const totalClosedDeals = closedAppointments.length + closedSalesCount;
-  const totalShowedOrClosed = showedAppointments.length + closedSalesCount;
-  
-  // Close Rate: All closed deals (appointments + sales) / All showed opportunities (appointments + sales)
-  const closeRate = totalShowedOrClosed > 0 
-    ? ((totalClosedDeals / totalShowedOrClosed) * 100).toFixed(1)
+  // Close Rate: Closed deals / Showed appointments (appointments that actually happened)
+  const closeRate = showedAppointments.length > 0 
+    ? ((totalClosedDeals / showedAppointments.length) * 100).toFixed(1)
     : '0';
   
   // Show-Up Rate: Appointments that SHOWED / Total SCHEDULED
@@ -711,7 +707,7 @@ const Index = () => {
             title="Close Rate"
             value={`${closeRate}%`}
             icon={Users}
-            trend={`${totalClosedDeals}/${totalShowedOrClosed} showed closed`}
+            trend={`${totalClosedDeals}/${showedAppointments.length} showed closed`}
             trendUp={Number(closeRate) >= 30}
           />
           <MetricCard

@@ -36,6 +36,7 @@ import { SetterBookingLinks } from '@/components/SetterBookingLinks';
 import { CommissionSettings } from '@/components/CommissionSettings';
 import { SetterRotationSettings } from '@/components/SetterRotationSettings';
 import { ClearTeamData } from '@/components/ClearTeamData';
+import { CleanupDuplicateSales } from '@/components/CleanupDuplicateSales';
 import { getUserFriendlyError } from '@/lib/errorUtils';
 
 interface TeamMember {
@@ -492,11 +493,27 @@ export default function TeamSettings() {
               <CardHeader>
                 <CardTitle className="text-destructive">Danger Zone</CardTitle>
                 <CardDescription>
-                  Clear all operational data (appointments, sales, tasks, etc.) while keeping team structure intact
+                  Manage operational data cleanup
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <ClearTeamData teamId={teamId!} />
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Clean duplicate sales records</p>
+                  <p className="text-sm text-muted-foreground">
+                    Remove old sales records that are causing duplicate counts. Your appointment data is safe.
+                  </p>
+                  <CleanupDuplicateSales 
+                    teamId={teamId!} 
+                    onComplete={() => window.location.reload()} 
+                  />
+                </div>
+                <div className="space-y-2 pt-4 border-t">
+                  <p className="text-sm font-medium">Clear all operational data</p>
+                  <p className="text-sm text-muted-foreground">
+                    Remove all appointments, sales, tasks, etc. while keeping team structure intact
+                  </p>
+                  <ClearTeamData teamId={teamId!} />
+                </div>
               </CardContent>
             </Card>
           </>
