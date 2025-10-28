@@ -376,6 +376,84 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
 
   const confirmMRRPayment = async (taskId: string, appointmentId: string, mrrAmount: number) => {
     try {
+      // Get MRR task details to find the schedule
+      const { data: mrrTask } = await supabase
+        .from('mrr_follow_up_tasks')
+        .select('mrr_schedule_id, due_date')
+        .eq('id', taskId)
+        .single();
+
+      if (!mrrTask) throw new Error('MRR task not found');
+
+      // Get appointment and schedule details
+      const { data: appointment } = await supabase
+        .from('appointments')
+        .select('*, setter_name, closer_name, setter_id, closer_id, lead_name, lead_email')
+        .eq('id', appointmentId)
+        .single();
+
+      const { data: schedule } = await supabase
+        .from('mrr_schedules')
+        .select('*')
+        .eq('id', mrrTask.mrr_schedule_id)
+        .single();
+
+      if (!appointment || !schedule) throw new Error('Appointment or schedule not found');
+
+      // Get team commission settings
+      const { data: team } = await supabase
+        .from('teams')
+        .select('setter_commission_percentage, closer_commission_percentage')
+        .eq('id', teamId)
+        .single();
+
+      const setterCommissionPct = team?.setter_commission_percentage || 5;
+      const closerCommissionPct = team?.closer_commission_percentage || 10;
+
+      // Create commission records for this month
+      const mrrCommissions = [];
+
+      if (appointment.setter_id && appointment.setter_name) {
+        mrrCommissions.push({
+          team_id: teamId,
+          appointment_id: appointmentId,
+          team_member_id: appointment.setter_id,
+          team_member_name: appointment.setter_name,
+          prospect_name: appointment.lead_name,
+          prospect_email: appointment.lead_email,
+          role: 'setter',
+          month_date: mrrTask.due_date,
+          mrr_amount: mrrAmount,
+          commission_amount: mrrAmount * (setterCommissionPct / 100),
+          commission_percentage: setterCommissionPct,
+        });
+      }
+
+      if (appointment.closer_id && appointment.closer_name) {
+        mrrCommissions.push({
+          team_id: teamId,
+          appointment_id: appointmentId,
+          team_member_id: appointment.closer_id,
+          team_member_name: appointment.closer_name,
+          prospect_name: appointment.lead_name,
+          prospect_email: appointment.lead_email,
+          role: 'closer',
+          month_date: mrrTask.due_date,
+          mrr_amount: mrrAmount,
+          commission_amount: mrrAmount * (closerCommissionPct / 100),
+          commission_percentage: closerCommissionPct,
+        });
+      }
+
+      // Insert commission records
+      if (mrrCommissions.length > 0) {
+        const { error: commError } = await supabase
+          .from('mrr_commissions')
+          .insert(mrrCommissions);
+
+        if (commError) throw commError;
+      }
+
       // Mark the MRR task as confirmed
       const { error: taskError } = await supabase
         .from('mrr_follow_up_tasks')
@@ -389,13 +467,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
       if (taskError) throw taskError;
 
       // Add MRR amount to appointment's cc_collected
-      const { data: appointment } = await supabase
-        .from('appointments')
-        .select('cc_collected')
-        .eq('id', appointmentId)
-        .single();
-
-      const currentCC = appointment?.cc_collected || 0;
+      const currentCC = appointment.cc_collected || 0;
       const { error: aptError } = await supabase
         .from('appointments')
         .update({
@@ -405,7 +477,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
 
       if (aptError) throw aptError;
 
-      await logActivity(appointmentId, 'MRR Payment Confirmed', `$${mrrAmount} collected`);
+      await logActivity(appointmentId, 'MRR Payment Confirmed', `$${mrrAmount} collected for ${mrrTask.due_date}`);
       toast.success(`MRR Payment Confirmed: $${mrrAmount}`);
       loadTasks();
     } catch (error) {
