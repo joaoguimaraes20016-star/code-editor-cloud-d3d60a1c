@@ -600,17 +600,23 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
       try {
         // Delete related financial records
-        // Delete MRR commissions
+        // Delete MRR commissions by prospect name (appointment_id might not be set)
         await supabase
           .from('mrr_commissions')
           .delete()
-          .eq('appointment_id', appointmentId);
+          .match({
+            team_id: appointment.team_id,
+            prospect_name: appointment.lead_name
+          });
 
         // Delete MRR schedules
         await supabase
           .from('mrr_schedules')
           .delete()
-          .eq('appointment_id', appointmentId);
+          .match({
+            team_id: appointment.team_id,
+            client_name: appointment.lead_name
+          });
 
         // Delete sales records for this customer
         await supabase
@@ -627,10 +633,10 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           .update({ 
             pipeline_stage: 'booked',
             status: 'NEW',
-            cc_collected: null,
-            mrr_amount: null,
-            mrr_months: null,
-            revenue: null,
+            cc_collected: 0,
+            mrr_amount: 0,
+            mrr_months: 0,
+            revenue: 0,
             product_name: null,
             retarget_date: null,
             retarget_reason: null
