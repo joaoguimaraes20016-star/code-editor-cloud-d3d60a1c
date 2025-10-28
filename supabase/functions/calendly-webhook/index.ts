@@ -445,38 +445,36 @@ serve(async (req) => {
 
       console.log('Inserting appointment with data:', JSON.stringify(appointmentToInsert));
 
-      // Call the database function via PostgREST API directly
-      const response = await fetch(
-        `${Deno.env.get('SUPABASE_URL')}/rest/v1/rpc/insert_appointments_batch`,
+      // Create admin client with service role to bypass RLS
+      const adminClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify({
-            appointments_data: [appointmentToInsert]
-          })
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
         }
       );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error creating appointment:', errorText);
-        await logWebhookEvent(supabase, teamId, event, 'error', { error: errorText });
+      // Direct insert using service role client
+      const { data: insertedAppointment, error: insertError } = await adminClient
+        .from('appointments')
+        .insert([appointmentToInsert])
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error creating appointment:', insertError);
+        await logWebhookEvent(supabase, teamId, event, 'error', { error: insertError });
         return new Response(JSON.stringify({ error: 'Failed to process appointment' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      const appointments = await response.json();
-      const appointment = appointments?.[0];
-
-      console.log('Created appointment:', appointment.id);
-      await logWebhookEvent(supabase, teamId, event, 'success', { appointmentId: appointment.id });
+      console.log('Created appointment:', insertedAppointment?.id);
+      await logWebhookEvent(supabase, teamId, event, 'success', { appointmentId: insertedAppointment?.id });
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
