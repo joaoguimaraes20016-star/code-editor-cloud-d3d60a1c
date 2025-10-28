@@ -610,13 +610,29 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           });
 
         // Delete MRR schedules
-        await supabase
+        const { data: mrrSchedules } = await supabase
           .from('mrr_schedules')
-          .delete()
+          .select('id')
           .match({
             team_id: appointment.team_id,
             client_name: appointment.lead_name
           });
+
+        if (mrrSchedules && mrrSchedules.length > 0) {
+          const scheduleIds = mrrSchedules.map(s => s.id);
+          
+          // Delete MRR follow-up tasks linked to these schedules
+          await supabase
+            .from('mrr_follow_up_tasks')
+            .delete()
+            .in('mrr_schedule_id', scheduleIds);
+
+          // Delete the MRR schedules
+          await supabase
+            .from('mrr_schedules')
+            .delete()
+            .in('id', scheduleIds);
+        }
 
         // Delete sales records for this customer
         await supabase
