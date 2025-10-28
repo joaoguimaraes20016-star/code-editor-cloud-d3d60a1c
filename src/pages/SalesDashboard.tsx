@@ -668,9 +668,9 @@ const Index = () => {
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-grid h-auto">
+          <TabsList className={`grid w-full ${(isAdmin || userRole === 'offer_owner') ? 'grid-cols-3' : 'grid-cols-2'} md:w-auto md:inline-grid h-auto`}>
             <TabsTrigger value="dashboard" className="text-xs md:text-sm py-2 md:py-2.5">Dashboard</TabsTrigger>
-            <TabsTrigger value="appointments" className="text-xs md:text-sm py-2 md:py-2.5">Appointments</TabsTrigger>
+            <TabsTrigger value="appointments" className="text-xs md:text-sm py-2 md:py-2.5">CRM</TabsTrigger>
             {(isAdmin || userRole === 'offer_owner') && (
               <TabsTrigger value="integrations" className="text-xs md:text-sm py-2 md:py-2.5">Integrations</TabsTrigger>
             )}
