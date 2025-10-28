@@ -152,11 +152,22 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
       }
 
       // Filter follow-up tasks to only show ones due today or overdue
+      // Also filter out tasks for appointments that are already closed/completed
       filteredTasks = filteredTasks.filter(task => {
+        const aptStatus = task.appointment?.status;
+        
+        // Don't show call confirmation tasks for appointments that are already confirmed, closed, or cancelled
+        if (task.task_type === 'call_confirmation' && 
+            (aptStatus === 'CONFIRMED' || aptStatus === 'CLOSED' || aptStatus === 'CANCELLED')) {
+          return false;
+        }
+        
+        // Only show follow-up tasks that are due today or overdue
         if (task.task_type === 'follow_up' && task.follow_up_date) {
           return task.follow_up_date <= today;
         }
-        return true; // Keep all non-follow-up tasks
+        
+        return true;
       });
 
       // Use confirmation tasks + MRR tasks due today
