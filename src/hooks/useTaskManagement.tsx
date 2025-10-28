@@ -151,6 +151,14 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
         });
       }
 
+      // Filter follow-up tasks to only show ones due today or overdue
+      filteredTasks = filteredTasks.filter(task => {
+        if (task.task_type === 'follow_up' && task.follow_up_date) {
+          return task.follow_up_date <= today;
+        }
+        return true; // Keep all non-follow-up tasks
+      });
+
       // Use confirmation tasks + MRR tasks due today
       const allTasks = [...filteredTasks, ...convertedMrrTasks];
 
