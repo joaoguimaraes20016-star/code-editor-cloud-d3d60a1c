@@ -78,25 +78,54 @@ export function QuickCloseDealModal({
 
       if (updateError) throw updateError;
 
-      // Create sale record (revenue is only CC, MRR tracked separately)
+      // Upsert sale record (revenue is only CC, MRR tracked separately)
       const closerCommission = cc * (closerCommissionPct / 100);
       const setterCommission = cc * (setterCommissionPct / 100);
       const revenue = cc;
+      const todayDate = new Date().toISOString().split("T")[0];
 
-      const { error: saleError } = await supabase.from("sales").insert({
-        customer_name: appointment.lead_name,
-        date: new Date().toISOString().split("T")[0],
-        revenue,
-        commission: closerCommission,
-        setter_commission: setterCommission,
-        sales_rep: appointment.closer_name || "Unknown",
-        setter: appointment.setter_name || "Unknown",
-        product_name: productName || null,
-        status: "Closed",
-        team_id: appointment.team_id,
-      });
+      // Check if sale already exists for this appointment
+      const { data: existingSale } = await supabase
+        .from("sales")
+        .select("id")
+        .eq("customer_name", appointment.lead_name)
+        .eq("team_id", appointment.team_id)
+        .eq("date", todayDate)
+        .single();
 
-      if (saleError) throw saleError;
+      if (existingSale) {
+        // Update existing sale
+        const { error: saleError } = await supabase
+          .from("sales")
+          .update({
+            revenue,
+            commission: closerCommission,
+            setter_commission: setterCommission,
+            sales_rep: appointment.closer_name || "Unknown",
+            setter: appointment.setter_name || "Unknown",
+            product_name: productName || null,
+            status: "Closed",
+          })
+          .eq("id", existingSale.id);
+
+        if (saleError) throw saleError;
+      } else {
+        // Create new sale
+        const { error: saleError } = await supabase.from("sales").insert({
+          customer_name: appointment.lead_name,
+          date: todayDate,
+          revenue,
+          commission: closerCommission,
+          setter_commission: setterCommission,
+          sales_rep: appointment.closer_name || "Unknown",
+          setter: appointment.setter_name || "Unknown",
+          product_name: productName || null,
+          status: "Closed",
+          team_id: appointment.team_id,
+        });
+
+        if (saleError) throw saleError;
+      }
 
       // Create MRR commissions if applicable
       if (mrr > 0 && months > 0) {
