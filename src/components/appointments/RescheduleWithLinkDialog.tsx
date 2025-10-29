@@ -58,7 +58,8 @@ export function RescheduleWithLinkDialog({
           filter: `id=eq.${appointmentId}`
         },
         (payload) => {
-          if (payload.new.status === 'RESCHEDULED') {
+          console.log('[RESCHEDULE DIALOG] Appointment updated:', payload.new.status);
+          if (payload.new.status === 'RESCHEDULED' || payload.new.status === 'CANCELLED') {
             setDialogState('rescheduled');
             toast.success("Client rescheduled successfully!");
             
