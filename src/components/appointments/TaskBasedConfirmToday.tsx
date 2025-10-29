@@ -766,6 +766,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
           }}
           rescheduleUrl={rescheduleWithLinkDialog.rescheduleUrl}
           appointmentName={rescheduleWithLinkDialog.appointmentName}
+          appointmentId={rescheduleWithLinkDialog.appointmentId}
           onConfirm={async (reason, notes) => {
             await markAwaitingReschedule(
               rescheduleWithLinkDialog.taskId,
