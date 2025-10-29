@@ -4,7 +4,7 @@ import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, UserPlus, CalendarCheck, CalendarX, Loader2, AlertCircle, Phone, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, UserPlus, CalendarCheck, CalendarX, Loader2, AlertCircle, Phone, RefreshCw, CalendarClock } from 'lucide-react';
 import { format, parseISO, differenceInMinutes, isToday, isTomorrow, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { RescheduleWithLinkDialog } from './RescheduleWithLinkDialog';
 
 interface TaskBasedConfirmTodayProps {
   teamId: string;
@@ -37,6 +38,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     confirmTask,
     noShowTask,
     rescheduleTask,
+    markAwaitingReschedule,
     confirmMRRPayment,
     refreshTasks
   } = useTaskManagement(teamId, user?.id || '', userRole || '');
@@ -106,6 +108,13 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     taskId: string;
     appointmentId: string;
     appointmentName: string;
+  } | null>(null);
+  const [rescheduleWithLinkDialog, setRescheduleWithLinkDialog] = useState<{
+    open: boolean;
+    taskId: string;
+    appointmentId: string;
+    appointmentName: string;
+    rescheduleUrl: string;
   } | null>(null);
   const [rescheduleDateTime, setRescheduleDateTime] = useState<Date>();
   const [detailView, setDetailView] = useState<{
@@ -335,12 +344,24 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                   <CalendarCheck className="h-4 w-4 mr-1" />
                   Confirm
                 </Button>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
-                  onClick={() => rescheduleTask(task.id, apt.id)}
+                  onClick={() => {
+                    if (apt.reschedule_url) {
+                      setRescheduleWithLinkDialog({
+                        open: true,
+                        taskId: task.id,
+                        appointmentId: apt.id,
+                        appointmentName: apt.lead_name,
+                        rescheduleUrl: apt.reschedule_url
+                      });
+                    } else {
+                      toast.error("No reschedule link available. Please check Calendly settings.");
+                    }
+                  }}
                 >
-                  <Calendar className="h-4 w-4 mr-1" />
+                  <CalendarClock className="h-4 w-4 mr-1" />
                   Reschedule
                 </Button>
                 <Button 
@@ -732,54 +753,29 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
             setConfirmNote('');
           }
         }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-green-600">
-                <CalendarCheck className="h-5 w-5" />
-                Confirmed
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Confirming appointment with <span className="font-medium">{confirmDialog.appointmentName}</span>
-              </p>
-              <div className="space-y-2">
-                <Label htmlFor="confirmNote">Add a note (optional)</Label>
-                <Input
-                  id="confirmNote"
-                  placeholder="Client is ready, excited about the call..."
-                  value={confirmNote}
-                  onChange={(e) => setConfirmNote(e.target.value)}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setConfirmDialog(null);
-                  setConfirmNote('');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => {
-                  confirmTask(
-                    confirmDialog.taskId, 
-                    confirmDialog.appointmentId, 
-                    confirmDialog.setterId,
-                    confirmNote || undefined
-                  );
-                  setConfirmDialog(null);
-                  setConfirmNote('');
-                }}
-              >
-                Confirm & Assign
-              </Button>
-            </DialogFooter>
-          </DialogContent>
+...
         </Dialog>
+      )}
+
+      {/* Reschedule With Link Dialog */}
+      {rescheduleWithLinkDialog && (
+        <RescheduleWithLinkDialog
+          open={rescheduleWithLinkDialog.open}
+          onOpenChange={(open) => {
+            if (!open) setRescheduleWithLinkDialog(null);
+          }}
+          rescheduleUrl={rescheduleWithLinkDialog.rescheduleUrl}
+          appointmentName={rescheduleWithLinkDialog.appointmentName}
+          onConfirm={(reason, notes) => {
+            markAwaitingReschedule(
+              rescheduleWithLinkDialog.taskId,
+              rescheduleWithLinkDialog.appointmentId,
+              reason,
+              notes
+            );
+            setRescheduleWithLinkDialog(null);
+          }}
+        />
       )}
     </div>
   );

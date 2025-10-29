@@ -49,6 +49,8 @@ export type Database = {
       }
       appointments: {
         Row: {
+          calendly_invitee_uri: string | null
+          cancel_url: string | null
           cc_collected: number | null
           closer_id: string | null
           closer_name: string | null
@@ -63,6 +65,7 @@ export type Database = {
           mrr_months: number | null
           pipeline_stage: string | null
           product_name: string | null
+          reschedule_url: string | null
           retarget_date: string | null
           retarget_reason: string | null
           revenue: number | null
@@ -75,6 +78,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          calendly_invitee_uri?: string | null
+          cancel_url?: string | null
           cc_collected?: number | null
           closer_id?: string | null
           closer_name?: string | null
@@ -89,6 +94,7 @@ export type Database = {
           mrr_months?: number | null
           pipeline_stage?: string | null
           product_name?: string | null
+          reschedule_url?: string | null
           retarget_date?: string | null
           retarget_reason?: string | null
           revenue?: number | null
@@ -101,6 +107,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          calendly_invitee_uri?: string | null
+          cancel_url?: string | null
           cc_collected?: number | null
           closer_id?: string | null
           closer_name?: string | null
@@ -115,6 +123,7 @@ export type Database = {
           mrr_months?: number | null
           pipeline_stage?: string | null
           product_name?: string | null
+          reschedule_url?: string | null
           retarget_date?: string | null
           retarget_reason?: string | null
           revenue?: number | null
@@ -1197,6 +1206,8 @@ export type Database = {
       insert_appointments_batch: {
         Args: { appointments_data: Json }
         Returns: {
+          calendly_invitee_uri: string | null
+          cancel_url: string | null
           cc_collected: number | null
           closer_id: string | null
           closer_name: string | null
@@ -1211,6 +1222,7 @@ export type Database = {
           mrr_months: number | null
           pipeline_stage: string | null
           product_name: string | null
+          reschedule_url: string | null
           retarget_date: string | null
           retarget_reason: string | null
           revenue: number | null

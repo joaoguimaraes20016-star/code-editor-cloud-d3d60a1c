@@ -341,9 +341,13 @@ serve(async (req) => {
         pipeline_stage: 'booked', // Auto-assign to Appointment Booked stage
       };
 
-      // Try to auto-assign based on UTM tracking parameter
+      // Fetch full invitee details for auto-assignment and Calendly URLs
+      let rescheduleUrl = null;
+      let cancelUrl = null;
+      let calendlyInviteeUri = null;
+      
       try {
-        console.log('Attempting to fetch invitee details for auto-assignment');
+        console.log('Attempting to fetch invitee details for auto-assignment and URLs');
         
         // The invitee URI is the full URI, extract UUID from it
         const inviteeUuid = inviteeUri?.split('/').pop();
@@ -362,8 +366,16 @@ serve(async (req) => {
           
           if (inviteeResponse.ok) {
             const inviteeDetails = await inviteeResponse.json();
-            const utmSource = inviteeDetails.resource?.tracking?.utm_source;
+            const resource = inviteeDetails.resource;
             
+            // Store Calendly URLs for rescheduling
+            rescheduleUrl = resource?.reschedule_url || null;
+            cancelUrl = resource?.cancel_url || null;
+            calendlyInviteeUri = resource?.uri || null;
+            
+            console.log('Extracted Calendly URLs:', { rescheduleUrl, cancelUrl, calendlyInviteeUri });
+            
+            const utmSource = resource?.tracking?.utm_source;
             console.log('UTM tracking data:', { utm_source: utmSource });
             
             // Check if utm_source matches pattern "setter_{code}"
@@ -398,11 +410,11 @@ serve(async (req) => {
             console.warn('Failed to fetch invitee details:', inviteeResponse.status);
           }
         } else {
-          console.log('Missing required data for auto-assignment:', { inviteeUuid, eventUuid, hasToken: !!accessToken });
+          console.log('Missing required data for invitee fetch:', { inviteeUuid, eventUuid, hasToken: !!accessToken });
         }
       } catch (error) {
         // Log error but continue - appointment will just remain unassigned
-        console.warn('Error during auto-assignment attempt:', error);
+        console.warn('Error during invitee details fetch:', error);
       }
 
       // Check for duplicate before creating appointment
@@ -441,6 +453,9 @@ serve(async (req) => {
         event_type_uri: appointmentData.event_type_uri || null,
         event_type_name: appointmentData.event_type_name || null,
         pipeline_stage: appointmentData.pipeline_stage || 'booked',
+        reschedule_url: rescheduleUrl,
+        cancel_url: cancelUrl,
+        calendly_invitee_uri: calendlyInviteeUri,
       };
 
       console.log('Inserting appointment with data:', JSON.stringify(appointmentToInsert));
@@ -507,25 +522,116 @@ serve(async (req) => {
       });
 
     } else if (event === 'invitee.rescheduled') {
-      // Update appointment time
-      const { data: appointment, error } = await supabase
+      console.log('[RESCHEDULE] Processing rescheduled event');
+      
+      // Fetch new invitee details for updated URLs
+      let newRescheduleUrl = null;
+      let newCancelUrl = null;
+      let newCalendlyInviteeUri = null;
+      
+      try {
+        const inviteeUuid = inviteeUri?.split('/').pop();
+        const eventUuid = eventUri?.split('/').pop();
+        
+        if (inviteeUuid && eventUuid && accessToken) {
+          const inviteeResponse = await fetch(
+            `https://api.calendly.com/scheduled_events/${eventUuid}/invitees/${inviteeUuid}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          if (inviteeResponse.ok) {
+            const inviteeDetails = await inviteeResponse.json();
+            const resource = inviteeDetails.resource;
+            newRescheduleUrl = resource?.reschedule_url || null;
+            newCancelUrl = resource?.cancel_url || null;
+            newCalendlyInviteeUri = resource?.uri || null;
+            console.log('[RESCHEDULE] Fetched new URLs:', { newRescheduleUrl, newCancelUrl, newCalendlyInviteeUri });
+          }
+        }
+      } catch (error) {
+        console.warn('[RESCHEDULE] Failed to fetch new invitee details:', error);
+      }
+
+      // Find appointment by email and old time (or calendly URI if available)
+      const { data: appointment, error: findError } = await supabase
         .from('appointments')
-        .update({ start_at_utc: startTime })
+        .select('id, team_id')
         .eq('lead_email', leadEmail)
-        .select()
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error rescheduling appointment:', error);
-        await logWebhookEvent(supabase, teamId, event, 'error', { error: error.message });
-        return new Response(JSON.stringify({ error: 'Failed to process reschedule' }), {
+      if (findError || !appointment) {
+        console.error('[RESCHEDULE] Could not find appointment:', findError);
+        await logWebhookEvent(supabase, teamId, event, 'error', { error: 'Appointment not found' });
+        return new Response(JSON.stringify({ error: 'Appointment not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Update appointment with new time and URLs
+      const { error: updateError } = await supabase
+        .from('appointments')
+        .update({ 
+          start_at_utc: startTime,
+          reschedule_url: newRescheduleUrl,
+          cancel_url: newCancelUrl,
+          calendly_invitee_uri: newCalendlyInviteeUri,
+        })
+        .eq('id', appointment.id);
+
+      if (updateError) {
+        console.error('[RESCHEDULE] Error updating appointment:', updateError);
+        await logWebhookEvent(supabase, teamId, event, 'error', { error: updateError.message });
+        return new Response(JSON.stringify({ error: 'Failed to update appointment' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      console.log('Rescheduled appointment:', appointment?.id);
-      await logWebhookEvent(supabase, teamId, event, 'success', { appointmentId: appointment?.id });
+      // Mark any awaiting_reschedule tasks as completed
+      const { error: taskUpdateError } = await supabase
+        .from('confirmation_tasks')
+        .update({ 
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('appointment_id', appointment.id)
+        .eq('status', 'awaiting_reschedule');
+
+      if (taskUpdateError) {
+        console.error('[RESCHEDULE] Error updating awaiting tasks:', taskUpdateError);
+      }
+
+      // Create a new call_confirmation task for the new date
+      const { error: newTaskError } = await supabase.rpc('create_task_with_assignment', {
+        p_team_id: appointment.team_id,
+        p_appointment_id: appointment.id,
+        p_task_type: 'call_confirmation'
+      });
+
+      if (newTaskError) {
+        console.error('[RESCHEDULE] Error creating new task:', newTaskError);
+      }
+
+      // Log activity
+      await supabase.from('activity_logs').insert({
+        team_id: appointment.team_id,
+        appointment_id: appointment.id,
+        actor_name: 'Calendly Webhook',
+        action_type: 'Rescheduled',
+        note: `Client rescheduled via Calendly to ${startTime}`
+      });
+
+      console.log('[RESCHEDULE] Successfully updated appointment and created new task');
+      await logWebhookEvent(supabase, teamId, event, 'success', { appointmentId: appointment.id });
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

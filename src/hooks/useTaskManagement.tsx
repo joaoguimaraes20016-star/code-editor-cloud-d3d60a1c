@@ -412,6 +412,47 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
     }
   };
 
+  const markAwaitingReschedule = async (
+    taskId: string, 
+    appointmentId: string, 
+    reason: string,
+    notes?: string
+  ) => {
+    try {
+      // Update task status to awaiting_reschedule
+      const { error: taskError } = await supabase
+        .from('confirmation_tasks')
+        .update({ 
+          status: 'awaiting_reschedule',
+          auto_return_at: null, // Remove auto-return since we're waiting for webhook
+        })
+        .eq('id', taskId);
+
+      if (taskError) throw taskError;
+
+      // Update appointment status to RESCHEDULED
+      const { error: aptError } = await supabase
+        .from('appointments')
+        .update({ status: 'RESCHEDULED' })
+        .eq('id', appointmentId);
+
+      if (aptError) throw aptError;
+
+      // Log activity with reason and notes
+      const logNote = notes 
+        ? `Marked as awaiting reschedule - ${reason}\nNotes: ${notes}`
+        : `Marked as awaiting reschedule - ${reason}`;
+      
+      await logActivity(appointmentId, 'Awaiting Reschedule', logNote);
+      
+      toast.success('Task marked as awaiting client reschedule');
+      loadTasks();
+    } catch (error) {
+      console.error('Error marking task as awaiting reschedule:', error);
+      toast.error('Failed to update task');
+    }
+  };
+
   const confirmMRRPayment = async (taskId: string, appointmentId: string, mrrAmount: number) => {
     try {
       // Get MRR task details to find the schedule
@@ -571,6 +612,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
     confirmTask,
     noShowTask,
     rescheduleTask,
+    markAwaitingReschedule,
     confirmMRRPayment,
     refreshTasks: loadTasks
   };
