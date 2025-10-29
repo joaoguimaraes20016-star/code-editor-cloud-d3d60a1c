@@ -7,6 +7,7 @@ export function useTabCounts(teamId: string, userId: string, userRole: string) {
     queueTasks: 0,
     mrrDue: 0,
     followUps: 0,
+    overdue: 0,
   });
 
   useEffect(() => {
@@ -88,11 +89,22 @@ export function useTabCounts(teamId: string, userId: string, userRole: string) {
         .not('retarget_date', 'is', null)
         .lte('retarget_date', today);
 
+      // Overdue tasks (appointments before today that are still pending/awaiting)
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const { count: overdueCount } = await supabase
+        .from('confirmation_tasks')
+        .select('*, appointment:appointments!inner(start_at_utc)', { count: 'exact', head: true })
+        .eq('team_id', teamId)
+        .in('status', ['pending', 'awaiting_reschedule'])
+        .lt('appointment.start_at_utc', todayStart.toISOString());
+
       setCounts({
         myTasks: myTasksCount || 0,
         queueTasks: queueTasksCount || 0,
         mrrDue: mrrDueCount || 0,
         followUps: followUpsCount || 0,
+        overdue: overdueCount || 0,
       });
     } catch (error) {
       console.error('Error loading tab counts:', error);

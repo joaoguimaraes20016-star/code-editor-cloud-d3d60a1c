@@ -44,6 +44,7 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
   } = useTaskManagement(teamId, user?.id || '', userRole || '');
 
   const [selectedMember, setSelectedMember] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'all' | 'overdue'>('all');
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   useEffect(() => {
@@ -67,9 +68,24 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     }
   };
 
-  const filteredTasks = selectedMember === 'all' 
+  // Filter tasks by selected member
+  let filteredTasks = selectedMember === 'all' 
     ? myTasks 
     : myTasks.filter(task => task.appointment?.setter_id === selectedMember);
+
+  // If in overdue mode, only show overdue tasks
+  if (viewMode === 'overdue') {
+    const todayStart = startOfDay(new Date());
+    filteredTasks = filteredTasks.filter(task => {
+      if (!task.appointment?.start_at_utc) return false;
+      try {
+        const appointmentDate = parseISO(task.appointment.start_at_utc);
+        return appointmentDate < todayStart;
+      } catch {
+        return false;
+      }
+    });
+  }
 
   // Group tasks by date
   const groupedTasks = useMemo(() => {
@@ -430,38 +446,77 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
       </div>
 
       {(userRole === 'admin' || userRole === 'offer_owner') && (
-        <div className="flex justify-end">
-          <Select value={selectedMember} onValueChange={setSelectedMember}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by member" />
+        <div className="flex justify-end gap-2">
+          <Select value={viewMode} onValueChange={(value: 'all' | 'overdue') => setViewMode(value)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Team Members</SelectItem>
-              {teamMembers.map((member) => (
-                <SelectItem key={member.user_id} value={member.user_id}>
-                  {member.profiles?.full_name || 'Unknown'}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">All Tasks</SelectItem>
+              <SelectItem value="overdue">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  Overdue Only
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
+          
+          {viewMode === 'all' && (
+            <Select value={selectedMember} onValueChange={setSelectedMember}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filter by member" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Team Members</SelectItem>
+                {teamMembers.map((member) => (
+                  <SelectItem key={member.user_id} value={member.user_id}>
+                    {member.profiles?.full_name || 'Unknown'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       )}
 
       {filteredTasks.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">No tasks assigned</p>
+            <p className="text-muted-foreground">
+              {viewMode === 'overdue' 
+                ? 'No overdue tasks - great work!' 
+                : 'No tasks assigned'}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <>
+          {viewMode === 'overdue' && (
+            <Card className="mb-4 border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                  <div>
+                    <p className="font-semibold text-red-900 dark:text-red-100">
+                      {filteredTasks.length} Overdue Task{filteredTasks.length !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-sm text-red-700 dark:text-red-300">
+                      These tasks require immediate attention
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Overdue Tasks */}
           {groupedTasks.overdue.length > 0 && (
             <Card className="card-hover border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-red-600" />
-                  Overdue
+                  {viewMode === 'overdue' ? 'All Overdue Tasks' : 'Overdue'}
                   <Badge variant="secondary" className="ml-2 bg-red-600 text-white">
                     {groupedTasks.overdue.length}
                   </Badge>
