@@ -45,10 +45,15 @@ export function RescheduleWithLinkDialog({
 
   // Listen for appointment status changes
   useEffect(() => {
-    if (!open || !appointmentId) return;
+    if (!open || !appointmentId) {
+      console.log('[RESCHEDULE DIALOG] Not setting up listener:', { open, appointmentId });
+      return;
+    }
+
+    console.log('[RESCHEDULE DIALOG] Setting up listener for appointment:', appointmentId);
 
     const channel = supabase
-      .channel(`appointment-${appointmentId}`)
+      .channel(`appointment-reschedule-${appointmentId}`)
       .on(
         'postgres_changes',
         {
@@ -58,8 +63,12 @@ export function RescheduleWithLinkDialog({
           filter: `id=eq.${appointmentId}`
         },
         (payload) => {
-          console.log('[RESCHEDULE DIALOG] Appointment updated:', payload.new.status);
+          console.log('[RESCHEDULE DIALOG] Received update:', payload);
+          console.log('[RESCHEDULE DIALOG] New status:', payload.new.status);
+          console.log('[RESCHEDULE DIALOG] Old status:', payload.old?.status);
+          
           if (payload.new.status === 'RESCHEDULED' || payload.new.status === 'CANCELLED') {
+            console.log('[RESCHEDULE DIALOG] Status changed to:', payload.new.status, '- closing dialog');
             setDialogState('rescheduled');
             toast.success("Client rescheduled successfully!");
             
@@ -73,9 +82,12 @@ export function RescheduleWithLinkDialog({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[RESCHEDULE DIALOG] Subscription status:', status);
+      });
 
     return () => {
+      console.log('[RESCHEDULE DIALOG] Cleaning up listener');
       supabase.removeChannel(channel);
     };
   }, [open, appointmentId, onOpenChange]);
