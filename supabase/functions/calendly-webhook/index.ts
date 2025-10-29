@@ -496,26 +496,45 @@ serve(async (req) => {
       });
 
     } else if (event === 'invitee.canceled') {
-      // Update appointment status to CANCELLED
-      const { data: appointment, error } = await supabase
+      console.log('[CANCEL] Processing cancellation event');
+      
+      // Find most recent appointment by email and time
+      const { data: appointment, error: findError } = await supabase
         .from('appointments')
-        .update({ status: 'CANCELLED' })
+        .select('id, team_id')
         .eq('lead_email', leadEmail)
         .eq('start_at_utc', startTime)
-        .select()
-        .single();
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error canceling appointment:', error);
-        await logWebhookEvent(supabase, teamId, event, 'error', { error: error.message });
+      if (findError || !appointment) {
+        console.error('[CANCEL] Could not find appointment:', findError);
+        await logWebhookEvent(supabase, teamId, event, 'error', { error: 'Appointment not found' });
+        return new Response(JSON.stringify({ error: 'Failed to find appointment' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Update the specific appointment
+      const { error: updateError } = await supabase
+        .from('appointments')
+        .update({ status: 'CANCELLED' })
+        .eq('id', appointment.id);
+
+      if (updateError) {
+        console.error('[CANCEL] Error updating appointment:', updateError);
+        await logWebhookEvent(supabase, teamId, event, 'error', { error: updateError.message });
         return new Response(JSON.stringify({ error: 'Failed to process cancellation' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      console.log('Canceled appointment:', appointment?.id);
-      await logWebhookEvent(supabase, teamId, event, 'success', { appointmentId: appointment?.id });
+      console.log('[CANCEL] Canceled appointment:', appointment.id);
+      await logWebhookEvent(supabase, teamId, event, 'success', { appointmentId: appointment.id });
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
