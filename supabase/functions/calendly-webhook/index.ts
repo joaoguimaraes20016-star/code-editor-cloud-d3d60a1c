@@ -467,9 +467,23 @@ serve(async (req) => {
         }
         
         appointmentData.status = 'RESCHEDULED';
-        
-        // Delete the old cancelled appointment to avoid duplicates
-        const { error: deleteError } = await supabase
+      }
+
+      // Create admin client for operations that need service role
+      const adminClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+
+      // Delete the old cancelled appointment BEFORE creating the new one
+      if (recentlyCancelled) {
+        const { error: deleteError } = await adminClient
           .from('appointments')
           .delete()
           .eq('id', recentlyCancelled.id);
@@ -503,19 +517,7 @@ serve(async (req) => {
 
       console.log('Inserting appointment with data:', JSON.stringify(appointmentToInsert));
 
-      // Create admin client with service role to bypass RLS
-      const adminClient = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          }
-        }
-      );
-
-      // Direct insert using service role client
+      // Direct insert using service role client (already created above)
       const { data: insertedAppointment, error: insertError } = await adminClient
         .from('appointments')
         .insert([appointmentToInsert])
