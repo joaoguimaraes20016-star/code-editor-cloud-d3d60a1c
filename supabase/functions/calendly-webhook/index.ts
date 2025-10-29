@@ -576,7 +576,7 @@ serve(async (req) => {
         });
       }
 
-      // Update appointment with new time and URLs
+      // Update appointment with new time, URLs, and status
       const { error: updateError } = await supabase
         .from('appointments')
         .update({ 
@@ -584,6 +584,7 @@ serve(async (req) => {
           reschedule_url: newRescheduleUrl,
           cancel_url: newCancelUrl,
           calendly_invitee_uri: newCalendlyInviteeUri,
+          status: 'RESCHEDULED',
         })
         .eq('id', appointment.id);
 
