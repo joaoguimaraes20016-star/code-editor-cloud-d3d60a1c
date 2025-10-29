@@ -270,7 +270,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
     }
   };
 
-  const confirmTask = async (taskId: string, appointmentId: string, setterId: string | null) => {
+  const confirmTask = async (taskId: string, appointmentId: string, setterId: string | null, note?: string) => {
     try {
       // Get current task to store previous state
       const currentTask = myTasks.find(t => t.id === taskId);
@@ -305,7 +305,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
 
       if (taskError) throw taskError;
 
-      await logActivity(appointmentId, 'Confirmed', 'Assigned to you');
+      await logActivity(appointmentId, 'Confirmed', note || 'Assigned to you');
       
       toast.success('Confirmed & Assigned to You', {
         action: {

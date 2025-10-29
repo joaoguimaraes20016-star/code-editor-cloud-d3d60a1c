@@ -112,6 +112,14 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     open: boolean;
     task: any;
   } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    taskId: string;
+    appointmentId: string;
+    setterId: string | null;
+    appointmentName: string;
+  } | null>(null);
+  const [confirmNote, setConfirmNote] = useState('');
 
   const handleRescheduleFollowUp = (taskId: string, appointmentId: string, appointmentName: string) => {
     setRescheduleDialog({ open: true, taskId, appointmentId, appointmentName });
@@ -316,7 +324,13 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               <>
                 <Button 
                   size="sm"
-                  onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
+                  onClick={() => setConfirmDialog({ 
+                    open: true, 
+                    taskId: task.id, 
+                    appointmentId: apt.id,
+                    setterId: apt.setter_id,
+                    appointmentName: apt.lead_name
+                  })}
                 >
                   <CalendarCheck className="h-4 w-4 mr-1" />
                   Confirm
@@ -360,7 +374,13 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               <>
                 <Button 
                   size="sm"
-                  onClick={() => confirmTask(task.id, apt.id, apt.setter_id)}
+                  onClick={() => setConfirmDialog({ 
+                    open: true, 
+                    taskId: task.id, 
+                    appointmentId: apt.id,
+                    setterId: apt.setter_id,
+                    appointmentName: apt.lead_name
+                  })}
                 >
                   <CalendarCheck className="h-4 w-4 mr-1" />
                   Rescheduled
@@ -701,6 +721,64 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
       {rescheduleDialog && (
         <Dialog open={rescheduleDialog.open} onOpenChange={(open) => !open && setRescheduleDialog(null)}>
 ...
+        </Dialog>
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog && (
+        <Dialog open={confirmDialog.open} onOpenChange={(open) => {
+          if (!open) {
+            setConfirmDialog(null);
+            setConfirmNote('');
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-green-600">
+                <CalendarCheck className="h-5 w-5" />
+                Confirmed
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Confirming appointment with <span className="font-medium">{confirmDialog.appointmentName}</span>
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="confirmNote">Add a note (optional)</Label>
+                <Input
+                  id="confirmNote"
+                  placeholder="Client is ready, excited about the call..."
+                  value={confirmNote}
+                  onChange={(e) => setConfirmNote(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setConfirmDialog(null);
+                  setConfirmNote('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  confirmTask(
+                    confirmDialog.taskId, 
+                    confirmDialog.appointmentId, 
+                    confirmDialog.setterId,
+                    confirmNote || undefined
+                  );
+                  setConfirmDialog(null);
+                  setConfirmNote('');
+                }}
+              >
+                Confirm & Assign
+              </Button>
+            </DialogFooter>
+          </DialogContent>
         </Dialog>
       )}
     </div>
