@@ -64,7 +64,13 @@ interface DealPipelineProps {
   teamId: string;
   userRole: string;
   currentUserId: string;
-  onCloseDeal: (appointment: Appointment) => void;
+  onCloseDeal: (
+    appointment: Appointment,
+    undoHandlers?: {
+      trackAction: (action: { table: string; recordId: string; previousData: Record<string, any>; description: string }) => void;
+      showUndoToast: (description: string) => void;
+    }
+  ) => void;
   viewFilter?: 'all' | string; // 'all' or specific closer_id
 }
 
@@ -284,7 +290,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
       }
       
       // Open close deal dialog
-      onCloseDeal({ ...appointment, pipeline_stage: newStage });
+      onCloseDeal({ ...appointment, pipeline_stage: newStage }, { trackAction, showUndoToast });
       return;
     }
 
@@ -534,7 +540,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
       }
       
       // Open the close deal dialog to finalize details
-      onCloseDeal({ ...appointment, pipeline_stage: stage });
+      onCloseDeal({ ...appointment, pipeline_stage: stage }, { trackAction, showUndoToast });
       return;
     }
 
@@ -598,7 +604,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   };
 
   const handleCloseDeal = (appointment: Appointment) => {
-    onCloseDeal(appointment);
+    onCloseDeal(appointment, { trackAction, showUndoToast });
   };
 
   const handleDelete = async (appointmentId: string) => {

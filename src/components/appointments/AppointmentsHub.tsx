@@ -42,10 +42,23 @@ export function AppointmentsHub({
   const [showStageManager, setShowStageManager] = useState(false);
   const [dealToClose, setDealToClose] = useState<any>(null);
   const [showCloseDealDialog, setShowCloseDealDialog] = useState(false);
+  const [undoHandlers, setUndoHandlers] = useState<{
+    trackAction: (action: { table: string; recordId: string; previousData: Record<string, any>; description: string }) => void;
+    showUndoToast: (description: string) => void;
+  } | null>(null);
 
-  const handleCloseDeal = (appointment: any) => {
+  const handleCloseDeal = (
+    appointment: any,
+    handlers?: {
+      trackAction: (action: { table: string; recordId: string; previousData: Record<string, any>; description: string }) => void;
+      showUndoToast: (description: string) => void;
+    }
+  ) => {
     setDealToClose(appointment);
     setShowCloseDealDialog(true);
+    if (handlers) {
+      setUndoHandlers(handlers);
+    }
   };
 
   const handleCloseDealSuccess = () => {
@@ -202,6 +215,8 @@ export function AppointmentsHub({
           onSuccess={handleCloseDealSuccess}
           closerCommissionPct={closerCommissionPct}
           setterCommissionPct={setterCommissionPct}
+          onTrackUndo={undoHandlers?.trackAction}
+          onShowUndoToast={undoHandlers?.showUndoToast}
         />
       </div>
     );
@@ -343,6 +358,8 @@ export function AppointmentsHub({
         onSuccess={handleCloseDealSuccess}
         closerCommissionPct={closerCommissionPct}
         setterCommissionPct={setterCommissionPct}
+        onTrackUndo={undoHandlers?.trackAction}
+        onShowUndoToast={undoHandlers?.showUndoToast}
       />
     </div>
   );

@@ -41,6 +41,13 @@ interface CloseDealDialogProps {
   onSuccess: () => void;
   closerCommissionPct: number;
   setterCommissionPct: number;
+  onTrackUndo?: (action: {
+    table: string;
+    recordId: string;
+    previousData: Record<string, any>;
+    description: string;
+  }) => void;
+  onShowUndoToast?: (description: string) => void;
 }
 
 export function CloseDealDialog({
@@ -51,6 +58,8 @@ export function CloseDealDialog({
   onSuccess,
   closerCommissionPct,
   setterCommissionPct,
+  onTrackUndo,
+  onShowUndoToast,
 }: CloseDealDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -110,6 +119,13 @@ export function CloseDealDialog({
 
     setClosing(true);
     try {
+      // Get current appointment data for undo
+      const { data: currentAppointment } = await supabase
+        .from('appointments')
+        .select('status, closer_id, closer_name, revenue, cc_collected, mrr_amount, mrr_months, product_name')
+        .eq('id', appointment.id)
+        .single();
+      
       // Check if closer is offer owner
       const { data: teamMemberData } = await supabase
         .from('team_members')
@@ -152,6 +168,25 @@ export function CloseDealDialog({
         .eq('id', appointment.id);
 
       if (updateError) throw updateError;
+
+      // Track undo action
+      if (onTrackUndo && currentAppointment) {
+        onTrackUndo({
+          table: "appointments",
+          recordId: appointment.id,
+          previousData: {
+            status: currentAppointment.status,
+            closer_id: currentAppointment.closer_id,
+            closer_name: currentAppointment.closer_name,
+            revenue: currentAppointment.revenue,
+            cc_collected: currentAppointment.cc_collected,
+            mrr_amount: currentAppointment.mrr_amount,
+            mrr_months: currentAppointment.mrr_months,
+            product_name: currentAppointment.product_name,
+          },
+          description: `Closed deal for ${appointment.lead_name}`,
+        });
+      }
 
       // Create a sale record with CC commissions
       const { data: saleData, error: saleError } = await supabase
@@ -267,10 +302,16 @@ export function CloseDealDialog({
         }
       }
 
-      toast({
-        title: 'Deal closed',
-        description: `Successfully closed deal - CC: $${cc.toLocaleString()}${mrr > 0 ? `, MRR: $${mrr.toLocaleString()}/mo for ${months} months` : ''}`,
-      });
+      const successMessage = `Closed deal - CC: $${cc.toLocaleString()}${mrr > 0 ? `, MRR: $${mrr.toLocaleString()}/mo for ${months} months` : ''}`;
+      
+      if (onShowUndoToast) {
+        onShowUndoToast(successMessage);
+      } else {
+        toast({
+          title: 'Deal closed',
+          description: successMessage,
+        });
+      }
 
       onOpenChange(false);
       setCcCollected("");
