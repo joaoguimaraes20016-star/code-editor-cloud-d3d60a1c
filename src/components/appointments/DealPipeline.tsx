@@ -47,6 +47,8 @@ interface Appointment {
   start_at_utc: string;
   cc_collected: number | null;
   mrr_amount: number | null;
+  mrr_months: number | null;
+  product_name: string | null;
   setter_name: string | null;
   setter_id: string | null;
   closer_id: string | null;
@@ -322,11 +324,18 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     );
 
     try {
-      // Track the action for undo
+      // Track the action for undo - capture all relevant fields
       trackAction({
         table: "appointments",
         recordId: appointmentId,
-        previousData: { pipeline_stage: appointment.pipeline_stage },
+        previousData: { 
+          pipeline_stage: appointment.pipeline_stage,
+          status: appointment.status,
+          cc_collected: appointment.cc_collected,
+          mrr_amount: appointment.mrr_amount,
+          mrr_months: appointment.mrr_months,
+          product_name: appointment.product_name,
+        },
         description: `Moved ${appointment.lead_name} to ${newStage}`,
       });
 
@@ -554,11 +563,18 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     );
 
     try {
-      // Track the action for undo
+      // Track the action for undo - capture all relevant fields
       trackAction({
         table: "appointments",
         recordId: appointmentId,
-        previousData: { pipeline_stage: appointment.pipeline_stage },
+        previousData: { 
+          pipeline_stage: appointment.pipeline_stage,
+          status: appointment.status,
+          cc_collected: appointment.cc_collected,
+          mrr_amount: appointment.mrr_amount,
+          mrr_months: appointment.mrr_months,
+          product_name: appointment.product_name,
+        },
         description: `Moved ${appointment.lead_name} to ${stage}`,
       });
 
