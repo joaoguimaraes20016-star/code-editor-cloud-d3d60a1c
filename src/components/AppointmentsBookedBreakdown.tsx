@@ -1,21 +1,50 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, UserCheck, Calendar, CalendarDays, CalendarClock } from "lucide-react";
+import { User, UserCheck, Calendar, CalendarDays, CalendarClock, PhoneCall, CheckCircle2, TrendingUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, startOfWeek, startOfDay, endOfDay } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
-interface AppointmentStats {
+interface DetailedStats {
   thisMonth: number;
   thisWeek: number;
   today: number;
   total: number;
 }
 
-interface TeamMemberStats {
+interface SetterStats {
+  booked: DetailedStats;
+  showed: DetailedStats;
+  showRate: {
+    thisMonth: number;
+    thisWeek: number;
+    today: number;
+    total: number;
+  };
+}
+
+interface CloserStats {
+  taken: DetailedStats;
+  closed: DetailedStats;
+  closeRate: {
+    thisMonth: number;
+    thisWeek: number;
+    today: number;
+    total: number;
+  };
+}
+
+interface TeamMemberSetterStats {
   name: string;
   id: string;
-  stats: AppointmentStats;
+  stats: SetterStats;
+}
+
+interface TeamMemberCloserStats {
+  name: string;
+  id: string;
+  stats: CloserStats;
 }
 
 interface AppointmentsBookedBreakdownProps {
@@ -23,8 +52,8 @@ interface AppointmentsBookedBreakdownProps {
 }
 
 export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakdownProps) {
-  const [setterStats, setSetterStats] = useState<TeamMemberStats[]>([]);
-  const [closerStats, setCloserStats] = useState<TeamMemberStats[]>([]);
+  const [setterStats, setSetterStats] = useState<TeamMemberSetterStats[]>([]);
+  const [closerStats, setCloserStats] = useState<TeamMemberCloserStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,57 +78,129 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
       if (error) throw error;
 
       // Process setter stats
-      const setterMap = new Map<string, { name: string; stats: AppointmentStats }>();
+      const setterMap = new Map<string, { name: string; booked: number[]; showed: number[] }>();
       
       appointments?.forEach(apt => {
         if (apt.setter_id && apt.setter_name) {
           if (!setterMap.has(apt.setter_id)) {
             setterMap.set(apt.setter_id, {
               name: apt.setter_name,
-              stats: { thisMonth: 0, thisWeek: 0, today: 0, total: 0 }
+              booked: [0, 0, 0, 0], // [total, month, week, today]
+              showed: [0, 0, 0, 0]
             });
           }
           
-          const stats = setterMap.get(apt.setter_id)!.stats;
+          const data = setterMap.get(apt.setter_id)!;
           const aptDate = new Date(apt.start_at_utc);
+          const showed = apt.status !== 'NO_SHOW' && apt.status !== 'CANCELLED';
           
-          stats.total += 1;
-          if (aptDate >= monthStart) stats.thisMonth += 1;
-          if (aptDate >= weekStart) stats.thisWeek += 1;
-          if (aptDate >= todayStart && aptDate <= todayEnd) stats.today += 1;
+          data.booked[0] += 1; // total
+          if (showed) data.showed[0] += 1;
+          
+          if (aptDate >= monthStart) {
+            data.booked[1] += 1;
+            if (showed) data.showed[1] += 1;
+          }
+          if (aptDate >= weekStart) {
+            data.booked[2] += 1;
+            if (showed) data.showed[2] += 1;
+          }
+          if (aptDate >= todayStart && aptDate <= todayEnd) {
+            data.booked[3] += 1;
+            if (showed) data.showed[3] += 1;
+          }
         }
       });
 
       // Process closer stats
-      const closerMap = new Map<string, { name: string; stats: AppointmentStats }>();
+      const closerMap = new Map<string, { name: string; taken: number[]; closed: number[] }>();
       
       appointments?.forEach(apt => {
         if (apt.closer_id && apt.closer_name) {
           if (!closerMap.has(apt.closer_id)) {
             closerMap.set(apt.closer_id, {
               name: apt.closer_name,
-              stats: { thisMonth: 0, thisWeek: 0, today: 0, total: 0 }
+              taken: [0, 0, 0, 0], // [total, month, week, today]
+              closed: [0, 0, 0, 0]
             });
           }
           
-          const stats = closerMap.get(apt.closer_id)!.stats;
+          const data = closerMap.get(apt.closer_id)!;
           const aptDate = new Date(apt.start_at_utc);
+          const showed = apt.status !== 'NO_SHOW' && apt.status !== 'CANCELLED';
+          const closed = apt.status === 'CLOSED';
           
-          stats.total += 1;
-          if (aptDate >= monthStart) stats.thisMonth += 1;
-          if (aptDate >= weekStart) stats.thisWeek += 1;
-          if (aptDate >= todayStart && aptDate <= todayEnd) stats.today += 1;
+          if (showed) {
+            data.taken[0] += 1; // total
+            if (closed) data.closed[0] += 1;
+            
+            if (aptDate >= monthStart) {
+              data.taken[1] += 1;
+              if (closed) data.closed[1] += 1;
+            }
+            if (aptDate >= weekStart) {
+              data.taken[2] += 1;
+              if (closed) data.closed[2] += 1;
+            }
+            if (aptDate >= todayStart && aptDate <= todayEnd) {
+              data.taken[3] += 1;
+              if (closed) data.closed[3] += 1;
+            }
+          }
         }
       });
 
-      // Convert to arrays and sort by this month's count
-      const settersArray = Array.from(setterMap.entries())
-        .map(([id, data]) => ({ id, name: data.name, stats: data.stats }))
-        .sort((a, b) => b.stats.thisMonth - a.stats.thisMonth);
+      // Convert setters to arrays with calculated rates
+      const settersArray = Array.from(setterMap.entries()).map(([id, data]) => ({
+        id,
+        name: data.name,
+        stats: {
+          booked: {
+            total: data.booked[0],
+            thisMonth: data.booked[1],
+            thisWeek: data.booked[2],
+            today: data.booked[3]
+          },
+          showed: {
+            total: data.showed[0],
+            thisMonth: data.showed[1],
+            thisWeek: data.showed[2],
+            today: data.showed[3]
+          },
+          showRate: {
+            total: data.booked[0] > 0 ? (data.showed[0] / data.booked[0]) * 100 : 0,
+            thisMonth: data.booked[1] > 0 ? (data.showed[1] / data.booked[1]) * 100 : 0,
+            thisWeek: data.booked[2] > 0 ? (data.showed[2] / data.booked[2]) * 100 : 0,
+            today: data.booked[3] > 0 ? (data.showed[3] / data.booked[3]) * 100 : 0
+          }
+        }
+      })).sort((a, b) => b.stats.booked.thisMonth - a.stats.booked.thisMonth);
 
-      const closersArray = Array.from(closerMap.entries())
-        .map(([id, data]) => ({ id, name: data.name, stats: data.stats }))
-        .sort((a, b) => b.stats.thisMonth - a.stats.thisMonth);
+      // Convert closers to arrays with calculated rates
+      const closersArray = Array.from(closerMap.entries()).map(([id, data]) => ({
+        id,
+        name: data.name,
+        stats: {
+          taken: {
+            total: data.taken[0],
+            thisMonth: data.taken[1],
+            thisWeek: data.taken[2],
+            today: data.taken[3]
+          },
+          closed: {
+            total: data.closed[0],
+            thisMonth: data.closed[1],
+            thisWeek: data.closed[2],
+            today: data.closed[3]
+          },
+          closeRate: {
+            total: data.taken[0] > 0 ? (data.closed[0] / data.taken[0]) * 100 : 0,
+            thisMonth: data.taken[1] > 0 ? (data.closed[1] / data.taken[1]) * 100 : 0,
+            thisWeek: data.taken[2] > 0 ? (data.closed[2] / data.taken[2]) * 100 : 0,
+            today: data.taken[3] > 0 ? (data.closed[3] / data.taken[3]) * 100 : 0
+          }
+        }
+      })).sort((a, b) => b.stats.closed.thisMonth - a.stats.closed.thisMonth);
 
       setSetterStats(settersArray);
       setCloserStats(closersArray);
@@ -110,111 +211,194 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
     }
   };
 
-  const renderStatsCard = (member: TeamMemberStats, icon: typeof User) => {
-    const Icon = icon;
-    
+  const renderSetterCard = (member: TeamMemberSetterStats) => {
     return (
       <div 
         key={member.id} 
-        className="p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors space-y-3"
+        className="p-5 rounded-lg bg-card border hover:border-primary/50 transition-all space-y-4"
       >
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Icon className="h-5 w-5 text-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold">{member.name}</p>
+              <p className="text-xs text-muted-foreground">Setter</p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold">{member.name}</p>
-          </div>
+          <Badge variant="outline" className="gap-1">
+            <TrendingUp className="h-3 w-3" />
+            {member.stats.showRate.thisMonth.toFixed(1)}% Show Rate
+          </Badge>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm text-muted-foreground">This Month</p>
-              <p className="text-xl font-bold text-foreground">{member.stats.thisMonth}</p>
-            </div>
+        <div className="grid grid-cols-4 gap-3">
+          <div className="text-center p-2 rounded bg-secondary/30">
+            <p className="text-xs text-muted-foreground mb-1">All Time</p>
+            <p className="text-lg font-bold">{member.stats.booked.total}</p>
+            <p className="text-xs text-success">{member.stats.showed.total} showed</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {member.stats.showRate.total.toFixed(0)}% rate
+            </p>
           </div>
           
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm text-muted-foreground">This Week</p>
-              <p className="text-xl font-bold text-foreground">{member.stats.thisWeek}</p>
-            </div>
+          <div className="text-center p-2 rounded bg-primary/5 border border-primary/20">
+            <p className="text-xs text-muted-foreground mb-1">This Month</p>
+            <p className="text-lg font-bold text-primary">{member.stats.booked.thisMonth}</p>
+            <p className="text-xs text-success">{member.stats.showed.thisMonth} showed</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {member.stats.showRate.thisMonth.toFixed(0)}% rate
+            </p>
           </div>
           
-          <div className="flex items-center gap-2">
-            <CalendarClock className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm text-muted-foreground">Today</p>
-              <p className="text-xl font-bold text-foreground">{member.stats.today}</p>
-            </div>
+          <div className="text-center p-2 rounded bg-secondary/30">
+            <p className="text-xs text-muted-foreground mb-1">This Week</p>
+            <p className="text-lg font-bold">{member.stats.booked.thisWeek}</p>
+            <p className="text-xs text-success">{member.stats.showed.thisWeek} showed</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {member.stats.showRate.thisWeek.toFixed(0)}% rate
+            </p>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm text-muted-foreground">All Time</p>
-              <p className="text-xl font-bold text-foreground">{member.stats.total}</p>
-            </div>
+          <div className="text-center p-2 rounded bg-secondary/30">
+            <p className="text-xs text-muted-foreground mb-1">Today</p>
+            <p className="text-lg font-bold">{member.stats.booked.today}</p>
+            <p className="text-xs text-success">{member.stats.showed.today} showed</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {member.stats.booked.today > 0 ? member.stats.showRate.today.toFixed(0) : '0'}% rate
+            </p>
           </div>
         </div>
       </div>
     );
   };
 
-  const renderStatsList = (
-    data: TeamMemberStats[],
-    icon: typeof User,
-    emptyMessage: string
-  ) => {
-    if (loading) {
-      return (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Loading stats...</p>
-        </div>
-      );
-    }
-
-    if (data.length === 0) {
-      return (
-        <p className="text-muted-foreground text-center py-8">
-          {emptyMessage}
-        </p>
-      );
-    }
-
+  const renderCloserCard = (member: TeamMemberCloserStats) => {
     return (
-      <div className="space-y-4">
-        {data.map(member => renderStatsCard(member, icon))}
+      <div 
+        key={member.id} 
+        className="p-5 rounded-lg bg-card border hover:border-primary/50 transition-all space-y-4"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <UserCheck className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold">{member.name}</p>
+              <p className="text-xs text-muted-foreground">Closer</p>
+            </div>
+          </div>
+          <Badge variant="outline" className="gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            {member.stats.closeRate.thisMonth.toFixed(1)}% Close Rate
+          </Badge>
+        </div>
+
+        <div className="space-y-2">
+          <div className="grid grid-cols-4 gap-3">
+            <div className="text-center p-2 rounded bg-secondary/30">
+              <p className="text-xs text-muted-foreground mb-1">All Time</p>
+              <div className="flex items-center justify-center gap-1">
+                <PhoneCall className="h-3 w-3 text-muted-foreground" />
+                <p className="text-lg font-bold">{member.stats.taken.total}</p>
+              </div>
+              <p className="text-xs text-success mt-1">{member.stats.closed.total} closed</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {member.stats.closeRate.total.toFixed(0)}% rate
+              </p>
+            </div>
+            
+            <div className="text-center p-2 rounded bg-primary/5 border border-primary/20">
+              <p className="text-xs text-muted-foreground mb-1">This Month</p>
+              <div className="flex items-center justify-center gap-1">
+                <PhoneCall className="h-3 w-3 text-primary" />
+                <p className="text-lg font-bold text-primary">{member.stats.taken.thisMonth}</p>
+              </div>
+              <p className="text-xs text-success mt-1">{member.stats.closed.thisMonth} closed</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {member.stats.closeRate.thisMonth.toFixed(0)}% rate
+              </p>
+            </div>
+            
+            <div className="text-center p-2 rounded bg-secondary/30">
+              <p className="text-xs text-muted-foreground mb-1">This Week</p>
+              <div className="flex items-center justify-center gap-1">
+                <PhoneCall className="h-3 w-3 text-muted-foreground" />
+                <p className="text-lg font-bold">{member.stats.taken.thisWeek}</p>
+              </div>
+              <p className="text-xs text-success mt-1">{member.stats.closed.thisWeek} closed</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {member.stats.closeRate.thisWeek.toFixed(0)}% rate
+              </p>
+            </div>
+            
+            <div className="text-center p-2 rounded bg-secondary/30">
+              <p className="text-xs text-muted-foreground mb-1">Today</p>
+              <div className="flex items-center justify-center gap-1">
+                <PhoneCall className="h-3 w-3 text-muted-foreground" />
+                <p className="text-lg font-bold">{member.stats.taken.today}</p>
+              </div>
+              <p className="text-xs text-success mt-1">{member.stats.closed.today} closed</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {member.stats.taken.today > 0 ? member.stats.closeRate.today.toFixed(0) : '0'}% rate
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Team Performance Metrics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Loading detailed stats...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Appointments Booked</CardTitle>
+        <CardTitle>Team Performance Metrics</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="setters" className="w-full">
+        <Tabs defaultValue="closers" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="setters">Setters</TabsTrigger>
             <TabsTrigger value="closers">Closers</TabsTrigger>
+            <TabsTrigger value="setters">Setters</TabsTrigger>
           </TabsList>
-          <TabsContent value="setters" className="mt-4">
-            {renderStatsList(
-              setterStats,
-              User,
-              "No setter appointments booked yet"
+          
+          <TabsContent value="closers" className="mt-4">
+            {closerStats.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No closer data available yet
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {closerStats.map(member => renderCloserCard(member))}
+              </div>
             )}
           </TabsContent>
-          <TabsContent value="closers" className="mt-4">
-            {renderStatsList(
-              closerStats,
-              UserCheck,
-              "No closer appointments booked yet"
+          
+          <TabsContent value="setters" className="mt-4">
+            {setterStats.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No setter data available yet
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {setterStats.map(member => renderSetterCard(member))}
+              </div>
             )}
           </TabsContent>
         </Tabs>
