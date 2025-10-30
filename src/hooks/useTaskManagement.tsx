@@ -199,8 +199,8 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
       
       // Filter tasks based on who they're assigned to
       const my = userRole === 'admin' || userRole === 'offer_owner'
-        ? uniqueTasks.filter(t => t.assigned_to !== null) // All assigned tasks
-        : uniqueTasks.filter(t => t.assigned_to === userId); // Only tasks assigned to me
+        ? uniqueTasks // Admins see all tasks (assigned + unassigned)
+        : uniqueTasks.filter(t => t.assigned_to === userId || t.assigned_to === null); // Regular users see their tasks + unassigned
       
       // Queue tasks: completely unassigned (no assigned_to)
       const queue = uniqueTasks.filter(t => t.assigned_to === null);
