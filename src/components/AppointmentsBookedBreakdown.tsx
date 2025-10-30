@@ -219,54 +219,61 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-5 w-5 text-primary" />
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="font-semibold">{member.name}</p>
+              <p className="font-semibold text-lg">{member.name}</p>
               <p className="text-xs text-muted-foreground">Setter</p>
             </div>
           </div>
-          <Badge variant="outline" className="gap-1">
-            <TrendingUp className="h-3 w-3" />
-            {member.stats.showRate.thisMonth.toFixed(1)}% Show Rate
-          </Badge>
+          <div className="text-right">
+            <Badge variant="secondary" className="gap-1.5 px-3 py-1.5 text-sm font-semibold">
+              <TrendingUp className="h-4 w-4" />
+              {member.stats.showRate.thisMonth.toFixed(1)}%
+            </Badge>
+            <p className="text-xs text-muted-foreground mt-1">Show Rate</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-3">
-          <div className="text-center p-2 rounded bg-secondary/30">
-            <p className="text-xs text-muted-foreground mb-1">All Time</p>
-            <p className="text-lg font-bold">{member.stats.booked.total}</p>
-            <p className="text-xs text-success">{member.stats.showed.total} showed</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {member.stats.showRate.total.toFixed(0)}% rate
+          <div className="text-center p-3 rounded bg-secondary/30">
+            <p className="text-xs text-muted-foreground mb-2 font-medium">All Time</p>
+            <p className="text-2xl font-bold mb-1">{member.stats.booked.total}</p>
+            <p className="text-xs text-muted-foreground mb-1">Booked</p>
+            <p className="text-sm text-success font-semibold">{member.stats.showed.total} confirmed</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {member.stats.showRate.total.toFixed(1)}% show rate
             </p>
           </div>
           
-          <div className="text-center p-2 rounded bg-primary/5 border border-primary/20">
-            <p className="text-xs text-muted-foreground mb-1">This Month</p>
-            <p className="text-lg font-bold text-primary">{member.stats.booked.thisMonth}</p>
-            <p className="text-xs text-success">{member.stats.showed.thisMonth} showed</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {member.stats.showRate.thisMonth.toFixed(0)}% rate
+          <div className="text-center p-3 rounded bg-primary/5 border-2 border-primary/30">
+            <p className="text-xs text-muted-foreground mb-2 font-medium">This Month</p>
+            <p className="text-2xl font-bold text-primary mb-1">{member.stats.booked.thisMonth}</p>
+            <p className="text-xs text-muted-foreground mb-1">Booked</p>
+            <p className="text-sm text-success font-semibold">{member.stats.showed.thisMonth} confirmed</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {member.stats.showRate.thisMonth.toFixed(1)}% show rate
             </p>
           </div>
           
-          <div className="text-center p-2 rounded bg-secondary/30">
-            <p className="text-xs text-muted-foreground mb-1">This Week</p>
-            <p className="text-lg font-bold">{member.stats.booked.thisWeek}</p>
-            <p className="text-xs text-success">{member.stats.showed.thisWeek} showed</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {member.stats.showRate.thisWeek.toFixed(0)}% rate
+          <div className="text-center p-3 rounded bg-secondary/30">
+            <p className="text-xs text-muted-foreground mb-2 font-medium">This Week</p>
+            <p className="text-2xl font-bold mb-1">{member.stats.booked.thisWeek}</p>
+            <p className="text-xs text-muted-foreground mb-1">Booked</p>
+            <p className="text-sm text-success font-semibold">{member.stats.showed.thisWeek} confirmed</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {member.stats.showRate.thisWeek.toFixed(1)}% show rate
             </p>
           </div>
           
-          <div className="text-center p-2 rounded bg-secondary/30">
-            <p className="text-xs text-muted-foreground mb-1">Today</p>
-            <p className="text-lg font-bold">{member.stats.booked.today}</p>
-            <p className="text-xs text-success">{member.stats.showed.today} showed</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {member.stats.booked.today > 0 ? member.stats.showRate.today.toFixed(0) : '0'}% rate
+          <div className="text-center p-3 rounded bg-secondary/30">
+            <p className="text-xs text-muted-foreground mb-2 font-medium">Today</p>
+            <p className="text-2xl font-bold mb-1">{member.stats.booked.today}</p>
+            <p className="text-xs text-muted-foreground mb-1">Booked</p>
+            <p className="text-sm text-success font-semibold">{member.stats.showed.today} confirmed</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {member.stats.booked.today > 0 ? member.stats.showRate.today.toFixed(1) : '0'}% show rate
             </p>
           </div>
         </div>
@@ -282,69 +289,74 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <UserCheck className="h-5 w-5 text-primary" />
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <UserCheck className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="font-semibold">{member.name}</p>
+              <p className="font-semibold text-lg">{member.name}</p>
               <p className="text-xs text-muted-foreground">Closer</p>
             </div>
           </div>
-          <Badge variant="outline" className="gap-1">
-            <CheckCircle2 className="h-3 w-3" />
-            {member.stats.closeRate.thisMonth.toFixed(1)}% Close Rate
-          </Badge>
+          <div className="text-right">
+            <Badge variant="secondary" className="gap-1.5 px-3 py-1.5 text-sm font-semibold">
+              <CheckCircle2 className="h-4 w-4" />
+              {member.stats.closeRate.thisMonth.toFixed(1)}%
+            </Badge>
+            <p className="text-xs text-muted-foreground mt-1">Close Rate</p>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="grid grid-cols-4 gap-3">
-            <div className="text-center p-2 rounded bg-secondary/30">
-              <p className="text-xs text-muted-foreground mb-1">All Time</p>
-              <div className="flex items-center justify-center gap-1">
-                <PhoneCall className="h-3 w-3 text-muted-foreground" />
-                <p className="text-lg font-bold">{member.stats.taken.total}</p>
-              </div>
-              <p className="text-xs text-success mt-1">{member.stats.closed.total} closed</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {member.stats.closeRate.total.toFixed(0)}% rate
-              </p>
+        <div className="grid grid-cols-4 gap-3">
+          <div className="text-center p-3 rounded bg-secondary/30">
+            <p className="text-xs text-muted-foreground mb-2 font-medium">All Time</p>
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <PhoneCall className="h-4 w-4 text-muted-foreground" />
+              <p className="text-2xl font-bold">{member.stats.taken.total}</p>
             </div>
-            
-            <div className="text-center p-2 rounded bg-primary/5 border border-primary/20">
-              <p className="text-xs text-muted-foreground mb-1">This Month</p>
-              <div className="flex items-center justify-center gap-1">
-                <PhoneCall className="h-3 w-3 text-primary" />
-                <p className="text-lg font-bold text-primary">{member.stats.taken.thisMonth}</p>
-              </div>
-              <p className="text-xs text-success mt-1">{member.stats.closed.thisMonth} closed</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {member.stats.closeRate.thisMonth.toFixed(0)}% rate
-              </p>
+            <p className="text-xs text-muted-foreground mb-1">Calls Taken</p>
+            <p className="text-sm text-success font-semibold">{member.stats.closed.total} closed</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {member.stats.closeRate.total.toFixed(1)}% close rate
+            </p>
+          </div>
+          
+          <div className="text-center p-3 rounded bg-primary/5 border-2 border-primary/30">
+            <p className="text-xs text-muted-foreground mb-2 font-medium">This Month</p>
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <PhoneCall className="h-4 w-4 text-primary" />
+              <p className="text-2xl font-bold text-primary">{member.stats.taken.thisMonth}</p>
             </div>
-            
-            <div className="text-center p-2 rounded bg-secondary/30">
-              <p className="text-xs text-muted-foreground mb-1">This Week</p>
-              <div className="flex items-center justify-center gap-1">
-                <PhoneCall className="h-3 w-3 text-muted-foreground" />
-                <p className="text-lg font-bold">{member.stats.taken.thisWeek}</p>
-              </div>
-              <p className="text-xs text-success mt-1">{member.stats.closed.thisWeek} closed</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {member.stats.closeRate.thisWeek.toFixed(0)}% rate
-              </p>
+            <p className="text-xs text-muted-foreground mb-1">Calls Taken</p>
+            <p className="text-sm text-success font-semibold">{member.stats.closed.thisMonth} closed</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {member.stats.closeRate.thisMonth.toFixed(1)}% close rate
+            </p>
+          </div>
+          
+          <div className="text-center p-3 rounded bg-secondary/30">
+            <p className="text-xs text-muted-foreground mb-2 font-medium">This Week</p>
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <PhoneCall className="h-4 w-4 text-muted-foreground" />
+              <p className="text-2xl font-bold">{member.stats.taken.thisWeek}</p>
             </div>
-            
-            <div className="text-center p-2 rounded bg-secondary/30">
-              <p className="text-xs text-muted-foreground mb-1">Today</p>
-              <div className="flex items-center justify-center gap-1">
-                <PhoneCall className="h-3 w-3 text-muted-foreground" />
-                <p className="text-lg font-bold">{member.stats.taken.today}</p>
-              </div>
-              <p className="text-xs text-success mt-1">{member.stats.closed.today} closed</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {member.stats.taken.today > 0 ? member.stats.closeRate.today.toFixed(0) : '0'}% rate
-              </p>
+            <p className="text-xs text-muted-foreground mb-1">Calls Taken</p>
+            <p className="text-sm text-success font-semibold">{member.stats.closed.thisWeek} closed</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {member.stats.closeRate.thisWeek.toFixed(1)}% close rate
+            </p>
+          </div>
+          
+          <div className="text-center p-3 rounded bg-secondary/30">
+            <p className="text-xs text-muted-foreground mb-2 font-medium">Today</p>
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <PhoneCall className="h-4 w-4 text-muted-foreground" />
+              <p className="text-2xl font-bold">{member.stats.taken.today}</p>
             </div>
+            <p className="text-xs text-muted-foreground mb-1">Calls Taken</p>
+            <p className="text-sm text-success font-semibold">{member.stats.closed.today} closed</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {member.stats.taken.today > 0 ? member.stats.closeRate.today.toFixed(1) : '0'}% close rate
+            </p>
           </div>
         </div>
       </div>
