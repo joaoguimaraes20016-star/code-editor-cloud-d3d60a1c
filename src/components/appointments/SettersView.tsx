@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UnassignedAppointments } from "../appointments/UnassignedAppointments";
 import { AllNewAppointments } from "../AllNewAppointments";
+import { MyClaimed } from "../MyClaimed";
 import { useAuth } from "@/hooks/useAuth";
 
 interface SettersViewProps {
@@ -27,7 +28,10 @@ export function SettersView({ teamId, closerCommissionPct, setterCommissionPct }
             Unassigned
           </TabsTrigger>
           <TabsTrigger value="assigned">
-            Assigned
+            All Assigned
+          </TabsTrigger>
+          <TabsTrigger value="my-appointments">
+            My Appointments
           </TabsTrigger>
         </TabsList>
 
@@ -42,6 +46,15 @@ export function SettersView({ teamId, closerCommissionPct, setterCommissionPct }
             setterCommissionPct={setterCommissionPct}
             userRole="admin"
             currentUserId={user?.id}
+            showAllAssigned={true}
+          />
+        </TabsContent>
+
+        <TabsContent value="my-appointments" className="mt-6">
+          <MyClaimed
+            teamId={teamId}
+            closerCommissionPct={closerCommissionPct}
+            setterCommissionPct={setterCommissionPct}
           />
         </TabsContent>
       </Tabs>
