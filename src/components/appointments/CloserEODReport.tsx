@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, TrendingUp, AlertCircle, Clock, ArrowRight, Download, CheckCircle } from "lucide-react";
+import { DollarSign, TrendingUp, AlertCircle, Clock, ArrowRight, Download, CheckCircle, Phone, PhoneCall, RefreshCw, CreditCard } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
   const [mrrTasksCompleted, setMrrTasksCompleted] = useState<any[]>([]);
   const [confirmTasksCompleted, setConfirmTasksCompleted] = useState<any[]>([]);
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
+  const [monthlyStats, setMonthlyStats] = useState({ booked: 0, callsTaken: 0 });
 
   useEffect(() => {
     loadData();
@@ -116,6 +117,25 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
         .limit(1)
         .maybeSingle();
 
+      // Load monthly stats
+      const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+      
+      const { data: monthlyAppts } = await supabase
+        .from('appointments')
+        .select('id, status')
+        .eq('closer_id', userId)
+        .gte('created_at', startOfMonth.toISOString())
+        .lte('created_at', endOfMonth.toISOString());
+
+      const { data: monthlyCalls } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('closer_id', userId)
+        .in('status', ['CONFIRMED', 'CLOSED', 'NO_SHOW'])
+        .gte('start_at_utc', startOfMonth.toISOString())
+        .lte('start_at_utc', endOfMonth.toISOString());
+
       setDealsClosed(closed || []);
       setDepositsCollected(deposits || []);
       setPipelineActivity(pipeline || []);
@@ -123,6 +143,10 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
       setMrrTasksCompleted((mrrTasks || []).filter(t => t.completed_at));
       setConfirmTasksCompleted((confirmTasks || []).filter(t => t.completed_at));
       setLastActivity(activity ? new Date(activity.created_at) : null);
+      setMonthlyStats({
+        booked: monthlyAppts?.length || 0,
+        callsTaken: monthlyCalls?.length || 0
+      });
     } catch (error) {
       console.error('Error loading closer EOD data:', error);
     } finally {
@@ -200,33 +224,57 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Key Metrics */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <Phone className="h-6 w-6 text-primary mx-auto mb-2" />
+                <p className="text-4xl font-bold text-primary">{monthlyStats.booked}</p>
+                <p className="text-sm font-medium text-muted-foreground">Appointments Booked (Month)</p>
+                <p className="text-xs text-muted-foreground mt-1">All appointments set</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-accent/5 border-accent/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <PhoneCall className="h-6 w-6 text-accent mx-auto mb-2" />
+                <p className="text-4xl font-bold text-accent">{monthlyStats.callsTaken}</p>
+                <p className="text-sm font-medium text-muted-foreground">Calls Taken (Month)</p>
+                <p className="text-xs text-muted-foreground mt-1">Confirmed + Closed + No-shows</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid grid-cols-5 gap-4">
           <Card className="bg-success/5 border-success/20">
             <CardContent className="pt-6">
               <div className="text-center">
                 <DollarSign className="h-5 w-5 text-success mx-auto mb-2" />
                 <p className="text-3xl font-bold text-success">{dealsClosed.length}</p>
-                <p className="text-sm text-muted-foreground">Closed</p>
+                <p className="text-sm text-muted-foreground">Closed Today</p>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-primary/5 border-primary/20">
+          <Card className="bg-chart-1/5 border-chart-1/20">
             <CardContent className="pt-6">
               <div className="text-center">
-                <TrendingUp className="h-5 w-5 text-primary mx-auto mb-2" />
-                <p className="text-3xl font-bold text-primary">{pipelineActivity.length}</p>
-                <p className="text-sm text-muted-foreground">Moves</p>
+                <TrendingUp className="h-5 w-5 text-chart-1 mx-auto mb-2" />
+                <p className="text-3xl font-bold text-chart-1">{pipelineActivity.length}</p>
+                <p className="text-sm text-muted-foreground">Pipeline Moves</p>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-accent/5 border-accent/20">
+          <Card className="bg-chart-3/5 border-chart-3/20">
             <CardContent className="pt-6">
               <div className="text-center">
-                <DollarSign className="h-5 w-5 text-accent mx-auto mb-2" />
-                <p className="text-xl font-bold text-accent">${totalRevenue.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Revenue</p>
+                <DollarSign className="h-5 w-5 text-chart-3 mx-auto mb-2" />
+                <p className="text-xl font-bold text-chart-3">${totalRevenue.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Revenue Today</p>
               </div>
             </CardContent>
           </Card>
@@ -268,7 +316,10 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(deal.updated_at), 'h:mm a')}
                       </div>
-                      <Badge variant="success" className="shrink-0">💰 Deal Closed</Badge>
+                      <Badge variant="success" className="shrink-0 gap-1">
+                        <DollarSign className="h-3 w-3" />
+                        Deal Closed
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium text-lg">{deal.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{deal.lead_email}</p>
@@ -293,7 +344,10 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(task.completed_at), 'h:mm a')}
                       </div>
-                      <Badge variant="secondary" className="shrink-0">🔄 MRR Confirmed</Badge>
+                      <Badge variant="secondary" className="shrink-0 gap-1">
+                        <RefreshCw className="h-3 w-3" />
+                        MRR Confirmed
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium">{task.mrr_schedule?.client_name}</p>
                         <p className="text-sm text-muted-foreground">{task.mrr_schedule?.client_email}</p>
@@ -313,7 +367,10 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(task.completed_at), 'h:mm a')}
                       </div>
-                      <Badge variant="default" className="shrink-0">✓ Call Confirmed</Badge>
+                      <Badge variant="default" className="shrink-0 gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Call Confirmed
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium">{task.appointment?.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
@@ -330,7 +387,10 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(deposit.created_at), 'h:mm a')}
                       </div>
-                      <Badge variant="info" className="shrink-0">💳 Deposit Collected</Badge>
+                      <Badge variant="info" className="shrink-0 gap-1">
+                        <CreditCard className="h-3 w-3" />
+                        Deposit Collected
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium">{deposit.appointment?.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{deposit.appointment?.lead_email}</p>
@@ -347,7 +407,10 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(activity.created_at), 'h:mm a')}
                       </div>
-                      <Badge variant="outline" className="shrink-0">📊 {activity.action_type}</Badge>
+                      <Badge variant="outline" className="shrink-0 gap-1">
+                        <TrendingUp className="h-3 w-3" />
+                        {activity.action_type}
+                      </Badge>
                       <div className="flex-1">
                         {activity.note && <p className="text-sm text-muted-foreground">{activity.note}</p>}
                       </div>
@@ -360,7 +423,10 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
                   content: (
                     <div className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-destructive bg-destructive/5">
                       <div className="text-xs text-destructive min-w-[80px]">OVERDUE</div>
-                      <Badge variant="destructive" className="shrink-0">⚠️ Overdue Follow-up</Badge>
+                      <Badge variant="destructive" className="shrink-0 gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Overdue Follow-up
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium text-destructive">{task.appointment?.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>

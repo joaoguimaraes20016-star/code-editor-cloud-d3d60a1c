@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, CheckCircle, AlertCircle, Clock, Phone, TrendingUp, Download } from "lucide-react";
+import { Calendar, CheckCircle, AlertCircle, Clock, Phone, TrendingUp, Download, DollarSign, PhoneCall, XCircle, RefreshCw } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
   const [reschedules, setReschedules] = useState<any[]>([]);
   const [overdueTasks, setOverdueTasks] = useState<any[]>([]);
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
+  const [monthlyStats, setMonthlyStats] = useState({ booked: 0, closed: 0 });
 
   useEffect(() => {
     loadData();
@@ -93,6 +94,22 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      // Load monthly stats
+      const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+      
+      const { data: monthlyBooked } = await supabase
+        .from('appointments')
+        .select('id, status')
+        .eq('setter_id', userId)
+        .gte('created_at', startOfMonth.toISOString())
+        .lte('created_at', endOfMonth.toISOString());
+
+      setMonthlyStats({
+        booked: monthlyBooked?.length || 0,
+        closed: monthlyBooked?.filter(a => a.status === 'CLOSED').length || 0
+      });
 
       // Separate tasks by type and check for no-shows via activity logs
       const allTasks = tasks || [];
@@ -203,33 +220,57 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Key Metrics */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="pt-6">
               <div className="text-center">
-                <Phone className="h-5 w-5 text-primary mx-auto mb-2" />
-                <p className="text-3xl font-bold text-primary">{appointmentsBooked.length}</p>
-                <p className="text-sm text-muted-foreground">Booked</p>
+                <Phone className="h-6 w-6 text-primary mx-auto mb-2" />
+                <p className="text-4xl font-bold text-primary">{monthlyStats.booked}</p>
+                <p className="text-sm font-medium text-muted-foreground">Appointments Booked (Month)</p>
+                <p className="text-xs text-muted-foreground mt-1">{appointmentsBooked.length} today</p>
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-success/5 border-success/20">
             <CardContent className="pt-6">
               <div className="text-center">
-                <CheckCircle className="h-5 w-5 text-success mx-auto mb-2" />
-                <p className="text-3xl font-bold text-success">{callConfirmations.length + mrrTasks.length}</p>
+                <DollarSign className="h-6 w-6 text-success mx-auto mb-2" />
+                <p className="text-4xl font-bold text-success">{monthlyStats.closed}</p>
+                <p className="text-sm font-medium text-muted-foreground">Deals Closed (Month)</p>
+                <p className="text-xs text-muted-foreground mt-1">Commission eligible</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-4 gap-4">
+          <Card className="bg-info/5 border-info/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <CheckCircle className="h-5 w-5 text-info mx-auto mb-2" />
+                <p className="text-3xl font-bold text-info">{callConfirmations.length + mrrTasks.length}</p>
                 <p className="text-sm text-muted-foreground">Tasks Done</p>
               </div>
             </CardContent>
           </Card>
           
+          <Card className="bg-chart-2/5 border-chart-2/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <XCircle className="h-5 w-5 text-chart-2 mx-auto mb-2" />
+                <p className="text-3xl font-bold text-chart-2">{noShows.length}</p>
+                <p className="text-sm text-muted-foreground">No Shows</p>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="bg-accent/5 border-accent/20">
             <CardContent className="pt-6">
               <div className="text-center">
-                <TrendingUp className="h-5 w-5 text-accent mx-auto mb-2" />
-                <p className="text-3xl font-bold text-accent">{noShows.length + reschedules.length}</p>
-                <p className="text-sm text-muted-foreground">Actions</p>
+                <RefreshCw className="h-5 w-5 text-accent mx-auto mb-2" />
+                <p className="text-3xl font-bold text-accent">{reschedules.length}</p>
+                <p className="text-sm text-muted-foreground">Rescheduled</p>
               </div>
             </CardContent>
           </Card>
@@ -262,7 +303,10 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(apt.created_at), 'h:mm a')}
                       </div>
-                      <Badge variant="default" className="shrink-0">📞 Booked</Badge>
+                      <Badge variant="default" className="shrink-0 gap-1">
+                        <Phone className="h-3 w-3" />
+                        Booked
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium">{apt.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
@@ -281,7 +325,10 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(task.completed_at), 'h:mm a')}
                       </div>
-                      <Badge variant="success" className="shrink-0">✓ Call Confirmed</Badge>
+                      <Badge variant="success" className="shrink-0 gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Confirmed
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium">{task.appointment?.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
@@ -301,7 +348,10 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(task.completed_at), 'h:mm a')}
                       </div>
-                      <Badge variant="secondary" className="shrink-0">💰 MRR Confirmed</Badge>
+                      <Badge variant="secondary" className="shrink-0 gap-1">
+                        <DollarSign className="h-3 w-3" />
+                        MRR Confirmed
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium">{task.mrr_schedule?.client_name}</p>
                         <p className="text-sm text-muted-foreground">{task.mrr_schedule?.client_email}</p>
@@ -319,7 +369,10 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(log.created_at), 'h:mm a')}
                       </div>
-                      <Badge variant="warning" className="shrink-0">❌ No Show</Badge>
+                      <Badge variant="warning" className="shrink-0 gap-1">
+                        <XCircle className="h-3 w-3" />
+                        No Show
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium">{log.appointment?.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{log.appointment?.lead_email}</p>
@@ -334,7 +387,10 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(task.completed_at), 'h:mm a')}
                       </div>
-                      <Badge variant="info" className="shrink-0">🔄 Rescheduled</Badge>
+                      <Badge variant="info" className="shrink-0 gap-1">
+                        <RefreshCw className="h-3 w-3" />
+                        Rescheduled
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium">{task.appointment?.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
@@ -351,7 +407,10 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                   {overdueTasks.map(task => (
                     <div key={task.id} className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-destructive bg-destructive/5">
                       <div className="text-xs text-destructive min-w-[80px]">OVERDUE</div>
-                      <Badge variant="destructive" className="shrink-0">⚠️ Overdue</Badge>
+                      <Badge variant="destructive" className="shrink-0 gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Overdue
+                      </Badge>
                       <div className="flex-1">
                         <p className="font-medium text-destructive">{task.appointment?.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
