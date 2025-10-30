@@ -357,6 +357,38 @@ Deno.serve(async (req) => {
             continue;
           }
 
+          // Fetch full invitee details to get reschedule_url and cancel_url
+          let rescheduleUrl = null;
+          let cancelUrl = null;
+          let calendlyInviteeUri = invitee.uri;
+          
+          try {
+            const inviteeUuid = invitee.uri?.split('/').pop();
+            const eventUuid = event.uri?.split('/').pop();
+            
+            if (inviteeUuid && eventUuid) {
+              const inviteeDetailsResponse = await fetch(
+                `https://api.calendly.com/scheduled_events/${eventUuid}/invitees/${inviteeUuid}`,
+                {
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+              
+              if (inviteeDetailsResponse.ok) {
+                const inviteeDetailsData = await inviteeDetailsResponse.json();
+                rescheduleUrl = inviteeDetailsData.resource?.reschedule_url || null;
+                cancelUrl = inviteeDetailsData.resource?.cancel_url || null;
+                calendlyInviteeUri = inviteeDetailsData.resource?.uri || invitee.uri;
+                console.log(`✓ Fetched URLs for ${invitee.email}: reschedule=${!!rescheduleUrl}`);
+              }
+            }
+          } catch (inviteeError) {
+            console.error(`Failed to fetch invitee details for ${invitee.uri}:`, inviteeError);
+          }
+
           // Extract phone number from questions_and_answers
           let leadPhone = null;
           if (invitee.questions_and_answers && Array.isArray(invitee.questions_and_answers)) {
@@ -421,6 +453,9 @@ Deno.serve(async (req) => {
             event_type_name: eventTypeName || null,
             status: appointmentStatus,
             pipeline_stage: 'booked', // Auto-assign to Appointment Booked stage
+            reschedule_url: rescheduleUrl,
+            cancel_url: cancelUrl,
+            calendly_invitee_uri: calendlyInviteeUri,
           });
           importedCount++;
         }
