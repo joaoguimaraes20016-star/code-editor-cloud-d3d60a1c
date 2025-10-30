@@ -78,7 +78,7 @@ export default function TeamSettings() {
     checkSuperAdmin();
     
     // Allow all team members to access settings (limited view for closers/setters)
-    if (!roleLoading && !isAdmin && !isSuperAdmin && role !== 'setter' && role !== 'offer_owner' && role !== 'admin' && role !== 'closer') {
+    if (!roleLoading && !isAdmin && !isSuperAdmin && role !== 'setter' && role !== 'offer_owner' && role !== 'admin' && role !== 'closer' && role !== 'owner') {
       toast({
         title: 'Access denied',
         description: 'You do not have permission to access settings',
@@ -368,7 +368,7 @@ export default function TeamSettings() {
         </div>
 
         {/* Admin/Offer Owner sections - hidden from closers and setters */}
-        {(isAdmin || role === 'offer_owner' || role === 'admin' || isSuperAdmin) && (
+        {(isAdmin || role === 'offer_owner' || role === 'admin' || role === 'owner' || isSuperAdmin) && (
           <>
             {/* Add Member Card */}
             <Card>
@@ -485,7 +485,7 @@ export default function TeamSettings() {
         )}
 
         {/* Commission Settings - visible to admins and offer owners */}
-        {(isAdmin || role === 'offer_owner') && (
+        {(isAdmin || role === 'offer_owner' || role === 'owner') && (
           <>
             <CommissionSettings teamId={teamId!} />
             <SetterRotationSettings teamId={teamId!} />
@@ -523,7 +523,7 @@ export default function TeamSettings() {
         )}
 
         {/* Calendly Integration */}
-        {(isAdmin || role === "offer_owner" || role === "admin") && (() => {
+        {(isAdmin || role === "offer_owner" || role === "admin" || role === "owner") && (() => {
           try {
             return (
               <>
