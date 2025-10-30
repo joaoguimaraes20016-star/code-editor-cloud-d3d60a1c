@@ -37,6 +37,7 @@ import { CommissionSettings } from '@/components/CommissionSettings';
 import { SetterRotationSettings } from '@/components/SetterRotationSettings';
 import { ClearTeamData } from '@/components/ClearTeamData';
 import { CleanupDuplicateSales } from '@/components/CleanupDuplicateSales';
+import { BackfillRescheduleUrls } from '@/components/BackfillRescheduleUrls';
 import { getUserFriendlyError } from '@/lib/errorUtils';
 
 interface TeamMember {
@@ -534,19 +535,23 @@ export default function TeamSettings() {
                 />
                 
                 {calendlyAccessToken && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Webhook Troubleshooting</CardTitle>
-                      <CardDescription>
-                        If booking links aren't capturing setter assignments, click below to re-register the webhook
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button onClick={handleFixWebhook} disabled={loading}>
-                        Fix Webhook
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Webhook Troubleshooting</CardTitle>
+                        <CardDescription>
+                          If booking links aren't capturing setter assignments, click below to re-register the webhook
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Button onClick={handleFixWebhook} disabled={loading}>
+                          Fix Webhook
+                        </Button>
+                      </CardContent>
+                    </Card>
+                    
+                    <BackfillRescheduleUrls teamId={teamId!} />
+                  </>
                 )}
               </>
             );
