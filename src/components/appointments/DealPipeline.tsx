@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { DroppableStageColumn } from "./DroppableStageColumn";
 import { RescheduleDialog } from "./RescheduleDialog";
+import { RescheduleWithLinkDialog } from "./RescheduleWithLinkDialog";
 import { FollowUpDialog } from "./FollowUpDialog";
 import { ChangeStatusDialog } from "./ChangeStatusDialog";
 import { DepositCollectedDialog } from "./DepositCollectedDialog";
@@ -58,6 +59,7 @@ interface Appointment {
   updated_at: string;
   pipeline_stage: string | null;
   status: string | null;
+  reschedule_url: string | null;
 }
 
 interface DealPipelineProps {
@@ -94,6 +96,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   const [sortBy, setSortBy] = useState<"closest" | "furthest">("closest");
   const [managerOpen, setManagerOpen] = useState(false);
   const [rescheduleDialog, setRescheduleDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
+  const [rescheduleLinkDialog, setRescheduleLinkDialog] = useState<{ open: boolean; appointmentId: string; rescheduleUrl: string; dealName: string } | null>(null);
   const [followUpDialog, setFollowUpDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; stage: "cancelled" | "no_show" } | null>(null);
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; appointmentId: string; dealName: string; currentStatus: string | null } | null>(null);
   const [depositDialog, setDepositDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
@@ -295,29 +298,19 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
       return;
     }
 
-    // Check if moving to rescheduled - create task and update stage
+    // Check if moving to rescheduled - open reschedule link dialog
     if (newStage === "rescheduled") {
-      try {
-        // Update pipeline stage immediately
-        await supabase
-          .from("appointments")
-          .update({ pipeline_stage: newStage })
-          .eq("id", appointmentId);
-
-        // Create reschedule task without a date - waits for confirmation
-        await supabase.rpc("create_task_with_assignment", {
-          p_team_id: appointment.team_id,
-          p_appointment_id: appointmentId,
-          p_task_type: "reschedule",
-          p_reschedule_date: null
-        });
-
-        toast.success("Moved to rescheduled - task created");
-        loadDeals();
-      } catch (error) {
-        console.error("Error moving to rescheduled:", error);
-        toast.error("Failed to move to rescheduled");
+      if (!appointment.reschedule_url) {
+        toast.error("No reschedule URL available for this appointment");
+        return;
       }
+      
+      setRescheduleLinkDialog({
+        open: true,
+        appointmentId,
+        rescheduleUrl: appointment.reschedule_url,
+        dealName: appointment.lead_name
+      });
       return;
     }
 
@@ -453,6 +446,69 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     setRescheduleDialog(null);
   };
 
+  const handleRescheduleLinkConfirm = async (reason: string, notes?: string) => {
+    if (!rescheduleLinkDialog) return;
+    
+    const appointment = appointments.find((a) => a.id === rescheduleLinkDialog.appointmentId);
+    if (!appointment) return;
+
+    try {
+      // Update appointment with rescheduled stage and retarget reason
+      const { error: updateError } = await supabase
+        .from("appointments")
+        .update({ 
+          pipeline_stage: "rescheduled",
+          retarget_reason: reason
+        })
+        .eq("id", rescheduleLinkDialog.appointmentId);
+
+      if (updateError) throw updateError;
+
+      // Find existing task for this appointment if any
+      const { data: existingTask } = await supabase
+        .from("confirmation_tasks")
+        .select("id")
+        .eq("appointment_id", rescheduleLinkDialog.appointmentId)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      // Update existing task or create new one
+      if (existingTask) {
+        await supabase
+          .from("confirmation_tasks")
+          .update({
+            status: "awaiting_reschedule",
+            reschedule_reason: reason,
+            reschedule_notes: notes || null
+          })
+          .eq("id", existingTask.id);
+      } else {
+        await supabase.rpc("create_task_with_assignment", {
+          p_team_id: appointment.team_id,
+          p_appointment_id: rescheduleLinkDialog.appointmentId,
+          p_task_type: "reschedule",
+          p_reschedule_date: null
+        });
+      }
+
+      // Log the activity
+      await supabase
+        .from("activity_logs")
+        .insert({
+          team_id: appointment.team_id,
+          appointment_id: rescheduleLinkDialog.appointmentId,
+          actor_name: "User",
+          action_type: "Reschedule Requested",
+          note: `${reason}${notes ? ` - ${notes}` : ''}`
+        });
+
+      await loadDeals();
+    } catch (error) {
+      console.error("Error handling reschedule:", error);
+      throw error;
+    }
+  };
+
   const handleFollowUpConfirm = async (followUpDate: Date, reason: string) => {
     if (!followUpDialog) return;
     
@@ -562,10 +618,15 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
     // Check if moving to stages that require additional info
     if (stage === "rescheduled") {
-      setRescheduleDialog({ 
+      if (!appointment.reschedule_url) {
+        toast.error("No reschedule URL available for this appointment");
+        return;
+      }
+      
+      setRescheduleLinkDialog({ 
         open: true, 
         appointmentId, 
-        stageId: stage,
+        rescheduleUrl: appointment.reschedule_url,
         dealName: appointment.lead_name 
       });
       return;
@@ -1101,6 +1162,17 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           onOpenChange={(open) => !open && setRescheduleDialog(null)}
           onConfirm={handleRescheduleConfirm}
           dealName={rescheduleDialog.dealName}
+        />
+      )}
+
+      {rescheduleLinkDialog && (
+        <RescheduleWithLinkDialog
+          open={rescheduleLinkDialog.open}
+          onOpenChange={(open) => !open && setRescheduleLinkDialog(null)}
+          onConfirm={handleRescheduleLinkConfirm}
+          appointmentName={rescheduleLinkDialog.dealName}
+          appointmentId={rescheduleLinkDialog.appointmentId}
+          rescheduleUrl={rescheduleLinkDialog.rescheduleUrl}
         />
       )}
 
