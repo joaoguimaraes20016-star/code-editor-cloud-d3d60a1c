@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, UserCheck, Calendar, CalendarDays, CalendarClock, PhoneCall, CheckCircle2, TrendingUp, DollarSign, Activity, ListTodo, Clock } from "lucide-react";
+import { User, UserCheck, Calendar, CalendarDays, CalendarClock, PhoneCall, CheckCircle2, TrendingUp, DollarSign, Activity, ListTodo, Clock, AlertCircle, FileText, AlertTriangle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { startOfMonth, startOfWeek, startOfDay, endOfDay, format } from "date-fns";
+import { startOfMonth, startOfWeek, startOfDay, endOfDay, format, subHours } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -75,7 +75,23 @@ interface Task {
   reschedule_date?: string;
   appointments?: {
     lead_name: string;
+    start_at_utc: string;
   };
+}
+
+interface StaleLeadInfo {
+  id: string;
+  lead_name: string;
+  start_at_utc: string;
+  status: string;
+  hoursSinceActivity: number;
+}
+
+interface AccountabilityMetrics {
+  overdueTasks: Task[];
+  dueTodayTasks: Task[];
+  staleLeads: StaleLeadInfo[];
+  missingNotes: { id: string; lead_name: string; start_at_utc: string }[];
 }
 
 interface TeamMemberSetterStats {
@@ -84,6 +100,7 @@ interface TeamMemberSetterStats {
   stats: SetterStats;
   activityToday: ActivityLog[];
   dueTasks: Task[];
+  accountability: AccountabilityMetrics;
 }
 
 interface TeamMemberCloserStats {
@@ -92,6 +109,7 @@ interface TeamMemberCloserStats {
   stats: CloserStats;
   activityToday: ActivityLog[];
   dueTasks: Task[];
+  accountability: AccountabilityMetrics;
 }
 
 interface AppointmentsBookedBreakdownProps {
@@ -112,6 +130,7 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
     try {
       const todayStart = startOfDay(new Date());
       const todayEnd = endOfDay(new Date());
+      const fortyEightHoursAgo = subHours(new Date(), 48);
 
       // Load today's activities
       const { data: activities } = await supabase
@@ -122,21 +141,35 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
         .lte('created_at', todayEnd.toISOString())
         .order('created_at', { ascending: false });
 
+      // Load ALL activities for stale lead detection
+      const { data: allActivities } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .eq('team_id', teamId);
+
       // Load pending tasks
       const { data: tasks } = await supabase
         .from('confirmation_tasks')
         .select(`
           *,
-          appointments!inner(lead_name)
+          appointments!inner(lead_name, start_at_utc)
         `)
         .eq('team_id', teamId)
         .eq('status', 'pending')
         .not('assigned_to', 'is', null)
         .order('created_at', { ascending: false });
 
-      // Group activities and tasks by user
+      // Load all appointments for accountability metrics
+      const { data: appointments } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('team_id', teamId)
+        .in('status', ['NEW', 'CONFIRMED', 'SHOWED']);
+
+      // Group data by user
       const activitiesByUser = new Map<string, ActivityLog[]>();
       const tasksByUser = new Map<string, Task[]>();
+      const appointmentsByUser = new Map<string, any[]>();
 
       activities?.forEach(activity => {
         if (activity.actor_id) {
@@ -156,18 +189,93 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
         }
       });
 
-      // Update setter stats with activities and tasks
+      appointments?.forEach(apt => {
+        const userId = apt.setter_id || apt.closer_id;
+        if (userId) {
+          if (!appointmentsByUser.has(userId)) {
+            appointmentsByUser.set(userId, []);
+          }
+          appointmentsByUser.get(userId)!.push(apt);
+        }
+      });
+
+      // Calculate accountability metrics for each user
+      const calculateAccountability = (userId: string): AccountabilityMetrics => {
+        const userTasks = tasksByUser.get(userId) || [];
+        const userAppointments = appointmentsByUser.get(userId) || [];
+
+        // Overdue tasks
+        const overdueTasks = userTasks.filter(task => {
+          if (task.follow_up_date && new Date(task.follow_up_date) < todayStart) return true;
+          if (task.reschedule_date && new Date(task.reschedule_date) < todayStart) return true;
+          return false;
+        });
+
+        // Due today tasks
+        const dueTodayTasks = userTasks.filter(task => {
+          if (task.follow_up_date && new Date(task.follow_up_date).toDateString() === todayStart.toDateString()) return true;
+          if (task.reschedule_date && new Date(task.reschedule_date).toDateString() === todayStart.toDateString()) return true;
+          return false;
+        });
+
+        // Stale leads (no activity in 48 hours)
+        const staleLeads: StaleLeadInfo[] = userAppointments
+          .filter(apt => {
+            const hasRecentActivity = allActivities?.some(act => 
+              act.appointment_id === apt.id && 
+              new Date(act.created_at) >= fortyEightHoursAgo
+            );
+            return !hasRecentActivity;
+          })
+          .map(apt => {
+            const lastActivity = allActivities
+              ?.filter(act => act.appointment_id === apt.id)
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+            
+            const hoursSinceActivity = lastActivity 
+              ? Math.floor((Date.now() - new Date(lastActivity.created_at).getTime()) / (1000 * 60 * 60))
+              : 999;
+
+            return {
+              id: apt.id,
+              lead_name: apt.lead_name,
+              start_at_utc: apt.start_at_utc,
+              status: apt.status,
+              hoursSinceActivity
+            };
+          });
+
+        // Missing notes
+        const missingNotes = userAppointments
+          .filter(apt => !apt.setter_notes || apt.setter_notes.trim() === '')
+          .map(apt => ({
+            id: apt.id,
+            lead_name: apt.lead_name,
+            start_at_utc: apt.start_at_utc
+          }));
+
+        return {
+          overdueTasks,
+          dueTodayTasks,
+          staleLeads,
+          missingNotes
+        };
+      };
+
+      // Update setter stats
       setSetterStats(prev => prev.map(setter => ({
         ...setter,
         activityToday: activitiesByUser.get(setter.id) || [],
-        dueTasks: tasksByUser.get(setter.id) || []
+        dueTasks: tasksByUser.get(setter.id) || [],
+        accountability: calculateAccountability(setter.id)
       })));
 
-      // Update closer stats with activities and tasks
+      // Update closer stats
       setCloserStats(prev => prev.map(closer => ({
         ...closer,
         activityToday: activitiesByUser.get(closer.id) || [],
-        dueTasks: tasksByUser.get(closer.id) || []
+        dueTasks: tasksByUser.get(closer.id) || [],
+        accountability: calculateAccountability(closer.id)
       })));
     } catch (error) {
       console.error('Error loading activity and tasks:', error);
@@ -313,6 +421,12 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
         name: data.name,
         activityToday: [],
         dueTasks: [],
+        accountability: {
+          overdueTasks: [],
+          dueTodayTasks: [],
+          staleLeads: [],
+          missingNotes: []
+        },
         stats: {
           booked: {
             total: data.booked[0],
@@ -377,6 +491,12 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
         name: data.name,
         activityToday: [],
         dueTasks: [],
+        accountability: {
+          overdueTasks: [],
+          dueTodayTasks: [],
+          staleLeads: [],
+          missingNotes: []
+        },
         stats: {
           taken: {
             total: data.taken[0],
@@ -549,36 +669,139 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Due Tasks */}
-          <Collapsible className="pt-4 border-t">
-            <CollapsibleTrigger className="flex items-center justify-between w-full hover:text-primary transition-colors">
-              <div className="flex items-center gap-2">
-                <ListTodo className="h-4 w-4" />
-                <h4 className="text-sm font-semibold">Due Tasks</h4>
-                <Badge variant="outline">{member.dueTasks.length}</Badge>
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4">
-              {member.dueTasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No pending tasks</p>
-              ) : (
-                <div className="space-y-2">
-                  {member.dueTasks.map(task => (
-                    <div key={task.id} className="p-3 rounded-lg bg-muted/50 text-sm">
-                      <div className="flex items-center justify-between mb-1">
-                        <Badge variant="outline" className="text-xs">{task.task_type.replace('_', ' ')}</Badge>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {format(new Date(task.created_at), 'MMM d')}
+          {/* Accountability Section */}
+          <div className="pt-4 border-t space-y-4">
+            <h4 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              Accountability
+            </h4>
+
+            {/* Overdue Tasks */}
+            {member.accountability.overdueTasks.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                    <span className="text-sm font-semibold text-destructive">Overdue Tasks</span>
+                  </div>
+                  <Badge variant="destructive">{member.accountability.overdueTasks.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="space-y-2">
+                    {member.accountability.overdueTasks.map(task => (
+                      <div key={task.id} className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 text-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant="destructive" className="text-xs">{task.task_type.replace('_', ' ')}</Badge>
+                          <div className="flex items-center gap-1 text-xs text-destructive">
+                            <Clock className="h-3 w-3" />
+                            {task.follow_up_date && format(new Date(task.follow_up_date), 'MMM d')}
+                            {task.reschedule_date && format(new Date(task.reschedule_date), 'MMM d')}
+                          </div>
                         </div>
+                        <p className="font-medium">{task.appointments?.lead_name || 'Unknown Lead'}</p>
                       </div>
-                      <p className="font-medium">{task.appointments?.lead_name || 'Unknown Lead'}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Due Today Tasks */}
+            {member.accountability.dueTodayTasks.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">Due Today</span>
+                  </div>
+                  <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">{member.accountability.dueTodayTasks.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="space-y-2">
+                    {member.accountability.dueTodayTasks.map(task => (
+                      <div key={task.id} className="p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/10 text-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant="outline" className="text-xs">{task.task_type.replace('_', ' ')}</Badge>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            Today
+                          </div>
+                        </div>
+                        <p className="font-medium">{task.appointments?.lead_name || 'Unknown Lead'}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Stale Leads */}
+            {member.accountability.staleLeads.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/20 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                    <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">Stale Leads (48h+)</span>
+                  </div>
+                  <Badge className="bg-orange-500/20 text-orange-600 border-orange-500/30">{member.accountability.staleLeads.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="space-y-2">
+                    {member.accountability.staleLeads.map(lead => (
+                      <div key={lead.id} className="p-3 rounded-lg bg-orange-500/5 border border-orange-500/10 text-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant="outline" className="text-xs">{lead.status}</Badge>
+                          <span className="text-xs text-orange-600 dark:text-orange-400">
+                            {lead.hoursSinceActivity < 72 ? `${lead.hoursSinceActivity}h ago` : `${Math.floor(lead.hoursSinceActivity / 24)}d ago`}
+                          </span>
+                        </div>
+                        <p className="font-medium">{lead.lead_name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Appt: {format(new Date(lead.start_at_utc), 'MMM d, h:mm a')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Missing Notes */}
+            {member.accountability.missingNotes.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-muted/50 border hover:bg-muted transition-colors">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Missing Notes</span>
+                  </div>
+                  <Badge variant="outline">{member.accountability.missingNotes.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="space-y-2">
+                    {member.accountability.missingNotes.map(apt => (
+                      <div key={apt.id} className="p-3 rounded-lg bg-muted/30 text-sm">
+                        <p className="font-medium">{apt.lead_name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Appt: {format(new Date(apt.start_at_utc), 'MMM d, h:mm a')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* All Clear */}
+            {member.accountability.overdueTasks.length === 0 && 
+             member.accountability.dueTodayTasks.length === 0 && 
+             member.accountability.staleLeads.length === 0 && 
+             member.accountability.missingNotes.length === 0 && (
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mx-auto mb-2" />
+                <p className="text-sm font-medium text-green-600 dark:text-green-400">All caught up! 🎉</p>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
     );
@@ -692,36 +915,139 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Due Tasks */}
-          <Collapsible className="pt-4 border-t">
-            <CollapsibleTrigger className="flex items-center justify-between w-full hover:text-primary transition-colors">
-              <div className="flex items-center gap-2">
-                <ListTodo className="h-4 w-4" />
-                <h4 className="text-sm font-semibold">Due Tasks</h4>
-                <Badge variant="outline">{member.dueTasks.length}</Badge>
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4">
-              {member.dueTasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No pending tasks</p>
-              ) : (
-                <div className="space-y-2">
-                  {member.dueTasks.map(task => (
-                    <div key={task.id} className="p-3 rounded-lg bg-muted/50 text-sm">
-                      <div className="flex items-center justify-between mb-1">
-                        <Badge variant="outline" className="text-xs">{task.task_type.replace('_', ' ')}</Badge>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {format(new Date(task.created_at), 'MMM d')}
+          {/* Accountability Section */}
+          <div className="pt-4 border-t space-y-4">
+            <h4 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              Accountability
+            </h4>
+
+            {/* Overdue Tasks */}
+            {member.accountability.overdueTasks.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                    <span className="text-sm font-semibold text-destructive">Overdue Tasks</span>
+                  </div>
+                  <Badge variant="destructive">{member.accountability.overdueTasks.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="space-y-2">
+                    {member.accountability.overdueTasks.map(task => (
+                      <div key={task.id} className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 text-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant="destructive" className="text-xs">{task.task_type.replace('_', ' ')}</Badge>
+                          <div className="flex items-center gap-1 text-xs text-destructive">
+                            <Clock className="h-3 w-3" />
+                            {task.follow_up_date && format(new Date(task.follow_up_date), 'MMM d')}
+                            {task.reschedule_date && format(new Date(task.reschedule_date), 'MMM d')}
+                          </div>
                         </div>
+                        <p className="font-medium">{task.appointments?.lead_name || 'Unknown Lead'}</p>
                       </div>
-                      <p className="font-medium">{task.appointments?.lead_name || 'Unknown Lead'}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Due Today Tasks */}
+            {member.accountability.dueTodayTasks.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">Due Today</span>
+                  </div>
+                  <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">{member.accountability.dueTodayTasks.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="space-y-2">
+                    {member.accountability.dueTodayTasks.map(task => (
+                      <div key={task.id} className="p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/10 text-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant="outline" className="text-xs">{task.task_type.replace('_', ' ')}</Badge>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            Today
+                          </div>
+                        </div>
+                        <p className="font-medium">{task.appointments?.lead_name || 'Unknown Lead'}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Stale Leads */}
+            {member.accountability.staleLeads.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/20 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                    <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">Stale Leads (48h+)</span>
+                  </div>
+                  <Badge className="bg-orange-500/20 text-orange-600 border-orange-500/30">{member.accountability.staleLeads.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="space-y-2">
+                    {member.accountability.staleLeads.map(lead => (
+                      <div key={lead.id} className="p-3 rounded-lg bg-orange-500/5 border border-orange-500/10 text-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant="outline" className="text-xs">{lead.status}</Badge>
+                          <span className="text-xs text-orange-600 dark:text-orange-400">
+                            {lead.hoursSinceActivity < 72 ? `${lead.hoursSinceActivity}h ago` : `${Math.floor(lead.hoursSinceActivity / 24)}d ago`}
+                          </span>
+                        </div>
+                        <p className="font-medium">{lead.lead_name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Appt: {format(new Date(lead.start_at_utc), 'MMM d, h:mm a')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Missing Notes */}
+            {member.accountability.missingNotes.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-muted/50 border hover:bg-muted transition-colors">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Missing Notes</span>
+                  </div>
+                  <Badge variant="outline">{member.accountability.missingNotes.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="space-y-2">
+                    {member.accountability.missingNotes.map(apt => (
+                      <div key={apt.id} className="p-3 rounded-lg bg-muted/30 text-sm">
+                        <p className="font-medium">{apt.lead_name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Appt: {format(new Date(apt.start_at_utc), 'MMM d, h:mm a')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* All Clear */}
+            {member.accountability.overdueTasks.length === 0 && 
+             member.accountability.dueTodayTasks.length === 0 && 
+             member.accountability.staleLeads.length === 0 && 
+             member.accountability.missingNotes.length === 0 && (
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mx-auto mb-2" />
+                <p className="text-sm font-medium text-green-600 dark:text-green-400">All caught up! 🎉</p>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
     );
