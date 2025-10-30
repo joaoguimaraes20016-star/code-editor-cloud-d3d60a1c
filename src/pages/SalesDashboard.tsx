@@ -18,6 +18,7 @@ import { AllClaimed } from "@/components/AllClaimed";
 import { MyClaimed } from "@/components/MyClaimed";
 import { CloserView } from "@/components/CloserView";
 import { MRRDashboard } from "@/components/MRRDashboard";
+import { MRRFollowUps } from "@/components/appointments/MRRFollowUps";
 import { CalendlyConfig } from "@/components/CalendlyConfig";
 import { AppointmentsHub } from "@/components/appointments/AppointmentsHub";
 import {

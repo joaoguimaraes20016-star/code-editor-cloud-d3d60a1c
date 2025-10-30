@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, CheckCircle, XCircle, Pause, Ban, Loader2 } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Pause, Ban, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface MRRScheduleWithProgress {
   id: string;
@@ -347,6 +348,117 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
   const pausedSchedules = schedules.filter(s => s.status === 'paused');
   const canceledSchedules = schedules.filter(s => s.status === 'canceled');
   const completedSchedules = schedules.filter(s => s.status === 'completed' || (s.status === 'active' && s.confirmed_count >= s.total_months));
+  
+  const totalMRR = activeSchedules.reduce((sum, s) => sum + s.mrr_amount, 0);
+
+  const handleQuickPayment = async (schedule: MRRScheduleWithProgress) => {
+    if (!schedule.current_task_id) {
+      toast.error('No payment task to confirm');
+      return;
+    }
+    await confirmPayment(schedule);
+  };
+
+  const EnhancedSubscriptionCard = ({ schedule, onMarkPaid, onPause, onCancel, onViewDetails }: {
+    schedule: MRRScheduleWithProgress;
+    onMarkPaid: () => void;
+    onPause: () => void;
+    onCancel: () => void;
+    onViewDetails: () => void;
+  }) => {
+    const isDueToday = schedule.payment_due_today;
+    const daysUntilDue = schedule.next_payment_due 
+      ? differenceInDays(parseISO(schedule.next_payment_due), new Date())
+      : null;
+    
+    const getDueDateText = () => {
+      if (isDueToday) return '⚠️ Due Today!';
+      if (daysUntilDue === null) return 'No upcoming payment';
+      if (daysUntilDue < 0) return `⚠️ Overdue by ${Math.abs(daysUntilDue)} days`;
+      if (daysUntilDue === 1) return 'Due Tomorrow';
+      if (daysUntilDue <= 7) return `Due in ${daysUntilDue} days`;
+      return `Next: ${format(parseISO(schedule.next_payment_due), 'MMM dd')}`;
+    };
+
+    return (
+      <Card 
+        className={cn(
+          "group relative cursor-pointer transition-all duration-300",
+          "hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1",
+          isDueToday && "border-orange-500 dark:border-orange-400 shadow-orange-200 dark:shadow-orange-900/50",
+          daysUntilDue !== null && daysUntilDue < 0 && "border-red-500 dark:border-red-400 animate-pulse"
+        )}
+      >
+        <div className={cn(
+          "absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg",
+          isDueToday ? "bg-orange-500" : daysUntilDue !== null && daysUntilDue < 0 ? "bg-red-500" : "bg-success"
+        )} />
+        
+        <CardContent className="p-5 pl-6 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-base truncate group-hover:text-primary transition-colors">
+                {schedule.client_name}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {schedule.client_email}
+              </p>
+            </div>
+            <Badge variant={isDueToday ? "default" : "secondary"} className="shrink-0">
+              {schedule.confirmed_count}/{schedule.total_months}
+            </Badge>
+          </div>
+
+          <div className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            ${schedule.mrr_amount.toLocaleString()}/mo
+          </div>
+
+          <div className={cn(
+            "flex items-center gap-2 text-sm font-medium",
+            isDueToday && "text-orange-600 dark:text-orange-400",
+            daysUntilDue !== null && daysUntilDue < 0 && "text-red-600 dark:text-red-400"
+          )}>
+            <Calendar className="h-4 w-4" />
+            {getDueDateText()}
+          </div>
+
+          <div className="pt-3 border-t opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-2">
+            {(isDueToday || (daysUntilDue !== null && daysUntilDue < 0)) && (
+              <Button 
+                size="sm" 
+                onClick={(e) => { e.stopPropagation(); onMarkPaid(); }}
+                className="flex-1"
+              >
+                <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                Mark Paid
+              </Button>
+            )}
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={(e) => { e.stopPropagation(); onPause(); }}
+            >
+              <Pause className="h-3.5 w-3.5" />
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={(e) => { e.stopPropagation(); onCancel(); }}
+            >
+              <Ban className="h-3.5 w-3.5" />
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
+            >
+              Details
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const ScheduleCard = ({ schedule }: { schedule: MRRScheduleWithProgress }) => {
     const isDueToday = schedule.payment_due_today;
@@ -408,7 +520,55 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-6">
+        {/* Active Subscriptions Grid */}
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl font-bold flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-success animate-pulse"></div>
+                Active Subscriptions
+              </CardTitle>
+              <div className="flex items-center gap-4">
+                <Badge variant="success" className="text-lg px-4 py-2">
+                  {activeSchedules.length} Active
+                </Badge>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Total MRR</p>
+                  <p className="text-2xl font-bold text-success">
+                    ${totalMRR.toLocaleString()}/mo
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {activeSchedules.length === 0 ? (
+              <div className="text-center py-12 px-4 bg-card/50 rounded-lg border border-dashed">
+                <Calendar className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                <p className="text-muted-foreground">No active subscriptions</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activeSchedules.map(schedule => (
+                  <EnhancedSubscriptionCard 
+                    key={schedule.id}
+                    schedule={schedule}
+                    onMarkPaid={() => handleQuickPayment(schedule)}
+                    onPause={() => pauseSchedule(schedule.id)}
+                    onCancel={() => cancelSchedule(schedule.id)}
+                    onViewDetails={() => {
+                      setSelectedSchedule(schedule);
+                      setNotes(schedule.notes || '');
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Payment Follow-Up Tasks Header */}
         <div className="bg-gradient-to-r from-primary/10 via-accent/10 to-primary/5 border border-primary/30 rounded-lg p-4 shadow-lg backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/20 rounded-lg">
@@ -416,13 +576,14 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
             </div>
             <div>
               <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                MRR Follow-Ups
+                Payment Follow-Up Tasks
               </h2>
-              <p className="text-xs text-muted-foreground">Monthly renewal tracking and payment confirmation</p>
+              <p className="text-xs text-muted-foreground">Track and manage payment confirmations</p>
             </div>
           </div>
         </div>
 
+        {/* Follow-Up Columns */}
         <div className="flex gap-4 overflow-x-auto pb-4">
           {/* Active Column */}
           <div className="flex-1 min-w-[350px]">

@@ -4,9 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricCard } from "@/components/MetricCard";
 import { Leaderboard } from "@/components/Leaderboard";
 import { ActivityTracker } from "./ActivityTracker";
+import { EODDashboard } from "./EODDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { CalendarClock, AlertCircle, TrendingUp, DollarSign, Users, RefreshCw } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AdminOverviewProps {
   teamId: string;
@@ -39,7 +41,9 @@ interface LeaderboardEntry {
 }
 
 export function AdminOverview({ teamId }: AdminOverviewProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [currentUserName, setCurrentUserName] = useState<string>('');
   const [taskSummary, setTaskSummary] = useState<TaskSummary>({
     overdue: 0,
     dueToday: 0,
@@ -61,6 +65,7 @@ export function AdminOverview({ teamId }: AdminOverviewProps) {
   const [topClosers, setTopClosers] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
+    loadUserProfile();
     loadOverviewData();
 
     const channel = supabase
@@ -74,6 +79,16 @@ export function AdminOverview({ teamId }: AdminOverviewProps) {
       supabase.removeChannel(channel);
     };
   }, [teamId]);
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle();
+    setCurrentUserName(data?.full_name || 'Admin');
+  };
 
   const loadOverviewData = async () => {
     try {
@@ -318,6 +333,14 @@ export function AdminOverview({ teamId }: AdminOverviewProps) {
           icon={RefreshCw}
         />
       </div>
+
+      {/* EOD Dashboard */}
+      <EODDashboard 
+        teamId={teamId}
+        userRole="admin"
+        currentUserId={user?.id || ''}
+        currentUserName={currentUserName}
+      />
 
       {/* Activity Tracking */}
       <ActivityTracker teamId={teamId} />

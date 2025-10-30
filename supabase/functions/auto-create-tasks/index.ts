@@ -95,6 +95,64 @@ serve(async (req) => {
 
     console.log('Task created successfully for appointment:', appointment.id);
 
+    // Check for upcoming MRR renewals (within next 7 days)
+    console.log('Checking for upcoming MRR renewals...');
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    const today = new Date().toISOString().split('T')[0];
+    const sevenDaysDate = sevenDaysFromNow.toISOString().split('T')[0];
+
+    const { data: upcomingRenewals, error: renewalsError } = await supabaseClient
+      .from('mrr_schedules')
+      .select('*')
+      .eq('status', 'active')
+      .lte('next_renewal_date', sevenDaysDate)
+      .gte('next_renewal_date', today);
+
+    if (renewalsError) {
+      console.error('Error fetching MRR schedules:', renewalsError);
+    } else if (upcomingRenewals && upcomingRenewals.length > 0) {
+      console.log(`Found ${upcomingRenewals.length} upcoming MRR renewals`);
+      
+      for (const schedule of upcomingRenewals) {
+        // Check if task already exists for this due date
+        const { data: existingTask } = await supabaseClient
+          .from('mrr_follow_up_tasks')
+          .select('id')
+          .eq('mrr_schedule_id', schedule.id)
+          .eq('due_date', schedule.next_renewal_date)
+          .maybeSingle();
+        
+        if (!existingTask) {
+          console.log(`Creating MRR follow-up task for schedule ${schedule.id}`);
+          
+          const { error: taskError } = await supabaseClient
+            .from('mrr_follow_up_tasks')
+            .insert({
+              team_id: schedule.team_id,
+              mrr_schedule_id: schedule.id,
+              due_date: schedule.next_renewal_date,
+              status: 'due'
+            });
+          
+          if (taskError) {
+            console.error('Error creating MRR task:', taskError);
+          } else {
+            console.log(`MRR task created successfully for ${schedule.client_name}`);
+            
+            // Log activity
+            await supabaseClient.from('activity_logs').insert({
+              team_id: schedule.team_id,
+              appointment_id: schedule.appointment_id,
+              actor_name: 'System',
+              action_type: 'MRR Task Created',
+              note: `Follow-up task created for renewal on ${schedule.next_renewal_date}`
+            });
+          }
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
