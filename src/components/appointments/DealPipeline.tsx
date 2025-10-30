@@ -60,6 +60,7 @@ interface Appointment {
   pipeline_stage: string | null;
   status: string | null;
   reschedule_url: string | null;
+  calendly_invitee_uri: string | null;
 }
 
 interface DealPipelineProps {
@@ -152,6 +153,26 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
       const { data, error } = await query.order("updated_at", { ascending: false });
       console.log("Loaded appointments:", data?.length);
       setAppointments(data || []);
+
+      // Auto-backfill missing reschedule URLs in background
+      if (data && data.length > 0) {
+        const missingUrls = data.filter(apt => !apt.reschedule_url && apt.calendly_invitee_uri);
+        if (missingUrls.length > 0) {
+          console.log(`Found ${missingUrls.length} appointments missing reschedule URLs, auto-backfilling...`);
+          // Run backfill in background without awaiting
+          supabase.functions.invoke('backfill-reschedule-urls', {
+            body: { teamId }
+          }).then(({ data: result, error: backfillError }) => {
+            if (backfillError) {
+              console.error("Auto-backfill error:", backfillError);
+            } else if (result?.updated > 0) {
+              console.log(`Auto-backfilled ${result.updated} reschedule URLs`);
+              // Reload appointments to get the updated URLs
+              loadDeals();
+            }
+          });
+        }
+      }
     } catch (error) {
       console.error("Error loading deals:", error);
       toast.error("Failed to load deals");
