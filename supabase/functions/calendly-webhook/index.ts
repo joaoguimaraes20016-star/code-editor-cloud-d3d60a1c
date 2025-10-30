@@ -294,9 +294,26 @@ serve(async (req) => {
           }
 
           if (profiles) {
-            closerId = profiles.id;
-            closerName = profiles.full_name;
-            console.log(`✓ Final match: ${closerName} (${profiles.email})`);
+            // Check if this person is the offer owner for this team
+            const { data: teamMember } = await supabase
+              .from('team_members')
+              .select('role')
+              .eq('team_id', teamId)
+              .eq('user_id', profiles.id)
+              .eq('role', 'offer_owner')
+              .maybeSingle();
+
+            if (teamMember) {
+              // Organizer is the offer owner, assign them as closer
+              closerId = profiles.id;
+              closerName = profiles.full_name;
+              console.log(`✓ Assigned offer owner as closer: ${closerName} (${profiles.email})`);
+            } else {
+              // Regular closer assignment
+              closerId = profiles.id;
+              closerName = profiles.full_name;
+              console.log(`✓ Final match: ${closerName} (${profiles.email})`);
+            }
           } else {
             console.log('✗ No closer match found');
           }
