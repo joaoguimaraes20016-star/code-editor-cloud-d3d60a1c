@@ -79,7 +79,7 @@ export function CommissionBreakdown({ sales }: CommissionBreakdownProps) {
               <div>
                 <p className="font-semibold">{name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {stats.salesCount} {stats.salesCount === 1 ? 'sale' : 'sales'}
+                  {stats.salesCount} closed {stats.salesCount === 1 ? 'deal' : 'deals'}
                 </p>
               </div>
             </div>
@@ -100,7 +100,7 @@ export function CommissionBreakdown({ sales }: CommissionBreakdownProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Commission Breakdown</CardTitle>
+        <CardTitle>Commission Breakdown (Closed Deals & Deposits Only)</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="closers" className="w-full">
@@ -112,14 +112,14 @@ export function CommissionBreakdown({ sales }: CommissionBreakdownProps) {
             {renderCommissionList(
               sortedClosers,
               UserCheck,
-              "No closer commission data available yet"
+              "No closed deals with commissions yet"
             )}
           </TabsContent>
           <TabsContent value="setters" className="mt-4">
             {renderCommissionList(
               sortedSetters,
               User,
-              "No setter commission data available yet"
+              "No closed deals with commissions yet"
             )}
           </TabsContent>
         </Tabs>

@@ -8,6 +8,7 @@ import { AddSaleDialog } from "@/components/AddSaleDialog";
 import { FixCommissionsButton } from "@/components/FixCommissionsButton";
 import { RevenueChart } from "@/components/RevenueChart";
 import { CommissionBreakdown } from "@/components/CommissionBreakdown";
+import { AppointmentsBookedBreakdown } from "@/components/AppointmentsBookedBreakdown";
 import { Leaderboard } from "@/components/Leaderboard";
 import { ImportSpreadsheet } from "@/components/ImportSpreadsheet";
 import { SyncFromUrl } from "@/components/SyncFromUrl";
@@ -799,6 +800,9 @@ const Index = () => {
 
         {/* Commission Breakdown */}
         <CommissionBreakdown sales={filteredSales} />
+
+        {/* Appointments Booked Breakdown */}
+        <AppointmentsBookedBreakdown teamId={teamId!} />
 
         {/* Leaderboards */}
         <div className="grid gap-6 md:grid-cols-2">
