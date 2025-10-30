@@ -120,8 +120,8 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
       setDepositsCollected(deposits || []);
       setPipelineActivity(pipeline || []);
       setOverdueFollowUps(overdue || []);
-      setMrrTasksCompleted(mrrTasks || []);
-      setConfirmTasksCompleted(confirmTasks || []);
+      setMrrTasksCompleted((mrrTasks || []).filter(t => t.completed_at));
+      setConfirmTasksCompleted((confirmTasks || []).filter(t => t.completed_at));
       setLastActivity(activity ? new Date(activity.created_at) : null);
     } catch (error) {
       console.error('Error loading closer EOD data:', error);

@@ -107,10 +107,10 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
         .lte('created_at', endOfDay.toISOString());
       
       setAppointmentsBooked(appts || []);
-      setCallConfirmations(allTasks.filter(t => t.task_type === 'call_confirmation'));
+      setCallConfirmations(allTasks.filter(t => t.task_type === 'call_confirmation' && t.completed_at));
       setNoShows(noShowLogs || []);
-      setReschedules(allTasks.filter(t => t.task_type === 'reschedule'));
-      setMrrTasks(mrr || []);
+      setReschedules(allTasks.filter(t => t.task_type === 'reschedule' && t.completed_at));
+      setMrrTasks((mrr || []).filter(t => t.completed_at));
       setOverdueTasks(overdue || []);
       setLastActivity(activity ? new Date(activity.created_at) : null);
     } catch (error) {
@@ -286,9 +286,11 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                         <p className="font-medium">{task.appointment?.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_phone || 'No phone'}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          For: {format(new Date(task.appointment?.start_at_utc), 'MMM dd, h:mm a')}
-                        </p>
+                        {task.appointment?.start_at_utc && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            For: {format(new Date(task.appointment.start_at_utc), 'MMM dd, h:mm a')}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -353,9 +355,11 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                       <div className="flex-1">
                         <p className="font-medium text-destructive">{task.appointment?.lead_name}</p>
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
-                        <p className="text-xs text-destructive mt-1">
-                          Due: {format(new Date(task.appointment?.start_at_utc), 'MMM dd, h:mm a')}
-                        </p>
+                        {task.appointment?.start_at_utc && (
+                          <p className="text-xs text-destructive mt-1">
+                            Due: {format(new Date(task.appointment.start_at_utc), 'MMM dd, h:mm a')}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
