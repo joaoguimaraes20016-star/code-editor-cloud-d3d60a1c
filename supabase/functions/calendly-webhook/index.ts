@@ -294,23 +294,21 @@ serve(async (req) => {
           }
 
           if (profiles) {
-            // Check if this person is the offer owner for this team
+            // Verify they're a team member (any role is fine)
             const { data: teamMember } = await supabase
               .from('team_members')
               .select('role')
               .eq('team_id', teamId)
               .eq('user_id', profiles.id)
-              .eq('role', 'offer_owner')
               .maybeSingle();
 
             if (teamMember) {
-              // Organizer is the offer owner, assign them as closer
+              // Assign meeting host as closer
               closerId = profiles.id;
               closerName = profiles.full_name;
-              console.log(`✓ Assigned offer owner as closer: ${closerName} (${profiles.email})`);
+              console.log(`✓ Assigned meeting host as closer: ${closerName} (${profiles.email}) [${teamMember.role}]`);
             } else {
-              // Not the offer owner, don't assign as closer
-              console.log(`✓ Matched organizer but not offer owner: ${profiles.full_name} (${profiles.email})`);
+              console.log(`✓ Matched organizer but not a team member: ${profiles.full_name} (${profiles.email})`);
             }
           } else {
             console.log('✗ No closer match found');
