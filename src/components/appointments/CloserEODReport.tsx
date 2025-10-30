@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, TrendingUp, AlertCircle, Clock, ArrowRight, Download } from "lucide-react";
+import { DollarSign, TrendingUp, AlertCircle, Clock, ArrowRight, Download, CheckCircle } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,8 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
   const [depositsCollected, setDepositsCollected] = useState<any[]>([]);
   const [pipelineActivity, setPipelineActivity] = useState<any[]>([]);
   const [overdueFollowUps, setOverdueFollowUps] = useState<any[]>([]);
+  const [mrrTasksCompleted, setMrrTasksCompleted] = useState<any[]>([]);
+  const [confirmTasksCompleted, setConfirmTasksCompleted] = useState<any[]>([]);
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -85,6 +87,26 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
         .eq('task_type', 'follow_up')
         .lt('follow_up_date', today.toISOString());
 
+      // Load MRR follow-up tasks completed today
+      const { data: mrrTasks } = await supabase
+        .from('mrr_follow_up_tasks')
+        .select('*, mrr_schedule:mrr_schedules(*, appointment:appointments(*))')
+        .eq('completed_by', userId)
+        .eq('status', 'confirmed')
+        .gte('completed_at', startOfDay.toISOString())
+        .lte('completed_at', endOfDay.toISOString())
+        .order('completed_at', { ascending: false });
+
+      // Load confirmation tasks completed (if closer also does confirmations)
+      const { data: confirmTasks } = await supabase
+        .from('confirmation_tasks')
+        .select('*, appointment:appointments(*)')
+        .eq('assigned_to', userId)
+        .eq('status', 'completed')
+        .gte('completed_at', startOfDay.toISOString())
+        .lte('completed_at', endOfDay.toISOString())
+        .order('completed_at', { ascending: false });
+
       // Load last activity
       const { data: activity } = await supabase
         .from('activity_logs')
@@ -98,6 +120,8 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
       setDepositsCollected(deposits || []);
       setPipelineActivity(pipeline || []);
       setOverdueFollowUps(overdue || []);
+      setMrrTasksCompleted(mrrTasks || []);
+      setConfirmTasksCompleted(confirmTasks || []);
       setLastActivity(activity ? new Date(activity.created_at) : null);
     } catch (error) {
       console.error('Error loading closer EOD data:', error);
@@ -134,7 +158,9 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
       ['Total Revenue', `$${totalRevenue.toLocaleString()}`],
       ['Total Commission', `$${totalCommission.toFixed(2)}`],
       ['Deals Closed', dealsClosed.length.toString()],
-      ['Pipeline Moves', pipelineActivity.length.toString()]
+      ['Pipeline Moves', pipelineActivity.length.toString()],
+      ['MRR Tasks', mrrTasksCompleted.length.toString()],
+      ['Confirmation Tasks', confirmTasksCompleted.length.toString()]
     ];
 
     const csv = data.map(row => row.join(',')).join('\n');
@@ -174,7 +200,7 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Key Metrics */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
           <Card className="bg-success/5 border-success/20">
             <CardContent className="pt-6">
               <div className="text-center">
@@ -204,6 +230,16 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
               </div>
             </CardContent>
           </Card>
+
+          <Card className="bg-info/5 border-info/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <CheckCircle className="h-5 w-5 text-info mx-auto mb-2" />
+                <p className="text-3xl font-bold text-info">{mrrTasksCompleted.length + confirmTasksCompleted.length}</p>
+                <p className="text-sm text-muted-foreground">Tasks Done</p>
+              </div>
+            </CardContent>
+          </Card>
           
           <Card className={cn("border-destructive/20", overdueFollowUps.length > 0 ? "bg-destructive/5" : "bg-muted/20")}>
             <CardContent className="pt-6">
@@ -223,73 +259,134 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dealsClosed.length === 0 && pipelineActivity.length === 0 && overdueFollowUps.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No activity for this date</p>
-              ) : (
-                <>
-                  {dealsClosed.map(deal => (
-                    <div key={deal.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors border border-success/20 bg-success/5">
+              {[
+                ...dealsClosed.map(deal => ({
+                  time: new Date(deal.updated_at),
+                  type: 'deal_closed',
+                  content: (
+                    <div className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-success bg-success/5">
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(deal.updated_at), 'h:mm a')}
                       </div>
+                      <Badge variant="success" className="shrink-0">💰 Deal Closed</Badge>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-success" />
-                          <span className="font-medium text-success">Deal Closed</span>
+                        <p className="font-medium text-lg">{deal.lead_name}</p>
+                        <p className="text-sm text-muted-foreground">{deal.lead_email}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="default" className="text-base font-bold">
+                            ${Number(deal.cc_collected).toLocaleString()}
+                          </Badge>
+                          {deal.product_name && <Badge variant="secondary">{deal.product_name}</Badge>}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {deal.lead_name} • ${Number(deal.cc_collected).toLocaleString()}
-                        </p>
-                        {deal.product_name && (
-                          <Badge variant="secondary" className="mt-1">{deal.product_name}</Badge>
-                        )}
-                        <p className="text-xs text-success mt-1">
-                          Commission: ${(Number(deal.cc_collected) * 0.10).toFixed(2)}
+                        <p className="text-sm text-success font-medium mt-1">
+                          Your commission: ${(Number(deal.cc_collected) * 0.10).toFixed(2)}
                         </p>
                       </div>
                     </div>
-                  ))}
-                  
-                  {pipelineActivity.slice(0, 10).map((activity, idx) => (
-                    <div key={idx} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
+                  )
+                })),
+                ...mrrTasksCompleted.map(task => ({
+                  time: new Date(task.completed_at),
+                  type: 'mrr_confirmed',
+                  content: (
+                    <div className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-accent bg-accent/5">
+                      <div className="text-xs text-muted-foreground min-w-[80px]">
+                        {format(new Date(task.completed_at), 'h:mm a')}
+                      </div>
+                      <Badge variant="secondary" className="shrink-0">🔄 MRR Confirmed</Badge>
+                      <div className="flex-1">
+                        <p className="font-medium">{task.mrr_schedule?.client_name}</p>
+                        <p className="text-sm text-muted-foreground">{task.mrr_schedule?.client_email}</p>
+                        <p className="text-sm text-accent font-medium mt-1">
+                          ${Number(task.mrr_schedule?.mrr_amount || 0).toLocaleString()} MRR payment confirmed
+                        </p>
+                        {task.notes && <p className="text-xs text-muted-foreground mt-1">{task.notes}</p>}
+                      </div>
+                    </div>
+                  )
+                })),
+                ...confirmTasksCompleted.map(task => ({
+                  time: new Date(task.completed_at),
+                  type: 'call_confirmed',
+                  content: (
+                    <div className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-primary bg-primary/5">
+                      <div className="text-xs text-muted-foreground min-w-[80px]">
+                        {format(new Date(task.completed_at), 'h:mm a')}
+                      </div>
+                      <Badge variant="default" className="shrink-0">✓ Call Confirmed</Badge>
+                      <div className="flex-1">
+                        <p className="font-medium">{task.appointment?.lead_name}</p>
+                        <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
+                        <Badge variant="outline" className="mt-1">{task.task_type?.replace('_', ' ')}</Badge>
+                      </div>
+                    </div>
+                  )
+                })),
+                ...depositsCollected.map(deposit => ({
+                  time: new Date(deposit.created_at),
+                  type: 'deposit',
+                  content: (
+                    <div className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-info bg-info/5">
+                      <div className="text-xs text-muted-foreground min-w-[80px]">
+                        {format(new Date(deposit.created_at), 'h:mm a')}
+                      </div>
+                      <Badge variant="info" className="shrink-0">💳 Deposit Collected</Badge>
+                      <div className="flex-1">
+                        <p className="font-medium">{deposit.appointment?.lead_name}</p>
+                        <p className="text-sm text-muted-foreground">{deposit.appointment?.lead_email}</p>
+                        {deposit.note && <p className="text-sm text-muted-foreground mt-1">{deposit.note}</p>}
+                      </div>
+                    </div>
+                  )
+                })),
+                ...pipelineActivity.slice(0, 10).map(activity => ({
+                  time: new Date(activity.created_at),
+                  type: 'pipeline',
+                  content: (
+                    <div className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-primary bg-muted/20">
                       <div className="text-xs text-muted-foreground min-w-[80px]">
                         {format(new Date(activity.created_at), 'h:mm a')}
                       </div>
+                      <Badge variant="outline" className="shrink-0">📊 {activity.action_type}</Badge>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <TrendingUp className="h-4 w-4 text-primary" />
-                          <span className="font-medium">{activity.action_type}</span>
-                        </div>
-                        {activity.note && (
-                          <p className="text-sm text-muted-foreground mt-1">{activity.note}</p>
-                        )}
+                        {activity.note && <p className="text-sm text-muted-foreground">{activity.note}</p>}
                       </div>
                     </div>
-                  ))}
-                  
-                  {overdueFollowUps.map(task => (
-                    <div key={task.id} className="flex items-start gap-3 p-3 rounded-lg border border-destructive bg-destructive/5">
-                      <div className="text-xs text-destructive min-w-[80px]">
-                        Overdue
-                      </div>
+                  )
+                })),
+                ...overdueFollowUps.map(task => ({
+                  time: new Date(),
+                  type: 'overdue',
+                  content: (
+                    <div className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-destructive bg-destructive/5">
+                      <div className="text-xs text-destructive min-w-[80px]">OVERDUE</div>
+                      <Badge variant="destructive" className="shrink-0">⚠️ Overdue Follow-up</Badge>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4 text-destructive" />
-                          <span className="font-medium text-destructive">Follow-up Needed</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {task.appointment?.lead_name}
-                        </p>
+                        <p className="font-medium text-destructive">{task.appointment?.lead_name}</p>
+                        <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
                         <p className="text-xs text-destructive mt-1">
-                          Overdue since {format(new Date(task.follow_up_date), 'MMM dd')}
+                          Due: {format(new Date(task.follow_up_date), 'MMM dd, yyyy')}
                         </p>
                         {task.follow_up_reason && (
                           <p className="text-xs text-muted-foreground mt-1">{task.follow_up_reason}</p>
                         )}
                       </div>
                     </div>
-                  ))}
-                </>
+                  )
+                }))
+              ]
+                .sort((a, b) => b.time.getTime() - a.time.getTime())
+                .map((item, idx) => (
+                  <div key={idx}>{item.content}</div>
+                ))}
+              
+              {dealsClosed.length === 0 && 
+               mrrTasksCompleted.length === 0 && 
+               confirmTasksCompleted.length === 0 && 
+               depositsCollected.length === 0 && 
+               pipelineActivity.length === 0 && 
+               overdueFollowUps.length === 0 && (
+                <p className="text-center text-muted-foreground py-8">No activity for this date</p>
               )}
             </div>
           </CardContent>

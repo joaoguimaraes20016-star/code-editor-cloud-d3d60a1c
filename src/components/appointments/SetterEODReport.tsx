@@ -18,7 +18,10 @@ interface SetterEODReportProps {
 export function SetterEODReport({ teamId, userId, userName, date }: SetterEODReportProps) {
   const [loading, setLoading] = useState(true);
   const [appointmentsBooked, setAppointmentsBooked] = useState<any[]>([]);
-  const [confirmations, setConfirmations] = useState<any[]>([]);
+  const [callConfirmations, setCallConfirmations] = useState<any[]>([]);
+  const [mrrTasks, setMrrTasks] = useState<any[]>([]);
+  const [noShows, setNoShows] = useState<any[]>([]);
+  const [reschedules, setReschedules] = useState<any[]>([]);
   const [overdueTasks, setOverdueTasks] = useState<any[]>([]);
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
 
@@ -54,14 +57,25 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
         .lte('created_at', endOfDay.toISOString())
         .order('created_at', { ascending: false });
 
-      // Load confirmations completed today
+      // Load ALL completed confirmation tasks today
       const { data: tasks } = await supabase
         .from('confirmation_tasks')
         .select('*, appointment:appointments(*)')
         .eq('assigned_to', userId)
         .eq('status', 'completed')
         .gte('completed_at', startOfDay.toISOString())
-        .lte('completed_at', endOfDay.toISOString());
+        .lte('completed_at', endOfDay.toISOString())
+        .order('completed_at', { ascending: false });
+
+      // Load MRR follow-up tasks completed today
+      const { data: mrr } = await supabase
+        .from('mrr_follow_up_tasks')
+        .select('*, mrr_schedule:mrr_schedules(*, appointment:appointments(*))')
+        .eq('completed_by', userId)
+        .eq('status', 'confirmed')
+        .gte('completed_at', startOfDay.toISOString())
+        .lte('completed_at', endOfDay.toISOString())
+        .order('completed_at', { ascending: false });
 
       // Load overdue tasks
       const { data: overdue } = await supabase
@@ -80,8 +94,23 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
         .limit(1)
         .maybeSingle();
 
+      // Separate tasks by type and check for no-shows via activity logs
+      const allTasks = tasks || [];
+      
+      // Get no-shows from activity logs
+      const { data: noShowLogs } = await supabase
+        .from('activity_logs')
+        .select('*, appointment:appointments(*)')
+        .eq('actor_id', userId)
+        .eq('action_type', 'No Show')
+        .gte('created_at', startOfDay.toISOString())
+        .lte('created_at', endOfDay.toISOString());
+      
       setAppointmentsBooked(appts || []);
-      setConfirmations(tasks || []);
+      setCallConfirmations(allTasks.filter(t => t.task_type === 'call_confirmation'));
+      setNoShows(noShowLogs || []);
+      setReschedules(allTasks.filter(t => t.task_type === 'reschedule'));
+      setMrrTasks(mrr || []);
       setOverdueTasks(overdue || []);
       setLastActivity(activity ? new Date(activity.created_at) : null);
     } catch (error) {
@@ -113,10 +142,26 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
         apt.status
       ]),
       [],
-      ['Confirmations Completed'],
-      ['Lead Name', 'Confirmation Time'],
-      ...confirmations.map(task => [
+      ['Confirmations & Tasks Completed'],
+      ['Lead Name', 'Task Type', 'Time'],
+      ...callConfirmations.map(task => [
         task.appointment?.lead_name || '',
+        'Call Confirmation',
+        format(new Date(task.completed_at), 'h:mm a')
+      ]),
+      ...mrrTasks.map(task => [
+        task.mrr_schedule?.client_name || '',
+        'MRR Confirmation',
+        format(new Date(task.completed_at), 'h:mm a')
+      ]),
+      ...noShows.map(log => [
+        log.appointment?.lead_name || '',
+        'No Show',
+        format(new Date(log.created_at), 'h:mm a')
+      ]),
+      ...reschedules.map(task => [
+        task.appointment?.lead_name || '',
+        'Rescheduled',
         format(new Date(task.completed_at), 'h:mm a')
       ])
     ];
@@ -158,7 +203,7 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Key Metrics */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="pt-6">
               <div className="text-center">
@@ -173,8 +218,18 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <CheckCircle className="h-5 w-5 text-success mx-auto mb-2" />
-                <p className="text-3xl font-bold text-success">{confirmations.length}</p>
-                <p className="text-sm text-muted-foreground">Confirmed</p>
+                <p className="text-3xl font-bold text-success">{callConfirmations.length + mrrTasks.length}</p>
+                <p className="text-sm text-muted-foreground">Tasks Done</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-accent/5 border-accent/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <TrendingUp className="h-5 w-5 text-accent mx-auto mb-2" />
+                <p className="text-3xl font-bold text-accent">{noShows.length + reschedules.length}</p>
+                <p className="text-sm text-muted-foreground">Actions</p>
               </div>
             </CardContent>
           </Card>
@@ -197,62 +252,109 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {appointmentsBooked.length === 0 && confirmations.length === 0 && overdueTasks.length === 0 ? (
+              {appointmentsBooked.length === 0 && callConfirmations.length === 0 && mrrTasks.length === 0 && noShows.length === 0 && reschedules.length === 0 && overdueTasks.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No activity for this date</p>
               ) : (
                 <>
+                  {/* Appointments Booked */}
                   {appointmentsBooked.map(apt => (
-                    <div key={apt.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
+                    <div key={apt.id} className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-primary bg-primary/5">
                       <div className="text-xs text-muted-foreground min-w-[80px]">
-                        {format(new Date(apt.start_at_utc), 'h:mm a')}
+                        {format(new Date(apt.created_at), 'h:mm a')}
                       </div>
+                      <Badge variant="default" className="shrink-0">📞 Booked</Badge>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-primary" />
-                          <span className="font-medium">Booked Appointment</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {apt.lead_name} • {apt.lead_email}
+                        <p className="font-medium">{apt.lead_name}</p>
+                        <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
+                        <p className="text-sm text-muted-foreground">{apt.lead_phone || 'No phone'}</p>
+                        {apt.event_type_name && <Badge variant="secondary" className="mt-1">{apt.event_type_name}</Badge>}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Appointment: {format(new Date(apt.start_at_utc), 'MMM dd, h:mm a')}
                         </p>
-                        {apt.event_type_name && (
-                          <Badge variant="secondary" className="mt-1">{apt.event_type_name}</Badge>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Call Confirmations */}
+                  {callConfirmations.map(task => (
+                    <div key={task.id} className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-success bg-success/5">
+                      <div className="text-xs text-muted-foreground min-w-[80px]">
+                        {format(new Date(task.completed_at), 'h:mm a')}
+                      </div>
+                      <Badge variant="success" className="shrink-0">✓ Call Confirmed</Badge>
+                      <div className="flex-1">
+                        <p className="font-medium">{task.appointment?.lead_name}</p>
+                        <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
+                        <p className="text-sm text-muted-foreground">{task.appointment?.lead_phone || 'No phone'}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          For: {format(new Date(task.appointment?.start_at_utc), 'MMM dd, h:mm a')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* MRR Confirmations */}
+                  {mrrTasks.map(task => (
+                    <div key={task.id} className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-accent bg-accent/5">
+                      <div className="text-xs text-muted-foreground min-w-[80px]">
+                        {format(new Date(task.completed_at), 'h:mm a')}
+                      </div>
+                      <Badge variant="secondary" className="shrink-0">💰 MRR Confirmed</Badge>
+                      <div className="flex-1">
+                        <p className="font-medium">{task.mrr_schedule?.client_name}</p>
+                        <p className="text-sm text-muted-foreground">{task.mrr_schedule?.client_email}</p>
+                        <p className="text-sm text-success font-medium">
+                          ${Number(task.mrr_schedule?.mrr_amount || 0).toLocaleString()} MRR
+                        </p>
+                        {task.notes && <p className="text-xs text-muted-foreground mt-1">{task.notes}</p>}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* No-Shows */}
+                  {noShows.map((log, idx) => (
+                    <div key={`noshow-${idx}`} className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-chart-2 bg-chart-2/5">
+                      <div className="text-xs text-muted-foreground min-w-[80px]">
+                        {format(new Date(log.created_at), 'h:mm a')}
+                      </div>
+                      <Badge variant="warning" className="shrink-0">❌ No Show</Badge>
+                      <div className="flex-1">
+                        <p className="font-medium">{log.appointment?.lead_name}</p>
+                        <p className="text-sm text-muted-foreground">{log.appointment?.lead_email}</p>
+                        {log.note && <p className="text-xs text-muted-foreground mt-1">{log.note}</p>}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Reschedules */}
+                  {reschedules.map(task => (
+                    <div key={task.id} className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-info bg-info/5">
+                      <div className="text-xs text-muted-foreground min-w-[80px]">
+                        {format(new Date(task.completed_at), 'h:mm a')}
+                      </div>
+                      <Badge variant="info" className="shrink-0">🔄 Rescheduled</Badge>
+                      <div className="flex-1">
+                        <p className="font-medium">{task.appointment?.lead_name}</p>
+                        <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
+                        {task.reschedule_date && (
+                          <p className="text-xs text-info mt-1">
+                            New date: {format(new Date(task.reschedule_date), 'MMM dd, yyyy')}
+                          </p>
                         )}
                       </div>
                     </div>
                   ))}
-                  
-                  {confirmations.map(task => (
-                    <div key={task.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
-                      <div className="text-xs text-muted-foreground min-w-[80px]">
-                        {format(new Date(task.completed_at), 'h:mm a')}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-success" />
-                          <span className="font-medium">Confirmed Appointment</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {task.appointment?.lead_name}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  
+
+                  {/* Overdue Tasks */}
                   {overdueTasks.map(task => (
-                    <div key={task.id} className="flex items-start gap-3 p-3 rounded-lg border border-destructive bg-destructive/5">
-                      <div className="text-xs text-destructive min-w-[80px]">
-                        Overdue
-                      </div>
+                    <div key={task.id} className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-destructive bg-destructive/5">
+                      <div className="text-xs text-destructive min-w-[80px]">OVERDUE</div>
+                      <Badge variant="destructive" className="shrink-0">⚠️ Overdue</Badge>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4 text-destructive" />
-                          <span className="font-medium text-destructive">Needs Confirmation</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {task.appointment?.lead_name}
-                        </p>
+                        <p className="font-medium text-destructive">{task.appointment?.lead_name}</p>
+                        <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
                         <p className="text-xs text-destructive mt-1">
-                          Overdue by {formatDistanceToNow(new Date(task.appointment?.start_at_utc))}
+                          Due: {format(new Date(task.appointment?.start_at_utc), 'MMM dd, h:mm a')}
                         </p>
                       </div>
                     </div>
