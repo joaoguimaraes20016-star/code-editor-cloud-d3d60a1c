@@ -3,11 +3,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 
 interface ChangeStatusDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (newStatus: string) => void;
+  onConfirm: (newStatus: string, rescheduleDate?: Date) => void;
   dealName: string;
   currentStatus: string | null;
 }
@@ -22,9 +26,14 @@ const STATUS_OPTIONS = [
 
 export function ChangeStatusDialog({ open, onOpenChange, onConfirm, dealName, currentStatus }: ChangeStatusDialogProps) {
   const [newStatus, setNewStatus] = useState<string>(currentStatus || "NEW");
+  const [rescheduleDate, setRescheduleDate] = useState<Date>();
 
   const handleConfirm = () => {
-    onConfirm(newStatus);
+    if (newStatus === "RESCHEDULED" && !rescheduleDate) {
+      return; // Don't allow confirming reschedule without a date
+    }
+    onConfirm(newStatus, rescheduleDate);
+    setRescheduleDate(undefined);
     onOpenChange(false);
   };
 
@@ -55,13 +64,42 @@ export function ChangeStatusDialog({ open, onOpenChange, onConfirm, dealName, cu
               </SelectContent>
             </Select>
           </div>
+
+          {newStatus === "RESCHEDULED" && (
+            <div className="space-y-2">
+              <Label>Select Reschedule Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {rescheduleDate ? format(rescheduleDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={rescheduleDate}
+                    onSelect={setRescheduleDate}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm}>
+          <Button 
+            onClick={handleConfirm}
+            disabled={newStatus === "RESCHEDULED" && !rescheduleDate}
+          >
             Change Status
           </Button>
         </DialogFooter>

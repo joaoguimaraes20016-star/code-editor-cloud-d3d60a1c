@@ -841,19 +841,37 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     }
   };
 
-  const handleStatusConfirm = async (newStatus: string) => {
+  const handleStatusConfirm = async (newStatus: string, rescheduleDate?: Date) => {
     if (!statusDialog) return;
 
     const appointment = appointments.find((a) => a.id === statusDialog.appointmentId);
     if (!appointment) return;
 
     try {
+      const updateData: any = { status: newStatus as any };
+
+      // Add retarget_date and reason for rescheduled status
+      if (newStatus === "RESCHEDULED" && rescheduleDate) {
+        updateData.retarget_date = format(rescheduleDate, "yyyy-MM-dd");
+        updateData.retarget_reason = "Rescheduled by user";
+      }
+
       const { error } = await supabase
         .from('appointments')
-        .update({ status: newStatus as any })
+        .update(updateData)
         .eq('id', statusDialog.appointmentId);
 
       if (error) throw error;
+
+      // Create reschedule task if rescheduled with a date
+      if (newStatus === "RESCHEDULED" && rescheduleDate) {
+        await supabase.rpc("create_task_with_assignment", {
+          p_team_id: appointment.team_id,
+          p_appointment_id: statusDialog.appointmentId,
+          p_task_type: "reschedule",
+          p_reschedule_date: format(rescheduleDate, "yyyy-MM-dd")
+        });
+      }
 
       // Log the status change
       await supabase
@@ -863,7 +881,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           appointment_id: statusDialog.appointmentId,
           actor_name: "User",
           action_type: "Status Changed",
-          note: `Changed status to ${newStatus}`
+          note: `Changed status to ${newStatus}${rescheduleDate ? ` for ${format(rescheduleDate, "PPP")}` : ""}`
         });
       
       toast.success(`Status changed to ${newStatus}`);
