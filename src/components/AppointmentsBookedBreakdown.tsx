@@ -317,14 +317,10 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
       booked: number; 
       confirmed: number; 
       showed: number; 
-      confirmedShowed: number;
-      confirmedClosed: number;
       confirmRate: number; 
       showRate: number;
-      confirmedShowRate: number;
-      confirmedCloseRate: number;
     }) => (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <h4 className="text-sm font-semibold text-muted-foreground">{label}</h4>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -384,16 +380,6 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
             </CardContent>
           </Card>
         </div>
-
-        {/* Confirmed Calls Performance Highlight */}
-        {stats.confirmed > 0 && (
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 text-sm">
-            <span className="text-primary font-semibold">⭐ Confirmed Performance:</span>
-            <span className="ml-2">{stats.confirmedShowed} showed ({stats.confirmedShowRate.toFixed(0)}%)</span>
-            <span className="mx-1.5">•</span>
-            <span>{stats.confirmedClosed} closed ({stats.confirmedCloseRate.toFixed(0)}%)</span>
-          </div>
-        )}
       </div>
     );
 
@@ -416,46 +402,57 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
             booked: member.stats.booked.total,
             confirmed: member.stats.confirmed.total,
             showed: member.stats.showed.total,
-            confirmedShowed: member.stats.confirmedShowed.total,
-            confirmedClosed: member.stats.confirmedClosed.total,
             confirmRate: member.stats.confirmRate.total,
-            showRate: member.stats.showRate.total,
-            confirmedShowRate: member.stats.confirmedShowRate.total,
-            confirmedCloseRate: member.stats.confirmedCloseRate.total
+            showRate: member.stats.showRate.total
           })}
           {renderTimeBlock("This Month", {
             booked: member.stats.booked.thisMonth,
             confirmed: member.stats.confirmed.thisMonth,
             showed: member.stats.showed.thisMonth,
-            confirmedShowed: member.stats.confirmedShowed.thisMonth,
-            confirmedClosed: member.stats.confirmedClosed.thisMonth,
             confirmRate: member.stats.confirmRate.thisMonth,
-            showRate: member.stats.showRate.thisMonth,
-            confirmedShowRate: member.stats.confirmedShowRate.thisMonth,
-            confirmedCloseRate: member.stats.confirmedCloseRate.thisMonth
+            showRate: member.stats.showRate.thisMonth
           })}
           {renderTimeBlock("This Week", {
             booked: member.stats.booked.thisWeek,
             confirmed: member.stats.confirmed.thisWeek,
             showed: member.stats.showed.thisWeek,
-            confirmedShowed: member.stats.confirmedShowed.thisWeek,
-            confirmedClosed: member.stats.confirmedClosed.thisWeek,
             confirmRate: member.stats.confirmRate.thisWeek,
-            showRate: member.stats.showRate.thisWeek,
-            confirmedShowRate: member.stats.confirmedShowRate.thisWeek,
-            confirmedCloseRate: member.stats.confirmedCloseRate.thisWeek
+            showRate: member.stats.showRate.thisWeek
           })}
           {renderTimeBlock("Today", {
             booked: member.stats.booked.today,
             confirmed: member.stats.confirmed.today,
             showed: member.stats.showed.today,
-            confirmedShowed: member.stats.confirmedShowed.today,
-            confirmedClosed: member.stats.confirmedClosed.today,
             confirmRate: member.stats.confirmRate.today,
-            showRate: member.stats.showRate.today,
-            confirmedShowRate: member.stats.confirmedShowRate.today,
-            confirmedCloseRate: member.stats.confirmedCloseRate.today
+            showRate: member.stats.showRate.today
           })}
+
+          {/* Confirmed Calls Performance Section */}
+          <div className="pt-4 border-t">
+            <h4 className="text-sm font-semibold text-primary mb-3">⭐ Confirmed Calls Performance (This Month)</h4>
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Confirmed</div>
+                  <div className="text-2xl font-bold">{member.stats.confirmed.thisMonth}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Showed Up</div>
+                  <div className="text-2xl font-bold">{member.stats.confirmedShowed.thisMonth}</div>
+                  <Badge variant="outline" className="mt-1 text-xs">
+                    {member.stats.confirmedShowRate.thisMonth.toFixed(0)}%
+                  </Badge>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Closed</div>
+                  <div className="text-2xl font-bold">{member.stats.confirmedClosed.thisMonth}</div>
+                  <Badge variant="outline" className="mt-1 text-xs">
+                    {member.stats.confirmedCloseRate.thisMonth.toFixed(0)}%
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </Card>
     );
