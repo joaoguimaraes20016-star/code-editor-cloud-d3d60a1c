@@ -298,19 +298,39 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
       return;
     }
 
-    // Check if moving to rescheduled - open reschedule link dialog
+    // Check if moving to rescheduled
     if (newStage === "rescheduled") {
-      if (!appointment.reschedule_url) {
-        toast.error("No reschedule URL available for this appointment");
+      // If reschedule URL is available, open the link dialog
+      if (appointment.reschedule_url) {
+        setRescheduleLinkDialog({
+          open: true,
+          appointmentId,
+          rescheduleUrl: appointment.reschedule_url,
+          dealName: appointment.lead_name
+        });
         return;
       }
       
-      setRescheduleLinkDialog({
-        open: true,
-        appointmentId,
-        rescheduleUrl: appointment.reschedule_url,
-        dealName: appointment.lead_name
-      });
+      // Otherwise, just create a task and move to rescheduled (for manual appointments)
+      try {
+        await supabase
+          .from("appointments")
+          .update({ pipeline_stage: newStage })
+          .eq("id", appointmentId);
+
+        await supabase.rpc("create_task_with_assignment", {
+          p_team_id: appointment.team_id,
+          p_appointment_id: appointmentId,
+          p_task_type: "reschedule",
+          p_reschedule_date: null
+        });
+
+        toast.success("Moved to rescheduled - task created");
+        loadDeals();
+      } catch (error) {
+        console.error("Error moving to rescheduled:", error);
+        toast.error("Failed to move to rescheduled");
+      }
       return;
     }
 
@@ -618,17 +638,37 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
     // Check if moving to stages that require additional info
     if (stage === "rescheduled") {
-      if (!appointment.reschedule_url) {
-        toast.error("No reschedule URL available for this appointment");
+      // If reschedule URL is available, open the link dialog
+      if (appointment.reschedule_url) {
+        setRescheduleLinkDialog({ 
+          open: true, 
+          appointmentId, 
+          rescheduleUrl: appointment.reschedule_url,
+          dealName: appointment.lead_name 
+        });
         return;
       }
       
-      setRescheduleLinkDialog({ 
-        open: true, 
-        appointmentId, 
-        rescheduleUrl: appointment.reschedule_url,
-        dealName: appointment.lead_name 
-      });
+      // Otherwise, just create a task and move to rescheduled (for manual appointments)
+      try {
+        await supabase
+          .from("appointments")
+          .update({ pipeline_stage: stage })
+          .eq("id", appointmentId);
+
+        await supabase.rpc("create_task_with_assignment", {
+          p_team_id: appointment.team_id,
+          p_appointment_id: appointmentId,
+          p_task_type: "reschedule",
+          p_reschedule_date: null
+        });
+
+        toast.success("Moved to rescheduled - task created");
+        loadDeals();
+      } catch (error) {
+        console.error("Error moving to rescheduled:", error);
+        toast.error("Failed to move to rescheduled");
+      }
       return;
     }
 
