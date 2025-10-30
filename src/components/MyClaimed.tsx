@@ -42,9 +42,10 @@ interface MyClaimedProps {
   teamId: string;
   closerCommissionPct: number;
   setterCommissionPct: number;
+  showAllAppointments?: boolean;
 }
 
-export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct }: MyClaimedProps) {
+export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct, showAllAppointments = false }: MyClaimedProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -97,12 +98,20 @@ export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct }: 
 
       const savedEventTypes = teamData?.calendly_event_types || [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('appointments')
         .select('*')
-        .eq('team_id', teamId)
-        .eq('setter_id', user.id)
-        .order('start_at_utc', { ascending: false });
+        .eq('team_id', teamId);
+
+      // Only filter by setter_id if showAllAppointments is false
+      if (!showAllAppointments) {
+        query = query.eq('setter_id', user.id);
+      } else {
+        // For admins/offer owners, show only assigned appointments
+        query = query.not('setter_id', 'is', null);
+      }
+
+      const { data, error } = await query.order('start_at_utc', { ascending: false });
 
       if (error) throw error;
       

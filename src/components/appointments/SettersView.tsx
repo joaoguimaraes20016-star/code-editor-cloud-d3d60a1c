@@ -3,6 +3,7 @@ import { UnassignedAppointments } from "../appointments/UnassignedAppointments";
 import { AllNewAppointments } from "../AllNewAppointments";
 import { MyClaimed } from "../MyClaimed";
 import { useAuth } from "@/hooks/useAuth";
+import { useTeamRole } from "@/hooks/useTeamRole";
 
 interface SettersViewProps {
   teamId: string;
@@ -12,6 +13,10 @@ interface SettersViewProps {
 
 export function SettersView({ teamId, closerCommissionPct, setterCommissionPct }: SettersViewProps) {
   const { user } = useAuth();
+  const { role } = useTeamRole(teamId);
+  
+  // Admins and offer owners see all appointments, setters see only theirs
+  const showAllInMyAppointments = role === 'admin' || role === 'offer_owner';
 
   return (
     <div className="space-y-4">
@@ -55,6 +60,7 @@ export function SettersView({ teamId, closerCommissionPct, setterCommissionPct }
             teamId={teamId}
             closerCommissionPct={closerCommissionPct}
             setterCommissionPct={setterCommissionPct}
+            showAllAppointments={showAllInMyAppointments}
           />
         </TabsContent>
       </Tabs>
