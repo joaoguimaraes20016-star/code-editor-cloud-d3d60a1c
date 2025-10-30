@@ -22,6 +22,26 @@ serve(async (req) => {
 
     console.log('Processing new appointment:', appointment.id);
 
+    // Check if team has auto_create_tasks enabled (defaults to true if not set)
+    const { data: teamSettings, error: teamError } = await supabaseClient
+      .from('teams')
+      .select('auto_create_tasks')
+      .eq('id', appointment.team_id)
+      .single();
+
+    if (teamError) {
+      console.error('Error fetching team settings:', teamError);
+    }
+
+    // If auto_create_tasks is explicitly disabled, skip task creation
+    if (teamSettings && teamSettings.auto_create_tasks === false) {
+      console.log('Auto-create tasks disabled for team, skipping task creation');
+      return new Response(
+        JSON.stringify({ success: true, skipped: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get active setters for this team
     const { data: activeSetters, error: settersError } = await supabaseClient
       .from('team_members')

@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Mail, User, Clock, MessageSquare } from "lucide-react";
+import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,10 +28,12 @@ interface AppointmentCardProps {
     cc_collected: number | null;
     mrr_amount: number | null;
   };
+  teamId?: string;
   onUpdateStatus?: (id: string, status: string) => void;
   onCloseDeal?: (appointment: any) => void;
   onViewDetails?: (appointment: any) => void;
   onAssign?: () => void;
+  onUpdate?: () => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -44,11 +48,14 @@ const statusColors: Record<string, string> = {
 
 export function AppointmentCard({
   appointment,
+  teamId,
   onUpdateStatus,
   onCloseDeal,
   onViewDetails,
   onAssign,
+  onUpdate,
 }: AppointmentCardProps) {
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const formattedDate = format(new Date(appointment.start_at_utc), "MMM dd, yyyy 'at' h:mm a");
 
   return (
@@ -79,6 +86,11 @@ export function AppointmentCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {teamId && (
+                <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                  Edit Appointment
+                </DropdownMenuItem>
+              )}
               {onViewDetails && (
                 <DropdownMenuItem onClick={() => onViewDetails(appointment)}>
                   View Details
@@ -156,6 +168,18 @@ export function AppointmentCard({
         )}
       </div>
       </div>
+
+      {teamId && showEditDialog && (
+        <EditAppointmentDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          appointment={appointment}
+          teamId={teamId}
+          onSuccess={() => {
+            onUpdate?.();
+          }}
+        />
+      )}
     </Card>
   );
 }

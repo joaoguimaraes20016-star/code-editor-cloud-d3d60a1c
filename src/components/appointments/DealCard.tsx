@@ -3,6 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,7 @@ interface DealCardProps {
 
 export function DealCard({ id, teamId, appointment, onCloseDeal, onMoveTo, onDelete, onUndo, onChangeStatus, onClearDealData, userRole }: DealCardProps) {
   const [showTimeline, setShowTimeline] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const {
     attributes,
     listeners,
@@ -146,6 +148,9 @@ export function DealCard({ id, teamId, appointment, onCloseDeal, onMoveTo, onDel
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                  Edit Appointment
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onCloseDeal(appointment)}>
                   Close Deal
                 </DropdownMenuItem>
@@ -238,6 +243,15 @@ export function DealCard({ id, teamId, appointment, onCloseDeal, onMoveTo, onDel
           appointmentId={appointment.id}
           teamId={teamId}
           onClose={() => setShowTimeline(false)}
+        />
+      )}
+      
+      {showEditDialog && (
+        <EditAppointmentDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          appointment={appointment}
+          teamId={teamId}
         />
       )}
     </>

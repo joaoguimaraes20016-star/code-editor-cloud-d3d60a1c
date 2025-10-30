@@ -788,6 +788,47 @@ export type Database = {
           },
         ]
       }
+      saved_reports: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_shared: boolean | null
+          report_config: Json
+          report_name: string
+          report_type: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_shared?: boolean | null
+          report_config: Json
+          report_name: string
+          report_type: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_shared?: boolean | null
+          report_config?: Json
+          report_name?: string
+          report_type?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_reports_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       setter_rotation_settings: {
         Row: {
           created_at: string
@@ -872,6 +913,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "team_assets_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_automation_rules: {
+        Row: {
+          action_config: Json | null
+          action_type: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          rule_name: string
+          team_id: string
+          trigger_conditions: Json | null
+          trigger_event: string
+        }
+        Insert: {
+          action_config?: Json | null
+          action_type: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          rule_name: string
+          team_id: string
+          trigger_conditions?: Json | null
+          trigger_event: string
+        }
+        Update: {
+          action_config?: Json | null
+          action_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          rule_name?: string
+          team_id?: string
+          trigger_conditions?: Json | null
+          trigger_event?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_automation_rules_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -1052,6 +1140,7 @@ export type Database = {
       }
       teams: {
         Row: {
+          auto_create_tasks: boolean | null
           calendly_access_token: string | null
           calendly_event_types: string[] | null
           calendly_organization_uri: string | null
@@ -1061,6 +1150,7 @@ export type Database = {
           closer_commission_percentage: number | null
           created_at: string | null
           created_by: string
+          dashboard_preferences: Json | null
           google_sheets_url: string | null
           id: string
           name: string
@@ -1068,6 +1158,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_create_tasks?: boolean | null
           calendly_access_token?: string | null
           calendly_event_types?: string[] | null
           calendly_organization_uri?: string | null
@@ -1077,6 +1168,7 @@ export type Database = {
           closer_commission_percentage?: number | null
           created_at?: string | null
           created_by: string
+          dashboard_preferences?: Json | null
           google_sheets_url?: string | null
           id?: string
           name: string
@@ -1084,6 +1176,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_create_tasks?: boolean | null
           calendly_access_token?: string | null
           calendly_event_types?: string[] | null
           calendly_organization_uri?: string | null
@@ -1093,6 +1186,7 @@ export type Database = {
           closer_commission_percentage?: number | null
           created_at?: string | null
           created_by?: string
+          dashboard_preferences?: Json | null
           google_sheets_url?: string | null
           id?: string
           name?: string

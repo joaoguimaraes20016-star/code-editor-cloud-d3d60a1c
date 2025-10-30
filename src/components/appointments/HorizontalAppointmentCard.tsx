@@ -2,8 +2,9 @@ import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle } from "lucide-react";
+import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle, Edit } from "lucide-react";
 import { useState } from "react";
+import { EditAppointmentDialog } from "./EditAppointmentDialog";
 
 interface HorizontalAppointmentCardProps {
   appointment: {
@@ -20,12 +21,15 @@ interface HorizontalAppointmentCardProps {
     cc_collected: number | null;
     mrr_amount: number | null;
   };
+  teamId?: string;
   showAssignButton?: boolean;
   showReassignButton?: boolean;
   showCloseDealButton?: boolean;
+  showEditButton?: boolean;
   onAssign?: () => void;
   onReassign?: () => void;
   onCloseDeal?: () => void;
+  onUpdate?: () => void;
 }
 
 const statusColors: Record<string, { badge: string; border: string }> = {
@@ -40,14 +44,18 @@ const statusColors: Record<string, { badge: string; border: string }> = {
 
 export function HorizontalAppointmentCard({
   appointment,
+  teamId,
   showAssignButton,
   showReassignButton,
   showCloseDealButton,
+  showEditButton = true,
   onAssign,
   onReassign,
   onCloseDeal,
+  onUpdate,
 }: HorizontalAppointmentCardProps) {
   const [notesExpanded, setNotesExpanded] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const formattedDate = format(new Date(appointment.start_at_utc), "MMM dd, yyyy 'at' h:mm a");
   const statusStyle = statusColors[appointment.status] || statusColors.NEW;
 
@@ -130,6 +138,18 @@ export function HorizontalAppointmentCard({
         {/* Actions - Right Section */}
         <div className="flex flex-col gap-2 lg:items-end">
           <div className="flex gap-2">
+            {teamId && showEditButton && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowEditDialog(true)}
+                className="flex items-center gap-1.5"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Edit</span>
+              </Button>
+            )}
+            
             {showAssignButton && onAssign && (
               <Button
                 size="sm"
@@ -184,6 +204,18 @@ export function HorizontalAppointmentCard({
             </div>
           )}
         </div>
+      )}
+
+      {teamId && showEditDialog && (
+        <EditAppointmentDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          appointment={appointment}
+          teamId={teamId}
+          onSuccess={() => {
+            onUpdate?.();
+          }}
+        />
       )}
     </Card>
   );

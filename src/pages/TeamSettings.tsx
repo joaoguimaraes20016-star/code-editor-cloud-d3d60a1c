@@ -38,6 +38,7 @@ import { SetterRotationSettings } from '@/components/SetterRotationSettings';
 import { ClearTeamData } from '@/components/ClearTeamData';
 import { CleanupDuplicateSales } from '@/components/CleanupDuplicateSales';
 import { BackfillRescheduleUrls } from '@/components/BackfillRescheduleUrls';
+import { WorkflowSettings } from '@/components/WorkflowSettings';
 import { getUserFriendlyError } from '@/lib/errorUtils';
 
 interface TeamMember {
@@ -488,6 +489,7 @@ export default function TeamSettings() {
           <>
             <CommissionSettings teamId={teamId!} />
             <SetterRotationSettings teamId={teamId!} />
+            <WorkflowSettings teamId={teamId!} />
             
             {/* Danger Zone - Clear All Data */}
             <Card className="border-destructive/50">
