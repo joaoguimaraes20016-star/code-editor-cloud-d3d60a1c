@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { AppointmentCard } from "./AppointmentCard";
+import { HorizontalAppointmentCard } from "./HorizontalAppointmentCard";
 import { AppointmentFilters } from "./AppointmentFilters";
 import { AssignDialog } from "./AssignDialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -176,11 +176,12 @@ export function UnassignedAppointments({ teamId, onUpdate }: UnassignedAppointme
           </AlertDescription>
         </Alert>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 animate-fade-in">
+        <div className="space-y-3 animate-fade-in">
           {filteredAppointments.map((appointment) => (
-            <AppointmentCard
+            <HorizontalAppointmentCard
               key={appointment.id}
               appointment={appointment}
+              showAssignButton={true}
               onAssign={() => handleAssign(appointment)}
             />
           ))}

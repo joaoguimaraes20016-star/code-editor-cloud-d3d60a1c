@@ -67,18 +67,23 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { HorizontalAppointmentCard } from "@/components/appointments/HorizontalAppointmentCard";
 
 interface Appointment {
   id: string;
   start_at_utc: string;
   lead_name: string;
   lead_email: string;
+  lead_phone?: string | null;
   status: string;
   closer_name: string | null;
   event_type_uri: string | null;
   event_type_name: string | null;
   setter_id: string | null;
   setter_name: string | null;
+  setter_notes: string | null;
+  cc_collected: number | null;
+  mrr_amount: number | null;
 }
 
 interface TeamMember {
@@ -764,68 +769,17 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
           ))}
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectedAppointments.size === filteredAppointments.length && filteredAppointments.length > 0}
-                    onCheckedChange={toggleSelectAll}
-                  />
-                </TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Lead</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Event Type</TableHead>
-                <TableHead>Setter</TableHead>
-                <TableHead>Closer</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAppointments.map((apt) => (
-                <TableRow key={apt.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedAppointments.has(apt.id)}
-                      onCheckedChange={() => toggleAppointmentSelection(apt.id)}
-                    />
-                  </TableCell>
-                  <TableCell>{formatLocalTime(apt.start_at_utc)}</TableCell>
-                  <TableCell>{apt.lead_name}</TableCell>
-                  <TableCell>{apt.lead_email}</TableCell>
-                  <TableCell className="text-sm">{apt.event_type_name || 'N/A'}</TableCell>
-                  <TableCell>{apt.setter_name || 'Unassigned'}</TableCell>
-                  <TableCell>{apt.closer_name || 'N/A'}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleOpenAssignDialog(apt)}
-                      >
-                        <Hand className="h-3 w-3 mr-1" />
-                        {apt.setter_id ? "Reassign" : "Assign"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleOpenCloseDeal(apt)}
-                      >
-                        Close Deal
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleOpenDeleteDialog(apt)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="space-y-3 animate-fade-in">
+          {filteredAppointments.map((apt) => (
+            <HorizontalAppointmentCard
+              key={apt.id}
+              appointment={apt}
+              showReassignButton={apt.setter_id !== null}
+              showCloseDealButton={true}
+              onReassign={() => handleOpenAssignDialog(apt)}
+              onCloseDeal={() => handleOpenCloseDeal(apt)}
+            />
+          ))}
         </div>
       )}
 

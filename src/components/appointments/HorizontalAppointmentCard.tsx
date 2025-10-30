@@ -1,0 +1,190 @@
+import { format } from "date-fns";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle } from "lucide-react";
+import { useState } from "react";
+
+interface HorizontalAppointmentCardProps {
+  appointment: {
+    id: string;
+    lead_name: string;
+    lead_email: string;
+    lead_phone?: string | null;
+    start_at_utc: string;
+    status: string;
+    setter_name: string | null;
+    closer_name: string | null;
+    event_type_name: string | null;
+    setter_notes: string | null;
+    cc_collected: number | null;
+    mrr_amount: number | null;
+  };
+  showAssignButton?: boolean;
+  showReassignButton?: boolean;
+  showCloseDealButton?: boolean;
+  onAssign?: () => void;
+  onReassign?: () => void;
+  onCloseDeal?: () => void;
+}
+
+const statusColors: Record<string, { badge: string; border: string }> = {
+  NEW: { badge: "default", border: "border-l-blue-500" },
+  SHOWED: { badge: "default", border: "border-l-green-500" },
+  NO_SHOW: { badge: "destructive", border: "border-l-red-500" },
+  CANCELLED: { badge: "secondary", border: "border-l-gray-400" },
+  CLOSED: { badge: "default", border: "border-l-green-600" },
+  RESCHEDULED: { badge: "default", border: "border-l-yellow-500" },
+  CONFIRMED: { badge: "default", border: "border-l-yellow-500" },
+};
+
+export function HorizontalAppointmentCard({
+  appointment,
+  showAssignButton,
+  showReassignButton,
+  showCloseDealButton,
+  onAssign,
+  onReassign,
+  onCloseDeal,
+}: HorizontalAppointmentCardProps) {
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const formattedDate = format(new Date(appointment.start_at_utc), "MMM dd, yyyy 'at' h:mm a");
+  const statusStyle = statusColors[appointment.status] || statusColors.NEW;
+
+  return (
+    <Card className={`p-4 hover:shadow-md transition-all duration-200 border-l-4 ${statusStyle.border} group`}>
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+        {/* Lead Information - Left Section */}
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-lg font-semibold truncate">{appointment.lead_name}</h3>
+            <Badge variant={statusStyle.badge as any} className="text-xs">
+              {appointment.status}
+            </Badge>
+          </div>
+          
+          <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">{appointment.lead_email}</span>
+            </div>
+            {appointment.lead_phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{appointment.lead_phone}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Appointment Details - Center Section */}
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">{formattedDate}</span>
+          </div>
+          
+          {appointment.event_type_name && (
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">{appointment.event_type_name}</span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {appointment.setter_name && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-info/10 border border-info/30 rounded text-xs">
+                <User className="w-3 h-3 text-info" />
+                <span className="font-medium">Setter: {appointment.setter_name}</span>
+              </div>
+            )}
+            {appointment.closer_name && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 border border-primary/30 rounded text-xs">
+                <User className="w-3 h-3 text-primary" />
+                <span className="font-medium">Closer: {appointment.closer_name}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Financial Info */}
+          {(appointment.cc_collected || appointment.mrr_amount) && (
+            <div className="flex gap-2 text-xs">
+              {appointment.cc_collected && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-success/10 border border-success/30 rounded">
+                  <DollarSign className="w-3 h-3 text-success" />
+                  <span className="font-semibold text-success">${appointment.cc_collected.toLocaleString()}</span>
+                  <span className="text-muted-foreground">paid</span>
+                </div>
+              )}
+              {appointment.mrr_amount && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 border border-primary/30 rounded">
+                  <DollarSign className="w-3 h-3 text-primary" />
+                  <span className="font-semibold text-primary">${appointment.mrr_amount.toLocaleString()}</span>
+                  <span className="text-muted-foreground">/mo</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Actions - Right Section */}
+        <div className="flex flex-col gap-2 lg:items-end">
+          <div className="flex gap-2">
+            {showAssignButton && onAssign && (
+              <Button
+                size="sm"
+                onClick={onAssign}
+                className="flex items-center gap-1.5"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Assign</span>
+              </Button>
+            )}
+            
+            {showReassignButton && onReassign && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onReassign}
+                className="flex items-center gap-1.5"
+              >
+                <Users className="w-4 h-4" />
+                <span>Reassign</span>
+              </Button>
+            )}
+            
+            {showCloseDealButton && onCloseDeal && appointment.status !== 'CLOSED' && (
+              <Button
+                size="sm"
+                onClick={onCloseDeal}
+                className="flex items-center gap-1.5"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>Close Deal</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Notes Section - Collapsible */}
+      {appointment.setter_notes && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <button
+            onClick={() => setNotesExpanded(!notesExpanded)}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span className="font-medium">Setter Notes</span>
+            <span className="text-xs">({notesExpanded ? 'hide' : 'show'})</span>
+          </button>
+          {notesExpanded && (
+            <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm">
+              {appointment.setter_notes}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
