@@ -309,10 +309,8 @@ serve(async (req) => {
               closerName = profiles.full_name;
               console.log(`✓ Assigned offer owner as closer: ${closerName} (${profiles.email})`);
             } else {
-              // Regular closer assignment
-              closerId = profiles.id;
-              closerName = profiles.full_name;
-              console.log(`✓ Final match: ${closerName} (${profiles.email})`);
+              // Not the offer owner, don't assign as closer
+              console.log(`✓ Matched organizer but not offer owner: ${profiles.full_name} (${profiles.email})`);
             }
           } else {
             console.log('✗ No closer match found');
