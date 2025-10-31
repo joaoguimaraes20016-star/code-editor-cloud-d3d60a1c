@@ -549,7 +549,7 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
     <>
       <div className="space-y-6">
         {/* Active Subscriptions Grid */}
-        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800">
+        <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl font-bold flex items-center gap-2">
@@ -572,21 +572,21 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
           <CardContent>
             {/* MRR Task Status Breakdown */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3">
+              <div className="bg-card border rounded-xl p-3">
                 <p className="text-xs text-muted-foreground font-medium">Due Tasks</p>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{taskStats.due}</p>
+                <p className="text-2xl font-bold text-primary">{taskStats.due}</p>
               </div>
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3">
+              <div className="bg-card border rounded-xl p-3">
                 <p className="text-xs text-muted-foreground font-medium">Confirmed</p>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{taskStats.confirmed}</p>
+                <p className="text-2xl font-bold text-success">{taskStats.confirmed}</p>
               </div>
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3">
+              <div className="bg-card border rounded-xl p-3">
                 <p className="text-xs text-muted-foreground font-medium">Canceled</p>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{taskStats.canceled}</p>
+                <p className="text-2xl font-bold text-destructive">{taskStats.canceled}</p>
               </div>
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3">
+              <div className="bg-card border rounded-xl p-3">
                 <p className="text-xs text-muted-foreground font-medium">Paused</p>
-                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{taskStats.paused}</p>
+                <p className="text-2xl font-bold text-warning">{taskStats.paused}</p>
               </div>
             </div>
             {activeSchedules.length === 0 ? (

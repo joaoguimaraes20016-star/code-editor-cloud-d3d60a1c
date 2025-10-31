@@ -233,11 +233,11 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-gradient-to-br from-green-500/20 to-green-500/10 border border-green-500/30 rounded-xl px-6 py-3">
-            <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <div className="flex items-center gap-2 border rounded-xl px-6 py-3">
+            <DollarSign className="h-5 w-5 text-success" />
             <div>
               <p className="text-xs text-muted-foreground font-medium">Total MRR</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <p className="text-2xl font-bold text-success">
                 ${totalMRR.toLocaleString()}
               </p>
             </div>
@@ -255,21 +255,21 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
 
         {/* MRR Task Status Breakdown */}
         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3">
+          <div className="bg-card border rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-medium">Due Tasks</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{taskStats.due}</p>
+            <p className="text-2xl font-bold text-primary">{taskStats.due}</p>
           </div>
-          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3">
+          <div className="bg-card border rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-medium">Confirmed</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{taskStats.confirmed}</p>
+            <p className="text-2xl font-bold text-success">{taskStats.confirmed}</p>
           </div>
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3">
+          <div className="bg-card border rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-medium">Canceled</p>
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400">{taskStats.canceled}</p>
+            <p className="text-2xl font-bold text-destructive">{taskStats.canceled}</p>
           </div>
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3">
+          <div className="bg-card border rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-medium">Paused</p>
-            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{taskStats.paused}</p>
+            <p className="text-2xl font-bold text-warning">{taskStats.paused}</p>
           </div>
         </div>
       </div>
