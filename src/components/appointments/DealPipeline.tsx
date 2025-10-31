@@ -1140,7 +1140,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     return colorMap[stageId] || colorMap['new'];
   };
 
-  if (loading || stages.length === 0) {
+  if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {[...Array(5)].map((_, i) => (
@@ -1150,6 +1150,31 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           </Card>
         ))}
       </div>
+    );
+  }
+
+  if (stages.length === 0) {
+    return (
+      <Card className="p-8 text-center">
+        <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+        <h3 className="text-lg font-semibold mb-2">No Pipeline Stages Configured</h3>
+        <p className="text-muted-foreground mb-4">
+          Create pipeline stages to organize your deals.
+        </p>
+        <Button onClick={() => setManagerOpen(true)}>
+          <Settings className="h-4 w-4 mr-2" />
+          Configure Pipeline Stages
+        </Button>
+        <PipelineStageManager
+          open={managerOpen}
+          onOpenChange={setManagerOpen}
+          teamId={teamId}
+          onStagesUpdated={() => {
+            loadStages();
+            loadDeals();
+          }}
+        />
+      </Card>
     );
   }
 
