@@ -107,11 +107,10 @@ export function AllClaimed({ teamId, closerCommissionPct, setterCommissionPct }:
           filter: `team_id=eq.${teamId}`
         },
         (payload) => {
-          // Only reload if on first page for new appointments with setter
-          const newApt = payload.new as Appointment;
-          if (newApt.setter_id && currentPage === 1) {
+          // Reload if on first page for any new appointment
+          if (currentPage === 1) {
             loadAppointments();
-          } else if (newApt.setter_id) {
+          } else {
             setTotalCount(prev => prev + 1);
           }
         }
@@ -127,16 +126,10 @@ export function AllClaimed({ teamId, closerCommissionPct, setterCommissionPct }:
         (payload) => {
           const updatedApt = payload.new as Appointment;
           
-          // If appointment still has a setter, update it
-          if (updatedApt.setter_id) {
-            setAppointments(prev => 
-              prev.map(apt => apt.id === updatedApt.id ? updatedApt : apt)
-            );
-          } else {
-            // If setter was removed, remove from assigned list
-            setAppointments(prev => prev.filter(apt => apt.id !== updatedApt.id));
-            setTotalCount(prev => Math.max(0, prev - 1));
-          }
+          // Update appointment in list (show all appointments regardless of assignment)
+          setAppointments(prev => 
+            prev.map(apt => apt.id === updatedApt.id ? updatedApt : apt)
+          );
         }
       )
       .subscribe((status) => {
@@ -163,12 +156,11 @@ export function AllClaimed({ teamId, closerCommissionPct, setterCommissionPct }:
 
       const savedEventTypes = teamFilterData?.calendly_event_types || [];
       
-      // Get total count
+      // Get total count - show ALL appointments (assigned and unassigned)
       const { count, error: countError } = await supabase
         .from('appointments')
         .select('*', { count: 'exact', head: true })
-        .eq('team_id', teamId)
-        .not('setter_id', 'is', null);
+        .eq('team_id', teamId);
 
       if (countError) throw countError;
 
@@ -180,7 +172,6 @@ export function AllClaimed({ teamId, closerCommissionPct, setterCommissionPct }:
         .from('appointments')
         .select('*')
         .eq('team_id', teamId)
-        .not('setter_id', 'is', null)
         .order('start_at_utc', { ascending: false })
         .range(from, to);
 
