@@ -69,64 +69,72 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);
 
-      // Load appointments booked in period
-      const { data: appts } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('setter_id', userId)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString())
-        .order('created_at', { ascending: false });
+      // Load all data in parallel for much faster performance
+      const [
+        { data: appts },
+        { data: tasks },
+        { data: mrr },
+        { data: overdue },
+        { data: activity },
+        { data: noShowLogs }
+      ] = await Promise.all([
+        // Load appointments booked in period
+        supabase
+          .from('appointments')
+          .select('*')
+          .eq('setter_id', userId)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString())
+          .order('created_at', { ascending: false }),
+        
+        // Load ALL completed confirmation tasks in period
+        supabase
+          .from('confirmation_tasks')
+          .select('*, appointment:appointments(*)')
+          .eq('assigned_to', userId)
+          .eq('status', 'completed')
+          .gte('completed_at', startDate.toISOString())
+          .lte('completed_at', endDate.toISOString())
+          .order('completed_at', { ascending: false }),
+        
+        // Load MRR follow-up tasks completed in period
+        supabase
+          .from('mrr_follow_up_tasks')
+          .select('*, mrr_schedule:mrr_schedules(*)')
+          .eq('completed_by', userId)
+          .eq('status', 'confirmed')
+          .gte('completed_at', startDate.toISOString())
+          .lte('completed_at', endDate.toISOString())
+          .order('completed_at', { ascending: false }),
+        
+        // Load overdue tasks
+        supabase
+          .from('confirmation_tasks')
+          .select('*, appointment:appointments(*)')
+          .eq('assigned_to', userId)
+          .eq('status', 'pending')
+          .lt('appointment.start_at_utc', new Date().toISOString()),
+        
+        // Load last activity
+        supabase
+          .from('activity_logs')
+          .select('created_at')
+          .eq('actor_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        
+        // Get no-shows from activity logs
+        supabase
+          .from('activity_logs')
+          .select('*')
+          .eq('actor_id', userId)
+          .eq('action_type', 'No Show')
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString())
+      ]);
 
-      // Load ALL completed confirmation tasks in period
-      const { data: tasks } = await supabase
-        .from('confirmation_tasks')
-        .select('*, appointment:appointments(*)')
-        .eq('assigned_to', userId)
-        .eq('status', 'completed')
-        .gte('completed_at', startDate.toISOString())
-        .lte('completed_at', endDate.toISOString())
-        .order('completed_at', { ascending: false });
-
-      // Load MRR follow-up tasks completed in period
-      const { data: mrr } = await supabase
-        .from('mrr_follow_up_tasks')
-        .select('*, mrr_schedule:mrr_schedules(*)')
-        .eq('completed_by', userId)
-        .eq('status', 'confirmed')
-        .gte('completed_at', startDate.toISOString())
-        .lte('completed_at', endDate.toISOString())
-        .order('completed_at', { ascending: false });
-
-      // Load overdue tasks
-      const { data: overdue } = await supabase
-        .from('confirmation_tasks')
-        .select('*, appointment:appointments(*)')
-        .eq('assigned_to', userId)
-        .eq('status', 'pending')
-        .lt('appointment.start_at_utc', new Date().toISOString());
-
-      // Load last activity
-      const { data: activity } = await supabase
-        .from('activity_logs')
-        .select('created_at')
-        .eq('actor_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-
-      // Separate tasks by type and check for no-shows via activity logs
       const allTasks = tasks || [];
-      
-      // Get no-shows from activity logs
-      const { data: noShowLogs } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .eq('actor_id', userId)
-        .eq('action_type', 'No Show')
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
       
       setAppointmentsBooked(appts || []);
       setCallConfirmations(allTasks.filter(t => t.task_type === 'call_confirmation' && t.completed_at));
@@ -135,15 +143,6 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
       setMrrTasks((mrr || []).filter(t => t.completed_at));
       setOverdueTasks(overdue || []);
       setLastActivity(activity ? new Date(activity.created_at) : null);
-      
-      console.log('SetterEODReport - Data loaded:', {
-        appointmentsBooked: appts?.length || 0,
-        callConfirmations: allTasks.filter(t => t.task_type === 'call_confirmation' && t.completed_at).length,
-        noShows: noShowLogs?.length || 0,
-        reschedules: allTasks.filter(t => t.task_type === 'reschedule' && t.completed_at).length,
-        mrrTasks: (mrr || []).filter(t => t.completed_at).length,
-        overdueTasks: overdue?.length || 0
-      });
     } catch (error) {
       console.error('Error loading setter EOD data:', error);
     } finally {

@@ -71,71 +71,82 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Load deals closed in period
-      const { data: closed } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('closer_id', userId)
-        .eq('status', 'CLOSED')
-        .gte('updated_at', startDate.toISOString())
-        .lte('updated_at', endDate.toISOString());
-
-      // Load deposits collected in period
-      const { data: deposits } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .eq('actor_id', userId)
-        .eq('action_type', 'Deposit Collected')
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
-      // Load pipeline activity in period
-      const { data: pipeline } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .eq('actor_id', userId)
-        .in('action_type', ['Stage Changed', 'Note Added', 'Rescheduled'])
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString())
-        .order('created_at', { ascending: false });
-
-      // Load overdue follow-ups
-      const { data: overdue } = await supabase
-        .from('confirmation_tasks')
-        .select('*, appointment:appointments(*)')
-        .eq('assigned_to', userId)
-        .eq('status', 'pending')
-        .eq('task_type', 'follow_up')
-        .lt('follow_up_date', today.toISOString());
-
-      // Load MRR follow-up tasks completed in period
-      const { data: mrrTasks } = await supabase
-        .from('mrr_follow_up_tasks')
-        .select('*, mrr_schedule:mrr_schedules(*)')
-        .eq('completed_by', userId)
-        .eq('status', 'confirmed')
-        .gte('completed_at', startDate.toISOString())
-        .lte('completed_at', endDate.toISOString())
-        .order('completed_at', { ascending: false });
-
-      // Load confirmation tasks completed in period
-      const { data: confirmTasks } = await supabase
-        .from('confirmation_tasks')
-        .select('*, appointment:appointments(*)')
-        .eq('assigned_to', userId)
-        .eq('status', 'completed')
-        .gte('completed_at', startDate.toISOString())
-        .lte('completed_at', endDate.toISOString())
-        .order('completed_at', { ascending: false });
-
-      // Load last activity
-      const { data: activity } = await supabase
-        .from('activity_logs')
-        .select('created_at')
-        .eq('actor_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Load all data in parallel for much faster performance
+      const [
+        { data: closed },
+        { data: deposits },
+        { data: pipeline },
+        { data: overdue },
+        { data: mrrTasks },
+        { data: confirmTasks },
+        { data: activity }
+      ] = await Promise.all([
+        // Load deals closed in period
+        supabase
+          .from('appointments')
+          .select('*')
+          .eq('closer_id', userId)
+          .eq('status', 'CLOSED')
+          .gte('updated_at', startDate.toISOString())
+          .lte('updated_at', endDate.toISOString()),
+        
+        // Load deposits collected in period
+        supabase
+          .from('activity_logs')
+          .select('*')
+          .eq('actor_id', userId)
+          .eq('action_type', 'Deposit Collected')
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString()),
+        
+        // Load pipeline activity in period
+        supabase
+          .from('activity_logs')
+          .select('*')
+          .eq('actor_id', userId)
+          .in('action_type', ['Stage Changed', 'Note Added', 'Rescheduled'])
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString())
+          .order('created_at', { ascending: false }),
+        
+        // Load overdue follow-ups
+        supabase
+          .from('confirmation_tasks')
+          .select('*, appointment:appointments(*)')
+          .eq('assigned_to', userId)
+          .eq('status', 'pending')
+          .eq('task_type', 'follow_up')
+          .lt('follow_up_date', today.toISOString()),
+        
+        // Load MRR follow-up tasks completed in period
+        supabase
+          .from('mrr_follow_up_tasks')
+          .select('*, mrr_schedule:mrr_schedules(*)')
+          .eq('completed_by', userId)
+          .eq('status', 'confirmed')
+          .gte('completed_at', startDate.toISOString())
+          .lte('completed_at', endDate.toISOString())
+          .order('completed_at', { ascending: false }),
+        
+        // Load confirmation tasks completed in period
+        supabase
+          .from('confirmation_tasks')
+          .select('*, appointment:appointments(*)')
+          .eq('assigned_to', userId)
+          .eq('status', 'completed')
+          .gte('completed_at', startDate.toISOString())
+          .lte('completed_at', endDate.toISOString())
+          .order('completed_at', { ascending: false }),
+        
+        // Load last activity
+        supabase
+          .from('activity_logs')
+          .select('created_at')
+          .eq('actor_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ]);
 
       setDealsClosed(closed || []);
       setDepositsCollected(deposits || []);
@@ -144,15 +155,6 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
       setMrrTasksCompleted((mrrTasks || []).filter(t => t.completed_at));
       setConfirmTasksCompleted((confirmTasks || []).filter(t => t.completed_at));
       setLastActivity(activity ? new Date(activity.created_at) : null);
-      
-      console.log('CloserEODReport - Data loaded:', {
-        dealsClosed: closed?.length || 0,
-        deposits: deposits?.length || 0,
-        pipelineActivity: pipeline?.length || 0,
-        overdue: overdue?.length || 0,
-        mrrTasks: (mrrTasks || []).filter(t => t.completed_at).length,
-        confirmTasks: (confirmTasks || []).filter(t => t.completed_at).length
-      });
     } catch (error) {
       console.error('Error loading closer EOD data:', error);
     } finally {
