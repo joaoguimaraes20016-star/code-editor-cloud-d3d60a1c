@@ -103,12 +103,12 @@ export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct, sh
         .select('*')
         .eq('team_id', teamId);
 
-      // Only filter by setter_id if showAllAppointments is false
+      // Filter by current user's appointments (setter OR closer)
       if (!showAllAppointments) {
-        query = query.eq('setter_id', user.id);
+        query = query.or(`setter_id.eq.${user.id},closer_id.eq.${user.id}`);
       } else {
         // For admins/offer owners, show only assigned appointments
-        query = query.not('setter_id', 'is', null);
+        query = query.or(`setter_id.not.is.null,closer_id.not.is.null`);
       }
 
       const { data, error } = await query.order('start_at_utc', { ascending: false });
