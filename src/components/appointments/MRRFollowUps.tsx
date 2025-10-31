@@ -711,37 +711,6 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
 
         {/* Follow-Up Columns */}
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {/* Active Column */}
-          <div className="flex-1 min-w-[350px]">
-            <Card className="h-full">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-primary" />
-                    Active
-                  </CardTitle>
-                  <Badge variant="secondary">{activeSchedules.length}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ScrollArea className="h-[calc(100vh-280px)]">
-                  {activeSchedules.length === 0 ? (
-                    <div className="text-center py-8 px-4 bg-muted/20 rounded-lg border border-dashed">
-                      <Calendar className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                      <p className="text-sm text-muted-foreground">No active schedules</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 pr-4">
-                      {activeSchedules.map(schedule => (
-                        <ScheduleCard key={schedule.id} schedule={schedule} />
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
-
           {/* Paused Column */}
           <div className="flex-1 min-w-[350px]">
             <Card className="h-full">
