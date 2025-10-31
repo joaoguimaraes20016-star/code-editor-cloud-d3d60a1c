@@ -96,8 +96,8 @@ export function EODReportsHub({ teamId }: EODReportsHubProps) {
         if (officialRole === 'setter') actualRoles.push('setter');
         if (officialRole === 'closer' || officialRole === 'offer_owner') actualRoles.push('closer');
         
-        // If admin, show both
-        if (officialRole === 'admin') {
+        // If admin or owner, show both
+        if (officialRole === 'admin' || officialRole === 'owner') {
           actualRoles.push('setter', 'closer');
         }
         
