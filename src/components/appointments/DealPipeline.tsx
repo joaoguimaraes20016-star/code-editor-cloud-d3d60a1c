@@ -16,7 +16,6 @@ import {
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { DealCard } from "./DealCard";
 import { PipelineStageManager } from "./PipelineStageManager";
-import { InitializeDefaultStages } from "./InitializeDefaultStages";
 import { AppointmentFilters } from "./AppointmentFilters";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1143,17 +1142,14 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
   if (loading) {
     return (
-      <>
-        <InitializeDefaultStages teamId={teamId} />
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {[...Array(5)].map((_, i) => (
-            <Card key={i} className="p-4">
-              <Skeleton className="h-6 w-24 mb-4" />
-              <Skeleton className="h-20 w-full" />
-            </Card>
-          ))}
-        </div>
-      </>
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {[...Array(5)].map((_, i) => (
+          <Card key={i} className="p-4">
+            <Skeleton className="h-6 w-24 mb-4" />
+            <Skeleton className="h-20 w-full" />
+          </Card>
+        ))}
+      </div>
     );
   }
 
