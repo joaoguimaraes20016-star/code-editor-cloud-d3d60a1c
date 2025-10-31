@@ -4,9 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, TrendingUp, AlertCircle, Clock, ArrowRight, Download, CheckCircle, Phone, PhoneCall, RefreshCw, CreditCard } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DollarSign, TrendingUp, AlertCircle, Clock, ArrowRight, Download, CheckCircle, Phone, PhoneCall, RefreshCw, CreditCard, CalendarIcon } from "lucide-react";
+import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
 
 interface CloserEODReportProps {
   teamId: string;
@@ -24,12 +28,14 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
   const [mrrTasksCompleted, setMrrTasksCompleted] = useState<any[]>([]);
   const [confirmTasksCompleted, setConfirmTasksCompleted] = useState<any[]>([]);
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
+  const [timePeriod, setTimePeriod] = useState<"week" | "month" | "custom">("week");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
 
   useEffect(() => {
     loadData();
 
     const channel = supabase
-      .channel(`closer-eod-${userId}-${date.getTime()}`)
+      .channel(`closer-eod-${userId}-${date.getTime()}-${timePeriod}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `team_id=eq.${teamId}` }, loadData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'confirmation_tasks', filter: `team_id=eq.${teamId}` }, loadData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs', filter: `team_id=eq.${teamId}` }, loadData)
@@ -38,44 +44,58 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [teamId, userId, date]);
+  }, [teamId, userId, date, timePeriod, customRange]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
+      
+      let startDate: Date;
+      let endDate: Date;
+      
+      if (timePeriod === "week") {
+        startDate = startOfWeek(new Date(), { weekStartsOn: 0 });
+        endDate = endOfWeek(new Date(), { weekStartsOn: 0 });
+      } else if (timePeriod === "month") {
+        startDate = startOfMonth(new Date());
+        endDate = endOfMonth(new Date());
+      } else {
+        // custom
+        startDate = customRange?.from || new Date();
+        endDate = customRange?.to || new Date();
+      }
+      
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Load deals closed today
+      // Load deals closed in period
       const { data: closed } = await supabase
         .from('appointments')
         .select('*')
         .eq('closer_id', userId)
         .eq('status', 'CLOSED')
-        .gte('updated_at', startOfDay.toISOString())
-        .lte('updated_at', endOfDay.toISOString());
+        .gte('updated_at', startDate.toISOString())
+        .lte('updated_at', endDate.toISOString());
 
-      // Load deposits collected today
+      // Load deposits collected in period
       const { data: deposits } = await supabase
         .from('activity_logs')
         .select('*, appointment:appointments(*)')
         .eq('actor_id', userId)
         .eq('action_type', 'Deposit Collected')
-        .gte('created_at', startOfDay.toISOString())
-        .lte('created_at', endOfDay.toISOString());
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
 
-      // Load pipeline activity
+      // Load pipeline activity in period
       const { data: pipeline } = await supabase
         .from('activity_logs')
         .select('*')
         .eq('actor_id', userId)
         .in('action_type', ['Stage Changed', 'Note Added', 'Rescheduled'])
-        .gte('created_at', startOfDay.toISOString())
-        .lte('created_at', endOfDay.toISOString())
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
         .order('created_at', { ascending: false });
 
       // Load overdue follow-ups
@@ -87,24 +107,24 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
         .eq('task_type', 'follow_up')
         .lt('follow_up_date', today.toISOString());
 
-      // Load MRR follow-up tasks completed today
+      // Load MRR follow-up tasks completed in period
       const { data: mrrTasks } = await supabase
         .from('mrr_follow_up_tasks')
         .select('*, mrr_schedule:mrr_schedules(*, appointment:appointments(*))')
         .eq('completed_by', userId)
         .eq('status', 'confirmed')
-        .gte('completed_at', startOfDay.toISOString())
-        .lte('completed_at', endOfDay.toISOString())
+        .gte('completed_at', startDate.toISOString())
+        .lte('completed_at', endDate.toISOString())
         .order('completed_at', { ascending: false });
 
-      // Load confirmation tasks completed (if closer also does confirmations)
+      // Load confirmation tasks completed in period
       const { data: confirmTasks } = await supabase
         .from('confirmation_tasks')
         .select('*, appointment:appointments(*)')
         .eq('assigned_to', userId)
         .eq('status', 'completed')
-        .gte('completed_at', startOfDay.toISOString())
-        .lte('completed_at', endOfDay.toISOString())
+        .gte('completed_at', startDate.toISOString())
+        .lte('completed_at', endDate.toISOString())
         .order('completed_at', { ascending: false });
 
       // Load last activity
@@ -179,13 +199,22 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
 
   const activityStatus = getActivityStatus();
 
+  const getPeriodLabel = () => {
+    if (timePeriod === "week") return format(startOfWeek(new Date()), 'MMM d') + " - " + format(endOfWeek(new Date()), 'MMM d, yyyy');
+    if (timePeriod === "month") return format(new Date(), 'MMMM yyyy');
+    if (customRange?.from && customRange?.to) {
+      return format(customRange.from, 'MMM d') + " - " + format(customRange.to, 'MMM d, yyyy');
+    }
+    return "Select dates";
+  };
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <CardTitle className="text-xl font-bold">{userName}</CardTitle>
-            <p className="text-sm text-muted-foreground">{format(date, 'EEEE, MMMM d, yyyy')}</p>
+            <p className="text-sm text-muted-foreground">{getPeriodLabel()}</p>
           </div>
           <div className="flex items-center gap-3">
             <Badge variant={activityStatus.color === 'bg-success' ? 'default' : activityStatus.color === 'bg-warning' ? 'secondary' : 'outline'}>
@@ -196,6 +225,46 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
               Export
             </Button>
           </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as "week" | "month" | "custom")}>
+            <TabsList>
+              <TabsTrigger value="week">This Week</TabsTrigger>
+              <TabsTrigger value="month">This Month</TabsTrigger>
+              <TabsTrigger value="custom">Custom Date</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          {timePeriod === "custom" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("justify-start text-left font-normal", !customRange && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {customRange?.from ? (
+                    customRange.to ? (
+                      <>{format(customRange.from, "LLL dd")} - {format(customRange.to, "LLL dd, y")}</>
+                    ) : (
+                      format(customRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Pick dates</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarPicker
+                  initialFocus
+                  mode="range"
+                  defaultMonth={customRange?.from}
+                  selected={customRange}
+                  onSelect={setCustomRange}
+                  numberOfMonths={2}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">

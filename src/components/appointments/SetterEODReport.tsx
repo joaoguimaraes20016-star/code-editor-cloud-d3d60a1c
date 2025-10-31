@@ -4,9 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, CheckCircle, AlertCircle, Clock, Phone, TrendingUp, Download, DollarSign, PhoneCall, XCircle, RefreshCw } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar, CheckCircle, AlertCircle, Clock, Phone, TrendingUp, Download, DollarSign, PhoneCall, XCircle, RefreshCw, CalendarIcon } from "lucide-react";
+import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
 
 interface SetterEODReportProps {
   teamId: string;
@@ -24,12 +28,14 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
   const [reschedules, setReschedules] = useState<any[]>([]);
   const [overdueTasks, setOverdueTasks] = useState<any[]>([]);
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
+  const [timePeriod, setTimePeriod] = useState<"week" | "month" | "custom">("week");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
 
   useEffect(() => {
     loadData();
 
     const channel = supabase
-      .channel(`setter-eod-${userId}-${date.getTime()}`)
+      .channel(`setter-eod-${userId}-${date.getTime()}-${timePeriod}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `team_id=eq.${teamId}` }, loadData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'confirmation_tasks', filter: `team_id=eq.${teamId}` }, loadData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs', filter: `team_id=eq.${teamId}` }, loadData)
@@ -38,43 +44,57 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [teamId, userId, date]);
+  }, [teamId, userId, date, timePeriod, customRange]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
+      
+      let startDate: Date;
+      let endDate: Date;
+      
+      if (timePeriod === "week") {
+        startDate = startOfWeek(new Date(), { weekStartsOn: 0 });
+        endDate = endOfWeek(new Date(), { weekStartsOn: 0 });
+      } else if (timePeriod === "month") {
+        startDate = startOfMonth(new Date());
+        endDate = endOfMonth(new Date());
+      } else {
+        // custom
+        startDate = customRange?.from || new Date();
+        endDate = customRange?.to || new Date();
+      }
+      
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
 
-      // Load appointments booked today
+      // Load appointments booked in period
       const { data: appts } = await supabase
         .from('appointments')
         .select('*')
         .eq('setter_id', userId)
-        .gte('created_at', startOfDay.toISOString())
-        .lte('created_at', endOfDay.toISOString())
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
         .order('created_at', { ascending: false });
 
-      // Load ALL completed confirmation tasks today
+      // Load ALL completed confirmation tasks in period
       const { data: tasks } = await supabase
         .from('confirmation_tasks')
         .select('*, appointment:appointments(*)')
         .eq('assigned_to', userId)
         .eq('status', 'completed')
-        .gte('completed_at', startOfDay.toISOString())
-        .lte('completed_at', endOfDay.toISOString())
+        .gte('completed_at', startDate.toISOString())
+        .lte('completed_at', endDate.toISOString())
         .order('completed_at', { ascending: false });
 
-      // Load MRR follow-up tasks completed today
+      // Load MRR follow-up tasks completed in period
       const { data: mrr } = await supabase
         .from('mrr_follow_up_tasks')
         .select('*, mrr_schedule:mrr_schedules(*, appointment:appointments(*))')
         .eq('completed_by', userId)
         .eq('status', 'confirmed')
-        .gte('completed_at', startOfDay.toISOString())
-        .lte('completed_at', endOfDay.toISOString())
+        .gte('completed_at', startDate.toISOString())
+        .lte('completed_at', endDate.toISOString())
         .order('completed_at', { ascending: false });
 
       // Load overdue tasks
@@ -104,8 +124,8 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
         .select('*, appointment:appointments(*)')
         .eq('actor_id', userId)
         .eq('action_type', 'No Show')
-        .gte('created_at', startOfDay.toISOString())
-        .lte('created_at', endOfDay.toISOString());
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
       
       setAppointmentsBooked(appts || []);
       setCallConfirmations(allTasks.filter(t => t.task_type === 'call_confirmation' && t.completed_at));
@@ -183,13 +203,22 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
 
   const activityStatus = getActivityStatus();
 
+  const getPeriodLabel = () => {
+    if (timePeriod === "week") return format(startOfWeek(new Date()), 'MMM d') + " - " + format(endOfWeek(new Date()), 'MMM d, yyyy');
+    if (timePeriod === "month") return format(new Date(), 'MMMM yyyy');
+    if (customRange?.from && customRange?.to) {
+      return format(customRange.from, 'MMM d') + " - " + format(customRange.to, 'MMM d, yyyy');
+    }
+    return "Select dates";
+  };
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <CardTitle className="text-xl font-bold">{userName}</CardTitle>
-            <p className="text-sm text-muted-foreground">{format(date, 'EEEE, MMMM d, yyyy')}</p>
+            <p className="text-sm text-muted-foreground">{getPeriodLabel()}</p>
           </div>
           <div className="flex items-center gap-3">
             <Badge variant={activityStatus.color === 'bg-success' ? 'default' : activityStatus.color === 'bg-warning' ? 'secondary' : 'outline'}>
@@ -200,6 +229,46 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
               Export
             </Button>
           </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as "week" | "month" | "custom")}>
+            <TabsList>
+              <TabsTrigger value="week">This Week</TabsTrigger>
+              <TabsTrigger value="month">This Month</TabsTrigger>
+              <TabsTrigger value="custom">Custom Date</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          {timePeriod === "custom" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("justify-start text-left font-normal", !customRange && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {customRange?.from ? (
+                    customRange.to ? (
+                      <>{format(customRange.from, "LLL dd")} - {format(customRange.to, "LLL dd, y")}</>
+                    ) : (
+                      format(customRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Pick dates</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarPicker
+                  initialFocus
+                  mode="range"
+                  defaultMonth={customRange?.from}
+                  selected={customRange}
+                  onSelect={setCustomRange}
+                  numberOfMonths={2}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
