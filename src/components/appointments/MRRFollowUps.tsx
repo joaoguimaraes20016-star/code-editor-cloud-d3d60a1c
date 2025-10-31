@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Calendar, CheckCircle, XCircle, Pause, Ban, Loader2, Play, TrendingUp } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Pause, Ban, Loader2, Play, TrendingUp, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
   const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
   const [scheduleToReactivate, setScheduleToReactivate] = useState<string | null>(null);
   const [nextPaymentDate, setNextPaymentDate] = useState<Date>();
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadSchedules();
@@ -456,6 +458,16 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
   const canceledSchedules = schedules.filter(s => s.status === 'canceled');
   const completedSchedules = schedules.filter(s => s.status === 'completed' || (s.status === 'active' && s.confirmed_count >= s.total_months));
   
+  // Filter active schedules based on search query
+  const filteredActiveSchedules = activeSchedules.filter(schedule => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      schedule.client_name.toLowerCase().includes(query) ||
+      schedule.client_email.toLowerCase().includes(query)
+    );
+  });
+  
   const totalMRR = activeSchedules.reduce((sum, s) => sum + s.mrr_amount, 0);
 
   const handleQuickPayment = async (schedule: MRRScheduleWithProgress) => {
@@ -675,14 +687,33 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
                 <p className="text-2xl font-bold text-warning">{taskStats.paused}</p>
               </div>
             </div>
+
+            {/* Search Bar */}
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by client name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
             {activeSchedules.length === 0 ? (
               <div className="text-center py-12 px-4 bg-card/50 rounded-lg border border-dashed">
                 <Calendar className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
                 <p className="text-muted-foreground">No active subscriptions</p>
               </div>
+            ) : filteredActiveSchedules.length === 0 ? (
+              <div className="text-center py-12 px-4 bg-card/50 rounded-lg border border-dashed">
+                <Search className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                <p className="text-muted-foreground">No schedules match your search</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">Try a different search term</p>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeSchedules.map(schedule => (
+                {filteredActiveSchedules.map(schedule => (
                   <EnhancedSubscriptionCard 
                     key={schedule.id}
                     schedule={schedule}
