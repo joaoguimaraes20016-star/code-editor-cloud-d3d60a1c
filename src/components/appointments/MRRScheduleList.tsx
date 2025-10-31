@@ -299,11 +299,6 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Active Schedules */}
         <div className="md:col-span-2 lg:col-span-3">
-          <div className="flex items-center gap-2 mb-4">
-            <h3 className="text-lg font-bold">Active Subscriptions</h3>
-            <Badge variant="secondary">{activeSchedules.length}</Badge>
-          </div>
-          
           {activeSchedules.length === 0 ? (
             <Card className="bg-muted/20">
               <CardContent className="p-8 text-center">
