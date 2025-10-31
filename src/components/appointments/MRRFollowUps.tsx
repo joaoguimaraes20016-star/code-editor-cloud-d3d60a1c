@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Calendar, CheckCircle, XCircle, Pause, Ban, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -38,6 +40,9 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
   const [selectedSchedule, setSelectedSchedule] = useState<MRRScheduleWithProgress | null>(null);
   const [notes, setNotes] = useState('');
   const [taskStats, setTaskStats] = useState({ due: 0, confirmed: 0, canceled: 0, paused: 0 });
+  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
+  const [scheduleToReactivate, setScheduleToReactivate] = useState<string | null>(null);
+  const [nextPaymentDate, setNextPaymentDate] = useState<Date>();
 
   useEffect(() => {
     loadSchedules();
@@ -241,12 +246,17 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
     }
   };
 
-  const reactivateSchedule = async (scheduleId: string) => {
+  const reactivateSchedule = async (scheduleId: string, newPaymentDate: Date) => {
     try {
-      // Reactivate the schedule
+      const formattedDate = format(newPaymentDate, 'yyyy-MM-dd');
+      
+      // Reactivate the schedule and update next renewal date
       const { error: scheduleError } = await supabase
         .from('mrr_schedules')
-        .update({ status: 'active' })
+        .update({ 
+          status: 'active',
+          next_renewal_date: formattedDate
+        })
         .eq('id', scheduleId);
 
       if (scheduleError) throw scheduleError;
@@ -259,36 +269,41 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
         .eq('status', 'paused')
         .order('due_date', { ascending: true });
 
-      // Mark paused tasks as due if they're overdue or the earliest upcoming one
+      // Update the first paused task with the new date and mark as due
       if (pausedTasks && pausedTasks.length > 0) {
-        const today = new Date().toISOString().split('T')[0];
-        const overdueTasks = pausedTasks.filter(t => t.due_date <= today);
-        
-        if (overdueTasks.length > 0) {
-          // Mark all overdue paused tasks as due
-          const { error: taskError } = await supabase
-            .from('mrr_follow_up_tasks')
-            .update({ status: 'due' })
-            .in('id', overdueTasks.map(t => t.id));
+        const { error: taskError } = await supabase
+          .from('mrr_follow_up_tasks')
+          .update({ 
+            status: 'due',
+            due_date: formattedDate
+          })
+          .eq('id', pausedTasks[0].id);
 
-          if (taskError) throw taskError;
-        } else {
-          // Mark the first upcoming paused task as due
-          const { error: taskError } = await supabase
-            .from('mrr_follow_up_tasks')
-            .update({ status: 'due' })
-            .eq('id', pausedTasks[0].id);
-
-          if (taskError) throw taskError;
-        }
+        if (taskError) throw taskError;
       }
 
       toast.success('Schedule reactivated');
       setSelectedSchedule(null);
+      setReactivateDialogOpen(false);
+      setScheduleToReactivate(null);
+      setNextPaymentDate(undefined);
       loadSchedules();
     } catch (error) {
       console.error('Error reactivating schedule:', error);
       toast.error('Failed to reactivate schedule');
+    }
+  };
+
+  const handleReactivateClick = (scheduleId: string) => {
+    setScheduleToReactivate(scheduleId);
+    setReactivateDialogOpen(true);
+  };
+
+  const handleConfirmReactivate = () => {
+    if (scheduleToReactivate && nextPaymentDate) {
+      reactivateSchedule(scheduleToReactivate, nextPaymentDate);
+    } else {
+      toast.error('Please select a payment date');
     }
   };
 
@@ -940,7 +955,7 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
                   </>
                 ) : (
                   <Button
-                    onClick={() => reactivateSchedule(selectedSchedule.id)}
+                    onClick={() => handleReactivateClick(selectedSchedule.id)}
                     variant="default"
                     className="flex-1"
                   >
@@ -951,6 +966,66 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reactivate Schedule Dialog */}
+      <Dialog open={reactivateDialogOpen} onOpenChange={setReactivateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reactivate Schedule</DialogTitle>
+            <DialogDescription>
+              Choose the date for the next payment
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !nextPaymentDate && "text-muted-foreground"
+                  )}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {nextPaymentDate ? format(nextPaymentDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={nextPaymentDate}
+                  onSelect={setNextPaymentDate}
+                  initialFocus
+                  disabled={(date) => date < new Date()}
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setReactivateDialogOpen(false);
+                setScheduleToReactivate(null);
+                setNextPaymentDate(undefined);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleConfirmReactivate}
+              disabled={!nextPaymentDate}
+            >
+              Reactivate
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>
