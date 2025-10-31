@@ -197,12 +197,22 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
 
   const pauseSchedule = async (scheduleId: string) => {
     try {
-      const { error } = await supabase
+      // Pause the schedule
+      const { error: scheduleError } = await supabase
         .from('mrr_schedules')
         .update({ status: 'paused' })
         .eq('id', scheduleId);
 
-      if (error) throw error;
+      if (scheduleError) throw scheduleError;
+
+      // Pause all pending tasks for this schedule
+      const { error: tasksError } = await supabase
+        .from('mrr_follow_up_tasks')
+        .update({ status: 'paused' })
+        .eq('mrr_schedule_id', scheduleId)
+        .eq('status', 'due');
+
+      if (tasksError) throw tasksError;
 
       toast.success('Schedule paused');
       setSelectedSchedule(null);
@@ -241,25 +251,33 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
 
       if (scheduleError) throw scheduleError;
 
-      // Find any pending tasks for this schedule
-      const { data: tasks } = await supabase
+      // Find all paused tasks for this schedule
+      const { data: pausedTasks } = await supabase
         .from('mrr_follow_up_tasks')
         .select('*')
         .eq('mrr_schedule_id', scheduleId)
-        .neq('status', 'confirmed')
+        .eq('status', 'paused')
         .order('due_date', { ascending: true });
 
-      // If there are tasks, check if any are overdue and mark them as due
-      if (tasks && tasks.length > 0) {
+      // Mark paused tasks as due if they're overdue or the earliest upcoming one
+      if (pausedTasks && pausedTasks.length > 0) {
         const today = new Date().toISOString().split('T')[0];
-        const overdueTasks = tasks.filter(t => t.due_date <= today);
+        const overdueTasks = pausedTasks.filter(t => t.due_date <= today);
         
         if (overdueTasks.length > 0) {
-          // Mark the earliest overdue task as due
+          // Mark all overdue paused tasks as due
           const { error: taskError } = await supabase
             .from('mrr_follow_up_tasks')
             .update({ status: 'due' })
-            .eq('id', overdueTasks[0].id);
+            .in('id', overdueTasks.map(t => t.id));
+
+          if (taskError) throw taskError;
+        } else {
+          // Mark the first upcoming paused task as due
+          const { error: taskError } = await supabase
+            .from('mrr_follow_up_tasks')
+            .update({ status: 'due' })
+            .eq('id', pausedTasks[0].id);
 
           if (taskError) throw taskError;
         }
