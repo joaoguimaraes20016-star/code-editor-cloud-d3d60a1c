@@ -12,8 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Phone, Calendar, RefreshCw, DollarSign, AlertCircle, Clock, CheckCircle2 } from "lucide-react";
+import { Phone, Calendar, RefreshCw, DollarSign, AlertCircle, Clock, CheckCircle2, Plus } from "lucide-react";
 import { format } from "date-fns";
+import { CreateTaskDialog } from "./CreateTaskDialog";
 
 interface UnifiedTasksViewProps {
   teamId: string;
@@ -41,10 +42,13 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
   const [filterAssignee, setFilterAssignee] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("pending");
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string }[]>([]);
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [appointments, setAppointments] = useState<any[]>([]);
 
   useEffect(() => {
     loadTasks();
     loadTeamMembers();
+    loadAppointments();
 
     const channel = supabase
       .channel(`unified-tasks-${teamId}`)
@@ -66,6 +70,17 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
       .eq('is_active', true);
 
     setTeamMembers(data?.map(m => ({ id: m.user_id, name: (m.profiles as any)?.full_name || 'Unknown' })) || []);
+  };
+
+  const loadAppointments = async () => {
+    const { data } = await supabase
+      .from("appointments")
+      .select("id, lead_name, lead_email, start_at_utc")
+      .eq("team_id", teamId)
+      .order("start_at_utc", { ascending: false })
+      .limit(100);
+    
+    if (data) setAppointments(data);
   };
 
   const loadTasks = async () => {
@@ -222,8 +237,12 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
     <div className="space-y-6">
       {/* Filters */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle>Filter Tasks</CardTitle>
+          <Button onClick={() => setShowCreateTask(true)} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            Create Task
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
@@ -319,6 +338,17 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
           </CardContent>
         </Card>
       )}
+
+      <CreateTaskDialog
+        open={showCreateTask}
+        onOpenChange={setShowCreateTask}
+        teamId={teamId}
+        appointments={appointments}
+        onTaskCreated={() => {
+          loadTasks();
+          loadAppointments();
+        }}
+      />
     </div>
   );
 }
