@@ -205,10 +205,6 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
     URL.revokeObjectURL(url);
   };
 
-  if (loading) {
-    return <Skeleton className="h-64 w-full" />;
-  }
-
   const activityStatus = getActivityStatus();
 
   const getPeriodLabel = () => {
@@ -291,7 +287,11 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <DollarSign className="h-6 w-6 text-success mx-auto mb-2" />
-                <p className="text-4xl font-bold text-success">{dealsClosed.length}</p>
+                {loading ? (
+                  <Skeleton className="h-10 w-20 mx-auto mb-2" />
+                ) : (
+                  <p className="text-4xl font-bold text-success">{dealsClosed.length}</p>
+                )}
                 <p className="text-sm font-medium text-muted-foreground">
                   {timePeriod === "today" ? "Deals Closed Today" : 
                    timePeriod === "week" ? "Deals Closed This Week" : 
@@ -307,7 +307,11 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <TrendingUp className="h-6 w-6 text-chart-3 mx-auto mb-2" />
-                <p className="text-4xl font-bold text-chart-3">${totalRevenue.toLocaleString()}</p>
+                {loading ? (
+                  <Skeleton className="h-10 w-32 mx-auto mb-2" />
+                ) : (
+                  <p className="text-4xl font-bold text-chart-3">${totalRevenue.toLocaleString()}</p>
+                )}
                 <p className="text-sm font-medium text-muted-foreground">
                   {timePeriod === "today" ? "Revenue Today" : 
                    timePeriod === "week" ? "Revenue This Week" : 
@@ -325,7 +329,11 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <DollarSign className="h-5 w-5 text-success mx-auto mb-2" />
-                <p className="text-3xl font-bold text-success">{dealsClosed.length}</p>
+                {loading ? (
+                  <Skeleton className="h-9 w-16 mx-auto mb-2" />
+                ) : (
+                  <p className="text-3xl font-bold text-success">{dealsClosed.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Closed Today</p>
               </div>
             </CardContent>
@@ -335,7 +343,11 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <TrendingUp className="h-5 w-5 text-chart-1 mx-auto mb-2" />
-                <p className="text-3xl font-bold text-chart-1">{pipelineActivity.length}</p>
+                {loading ? (
+                  <Skeleton className="h-9 w-16 mx-auto mb-2" />
+                ) : (
+                  <p className="text-3xl font-bold text-chart-1">{pipelineActivity.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Pipeline Moves</p>
               </div>
             </CardContent>
@@ -345,7 +357,11 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <DollarSign className="h-5 w-5 text-chart-3 mx-auto mb-2" />
-                <p className="text-xl font-bold text-chart-3">${totalRevenue.toLocaleString()}</p>
+                {loading ? (
+                  <Skeleton className="h-6 w-24 mx-auto mb-2" />
+                ) : (
+                  <p className="text-xl font-bold text-chart-3">${totalRevenue.toLocaleString()}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Revenue Today</p>
               </div>
             </CardContent>
@@ -355,7 +371,11 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <CheckCircle className="h-5 w-5 text-info mx-auto mb-2" />
-                <p className="text-3xl font-bold text-info">{mrrTasksCompleted.length + confirmTasksCompleted.length}</p>
+                {loading ? (
+                  <Skeleton className="h-9 w-16 mx-auto mb-2" />
+                ) : (
+                  <p className="text-3xl font-bold text-info">{mrrTasksCompleted.length + confirmTasksCompleted.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Tasks Done</p>
               </div>
             </CardContent>
@@ -365,7 +385,11 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <AlertCircle className={cn("h-5 w-5 mx-auto mb-2", overdueFollowUps.length > 0 ? "text-destructive" : "text-muted-foreground")} />
-                <p className={cn("text-3xl font-bold", overdueFollowUps.length > 0 ? "text-destructive" : "text-muted-foreground")}>{overdueFollowUps.length}</p>
+                {loading ? (
+                  <Skeleton className="h-9 w-16 mx-auto mb-2" />
+                ) : (
+                  <p className={cn("text-3xl font-bold", overdueFollowUps.length > 0 ? "text-destructive" : "text-muted-foreground")}>{overdueFollowUps.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Overdue</p>
               </div>
             </CardContent>

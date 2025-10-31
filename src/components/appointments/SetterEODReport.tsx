@@ -206,10 +206,6 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
     URL.revokeObjectURL(url);
   };
 
-  if (loading) {
-    return <Skeleton className="h-64 w-full" />;
-  }
-
   const activityStatus = getActivityStatus();
 
   const getPeriodLabel = () => {
@@ -292,7 +288,11 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <Phone className="h-6 w-6 text-primary mx-auto mb-2" />
-                <p className="text-4xl font-bold text-primary">{appointmentsBooked.length}</p>
+                {loading ? (
+                  <Skeleton className="h-10 w-20 mx-auto mb-2" />
+                ) : (
+                  <p className="text-4xl font-bold text-primary">{appointmentsBooked.length}</p>
+                )}
                 <p className="text-sm font-medium text-muted-foreground">
                   {timePeriod === "today" ? "Booked Today" : 
                    timePeriod === "week" ? "Booked This Week" : 
@@ -308,7 +308,11 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <CheckCircle className="h-6 w-6 text-success mx-auto mb-2" />
-                <p className="text-4xl font-bold text-success">{callConfirmations.length}</p>
+                {loading ? (
+                  <Skeleton className="h-10 w-20 mx-auto mb-2" />
+                ) : (
+                  <p className="text-4xl font-bold text-success">{callConfirmations.length}</p>
+                )}
                 <p className="text-sm font-medium text-muted-foreground">
                   {timePeriod === "today" ? "Confirmed Today" : 
                    timePeriod === "week" ? "Confirmed This Week" : 
@@ -326,7 +330,11 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <CheckCircle className="h-5 w-5 text-info mx-auto mb-2" />
-                <p className="text-3xl font-bold text-info">{callConfirmations.length + mrrTasks.length}</p>
+                {loading ? (
+                  <Skeleton className="h-9 w-16 mx-auto mb-2" />
+                ) : (
+                  <p className="text-3xl font-bold text-info">{callConfirmations.length + mrrTasks.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Tasks Done</p>
               </div>
             </CardContent>
@@ -336,7 +344,11 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <XCircle className="h-5 w-5 text-chart-2 mx-auto mb-2" />
-                <p className="text-3xl font-bold text-chart-2">{noShows.length}</p>
+                {loading ? (
+                  <Skeleton className="h-9 w-16 mx-auto mb-2" />
+                ) : (
+                  <p className="text-3xl font-bold text-chart-2">{noShows.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">No Shows</p>
               </div>
             </CardContent>
@@ -346,7 +358,11 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <RefreshCw className="h-5 w-5 text-accent mx-auto mb-2" />
-                <p className="text-3xl font-bold text-accent">{reschedules.length}</p>
+                {loading ? (
+                  <Skeleton className="h-9 w-16 mx-auto mb-2" />
+                ) : (
+                  <p className="text-3xl font-bold text-accent">{reschedules.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Rescheduled</p>
               </div>
             </CardContent>
@@ -356,7 +372,11 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
             <CardContent className="pt-6">
               <div className="text-center">
                 <AlertCircle className={cn("h-5 w-5 mx-auto mb-2", overdueTasks.length > 0 ? "text-destructive" : "text-muted-foreground")} />
-                <p className={cn("text-3xl font-bold", overdueTasks.length > 0 ? "text-destructive" : "text-muted-foreground")}>{overdueTasks.length}</p>
+                {loading ? (
+                  <Skeleton className="h-9 w-16 mx-auto mb-2" />
+                ) : (
+                  <p className={cn("text-3xl font-bold", overdueTasks.length > 0 ? "text-destructive" : "text-muted-foreground")}>{overdueTasks.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Overdue</p>
               </div>
             </CardContent>
@@ -370,7 +390,13 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {appointmentsBooked.length === 0 && callConfirmations.length === 0 && mrrTasks.length === 0 && noShows.length === 0 && reschedules.length === 0 && overdueTasks.length === 0 ? (
+              {loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : appointmentsBooked.length === 0 && callConfirmations.length === 0 && mrrTasks.length === 0 && noShows.length === 0 && reschedules.length === 0 && overdueTasks.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No activity for this date</p>
               ) : (
                 <>
