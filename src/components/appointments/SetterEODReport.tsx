@@ -135,6 +135,15 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
       setMrrTasks((mrr || []).filter(t => t.completed_at));
       setOverdueTasks(overdue || []);
       setLastActivity(activity ? new Date(activity.created_at) : null);
+      
+      console.log('SetterEODReport - Data loaded:', {
+        appointmentsBooked: appts?.length || 0,
+        callConfirmations: allTasks.filter(t => t.task_type === 'call_confirmation' && t.completed_at).length,
+        noShows: noShowLogs?.length || 0,
+        reschedules: allTasks.filter(t => t.task_type === 'reschedule' && t.completed_at).length,
+        mrrTasks: (mrr || []).filter(t => t.completed_at).length,
+        overdueTasks: overdue?.length || 0
+      });
     } catch (error) {
       console.error('Error loading setter EOD data:', error);
     } finally {

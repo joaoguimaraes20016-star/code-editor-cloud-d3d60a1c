@@ -144,6 +144,15 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
       setMrrTasksCompleted((mrrTasks || []).filter(t => t.completed_at));
       setConfirmTasksCompleted((confirmTasks || []).filter(t => t.completed_at));
       setLastActivity(activity ? new Date(activity.created_at) : null);
+      
+      console.log('CloserEODReport - Data loaded:', {
+        dealsClosed: closed?.length || 0,
+        deposits: deposits?.length || 0,
+        pipelineActivity: pipeline?.length || 0,
+        overdue: overdue?.length || 0,
+        mrrTasks: (mrrTasks || []).filter(t => t.completed_at).length,
+        confirmTasks: (confirmTasks || []).filter(t => t.completed_at).length
+      });
     } catch (error) {
       console.error('Error loading closer EOD data:', error);
     } finally {
