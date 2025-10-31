@@ -126,8 +126,12 @@ export function CalendlyConfig({
   }, [toast, onUpdate]);
 
   useEffect(() => {
-    if (isConnected && currentAccessToken && currentOrgUri && !tokenValidationFailed) {
-      fetchEventTypes();
+    if (isConnected && currentAccessToken && currentOrgUri && !tokenValidationFailed && !loadingEventTypes) {
+      // Add small delay to prevent race conditions with token refresh
+      const timer = setTimeout(() => {
+        fetchEventTypes();
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [isConnected, currentAccessToken, currentOrgUri, tokenValidationFailed]);
 

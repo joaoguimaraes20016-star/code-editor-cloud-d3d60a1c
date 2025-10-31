@@ -47,7 +47,11 @@ export function EventTypeFilter({
   const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
-    loadEventTypes();
+    // Add small delay to prevent race conditions with token refresh
+    const timer = setTimeout(() => {
+      loadEventTypes();
+    }, 150);
+    return () => clearTimeout(timer);
   }, [teamId, calendlyAccessToken, calendlyOrgUri]);
 
   const loadEventTypes = async () => {

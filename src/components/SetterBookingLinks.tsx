@@ -44,8 +44,12 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
 
   useEffect(() => {
     loadMembers();
-    if (calendlyAccessToken && calendlyOrgUri) {
-      fetchEventTypeNames();
+    if (calendlyAccessToken && calendlyOrgUri && !fetchingEventTypes) {
+      // Add small delay to prevent race conditions with token refresh
+      const timer = setTimeout(() => {
+        fetchEventTypeNames();
+      }, 200);
+      return () => clearTimeout(timer);
     }
   }, [teamId, calendlyAccessToken, calendlyOrgUri]);
 
