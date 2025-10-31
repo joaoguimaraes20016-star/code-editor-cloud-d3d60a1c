@@ -596,13 +596,14 @@ const Index = () => {
   const showedButNotClosed = showedAppointments.length - closedAppointments.length;
 
 
-  // Prepare chart data (last 7 days)
+  // Prepare chart data (last 7 days) - include ALL closed sales (from appointments + manual)
   const chartData = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - (6 - i));
     const dateStr = date.toISOString().split('T')[0];
     
-    const dayRevenue = sales
+    // Use filteredSales which already combines appointments with deposits AND manual sales
+    const dayRevenue = filteredSales
       .filter(s => s.date === dateStr && s.status === 'closed')
       .reduce((sum, s) => sum + s.revenue, 0);
 

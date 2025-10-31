@@ -43,11 +43,13 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<MRRSchedule | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [taskStats, setTaskStats] = useState({ due: 0, confirmed: 0, canceled: 0, paused: 0 });
 
   const canDelete = userRole === 'admin' || userRole === 'offer_owner';
 
   useEffect(() => {
     loadSchedules();
+    loadTaskStats();
 
     const channel = supabase
       .channel('mrr-schedule-changes')
@@ -59,7 +61,20 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
           table: 'mrr_schedules',
           filter: `team_id=eq.${teamId}`
         },
-        () => loadSchedules()
+        () => {
+          loadSchedules();
+          loadTaskStats();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mrr_follow_up_tasks',
+          filter: `team_id=eq.${teamId}`
+        },
+        () => loadTaskStats()
       )
       .subscribe();
 
@@ -90,6 +105,28 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
       toast.error('Failed to load MRR schedules');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTaskStats = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('mrr_follow_up_tasks')
+        .select('status')
+        .eq('team_id', teamId);
+
+      if (error) throw error;
+
+      const stats = {
+        due: data?.filter(t => t.status === 'due').length || 0,
+        confirmed: data?.filter(t => t.status === 'confirmed').length || 0,
+        canceled: data?.filter(t => t.status === 'canceled').length || 0,
+        paused: data?.filter(t => t.status === 'paused').length || 0,
+      };
+
+      setTaskStats(stats);
+    } catch (error) {
+      console.error('Error loading task stats:', error);
     }
   };
 
@@ -214,6 +251,26 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
             onChange={(e) => setSearchQuery(e.target.value)}
             className="max-w-md"
           />
+        </div>
+
+        {/* MRR Task Status Breakdown */}
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-medium">Due Tasks</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{taskStats.due}</p>
+          </div>
+          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-medium">Confirmed</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{taskStats.confirmed}</p>
+          </div>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-medium">Canceled</p>
+            <p className="text-2xl font-bold text-red-600 dark:text-red-400">{taskStats.canceled}</p>
+          </div>
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-medium">Paused</p>
+            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{taskStats.paused}</p>
+          </div>
         </div>
       </div>
 
