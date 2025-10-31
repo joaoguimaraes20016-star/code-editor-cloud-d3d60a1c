@@ -98,6 +98,9 @@ export function AppointmentsHub({
               <TabsTrigger value="mine" className="text-sm md:text-base whitespace-nowrap">My Leads</TabsTrigger>
               <TabsTrigger value="all" className="text-sm md:text-base whitespace-nowrap">All Assigned</TabsTrigger>
               <TabsTrigger value="pipeline" className="text-sm md:text-base whitespace-nowrap">Team Pipeline</TabsTrigger>
+              <TabsTrigger value="mrr-tasks" className="text-sm md:text-base whitespace-nowrap">
+                MRR Tasks {counts.mrrDue > 0 && <Badge className="ml-2" variant="secondary">{counts.mrrDue}</Badge>}
+              </TabsTrigger>
               <TabsTrigger value="mrr-deals" className="text-sm md:text-base whitespace-nowrap">MRR Deals</TabsTrigger>
               <TabsTrigger value="retarget" className="text-sm md:text-base whitespace-nowrap">
                 Retarget {counts.followUps > 0 && <Badge className="ml-2" variant="secondary">{counts.followUps}</Badge>}
@@ -133,6 +136,10 @@ export function AppointmentsHub({
               onCloseDeal={() => {}}
               viewFilter="all"
             />
+          </TabsContent>
+
+          <TabsContent value="mrr-tasks" className="mt-6">
+            <MRRFollowUps teamId={teamId} userRole={userRole} currentUserId={user?.id || ''} />
           </TabsContent>
 
           <TabsContent value="mrr-deals" className="mt-6">
@@ -287,6 +294,9 @@ export function AppointmentsHub({
             <TabsTrigger value="closers" className="text-sm md:text-base whitespace-nowrap">
               Closers View
             </TabsTrigger>
+            <TabsTrigger value="mrr-tasks" className="text-sm md:text-base whitespace-nowrap">
+              MRR Tasks {counts.mrrDue > 0 && <Badge className="ml-2" variant="secondary">{counts.mrrDue}</Badge>}
+            </TabsTrigger>
             <TabsTrigger value="mrr" className="text-sm md:text-base whitespace-nowrap">
               MRR Deals
             </TabsTrigger>
@@ -325,6 +335,10 @@ export function AppointmentsHub({
 
         <TabsContent value="closers" className="mt-6">
           <ByCloserView teamId={teamId} />
+        </TabsContent>
+
+        <TabsContent value="mrr-tasks" className="mt-6">
+          <MRRFollowUps teamId={teamId} userRole={userRole} currentUserId={user?.id || ''} />
         </TabsContent>
 
         <TabsContent value="mrr" className="mt-6">

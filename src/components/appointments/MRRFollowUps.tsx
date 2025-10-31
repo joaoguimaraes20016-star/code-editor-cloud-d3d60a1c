@@ -37,9 +37,11 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
   const [loading, setLoading] = useState(true);
   const [selectedSchedule, setSelectedSchedule] = useState<MRRScheduleWithProgress | null>(null);
   const [notes, setNotes] = useState('');
+  const [taskStats, setTaskStats] = useState({ due: 0, confirmed: 0, canceled: 0, paused: 0 });
 
   useEffect(() => {
     loadSchedules();
+    loadTaskStats();
 
     const channel = supabase
       .channel(`mrr-schedules-${teamId}-${Date.now()}`)
@@ -51,7 +53,10 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
           table: 'mrr_follow_up_tasks',
           filter: `team_id=eq.${teamId}`
         },
-        () => loadSchedules()
+        () => {
+          loadSchedules();
+          loadTaskStats();
+        }
       )
       .on(
         'postgres_changes',
@@ -143,6 +148,28 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
       toast.error('Failed to load MRR schedules');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTaskStats = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('mrr_follow_up_tasks')
+        .select('status')
+        .eq('team_id', teamId);
+
+      if (error) throw error;
+
+      const stats = {
+        due: data?.filter(t => t.status === 'due').length || 0,
+        confirmed: data?.filter(t => t.status === 'confirmed').length || 0,
+        canceled: data?.filter(t => t.status === 'canceled').length || 0,
+        paused: data?.filter(t => t.status === 'paused').length || 0,
+      };
+
+      setTaskStats(stats);
+    } catch (error) {
+      console.error('Error loading task stats:', error);
     }
   };
 
@@ -543,6 +570,25 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
             </div>
           </CardHeader>
           <CardContent>
+            {/* MRR Task Status Breakdown */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3">
+                <p className="text-xs text-muted-foreground font-medium">Due Tasks</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{taskStats.due}</p>
+              </div>
+              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3">
+                <p className="text-xs text-muted-foreground font-medium">Confirmed</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{taskStats.confirmed}</p>
+              </div>
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3">
+                <p className="text-xs text-muted-foreground font-medium">Canceled</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{taskStats.canceled}</p>
+              </div>
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3">
+                <p className="text-xs text-muted-foreground font-medium">Paused</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{taskStats.paused}</p>
+              </div>
+            </div>
             {activeSchedules.length === 0 ? (
               <div className="text-center py-12 px-4 bg-card/50 rounded-lg border border-dashed">
                 <Calendar className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
