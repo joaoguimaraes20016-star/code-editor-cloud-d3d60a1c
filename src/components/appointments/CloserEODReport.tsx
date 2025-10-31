@@ -453,9 +453,10 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
                         Deposit Collected
                       </Badge>
                       <div className="flex-1">
-                        <p className="font-medium">{deposit.appointment?.lead_name}</p>
-                        <p className="text-sm text-muted-foreground">{deposit.appointment?.lead_email}</p>
-                        {deposit.note && <p className="text-sm text-muted-foreground mt-1">{deposit.note}</p>}
+                        <p className="font-medium">{deposit.note || 'Deposit collected'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Payment processed
+                        </p>
                       </div>
                     </div>
                   )

@@ -443,9 +443,10 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                         No Show
                       </Badge>
                       <div className="flex-1">
-                        <p className="font-medium">{log.appointment?.lead_name}</p>
-                        <p className="text-sm text-muted-foreground">{log.appointment?.lead_email}</p>
-                        {log.note && <p className="text-xs text-muted-foreground mt-1">{log.note}</p>}
+                        <p className="font-medium">{log.note || 'No Show'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Marked as no-show
+                        </p>
                       </div>
                     </div>
                   ))}
