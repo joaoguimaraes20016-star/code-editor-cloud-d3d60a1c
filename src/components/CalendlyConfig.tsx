@@ -162,9 +162,10 @@ export function CalendlyConfig({
               return;
             }
 
-            // Token refreshed successfully, retry silently
-            console.log('Token refreshed, retrying event types fetch...');
-            setTimeout(() => fetchEventTypes(), 500);
+            // Token refreshed successfully - trigger parent update to get new token
+            console.log('Token refreshed, triggering parent update...');
+            setLoadingEventTypes(false);
+            onUpdate();
             return;
           } catch (e) {
             setTokenValidationFailed(true);

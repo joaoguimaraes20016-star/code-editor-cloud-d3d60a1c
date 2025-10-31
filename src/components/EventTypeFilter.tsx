@@ -56,6 +56,7 @@ export function EventTypeFilter({
       return;
     }
 
+    setLoading(true);
     try {
       const response = await fetch(
         `https://api.calendly.com/event_types?organization=${encodeURIComponent(calendlyOrgUri)}`,
@@ -68,7 +69,10 @@ export function EventTypeFilter({
       );
 
       if (!response.ok) {
-        console.error('Failed to fetch event types');
+        if (response.status === 401) {
+          // Token expired, don't retry - let parent component handle refresh
+          console.log('Token expired in EventTypeFilter');
+        }
         setLoading(false);
         return;
       }

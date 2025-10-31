@@ -66,7 +66,11 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
       });
 
       if (!response.ok) {
-        console.error('Failed to fetch event types:', response.status, response.statusText);
+        if (response.status === 401) {
+          // Token expired, don't retry - let parent component handle refresh
+          console.log('Token expired in SetterBookingLinks');
+        }
+        setFetchingEventTypes(false);
         return;
       }
 
@@ -82,11 +86,6 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
       setEventTypeDetails(details);
     } catch (error) {
       console.error('Error fetching event type names:', error);
-      toast({
-        title: 'Warning',
-        description: 'Could not load event type names from Calendly',
-        variant: 'destructive',
-      });
     } finally {
       setFetchingEventTypes(false);
     }
