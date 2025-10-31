@@ -28,6 +28,7 @@ interface MRRSchedule {
   status: string;
   first_charge_date: string;
   notes: string | null;
+  product_name?: string;
 }
 
 interface MRRScheduleListProps {
@@ -87,7 +88,10 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
     try {
       let query = supabase
         .from('mrr_schedules')
-        .select('*')
+        .select(`
+          *,
+          appointments!inner(product_name)
+        `)
         .eq('team_id', teamId)
         .order('next_renewal_date', { ascending: true });
 
@@ -99,7 +103,13 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
       const { data, error } = await query;
       if (error) throw error;
 
-      setSchedules(data || []);
+      // Transform data to include product_name from appointments
+      const transformedData = data?.map((schedule: any) => ({
+        ...schedule,
+        product_name: schedule.appointments?.product_name,
+      })) || [];
+
+      setSchedules(transformedData);
     } catch (error) {
       console.error('Error loading MRR schedules:', error);
       toast.error('Failed to load MRR schedules');
@@ -306,6 +316,11 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
                           <p className="text-sm text-muted-foreground truncate">
                             {schedule.client_email}
                           </p>
+                          {schedule.product_name && (
+                            <Badge variant="outline" className="mt-2 font-normal">
+                              {schedule.product_name}
+                            </Badge>
+                          )}
                         </div>
                         <Badge className={getStatusColor(schedule.status)}>
                           {schedule.status}
