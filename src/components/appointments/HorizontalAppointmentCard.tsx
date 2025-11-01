@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle, Edit } from "lucide-react";
 import { useState } from "react";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
+import { ConfirmationProgressTracker } from "./ConfirmationProgressTracker";
 
 interface HorizontalAppointmentCardProps {
   appointment: {
@@ -21,6 +22,15 @@ interface HorizontalAppointmentCardProps {
     cc_collected: number | null;
     mrr_amount: number | null;
   };
+  confirmationTask?: {
+    id: string;
+    completed_confirmations: number;
+    required_confirmations: number;
+    confirmation_attempts: any[];
+    due_at: string | null;
+    is_overdue: boolean;
+    confirmation_sequence: number;
+  } | null;
   teamId?: string;
   showAssignButton?: boolean;
   showReassignButton?: boolean;
@@ -44,6 +54,7 @@ const statusColors: Record<string, { badge: string; border: string }> = {
 
 export function HorizontalAppointmentCard({
   appointment,
+  confirmationTask,
   teamId,
   showAssignButton,
   showReassignButton,
@@ -61,6 +72,13 @@ export function HorizontalAppointmentCard({
 
   return (
     <Card className={`p-4 hover:shadow-md transition-all duration-200 border-l-4 ${statusStyle.border} group`}>
+      {/* Confirmation Progress Tracker - Show at top if task exists */}
+      {confirmationTask && (
+        <div className="mb-4 pb-4 border-b">
+          <ConfirmationProgressTracker task={confirmationTask} />
+        </div>
+      )}
+      
       <div className="flex flex-col lg:flex-row lg:items-center gap-4">
         {/* Lead Information - Left Section */}
         <div className="flex-1 min-w-0 space-y-1">

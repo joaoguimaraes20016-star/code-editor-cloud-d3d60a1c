@@ -32,9 +32,21 @@ interface Appointment {
   setter_notes: string | null;
 }
 
+interface ConfirmationTask {
+  id: string;
+  appointment_id: string;
+  completed_confirmations: number;
+  required_confirmations: number;
+  confirmation_attempts: any[];
+  due_at: string | null;
+  is_overdue: boolean;
+  confirmation_sequence: number;
+}
+
 export function TodaysDashboard({ teamId, userRole }: TodaysDashboardProps) {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [confirmationTasks, setConfirmationTasks] = useState<Map<string, ConfirmationTask>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -90,6 +102,33 @@ export function TodaysDashboard({ teamId, userRole }: TodaysDashboardProps) {
 
       if (error) throw error;
       setAppointments(data || []);
+
+      // Load confirmation tasks for today's appointments
+      if (data && data.length > 0) {
+        const appointmentIds = data.map(apt => apt.id);
+        const { data: tasks } = await supabase
+          .from('confirmation_tasks')
+          .select('*')
+          .in('appointment_id', appointmentIds)
+          .eq('status', 'pending');
+        
+        if (tasks) {
+          const tasksMap = new Map<string, ConfirmationTask>();
+          tasks.forEach(task => {
+            tasksMap.set(task.appointment_id, {
+              id: task.id,
+              appointment_id: task.appointment_id,
+              completed_confirmations: task.completed_confirmations || 0,
+              required_confirmations: task.required_confirmations || 1,
+              confirmation_attempts: (task.confirmation_attempts as unknown as any[]) || [],
+              due_at: task.due_at,
+              is_overdue: task.is_overdue || false,
+              confirmation_sequence: task.confirmation_sequence || 1
+            });
+          });
+          setConfirmationTasks(tasksMap);
+        }
+      }
     } catch (error) {
       console.error('Error loading today\'s appointments:', error);
     } finally {
@@ -253,6 +292,7 @@ export function TodaysDashboard({ teamId, userRole }: TodaysDashboardProps) {
                   <HorizontalAppointmentCard
                     key={apt.id}
                     appointment={apt}
+                    confirmationTask={confirmationTasks.get(apt.id)}
                     teamId={teamId}
                     onUpdate={loadTodaysAppointments}
                   />
@@ -274,6 +314,7 @@ export function TodaysDashboard({ teamId, userRole }: TodaysDashboardProps) {
                   <HorizontalAppointmentCard
                     key={apt.id}
                     appointment={apt}
+                    confirmationTask={confirmationTasks.get(apt.id)}
                     teamId={teamId}
                     onUpdate={loadTodaysAppointments}
                   />
@@ -295,6 +336,7 @@ export function TodaysDashboard({ teamId, userRole }: TodaysDashboardProps) {
                   <HorizontalAppointmentCard
                     key={apt.id}
                     appointment={apt}
+                    confirmationTask={confirmationTasks.get(apt.id)}
                     teamId={teamId}
                     onUpdate={loadTodaysAppointments}
                   />
