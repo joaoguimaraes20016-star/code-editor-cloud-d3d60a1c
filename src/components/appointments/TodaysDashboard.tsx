@@ -86,7 +86,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [teamId, user?.id, userRole, viewingAsUserId]);
+  }, [teamId, user?.id, userRole, viewingAsUserId, viewingAsCloserId, viewingAsSetterId]);
 
   const loadTodaysAppointments = async () => {
     try {
@@ -123,11 +123,20 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
       // Load confirmation tasks for today's appointments (only for setters/admins)
       if (filteredData.length > 0 && (userRole === 'setter' || userRole === 'admin')) {
         const appointmentIds = filteredData.map(apt => apt.id);
-        const { data: tasks } = await supabase
+        
+        // Build the tasks query
+        let tasksQuery = supabase
           .from('confirmation_tasks')
           .select('*')
           .in('appointment_id', appointmentIds)
           .eq('status', 'pending');
+        
+        // For setters: filter by assigned_to to only show their tasks
+        if (userRole === 'setter') {
+          tasksQuery = tasksQuery.eq('assigned_to', effectiveUserId);
+        }
+        
+        const { data: tasks } = await tasksQuery;
         
         if (tasks) {
           const tasksMap = new Map<string, ConfirmationTask>();
