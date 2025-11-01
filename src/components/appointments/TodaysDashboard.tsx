@@ -106,6 +106,14 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
       // Filter by role
       const effectiveUserId = viewingAsCloserId || viewingAsSetterId || viewingAsUserId || user?.id;
       
+      console.log('[TodaysDashboard] Loading appointments:', {
+        userRole,
+        effectiveUserId,
+        viewingAsCloserId,
+        viewingAsSetterId,
+        currentUserId: user?.id
+      });
+      
       if (userRole === 'setter') {
         // Setters see appointments they need to confirm (no filter on setter_id yet, will filter by tasks)
       } else if (userRole === 'closer') {
@@ -133,10 +141,16 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
         
         // For setters: filter by assigned_to to only show their tasks
         if (userRole === 'setter') {
+          console.log('[TodaysDashboard] Filtering tasks for setter:', effectiveUserId);
           tasksQuery = tasksQuery.eq('assigned_to', effectiveUserId);
         }
         
         const { data: tasks } = await tasksQuery;
+        
+        console.log('[TodaysDashboard] Loaded tasks:', {
+          totalTasks: tasks?.length || 0,
+          tasks: tasks?.map(t => ({ id: t.id, appointment_id: t.appointment_id, assigned_to: t.assigned_to }))
+        });
         
         if (tasks) {
           const tasksMap = new Map<string, ConfirmationTask>();
