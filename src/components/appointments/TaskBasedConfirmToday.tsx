@@ -68,10 +68,18 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
     }
   };
 
-  // Filter tasks by selected member
-  let filteredTasks = selectedMember === 'all' 
-    ? myTasks 
-    : myTasks.filter(task => task.appointment?.setter_id === selectedMember);
+  // Filter tasks by selected member and assignment
+  let filteredTasks = myTasks;
+  
+  // For setters/closers, ONLY show tasks assigned to them
+  if (userRole === 'setter' || userRole === 'closer') {
+    filteredTasks = myTasks.filter(task => task.assigned_to === user?.id);
+  } else if (userRole === 'admin' || userRole === 'offer_owner') {
+    // Admins can filter by team member
+    filteredTasks = selectedMember === 'all' 
+      ? myTasks 
+      : myTasks.filter(task => task.assigned_to === selectedMember);
+  }
 
   // If in overdue mode, only show overdue tasks
   if (viewMode === 'overdue') {
