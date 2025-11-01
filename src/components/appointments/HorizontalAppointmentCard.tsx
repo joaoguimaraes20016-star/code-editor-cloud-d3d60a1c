@@ -84,6 +84,33 @@ export function HorizontalAppointmentCard({
 
   return (
     <Card className={`p-4 hover:shadow-md transition-all duration-200 border-l-4 ${statusStyle.border} group`}>
+      {/* Confirmation Timing - Prominent Display */}
+      {confirmationTask && confirmationTask.due_at && (
+        <div className={`mb-4 p-3 rounded-lg border-2 ${
+          confirmationTask.is_overdue 
+            ? 'bg-destructive/10 border-destructive animate-pulse' 
+            : 'bg-primary/10 border-primary/30'
+        }`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Clock className={`w-5 h-5 ${confirmationTask.is_overdue ? 'text-destructive' : 'text-primary'}`} />
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {confirmationTask.is_overdue ? '⚠️ OVERDUE' : 'Confirm Before'}
+                </p>
+                <p className={`text-lg font-bold ${confirmationTask.is_overdue ? 'text-destructive' : 'text-primary'}`}>
+                  {format(new Date(confirmationTask.due_at), "h:mm a")}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Appointment Time</p>
+              <p className="text-sm font-semibold">{format(new Date(appointment.start_at_utc), "h:mm a")}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Confirmation Progress Tracker - Show at top if task exists */}
       {confirmationTask && (
         <div className="mb-4 pb-4 border-b">
