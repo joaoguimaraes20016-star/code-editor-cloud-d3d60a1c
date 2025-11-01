@@ -393,7 +393,9 @@ export function TodaysDashboard({ teamId, userRole }: TodaysDashboardProps) {
                     appointment={apt}
                     confirmationTask={confirmationTasks.get(apt.id)}
                     teamId={teamId}
+                    userRole={userRole}
                     showRescheduleButton={userRole === 'closer'}
+                    showCloseDealButton={userRole === 'closer'}
                     onUpdate={loadTodaysAppointments}
                   />
                 ))}
@@ -416,7 +418,9 @@ export function TodaysDashboard({ teamId, userRole }: TodaysDashboardProps) {
                     appointment={apt}
                     confirmationTask={confirmationTasks.get(apt.id)}
                     teamId={teamId}
+                    userRole={userRole}
                     showRescheduleButton={userRole === 'closer'}
+                    showCloseDealButton={userRole === 'closer'}
                     onUpdate={loadTodaysAppointments}
                   />
                 ))}
@@ -439,7 +443,9 @@ export function TodaysDashboard({ teamId, userRole }: TodaysDashboardProps) {
                     appointment={apt}
                     confirmationTask={confirmationTasks.get(apt.id)}
                     teamId={teamId}
+                    userRole={userRole}
                     showRescheduleButton={userRole === 'closer'}
+                    showCloseDealButton={userRole === 'closer'}
                     onUpdate={loadTodaysAppointments}
                   />
                 ))}

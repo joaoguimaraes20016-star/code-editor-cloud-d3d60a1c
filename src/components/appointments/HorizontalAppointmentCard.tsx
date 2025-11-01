@@ -35,6 +35,7 @@ interface HorizontalAppointmentCardProps {
     confirmation_sequence: number;
   } | null;
   teamId?: string;
+  userRole?: string;
   showAssignButton?: boolean;
   showReassignButton?: boolean;
   showCloseDealButton?: boolean;
@@ -60,6 +61,7 @@ export function HorizontalAppointmentCard({
   appointment,
   confirmationTask,
   teamId,
+  userRole,
   showAssignButton,
   showReassignButton,
   showCloseDealButton,
@@ -84,8 +86,8 @@ export function HorizontalAppointmentCard({
 
   return (
     <Card className={`p-4 hover:shadow-md transition-all duration-200 border-l-4 ${statusStyle.border} group`}>
-      {/* Confirmation Task Header - Clean & Minimal */}
-      {confirmationTask && (
+      {/* Setter View: Show confirmation task */}
+      {confirmationTask && userRole === 'setter' && (
         <div className="mb-4 pb-4 border-b">
           {confirmationTask.due_at && (
             <div className="flex items-center justify-between gap-4 mb-3">
@@ -127,6 +129,43 @@ export function HorizontalAppointmentCard({
             task={{ ...confirmationTask, appointment_id: appointment.id }} 
             onUpdate={onUpdate}
           />
+        </div>
+      )}
+
+      {/* Closer View: Show confirmation status */}
+      {confirmationTask && userRole === 'closer' && (
+        <div className="mb-4 pb-4 border-b">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${
+              confirmationTask.completed_confirmations >= confirmationTask.required_confirmations
+                ? 'bg-success/10'
+                : confirmationTask.completed_confirmations > 0
+                ? 'bg-amber-500/10'
+                : 'bg-muted'
+            }`}>
+              <CheckCircle className={`w-5 h-5 ${
+                confirmationTask.completed_confirmations >= confirmationTask.required_confirmations
+                  ? 'text-success'
+                  : confirmationTask.completed_confirmations > 0
+                  ? 'text-amber-600'
+                  : 'text-muted-foreground'
+              }`} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">
+                {confirmationTask.completed_confirmations >= confirmationTask.required_confirmations
+                  ? '✓ Confirmed'
+                  : confirmationTask.completed_confirmations > 0
+                  ? `Partially Confirmed (${confirmationTask.completed_confirmations}/${confirmationTask.required_confirmations})`
+                  : 'Not Confirmed Yet'}
+              </p>
+              {confirmationTask.confirmation_attempts && confirmationTask.confirmation_attempts.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Last: {confirmationTask.confirmation_attempts[confirmationTask.confirmation_attempts.length - 1]?.notes || 'No notes'}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
       
