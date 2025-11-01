@@ -84,40 +84,50 @@ export function HorizontalAppointmentCard({
 
   return (
     <Card className={`p-4 hover:shadow-md transition-all duration-200 border-l-4 ${statusStyle.border} group`}>
-      {/* Confirmation Timing - Prominent Display */}
-      {confirmationTask && confirmationTask.due_at && (
-        <div className={`mb-4 p-3 rounded-lg border-2 ${
+      {/* Confirmation Task Header - SUPER PROMINENT */}
+      {confirmationTask && (
+        <div className={`mb-6 p-6 rounded-xl border-4 ${
           confirmationTask.is_overdue 
-            ? 'bg-destructive/10 border-destructive animate-pulse' 
-            : 'bg-primary/10 border-primary/30'
+            ? 'bg-red-50 border-red-500 shadow-lg shadow-red-200' 
+            : 'bg-blue-50 border-blue-500 shadow-lg shadow-blue-200'
         }`}>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Clock className={`w-5 h-5 ${confirmationTask.is_overdue ? 'text-destructive' : 'text-primary'}`} />
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {confirmationTask.is_overdue ? '⚠️ OVERDUE' : 'Confirm Before'}
-                </p>
-                <p className={`text-lg font-bold ${confirmationTask.is_overdue ? 'text-destructive' : 'text-primary'}`}>
-                  {format(new Date(confirmationTask.due_at), "h:mm a")}
-                </p>
+          <div className="space-y-4">
+            {/* Main Deadline Display */}
+            <div className="text-center">
+              <div className={`inline-flex items-center gap-3 px-6 py-4 rounded-lg ${
+                confirmationTask.is_overdue 
+                  ? 'bg-red-500 text-white animate-pulse' 
+                  : 'bg-blue-600 text-white'
+              }`}>
+                <Clock className="w-8 h-8" />
+                <div className="text-left">
+                  <p className="text-sm font-bold uppercase tracking-wider opacity-90">
+                    {confirmationTask.is_overdue ? '🚨 OVERDUE - CONFIRM NOW!' : '⏰ Must Confirm Before'}
+                  </p>
+                  <p className="text-4xl font-black">
+                    {confirmationTask.due_at ? format(new Date(confirmationTask.due_at), "h:mm a") : 'ASAP'}
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Appointment Time</p>
-              <p className="text-sm font-semibold">{format(new Date(appointment.start_at_utc), "h:mm a")}</p>
+
+            {/* Appointment Time Reference */}
+            <div className="flex items-center justify-center gap-2 text-sm">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Appointment scheduled for:</span>
+              <span className="font-bold text-foreground text-lg">
+                {format(new Date(appointment.start_at_utc), "h:mm a")}
+              </span>
             </div>
           </div>
-        </div>
-      )}
-      
-      {/* Confirmation Progress Tracker - Show at top if task exists */}
-      {confirmationTask && (
-        <div className="mb-4 pb-4 border-b">
-          <ConfirmationProgressTracker 
-            task={{ ...confirmationTask, appointment_id: appointment.id }} 
-            onUpdate={onUpdate}
-          />
+
+          {/* Progress Tracker */}
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <ConfirmationProgressTracker 
+              task={{ ...confirmationTask, appointment_id: appointment.id }} 
+              onUpdate={onUpdate}
+            />
+          </div>
         </div>
       )}
       
