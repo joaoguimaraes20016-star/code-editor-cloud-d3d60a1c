@@ -335,10 +335,10 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
 
       if (taskError) throw taskError;
 
-      // Update appointment cc_collected
+      // Update appointment cc_collected - just add the payment amount
       const { data: appointment } = await supabase
         .from('appointments')
-        .select('cc_collected, setter_id, closer_id')
+        .select('cc_collected')
         .eq('id', schedule.appointment_id)
         .single();
 
@@ -349,83 +349,6 @@ export function MRRFollowUps({ teamId, userRole, currentUserId }: MRRFollowUpsPr
           .from('appointments')
           .update({ cc_collected: newCollected })
           .eq('id', schedule.appointment_id);
-
-        // Create commissions
-        const month_date = new Date().toISOString().split('T')[0];
-        const commissions = [];
-
-        if (appointment.setter_id) {
-          const { data: setterTeamMember } = await supabase
-            .from('team_members')
-            .select('user_id, profiles!inner(full_name)')
-            .eq('user_id', appointment.setter_id)
-            .eq('team_id', teamId)
-            .single();
-
-          if (setterTeamMember) {
-            const { data: teamSettings } = await supabase
-              .from('teams')
-              .select('setter_commission_percentage')
-              .eq('id', teamId)
-              .single();
-
-            const setterCommission = schedule.mrr_amount * ((teamSettings?.setter_commission_percentage || 5) / 100);
-            
-            commissions.push({
-              team_id: teamId,
-              appointment_id: schedule.appointment_id,
-              team_member_id: appointment.setter_id,
-              team_member_name: (setterTeamMember.profiles as any)?.full_name || 'Unknown',
-              role: 'setter',
-              prospect_name: schedule.client_name,
-              prospect_email: schedule.client_email,
-              month_date,
-              mrr_amount: schedule.mrr_amount,
-              commission_percentage: teamSettings?.setter_commission_percentage || 5,
-              commission_amount: setterCommission
-            });
-          }
-        }
-
-        if (appointment.closer_id) {
-          const { data: closerTeamMember } = await supabase
-            .from('team_members')
-            .select('user_id, role, profiles!inner(full_name)')
-            .eq('user_id', appointment.closer_id)
-            .eq('team_id', teamId)
-            .single();
-
-          if (closerTeamMember) {
-            const { data: teamSettings } = await supabase
-              .from('teams')
-              .select('closer_commission_percentage')
-              .eq('id', teamId)
-              .single();
-
-            // Only add commission if closer is NOT offer owner
-            if (closerTeamMember.role !== 'offer_owner') {
-              const closerCommission = schedule.mrr_amount * ((teamSettings?.closer_commission_percentage || 10) / 100);
-              
-              commissions.push({
-                team_id: teamId,
-                appointment_id: schedule.appointment_id,
-                team_member_id: appointment.closer_id,
-                team_member_name: (closerTeamMember.profiles as any)?.full_name || 'Unknown',
-                role: 'closer',
-                prospect_name: schedule.client_name,
-                prospect_email: schedule.client_email,
-                month_date,
-                mrr_amount: schedule.mrr_amount,
-                commission_percentage: teamSettings?.closer_commission_percentage || 10,
-                commission_amount: closerCommission
-              });
-            }
-          }
-        }
-
-        if (commissions.length > 0) {
-          await supabase.from('mrr_commissions').insert(commissions);
-        }
       }
 
       // Log activity

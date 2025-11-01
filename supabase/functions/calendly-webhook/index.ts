@@ -203,13 +203,13 @@ serve(async (req) => {
     console.log(`Processing appointment from event type: ${eventTypeUri}`);
     
     // Filter by selected event types if configured
-    if (teamData.calendly_event_types && Array.isArray(teamData.calendly_event_types) && teamData.calendly_event_types.length > 0) {
-      if (!eventTypeUri || !teamData.calendly_event_types.includes(eventTypeUri)) {
+    if (team.calendly_event_types && Array.isArray(team.calendly_event_types) && team.calendly_event_types.length > 0) {
+      if (!eventTypeUri || !team.calendly_event_types.includes(eventTypeUri)) {
         console.log(`Skipping appointment - event type ${eventTypeUri} not in selected types`);
         await logWebhookEvent(supabase, teamId, event, 'success', {
           message: 'Appointment skipped - event type not selected for sync',
           eventTypeUri,
-          selectedEventTypes: teamData.calendly_event_types
+          selectedEventTypes: team.calendly_event_types
         });
         return new Response(
           JSON.stringify({ message: 'Event type not selected for sync' }),
