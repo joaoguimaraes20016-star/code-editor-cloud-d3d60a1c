@@ -100,7 +100,7 @@ export function CommissionBreakdown({ sales }: CommissionBreakdownProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Commission Breakdown (Closed Deals & Deposits Only)</CardTitle>
+        <CardTitle>Commission Breakdown</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="closers" className="w-full">
