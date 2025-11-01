@@ -32,6 +32,115 @@ interface PipelineStage {
   order_index: number;
 }
 
+interface CloserPipelineViewProps {
+  group: CloserGroup;
+  stages: PipelineStage[];
+  teamId: string;
+}
+
+function CloserPipelineView({ group, stages, teamId }: CloserPipelineViewProps) {
+  // Group appointments by stage for the selected closer
+  const dealsByStage = useMemo(() => {
+    if (!group || stages.length === 0) return new Map();
+
+    const grouped = new Map<string, any[]>();
+    
+    // Initialize all stages with empty arrays
+    stages.forEach(stage => {
+      grouped.set(stage.stage_id, []);
+    });
+
+    // Add "new" stage for appointments without a stage
+    grouped.set('new', []);
+
+    // Group appointments
+    group.appointments.forEach(apt => {
+      const stageId = apt.pipeline_stage || 'new';
+      if (!grouped.has(stageId)) {
+        grouped.set(stageId, []);
+      }
+      grouped.get(stageId)!.push(apt);
+    });
+
+    return grouped;
+  }, [group, stages]);
+
+  return (
+    <ScrollArea className="w-full">
+      <div className="flex gap-4 pb-4">
+        {/* New Stage */}
+        <div className="flex-shrink-0" style={{ width: '300px' }}>
+          <Card className="h-full">
+            <div className="p-4 border-b bg-muted/30">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">New</h3>
+                <Badge variant="secondary">
+                  {dealsByStage.get('new')?.length || 0}
+                </Badge>
+              </div>
+            </div>
+            <div className="p-3 space-y-3 min-h-[200px]">
+              {dealsByStage.get('new')?.map(appointment => (
+                <DealCard
+                  key={appointment.id}
+                  id={appointment.id}
+                  teamId={teamId}
+                  appointment={appointment}
+                  onCloseDeal={() => {}}
+                  onMoveTo={() => {}}
+                  userRole="admin"
+                />
+              ))}
+              {(!dealsByStage.get('new') || dealsByStage.get('new')?.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-8">No deals</p>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* Pipeline Stages */}
+        {stages.map(stage => (
+          <div key={stage.stage_id} className="flex-shrink-0" style={{ width: '300px' }}>
+            <Card className="h-full">
+              <div 
+                className="p-4 border-b"
+                style={{ 
+                  backgroundColor: `${stage.stage_color}15`,
+                  borderBottomColor: stage.stage_color
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">{stage.stage_label}</h3>
+                  <Badge variant="secondary">
+                    {dealsByStage.get(stage.stage_id)?.length || 0}
+                  </Badge>
+                </div>
+              </div>
+              <div className="p-3 space-y-3 min-h-[200px]">
+                {dealsByStage.get(stage.stage_id)?.map(appointment => (
+                  <DealCard
+                    key={appointment.id}
+                    id={appointment.id}
+                    teamId={teamId}
+                    appointment={appointment}
+                    onCloseDeal={() => {}}
+                    onMoveTo={() => {}}
+                    userRole="admin"
+                  />
+                ))}
+                {(!dealsByStage.get(stage.stage_id) || dealsByStage.get(stage.stage_id)?.length === 0) && (
+                  <p className="text-sm text-muted-foreground text-center py-8">No deals</p>
+                )}
+              </div>
+            </Card>
+          </div>
+        ))}
+      </div>
+      <ScrollBar orientation="horizontal" />
+    </ScrollArea>
+  );
+}
+
 export function ByCloserView({ teamId }: ByCloserViewProps) {
   const [loading, setLoading] = useState(true);
   const [closerGroups, setCloserGroups] = useState<CloserGroup[]>([]);
@@ -136,34 +245,6 @@ export function ByCloserView({ teamId }: ByCloserViewProps) {
     );
   }
 
-  const selectedGroup = closerGroups.find(g => g.closerId === selectedCloser);
-
-  // Group appointments by stage for the selected closer
-  const dealsByStage = useMemo(() => {
-    if (!selectedGroup || stages.length === 0) return new Map();
-
-    const grouped = new Map<string, any[]>();
-    
-    // Initialize all stages with empty arrays
-    stages.forEach(stage => {
-      grouped.set(stage.stage_id, []);
-    });
-
-    // Add "new" stage for appointments without a stage
-    grouped.set('new', []);
-
-    // Group appointments
-    selectedGroup.appointments.forEach(apt => {
-      const stageId = apt.pipeline_stage || 'new';
-      if (!grouped.has(stageId)) {
-        grouped.set(stageId, []);
-      }
-      grouped.get(stageId)!.push(apt);
-    });
-
-    return grouped;
-  }, [selectedGroup, stages]);
-
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-br from-accent/10 via-primary/10 to-accent/5 rounded-xl p-6 border border-accent/30">
@@ -218,78 +299,11 @@ export function ByCloserView({ teamId }: ByCloserViewProps) {
 
             {/* Pipeline View */}
             {group.closerId === selectedCloser && (
-              <ScrollArea className="w-full">
-                <div className="flex gap-4 pb-4">
-                  {/* New Stage */}
-                  <div className="flex-shrink-0" style={{ width: '300px' }}>
-                    <Card className="h-full">
-                      <div className="p-4 border-b bg-muted/30">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold">New</h3>
-                          <Badge variant="secondary">
-                            {dealsByStage.get('new')?.length || 0}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="p-3 space-y-3 min-h-[200px]">
-                        {dealsByStage.get('new')?.map(appointment => (
-                          <DealCard
-                            key={appointment.id}
-                            id={appointment.id}
-                            teamId={teamId}
-                            appointment={appointment}
-                            onCloseDeal={() => {}}
-                            onMoveTo={() => {}}
-                            userRole="admin"
-                          />
-                        ))}
-                        {(!dealsByStage.get('new') || dealsByStage.get('new')?.length === 0) && (
-                          <p className="text-sm text-muted-foreground text-center py-8">No deals</p>
-                        )}
-                      </div>
-                    </Card>
-                  </div>
-
-                  {/* Pipeline Stages */}
-                  {stages.map(stage => (
-                    <div key={stage.stage_id} className="flex-shrink-0" style={{ width: '300px' }}>
-                      <Card className="h-full">
-                        <div 
-                          className="p-4 border-b"
-                          style={{ 
-                            backgroundColor: `${stage.stage_color}15`,
-                            borderBottomColor: stage.stage_color
-                          }}
-                        >
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold">{stage.stage_label}</h3>
-                            <Badge variant="secondary">
-                              {dealsByStage.get(stage.stage_id)?.length || 0}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="p-3 space-y-3 min-h-[200px]">
-                          {dealsByStage.get(stage.stage_id)?.map(appointment => (
-                            <DealCard
-                              key={appointment.id}
-                              id={appointment.id}
-                              teamId={teamId}
-                              appointment={appointment}
-                              onCloseDeal={() => {}}
-                              onMoveTo={() => {}}
-                              userRole="admin"
-                            />
-                          ))}
-                          {(!dealsByStage.get(stage.stage_id) || dealsByStage.get(stage.stage_id)?.length === 0) && (
-                            <p className="text-sm text-muted-foreground text-center py-8">No deals</p>
-                          )}
-                        </div>
-                      </Card>
-                    </div>
-                  ))}
-                </div>
-                <ScrollBar orientation="horizontal" />
-              </ScrollArea>
+              <CloserPipelineView 
+                group={group} 
+                stages={stages} 
+                teamId={teamId} 
+              />
             )}
           </TabsContent>
         ))}
