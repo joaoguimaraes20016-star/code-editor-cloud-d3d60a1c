@@ -43,7 +43,7 @@ export function BySetterView({ teamId }: BySetterViewProps) {
         .select('*')
         .eq('team_id', teamId)
         .not('setter_id', 'is', null)
-        .order('appointment_time', { ascending: true });
+        .order('start_at_utc', { ascending: true });
 
       if (error) throw error;
 

@@ -42,7 +42,7 @@ export function ByCloserView({ teamId }: ByCloserViewProps) {
         .select('*')
         .eq('team_id', teamId)
         .not('closer_name', 'is', null)
-        .order('appointment_time', { ascending: true });
+        .order('start_at_utc', { ascending: true });
 
       if (error) throw error;
 
