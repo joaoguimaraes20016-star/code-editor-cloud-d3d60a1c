@@ -21,9 +21,6 @@ import { MRRDashboard } from "@/components/MRRDashboard";
 import { MRRFollowUps } from "@/components/appointments/MRRFollowUps";
 import { CalendlyConfig } from "@/components/CalendlyConfig";
 import { AppointmentsHub } from "@/components/appointments/AppointmentsHub";
-import { CloserTasksView } from "@/components/appointments/CloserTasksView";
-import { CloserStatsCard } from "@/components/appointments/CloserStatsCard";
-import { CloserEODReport } from "@/components/appointments/CloserEODReport";
 import {
   Select,
   SelectContent,
@@ -657,41 +654,20 @@ const Index = () => {
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className={`grid w-full ${
-            userRole === 'closer' 
-              ? 'grid-cols-4' 
-              : (isAdmin || userRole === 'offer_owner') 
-                ? 'grid-cols-3' 
-                : 'grid-cols-2'
+            (isAdmin || userRole === 'offer_owner') 
+              ? 'grid-cols-3' 
+              : 'grid-cols-2'
           } md:w-auto md:inline-grid h-auto`}>
             <TabsTrigger value="dashboard" className="text-xs md:text-sm py-2 md:py-2.5">
-              {userRole === 'closer' ? 'My Stats' : 'Dashboard'}
+              Dashboard
             </TabsTrigger>
             <TabsTrigger value="appointments" className="text-xs md:text-sm py-2 md:py-2.5">CRM</TabsTrigger>
-            {userRole === 'closer' && (
-              <>
-                <TabsTrigger value="tasks" className="text-xs md:text-sm py-2 md:py-2.5">Tasks</TabsTrigger>
-                <TabsTrigger value="eod" className="text-xs md:text-sm py-2 md:py-2.5">EOD</TabsTrigger>
-              </>
-            )}
             {(isAdmin || userRole === 'offer_owner') && (
               <TabsTrigger value="integrations" className="text-xs md:text-sm py-2 md:py-2.5">Integrations</TabsTrigger>
             )}
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6 mt-6">
-            {userRole === 'closer' ? (
-              // Closer's personal stats view
-              <div className="space-y-6">
-                <CloserStatsCard teamId={teamId!} userId={user?.id || ''} />
-                <CommissionBreakdown 
-                  sales={filteredSales.filter(s => 
-                    s.salesRep.toLowerCase() === (currentUserName?.toLowerCase() || '')
-                  )} 
-                />
-              </div>
-            ) : (
-              // Admin/Offer Owner dashboard view
-              <>
 
         {/* Filters */}
         <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-3 md:gap-4">
@@ -805,26 +781,7 @@ const Index = () => {
                 }}
               />
             </div>
-            </>
-            )}
           </TabsContent>
-
-          {userRole === 'closer' && (
-            <>
-              <TabsContent value="tasks" className="space-y-6 mt-6">
-                <CloserTasksView teamId={teamId!} userId={user?.id || ''} />
-              </TabsContent>
-              
-              <TabsContent value="eod" className="space-y-6 mt-6">
-                <CloserEODReport 
-                  teamId={teamId!} 
-                  userId={user?.id || ''} 
-                  userName={currentUserName || 'User'} 
-                  date={new Date()} 
-                />
-              </TabsContent>
-            </>
-          )}
 
           <TabsContent value="appointments" className="space-y-6 mt-6">
             <AppointmentsHub 
