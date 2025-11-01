@@ -25,7 +25,7 @@ serve(async (req) => {
     // Check if team has auto_create_tasks enabled (defaults to true if not set)
     const { data: teamSettings, error: teamError } = await supabaseClient
       .from('teams')
-      .select('auto_create_tasks')
+      .select('auto_create_tasks, confirmation_schedule')
       .eq('id', appointment.team_id)
       .single();
 
@@ -41,6 +41,19 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Get confirmation schedule
+    const schedule = teamSettings?.confirmation_schedule || [
+      {sequence: 1, hours_before: 24, label: "24h Before"},
+      {sequence: 2, hours_before: 1, label: "1h Before"},
+      {sequence: 3, hours_before: 0.17, label: "10min Before"}
+    ];
+
+    const firstWindow = schedule[0];
+
+    // Calculate due_at for first confirmation window
+    const appointmentTime = new Date(appointment.start_at_utc);
+    const dueAt = new Date(appointmentTime.getTime() - (firstWindow.hours_before * 60 * 60 * 1000));
 
     // Get active setters for this team
     const { data: activeSetters, error: settersError } = await supabaseClient
@@ -84,7 +97,13 @@ serve(async (req) => {
     const taskData: any = {
       team_id: appointment.team_id,
       appointment_id: appointment.id,
-      status: 'pending'
+      status: 'pending',
+      required_confirmations: schedule.length,
+      confirmation_sequence: 1,
+      due_at: dueAt.toISOString(),
+      confirmation_attempts: [],
+      completed_confirmations: 0,
+      is_overdue: false
     };
 
     if (assignedTo) {

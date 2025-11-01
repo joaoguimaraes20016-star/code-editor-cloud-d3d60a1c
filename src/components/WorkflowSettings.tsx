@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserFriendlyError } from "@/lib/errorUtils";
 import { Loader2 } from "lucide-react";
+import { ConfirmationScheduleSettings } from "@/components/ConfirmationScheduleSettings";
 
 interface WorkflowSettingsProps {
   teamId: string;
@@ -87,38 +88,42 @@ export function WorkflowSettings({ teamId }: WorkflowSettingsProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Workflow Settings</CardTitle>
-        <CardDescription>
-          Configure how your team's workflows operate
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-between space-x-4">
-          <div className="flex-1 space-y-1">
-            <Label htmlFor="auto-tasks" className="text-base font-medium">
-              Auto-create confirmation tasks
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              When enabled, new appointments automatically create confirmation tasks for setters. 
-              Disable this if your offer doesn't need call confirmations.
-            </p>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Workflow Settings</CardTitle>
+          <CardDescription>
+            Configure how your team's workflows operate
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between space-x-4">
+            <div className="flex-1 space-y-1">
+              <Label htmlFor="auto-tasks" className="text-base font-medium">
+                Auto-create confirmation tasks
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                When enabled, new appointments automatically create confirmation tasks for setters. 
+                Disable this if your offer doesn't need call confirmations.
+              </p>
+            </div>
+            <Switch
+              id="auto-tasks"
+              checked={autoCreateTasks}
+              onCheckedChange={setAutoCreateTasks}
+            />
           </div>
-          <Switch
-            id="auto-tasks"
-            checked={autoCreateTasks}
-            onCheckedChange={setAutoCreateTasks}
-          />
-        </div>
 
-        <div className="flex justify-end pt-4 border-t">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          <div className="flex justify-end pt-4 border-t">
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <ConfirmationScheduleSettings teamId={teamId} />
+    </div>
   );
 }

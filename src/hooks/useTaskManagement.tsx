@@ -20,6 +20,12 @@ interface Task {
   mrr_confirmed_months?: number;
   mrr_total_months?: number;
   appointment?: any;
+  confirmation_attempts?: any[];
+  required_confirmations?: number;
+  completed_confirmations?: number;
+  confirmation_sequence?: number;
+  due_at?: string | null;
+  is_overdue?: boolean;
 }
 
 export function useTaskManagement(teamId: string, userId: string, userRole?: string) {
@@ -190,8 +196,15 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
       const uniqueTasksMap = new Map<string, Task>();
       allTasks.forEach(task => {
         const existingTask = uniqueTasksMap.get(task.appointment_id);
+        // Cast confirmation_attempts properly when it exists
+        const taskWithCastedAttempts: Task = {
+          ...task,
+          confirmation_attempts: ('confirmation_attempts' in task && task.confirmation_attempts) 
+            ? (task.confirmation_attempts as unknown as any[]) 
+            : []
+        };
         if (!existingTask || new Date(task.created_at) > new Date(existingTask.created_at)) {
-          uniqueTasksMap.set(task.appointment_id, task);
+          uniqueTasksMap.set(task.appointment_id, taskWithCastedAttempts);
         }
       });
       
@@ -280,75 +293,186 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
     try {
       // Get current task to store previous state
       const currentTask = myTasks.find(t => t.id === taskId);
+      if (!currentTask) {
+        toast.error('Task not found');
+        return;
+      }
+
+      // Store previous state for undo
       const previousState = {
         taskId,
         appointmentId,
-        taskStatus: 'pending' as const,
-        appointmentStatus: currentTask?.appointment?.status || 'NEW' as const,
-        appointmentPipelineStage: currentTask?.appointment?.pipeline_stage || 'booked'
+        taskData: {
+          confirmation_attempts: currentTask.confirmation_attempts || [],
+          completed_confirmations: currentTask.completed_confirmations || 0,
+          confirmation_sequence: currentTask.confirmation_sequence || 1,
+          due_at: currentTask.due_at,
+          status: 'pending' as const,
+          is_overdue: false,
+          completed_at: null
+        },
+        appointmentStatus: currentTask.appointment?.status || 'NEW' as const,
+        appointmentPipelineStage: currentTask.appointment?.pipeline_stage || 'booked',
+        appointmentSetterId: currentTask.appointment?.setter_id
       };
 
-      const updateData: any = {
-        status: 'CONFIRMED',
-        pipeline_stage: 'booked',
-        setter_id: userId // Always assign to the person confirming
+      // Record this confirmation attempt
+      const newAttempt = {
+        timestamp: new Date().toISOString(),
+        confirmed_by: userId,
+        notes: note || '',
+        sequence: currentTask.confirmation_sequence || 1
       };
 
-      const { error: aptError } = await supabase
-        .from('appointments')
-        .update(updateData)
-        .eq('id', appointmentId);
+      const attempts = [...(currentTask.confirmation_attempts || []), newAttempt];
+      const completedCount = (currentTask.completed_confirmations || 0) + 1;
+      const requiredCount = currentTask.required_confirmations || 1;
 
-      if (aptError) throw aptError;
+      // Check if we need more confirmations
+      if (completedCount < requiredCount) {
+        // Get team schedule to find next window
+        const { data: team } = await supabase
+          .from('teams')
+          .select('confirmation_schedule')
+          .eq('id', teamId)
+          .single();
 
-      const { error: taskError } = await supabase
-        .from('confirmation_tasks')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', taskId);
+        const schedule = team?.confirmation_schedule || [
+          {sequence: 1, hours_before: 24, label: "24h Before"},
+          {sequence: 2, hours_before: 1, label: "1h Before"},
+          {sequence: 3, hours_before: 0.17, label: "10min Before"}
+        ];
+        const nextWindow = schedule[completedCount]; // next in array
 
-      if (taskError) throw taskError;
+        // Calculate next due_at
+        const appointmentTime = new Date(currentTask.appointment.start_at_utc);
+        const nextDueAt = new Date(
+          appointmentTime.getTime() - (nextWindow.hours_before * 60 * 60 * 1000)
+        );
 
-      await logActivity(appointmentId, 'Confirmed', note || 'Assigned to you');
-      
-      toast.success('Confirmed & Assigned to You', {
-        action: {
-          label: 'Undo',
-          onClick: async () => {
-            try {
-              // Revert appointment
-              await supabase
-                .from('appointments')
-                .update({
-                  status: previousState.appointmentStatus,
-                  pipeline_stage: previousState.appointmentPipelineStage,
-                  setter_id: setterId
-                })
-                .eq('id', appointmentId);
+        // Update task with new confirmation data + next window
+        const { error: taskError } = await supabase
+          .from('confirmation_tasks')
+          .update({
+            confirmation_attempts: attempts,
+            completed_confirmations: completedCount,
+            confirmation_sequence: completedCount + 1,
+            due_at: nextDueAt.toISOString(),
+            is_overdue: false
+          })
+          .eq('id', taskId);
 
-              // Revert task
-              await supabase
-                .from('confirmation_tasks')
-                .update({
-                  status: 'pending',
-                  completed_at: null
-                })
-                .eq('id', taskId);
+        if (taskError) throw taskError;
 
-              await logActivity(appointmentId, 'Undone', 'Confirmation reverted');
-              toast.success('Confirmation undone');
-              loadTasks();
-            } catch (error) {
-              console.error('Error undoing confirmation:', error);
-              toast.error('Failed to undo');
+        // Update appointment setter if needed
+        const { error: aptError } = await supabase
+          .from('appointments')
+          .update({ setter_id: userId })
+          .eq('id', appointmentId)
+          .is('setter_id', null);
+
+        if (aptError) throw aptError;
+
+        await logActivity(appointmentId, 'Confirmation Recorded', 
+          note ? `${note} (${completedCount}/${requiredCount})` : `Confirmation ${completedCount}/${requiredCount} completed. Next due: ${nextWindow.label}`);
+
+        toast.success(`Confirmation ${completedCount}/${requiredCount} recorded! Next: ${nextWindow.label}`, {
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              try {
+                // Revert task to previous state
+                await supabase
+                  .from('confirmation_tasks')
+                  .update(previousState.taskData)
+                  .eq('id', taskId);
+
+                // Revert appointment setter if it was changed
+                if (previousState.appointmentSetterId !== userId) {
+                  await supabase
+                    .from('appointments')
+                    .update({ setter_id: previousState.appointmentSetterId })
+                    .eq('id', appointmentId);
+                }
+
+                await logActivity(appointmentId, 'Undone', 'Confirmation undone');
+                toast.success('Confirmation undone');
+                loadTasks();
+              } catch (error) {
+                console.error('Error undoing confirmation:', error);
+                toast.error('Failed to undo');
+              }
             }
-          }
-        }
-      });
-      
-      loadTasks();
+          },
+          duration: 10000
+        });
+        
+        loadTasks();
+
+      } else {
+        // All confirmations complete!
+        const { error: taskError } = await supabase
+          .from('confirmation_tasks')
+          .update({
+            confirmation_attempts: attempts,
+            completed_confirmations: completedCount,
+            status: 'completed',
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', taskId);
+
+        if (taskError) throw taskError;
+
+        // Mark appointment as confirmed
+        const { error: aptError } = await supabase
+          .from('appointments')
+          .update({
+            status: 'CONFIRMED',
+            pipeline_stage: 'booked',
+            setter_id: userId
+          })
+          .eq('id', appointmentId);
+
+        if (aptError) throw aptError;
+
+        await logActivity(appointmentId, 'Confirmed', 
+          note ? `${note} - All ${requiredCount} confirmations completed!` : `All ${requiredCount} confirmations completed. Appointment confirmed!`);
+
+        toast.success('🎉 All confirmations complete! Appointment confirmed.', {
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              try {
+                // Revert task to previous state
+                await supabase
+                  .from('confirmation_tasks')
+                  .update(previousState.taskData)
+                  .eq('id', taskId);
+
+                // Revert appointment
+                await supabase
+                  .from('appointments')
+                  .update({
+                    status: previousState.appointmentStatus,
+                    pipeline_stage: previousState.appointmentPipelineStage,
+                    setter_id: previousState.appointmentSetterId
+                  })
+                  .eq('id', appointmentId);
+
+                await logActivity(appointmentId, 'Undone', 'Final confirmation undone');
+                toast.success('Confirmation undone');
+                loadTasks();
+              } catch (error) {
+                console.error('Error undoing confirmation:', error);
+                toast.error('Failed to undo');
+              }
+            }
+          },
+          duration: 10000
+        });
+        
+        loadTasks();
+      }
     } catch (error) {
       console.error('Error confirming task:', error);
       toast.error('Failed to confirm');
