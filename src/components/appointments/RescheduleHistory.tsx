@@ -118,7 +118,7 @@ export function RescheduleHistory({ open, onOpenChange, appointmentId }: Resched
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Badge variant={index === 0 ? "default" : "secondary"}>
-                          {index === 0 ? "Original" : `Version ${index + 1}`}
+                          {index === 0 ? "Original" : "New Date"}
                         </Badge>
                         {appt.id === appointmentId && (
                           <Badge variant="outline">Current View</Badge>
