@@ -95,7 +95,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [teamId, user?.id, userRole, viewingAsUserId, viewingAsCloserId, viewingAsSetterId]);
+  }, [teamId, user?.id, viewingAsCloserId, viewingAsSetterId]);
 
   const loadTodaysAppointments = async () => {
     try {
@@ -103,6 +103,18 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
       const today = new Date();
       const startOfToday = startOfDay(today).toISOString();
       const endOfToday = endOfDay(today).toISOString();
+
+      // Determine which user's data to show
+      const targetUserId = viewingAsCloserId || viewingAsSetterId || user?.id;
+      const targetRole = viewingAsCloserId ? 'closer' : viewingAsSetterId ? 'setter' : userRole;
+
+      console.log('[TodaysDashboard] Loading for:', {
+        targetUserId,
+        targetRole,
+        viewingAsCloserId,
+        viewingAsSetterId,
+        currentUserId: user?.id
+      });
 
       let query = supabase
         .from('appointments')
@@ -112,58 +124,38 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
         .lte('start_at_utc', endOfToday)
         .order('start_at_utc', { ascending: true });
 
-      // Filter by role
-      const effectiveUserId = viewingAsCloserId || viewingAsSetterId || viewingAsUserId || user?.id;
-      
-      console.log('[TodaysDashboard] Loading appointments:', {
-        userRole,
-        effectiveUserId,
-        viewingAsCloserId,
-        viewingAsSetterId,
-        currentUserId: user?.id
-      });
-      
-      if (userRole === 'setter') {
-        // Setters see appointments they need to confirm (no filter on setter_id yet, will filter by tasks)
-      } else if (userRole === 'closer') {
-        // Closers see their assigned appointments
-        query = query.eq('closer_id', effectiveUserId);
+      // Filter appointments by role
+      if (targetRole === 'closer') {
+        query = query.eq('closer_id', targetUserId);
       }
-      // Admins see all appointments (no filter)
 
       const { data, error } = await query;
-
       if (error) throw error;
       
       let filteredData = data || [];
 
-      // Load confirmation tasks for today's appointments (only for setters/admins)
-      if (filteredData.length > 0 && (userRole === 'setter' || userRole === 'admin')) {
+      // Load confirmation tasks
+      if (filteredData.length > 0 && (targetRole === 'setter' || targetRole === 'admin')) {
         const appointmentIds = filteredData.map(apt => apt.id);
         
-        // Build the tasks query
         let tasksQuery = supabase
           .from('confirmation_tasks')
           .select('*')
           .in('appointment_id', appointmentIds)
           .eq('status', 'pending');
         
-        // ALWAYS filter by effectiveUserId when viewing a specific person's tasks
-        // This ensures we see only their tasks, not all tasks
-        const shouldFilter = viewingAsSetterId || viewingAsCloserId || userRole === 'setter';
-        
-        if (shouldFilter) {
-          console.log('[TodaysDashboard] Filtering tasks for user:', effectiveUserId, { viewingAsSetterId, viewingAsCloserId, userRole });
-          tasksQuery = tasksQuery.eq('assigned_to', effectiveUserId);
+        // ALWAYS filter tasks by the target user when viewing as setter
+        if (targetRole === 'setter' || viewingAsSetterId) {
+          console.log('[TodaysDashboard] Filtering tasks by:', targetUserId);
+          tasksQuery = tasksQuery.eq('assigned_to', targetUserId);
         }
         
         const { data: tasks } = await tasksQuery;
         
-        console.log('[TodaysDashboard] Loaded tasks:', {
-          totalTasks: tasks?.length || 0,
-          filteredBy: shouldFilter ? 'filtered by user' : 'no filter',
-          effectiveUserId,
-          tasks: tasks?.map(t => ({ id: t.id, appointment_id: t.appointment_id, assigned_to: t.assigned_to }))
+        console.log('[TodaysDashboard] Tasks loaded:', {
+          count: tasks?.length || 0,
+          assignedTo: tasks?.[0]?.assigned_to,
+          expectedUser: targetUserId
         });
         
         if (tasks) {
@@ -344,47 +336,6 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
 
   return (
     <div className="space-y-6">
-      {/* Rep Selector (for testing/admin) - Hidden when viewing specific reps */}
-      {!viewingAsCloserId && !viewingAsSetterId && (
-        <Card className="p-4">
-          <div className="flex items-center gap-4">
-            <Users className="h-5 w-5 text-muted-foreground" />
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-2 block">View As Team Member</label>
-              <Select 
-                value={viewingAsUserId || user?.id || ''} 
-                onValueChange={(value) => setViewingAsUserId(value === user?.id ? null : value)}
-              >
-                <SelectTrigger className="w-full max-w-xs">
-                  <SelectValue placeholder="Select team member" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={user?.id || ''}>
-                    👤 {teamMembers.find(m => m.id === user?.id)?.name || 'Me (Current User)'}
-                  </SelectItem>
-                  {teamMembers
-                    .filter(m => m.id !== user?.id)
-                    .map(member => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} ({member.role})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {viewingAsUserId && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setViewingAsUserId(null)}
-              >
-                Reset to My View
-              </Button>
-            )}
-          </div>
-        </Card>
-      )}
-
       {/* Header with date */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
