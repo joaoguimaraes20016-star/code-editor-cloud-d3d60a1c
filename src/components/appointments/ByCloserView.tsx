@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealCard } from "./DealCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface ByCloserViewProps {
   teamId: string;
@@ -23,14 +24,42 @@ interface CloserGroup {
   };
 }
 
+interface PipelineStage {
+  id: string;
+  stage_id: string;
+  stage_label: string;
+  stage_color: string;
+  order_index: number;
+}
+
 export function ByCloserView({ teamId }: ByCloserViewProps) {
   const [loading, setLoading] = useState(true);
   const [closerGroups, setCloserGroups] = useState<CloserGroup[]>([]);
   const [selectedCloser, setSelectedCloser] = useState<string | null>(null);
+  const [stages, setStages] = useState<PipelineStage[]>([]);
 
   useEffect(() => {
-    loadCloserGroups();
+    loadData();
   }, [teamId]);
+
+  const loadData = async () => {
+    await Promise.all([loadStages(), loadCloserGroups()]);
+  };
+
+  const loadStages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_pipeline_stages')
+        .select('*')
+        .eq('team_id', teamId)
+        .order('order_index', { ascending: true });
+
+      if (error) throw error;
+      setStages(data || []);
+    } catch (error) {
+      console.error('Error loading stages:', error);
+    }
+  };
 
   const loadCloserGroups = async () => {
     try {
@@ -109,11 +138,37 @@ export function ByCloserView({ teamId }: ByCloserViewProps) {
 
   const selectedGroup = closerGroups.find(g => g.closerId === selectedCloser);
 
+  // Group appointments by stage for the selected closer
+  const dealsByStage = useMemo(() => {
+    if (!selectedGroup || stages.length === 0) return new Map();
+
+    const grouped = new Map<string, any[]>();
+    
+    // Initialize all stages with empty arrays
+    stages.forEach(stage => {
+      grouped.set(stage.stage_id, []);
+    });
+
+    // Add "new" stage for appointments without a stage
+    grouped.set('new', []);
+
+    // Group appointments
+    selectedGroup.appointments.forEach(apt => {
+      const stageId = apt.pipeline_stage || 'new';
+      if (!grouped.has(stageId)) {
+        grouped.set(stageId, []);
+      }
+      grouped.get(stageId)!.push(apt);
+    });
+
+    return grouped;
+  }, [selectedGroup, stages]);
+
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-br from-accent/10 via-primary/10 to-accent/5 rounded-xl p-6 border border-accent/30">
         <h3 className="text-xl font-bold">By Closer View</h3>
-        <p className="text-sm text-muted-foreground mt-1">See all deals grouped by closer</p>
+        <p className="text-sm text-muted-foreground mt-1">See each closer's pipeline and deals</p>
       </div>
 
       <Tabs value={selectedCloser || undefined} onValueChange={setSelectedCloser}>
@@ -144,7 +199,7 @@ export function ByCloserView({ teamId }: ByCloserViewProps) {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Total Appointments</p>
+                <p className="text-sm text-muted-foreground">Total Deals</p>
                 <p className="text-2xl font-bold">{group.stats.total}</p>
               </Card>
               <Card className="p-4">
@@ -161,20 +216,81 @@ export function ByCloserView({ teamId }: ByCloserViewProps) {
               </Card>
             </div>
 
-            {/* Appointments List */}
-            <div className="space-y-3">
-              {group.appointments.map(appointment => (
-                <DealCard
-                  key={appointment.id}
-                  id={appointment.id}
-                  teamId={teamId}
-                  appointment={appointment}
-                  onCloseDeal={() => {}}
-                  onMoveTo={() => {}}
-                  userRole="admin"
-                />
-              ))}
-            </div>
+            {/* Pipeline View */}
+            {group.closerId === selectedCloser && (
+              <ScrollArea className="w-full">
+                <div className="flex gap-4 pb-4">
+                  {/* New Stage */}
+                  <div className="flex-shrink-0" style={{ width: '300px' }}>
+                    <Card className="h-full">
+                      <div className="p-4 border-b bg-muted/30">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold">New</h3>
+                          <Badge variant="secondary">
+                            {dealsByStage.get('new')?.length || 0}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="p-3 space-y-3 min-h-[200px]">
+                        {dealsByStage.get('new')?.map(appointment => (
+                          <DealCard
+                            key={appointment.id}
+                            id={appointment.id}
+                            teamId={teamId}
+                            appointment={appointment}
+                            onCloseDeal={() => {}}
+                            onMoveTo={() => {}}
+                            userRole="admin"
+                          />
+                        ))}
+                        {(!dealsByStage.get('new') || dealsByStage.get('new')?.length === 0) && (
+                          <p className="text-sm text-muted-foreground text-center py-8">No deals</p>
+                        )}
+                      </div>
+                    </Card>
+                  </div>
+
+                  {/* Pipeline Stages */}
+                  {stages.map(stage => (
+                    <div key={stage.stage_id} className="flex-shrink-0" style={{ width: '300px' }}>
+                      <Card className="h-full">
+                        <div 
+                          className="p-4 border-b"
+                          style={{ 
+                            backgroundColor: `${stage.stage_color}15`,
+                            borderBottomColor: stage.stage_color
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-semibold">{stage.stage_label}</h3>
+                            <Badge variant="secondary">
+                              {dealsByStage.get(stage.stage_id)?.length || 0}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="p-3 space-y-3 min-h-[200px]">
+                          {dealsByStage.get(stage.stage_id)?.map(appointment => (
+                            <DealCard
+                              key={appointment.id}
+                              id={appointment.id}
+                              teamId={teamId}
+                              appointment={appointment}
+                              onCloseDeal={() => {}}
+                              onMoveTo={() => {}}
+                              userRole="admin"
+                            />
+                          ))}
+                          {(!dealsByStage.get(stage.stage_id) || dealsByStage.get(stage.stage_id)?.length === 0) && (
+                            <p className="text-sm text-muted-foreground text-center py-8">No deals</p>
+                          )}
+                        </div>
+                      </Card>
+                    </div>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            )}
           </TabsContent>
         ))}
       </Tabs>
