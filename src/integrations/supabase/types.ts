@@ -449,10 +449,16 @@ export type Database = {
           auto_return_at: string | null
           claimed_manually: boolean | null
           completed_at: string | null
+          completed_confirmations: number | null
+          confirmation_attempts: Json | null
+          confirmation_sequence: number | null
           created_at: string
+          due_at: string | null
           follow_up_date: string | null
           follow_up_reason: string | null
           id: string
+          is_overdue: boolean | null
+          required_confirmations: number | null
           reschedule_date: string | null
           status: string
           task_type: Database["public"]["Enums"]["task_type"]
@@ -465,10 +471,16 @@ export type Database = {
           auto_return_at?: string | null
           claimed_manually?: boolean | null
           completed_at?: string | null
+          completed_confirmations?: number | null
+          confirmation_attempts?: Json | null
+          confirmation_sequence?: number | null
           created_at?: string
+          due_at?: string | null
           follow_up_date?: string | null
           follow_up_reason?: string | null
           id?: string
+          is_overdue?: boolean | null
+          required_confirmations?: number | null
           reschedule_date?: string | null
           status?: string
           task_type?: Database["public"]["Enums"]["task_type"]
@@ -481,10 +493,16 @@ export type Database = {
           auto_return_at?: string | null
           claimed_manually?: boolean | null
           completed_at?: string | null
+          completed_confirmations?: number | null
+          confirmation_attempts?: Json | null
+          confirmation_sequence?: number | null
           created_at?: string
+          due_at?: string | null
           follow_up_date?: string | null
           follow_up_reason?: string | null
           id?: string
+          is_overdue?: boolean | null
+          required_confirmations?: number | null
           reschedule_date?: string | null
           status?: string
           task_type?: Database["public"]["Enums"]["task_type"]
@@ -1209,12 +1227,14 @@ export type Database = {
           calendly_token_expires_at: string | null
           calendly_webhook_id: string | null
           closer_commission_percentage: number | null
+          confirmation_schedule: Json | null
           created_at: string | null
           created_by: string
           dashboard_preferences: Json | null
           google_sheets_url: string | null
           id: string
           name: string
+          overdue_threshold_minutes: number | null
           setter_commission_percentage: number | null
           updated_at: string | null
         }
@@ -1227,12 +1247,14 @@ export type Database = {
           calendly_token_expires_at?: string | null
           calendly_webhook_id?: string | null
           closer_commission_percentage?: number | null
+          confirmation_schedule?: Json | null
           created_at?: string | null
           created_by: string
           dashboard_preferences?: Json | null
           google_sheets_url?: string | null
           id?: string
           name: string
+          overdue_threshold_minutes?: number | null
           setter_commission_percentage?: number | null
           updated_at?: string | null
         }
@@ -1245,12 +1267,14 @@ export type Database = {
           calendly_token_expires_at?: string | null
           calendly_webhook_id?: string | null
           closer_commission_percentage?: number | null
+          confirmation_schedule?: Json | null
           created_at?: string | null
           created_by?: string
           dashboard_preferences?: Json | null
           google_sheets_url?: string | null
           id?: string
           name?: string
+          overdue_threshold_minutes?: number | null
           setter_commission_percentage?: number | null
           updated_at?: string | null
         }
@@ -1327,6 +1351,7 @@ export type Database = {
         Returns: number
       }
       can_create_teams: { Args: { _user_id: string }; Returns: boolean }
+      check_overdue_tasks: { Args: never; Returns: undefined }
       cleanup_expired_reset_tokens: { Args: never; Returns: undefined }
       create_task_with_assignment: {
         Args: {
