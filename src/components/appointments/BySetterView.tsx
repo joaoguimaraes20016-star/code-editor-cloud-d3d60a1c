@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AppointmentCard } from "./AppointmentCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TodaysDashboard } from "./TodaysDashboard";
 
 interface BySetterViewProps {
   teamId: string;
@@ -142,6 +143,16 @@ export function BySetterView({ teamId }: BySetterViewProps) {
 
         {setterGroups.map(group => (
           <TabsContent key={group.setterId} value={group.setterId} className="mt-6">
+            {/* Today's Tasks for this Setter */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-4">Today's Tasks - {group.setterName}</h3>
+              <TodaysDashboard 
+                teamId={teamId} 
+                userRole="setter"
+                viewingAsSetterId={group.setterId}
+              />
+            </div>
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
               <Card className="p-4">
@@ -166,7 +177,8 @@ export function BySetterView({ teamId }: BySetterViewProps) {
               </Card>
             </div>
 
-            {/* Appointments List */}
+            {/* All Appointments List */}
+            <h3 className="text-lg font-semibold mb-4">All Appointments</h3>
             <div className="space-y-3">
               {group.appointments.map(appointment => (
                 <AppointmentCard

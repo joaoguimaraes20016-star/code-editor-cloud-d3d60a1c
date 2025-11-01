@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealCard } from "./DealCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { TodaysDashboard } from "./TodaysDashboard";
 
 interface ByCloserViewProps {
   teamId: string;
@@ -277,6 +278,16 @@ export function ByCloserView({ teamId }: ByCloserViewProps) {
 
         {closerGroups.map(group => (
           <TabsContent key={group.closerId} value={group.closerId} className="mt-6">
+            {/* Today's Schedule for this Closer */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-4">Today's Schedule - {group.closerName}</h3>
+              <TodaysDashboard 
+                teamId={teamId} 
+                userRole="closer"
+                viewingAsCloserId={group.closerId}
+              />
+            </div>
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <Card className="p-4">
@@ -298,6 +309,7 @@ export function ByCloserView({ teamId }: ByCloserViewProps) {
             </div>
 
             {/* Pipeline View */}
+            <h3 className="text-lg font-semibold mb-4">Full Pipeline</h3>
             {group.closerId === selectedCloser && (
               <CloserPipelineView 
                 group={group} 

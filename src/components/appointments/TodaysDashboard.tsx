@@ -13,6 +13,8 @@ import { HorizontalAppointmentCard } from './HorizontalAppointmentCard';
 interface TodaysDashboardProps {
   teamId: string;
   userRole: string;
+  viewingAsCloserId?: string;
+  viewingAsSetterId?: string;
 }
 
 interface Appointment {
@@ -46,7 +48,7 @@ interface ConfirmationTask {
   task_type?: string;
 }
 
-export function TodaysDashboard({ teamId, userRole }: TodaysDashboardProps) {
+export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAsSetterId }: TodaysDashboardProps) {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [confirmationTasks, setConfirmationTasks] = useState<Map<string, ConfirmationTask>>(new Map());
@@ -95,7 +97,7 @@ export function TodaysDashboard({ teamId, userRole }: TodaysDashboardProps) {
         .order('start_at_utc', { ascending: true });
 
       // Filter by role
-      const effectiveUserId = viewingAsUserId || user?.id;
+      const effectiveUserId = viewingAsCloserId || viewingAsSetterId || viewingAsUserId || user?.id;
       
       if (userRole === 'setter') {
         // Setters see appointments they need to confirm (no filter on setter_id yet, will filter by tasks)
