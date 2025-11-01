@@ -62,16 +62,9 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
   const [depositAppointment, setDepositAppointment] = useState<Appointment | null>(null);
   const [commissionSettings, setCommissionSettings] = useState({ closer: 10, setter: 5 });
 
-  console.log('🔍 [TodaysDashboard] PROPS RECEIVED:', {
-    teamId,
-    userRole,
-    viewingAsCloserId,
-    viewingAsSetterId,
-    viewingAsCloserIdType: typeof viewingAsCloserId,
-    viewingAsSetterIdType: typeof viewingAsSetterId,
-    isCloserUndefined: viewingAsCloserId === undefined,
-    isSetterUndefined: viewingAsSetterId === undefined
-  });
+  // Sanitize props in case they're malformed objects
+  const sanitizedCloserId = typeof viewingAsCloserId === 'string' && viewingAsCloserId !== 'undefined' ? viewingAsCloserId : undefined;
+  const sanitizedSetterId = typeof viewingAsSetterId === 'string' && viewingAsSetterId !== 'undefined' ? viewingAsSetterId : undefined;
 
   useEffect(() => {
     loadTeamMembers();
@@ -97,7 +90,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [teamId, user?.id, viewingAsCloserId, viewingAsSetterId]);
+  }, [teamId, user?.id, sanitizedCloserId, sanitizedSetterId]);
 
   const loadTodaysAppointments = async () => {
     try {
@@ -106,15 +99,15 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
       const startOfToday = startOfDay(today).toISOString();
       const endOfToday = endOfDay(today).toISOString();
 
-      // Determine which user's data to show
-      const targetUserId = viewingAsCloserId || viewingAsSetterId || user?.id;
-      const targetRole = viewingAsCloserId ? 'closer' : viewingAsSetterId ? 'setter' : userRole;
+      // Determine which user's data to show using SANITIZED props
+      const targetUserId = sanitizedCloserId || sanitizedSetterId || user?.id;
+      const targetRole = sanitizedCloserId ? 'closer' : sanitizedSetterId ? 'setter' : userRole;
 
       console.log('[TodaysDashboard] Loading for:', {
         targetUserId,
         targetRole,
-        viewingAsCloserId,
-        viewingAsSetterId,
+        sanitizedCloserId,
+        sanitizedSetterId,
         currentUserId: user?.id
       });
 
@@ -126,9 +119,11 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
         .lte('start_at_utc', endOfToday)
         .order('start_at_utc', { ascending: true });
 
-      // Filter appointments by role
+      // Filter appointments by role - handle BOTH closer and setter views
       if (targetRole === 'closer') {
         query = query.eq('closer_id', targetUserId);
+      } else if (targetRole === 'setter') {
+        query = query.eq('setter_id', targetUserId);
       }
 
       const { data, error } = await query;
@@ -147,7 +142,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
           .eq('status', 'pending');
         
         // ALWAYS filter tasks by the target user when viewing as setter
-        if (targetRole === 'setter' || viewingAsSetterId) {
+        if (targetRole === 'setter' || sanitizedSetterId) {
           console.log('[TodaysDashboard] Filtering tasks by:', targetUserId);
           tasksQuery = tasksQuery.eq('assigned_to', targetUserId);
         }
@@ -339,7 +334,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
   return (
     <div className="space-y-6">
       {/* Rep Selector - Only show in main Today view, not when viewing specific reps */}
-      {!viewingAsCloserId && !viewingAsSetterId && (
+      {!sanitizedCloserId && !sanitizedSetterId && (
         <Card className="p-4">
           <div className="flex items-center gap-4">
             <Users className="h-5 w-5 text-muted-foreground" />
