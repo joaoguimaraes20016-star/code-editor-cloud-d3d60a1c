@@ -117,10 +117,10 @@ export function AppointmentsHub({
           <div className="w-full overflow-x-auto">
             <TabsList className="w-max min-w-full h-12">
               <TabsTrigger value="today" className="text-sm md:text-base whitespace-nowrap">
-                📅 Today
+                Today
               </TabsTrigger>
               <TabsTrigger value="confirm" className="text-sm md:text-base whitespace-nowrap">
-                📋 Assigned Tasks 
+                Assigned Tasks
                 {counts.overdue > 0 && (
                   <Badge className="ml-2 bg-red-600 text-white" variant="secondary">
                     {counts.overdue} overdue
@@ -223,7 +223,7 @@ export function AppointmentsHub({
           <div className="w-full overflow-x-auto">
             <TabsList className="w-max min-w-full h-12">
               <TabsTrigger value="today" className="text-sm md:text-base whitespace-nowrap">
-                📅 Today
+                Today
               </TabsTrigger>
               <TabsTrigger value="mine" className="text-sm md:text-base whitespace-nowrap">My Deals</TabsTrigger>
               <TabsTrigger value="pipeline" className="text-sm md:text-base whitespace-nowrap">My Pipeline</TabsTrigger>
@@ -375,7 +375,7 @@ export function AppointmentsHub({
         <div className="w-full overflow-x-auto">
           <TabsList className="w-max min-w-full h-12">
             <TabsTrigger value="today" className="text-sm md:text-base whitespace-nowrap">
-              📅 Today
+              Today
             </TabsTrigger>
             <TabsTrigger value="overview" className="text-sm md:text-base whitespace-nowrap">
               Overview
