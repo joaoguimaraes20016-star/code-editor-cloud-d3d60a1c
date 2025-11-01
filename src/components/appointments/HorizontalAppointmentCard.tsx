@@ -86,8 +86,8 @@ export function HorizontalAppointmentCard({
 
   return (
     <Card className={`p-4 hover:shadow-md transition-all duration-200 border-l-4 ${statusStyle.border} group`}>
-      {/* Setter View: Show confirmation task */}
-      {confirmationTask && userRole === 'setter' && (
+      {/* Setter/Admin View: Show confirmation task */}
+      {confirmationTask && (userRole === 'setter' || userRole === 'admin' || !userRole) && (
         <div className="mb-4 pb-4 border-b">
           {confirmationTask.due_at && (
             <div className="flex items-center justify-between gap-4 mb-3">
