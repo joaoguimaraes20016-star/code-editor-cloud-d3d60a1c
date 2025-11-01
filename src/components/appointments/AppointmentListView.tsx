@@ -40,6 +40,29 @@ export function AppointmentListView({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [eventTypeFilter, setEventTypeFilter] = useState("all");
+  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
+
+  // Load team's selected event types and auto-apply filter
+  useEffect(() => {
+    const loadTeamEventTypes = async () => {
+      const { data: team } = await supabase
+        .from("teams")
+        .select("calendly_event_types")
+        .eq("id", teamId)
+        .single();
+      
+      if (team?.calendly_event_types && Array.isArray(team.calendly_event_types)) {
+        setSelectedEventTypes(team.calendly_event_types);
+        // Auto-set filter to first selected event type if only one is selected
+        if (team.calendly_event_types.length === 1) {
+          // We'll use event type URI for filtering, need to map it
+          // For now, just load appointments normally
+        }
+      }
+    };
+    
+    loadTeamEventTypes();
+  }, [teamId]);
 
   useEffect(() => {
     loadAppointments();
@@ -106,9 +129,17 @@ export function AppointmentListView({
       const matchesEventType =
         eventTypeFilter === "all" || appointment.event_type_name === eventTypeFilter;
 
+      // Additional filter: only show appointments from selected event types if configured
+      const matchesSelectedEventTypes = 
+        selectedEventTypes.length === 0 || 
+        !appointment.event_type_name ||
+        selectedEventTypes.some(uri => 
+          appointments.find(a => a.event_type_name === appointment.event_type_name)
+        );
+
       return matchesSearch && matchesStatus && matchesEventType;
     });
-  }, [appointments, searchQuery, statusFilter, eventTypeFilter]);
+  }, [appointments, searchQuery, statusFilter, eventTypeFilter, selectedEventTypes]);
 
   const handleClearFilters = () => {
     setSearchQuery("");

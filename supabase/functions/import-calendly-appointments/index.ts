@@ -84,10 +84,10 @@ Deno.serve(async (req) => {
 
     console.log('Starting import for team:', teamId);
 
-    // Fetch team's Calendly credentials
+    // Fetch team's Calendly credentials and selected event types
     const { data: team, error: teamError } = await supabaseClient
       .from('teams')
-      .select('calendly_access_token, calendly_refresh_token, calendly_token_expires_at, calendly_organization_uri')
+      .select('calendly_access_token, calendly_refresh_token, calendly_token_expires_at, calendly_organization_uri, calendly_event_types')
       .eq('id', teamId)
       .single();
 
@@ -196,10 +196,14 @@ Deno.serve(async (req) => {
     
     console.log(`Found ${allEvents.length} total scheduled events`);
 
-    // Filter by event type if specified
+    // Filter by event type if specified OR by team's selected event types
+    const selectedEventTypes = team.calendly_event_types;
     if (eventTypeUri) {
       allEvents = allEvents.filter(event => event.event_type === eventTypeUri);
-      console.log(`After filtering by event type: ${allEvents.length} events`);
+      console.log(`After filtering by specific event type: ${allEvents.length} events`);
+    } else if (selectedEventTypes && Array.isArray(selectedEventTypes) && selectedEventTypes.length > 0) {
+      allEvents = allEvents.filter(event => selectedEventTypes.includes(event.event_type));
+      console.log(`After filtering by team's selected event types: ${allEvents.length} events`);
     }
 
     let importedCount = 0;

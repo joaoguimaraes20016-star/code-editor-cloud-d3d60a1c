@@ -236,8 +236,10 @@ export function CalendlyConfig({
       if (error) throw error;
 
       toast({
-        title: "Saved",
-        description: "Event type filters updated",
+        title: "Sync Filter Updated",
+        description: newSelection.length === 0 
+          ? "All event types will now sync" 
+          : `Only ${newSelection.length} selected event type(s) will sync from Calendly`,
       });
       
       onUpdate();
@@ -898,6 +900,12 @@ export function CalendlyConfig({
                   <p className="text-sm text-muted-foreground">Loading event types...</p>
                 ) : availableEventTypes.length > 0 ? (
                 <div className="space-y-4">
+                  <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-4 border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-900 dark:text-blue-100">
+                      <strong>Sync Filter:</strong> Only appointments from selected event types will sync from Calendly. 
+                      Unselected event types will be ignored when syncing appointments.
+                    </p>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Select which Calendly event types should create appointments:
                   </p>

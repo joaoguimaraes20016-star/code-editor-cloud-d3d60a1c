@@ -198,9 +198,25 @@ serve(async (req) => {
     const event = payload.event;
     const inviteeUri = payload.payload?.uri;
 
-    // Event type filtering temporarily disabled - accepting all appointments
+    // Check if appointment should be synced based on selected event types
     const eventTypeUri = payload.payload?.scheduled_event?.event_type;
     console.log(`Processing appointment from event type: ${eventTypeUri}`);
+    
+    // Filter by selected event types if configured
+    if (teamData.calendly_event_types && Array.isArray(teamData.calendly_event_types) && teamData.calendly_event_types.length > 0) {
+      if (!eventTypeUri || !teamData.calendly_event_types.includes(eventTypeUri)) {
+        console.log(`Skipping appointment - event type ${eventTypeUri} not in selected types`);
+        await logWebhookEvent(supabase, teamId, event, 'success', {
+          message: 'Appointment skipped - event type not selected for sync',
+          eventTypeUri,
+          selectedEventTypes: teamData.calendly_event_types
+        });
+        return new Response(
+          JSON.stringify({ message: 'Event type not selected for sync' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Get invitee details - the payload.payload IS the invitee data
     const inviteeData = payload.payload;
