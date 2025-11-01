@@ -85,28 +85,30 @@ export function HorizontalAppointmentCard({
   return (
     <Card className={`p-4 hover:shadow-md transition-all duration-200 border-l-4 ${statusStyle.border} group`}>
       {/* Confirmation Task Header - Clean & Minimal */}
-      {confirmationTask && (
+      {confirmationTask && confirmationTask.due_at && (
         <div className="mb-4 pb-4 border-b">
           <div className="flex items-center justify-between gap-4 mb-3">
             {/* Deadline */}
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${
-                confirmationTask.is_overdue 
+                new Date() >= new Date(confirmationTask.due_at)
                   ? 'bg-destructive/10' 
                   : 'bg-primary/10'
               }`}>
                 <Clock className={`w-5 h-5 ${
-                  confirmationTask.is_overdue ? 'text-destructive' : 'text-primary'
+                  new Date() >= new Date(confirmationTask.due_at) ? 'text-destructive' : 'text-primary'
                 }`} />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                  {confirmationTask.is_overdue ? 'Overdue' : 'Confirm Before (1hr before call)'}
+                  {new Date() >= new Date(confirmationTask.due_at) ? 'Action Required' : 'Confirm Before (1hr before call)'}
                 </p>
                 <p className={`text-2xl font-bold ${
-                  confirmationTask.is_overdue ? 'text-destructive' : 'text-foreground'
+                  new Date() >= new Date(confirmationTask.due_at) ? 'text-destructive' : 'text-foreground'
                 }`}>
-                  {confirmationTask.due_at ? format(new Date(confirmationTask.due_at), "h:mm a") : 'ASAP'}
+                  {new Date() >= new Date(confirmationTask.due_at) 
+                    ? 'CONFIRM NOW' 
+                    : format(new Date(confirmationTask.due_at), "h:mm a")}
                 </p>
               </div>
             </div>
