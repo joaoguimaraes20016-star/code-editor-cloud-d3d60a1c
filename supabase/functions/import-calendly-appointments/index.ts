@@ -527,7 +527,7 @@ Deno.serve(async (req) => {
           }
         );
 
-        // Direct insert bypassing triggers - use raw SQL to set session_replication_role
+        // Insert appointments and handle any constraint violations gracefully
         const { data: insertedData, error: insertError } = await adminClient
           .from('appointments')
           .insert(uniqueAppointments)
@@ -535,10 +535,37 @@ Deno.serve(async (req) => {
 
         if (insertError) {
           console.error('Batch insert error:', insertError);
-          return new Response(
-            JSON.stringify({ error: `Failed to insert appointments: ${insertError.message}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          
+          // If it's a duplicate key error, try inserting one by one to identify which ones succeed
+          if (insertError.code === '23505') {
+            console.log('Duplicate key error detected, inserting appointments individually...');
+            let successCount = 0;
+            let failCount = 0;
+            
+            for (const apt of uniqueAppointments) {
+              const { error: singleError } = await adminClient
+                .from('appointments')
+                .insert(apt)
+                .select();
+              
+              if (!singleError) {
+                successCount++;
+              } else {
+                failCount++;
+                console.log(`Failed to insert ${apt.lead_email}: ${singleError.message}`);
+              }
+            }
+            
+            console.log(`Individual insert complete: ${successCount} succeeded, ${failCount} failed`);
+            importedCount = successCount;
+          } else {
+            return new Response(
+              JSON.stringify({ error: `Failed to insert appointments: ${insertError.message}` }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } else {
+          console.log(`✓ Successfully inserted ${insertedData?.length || 0} unique appointments`);
         }
         
         console.log(`✓ Successfully inserted ${insertedData?.length || 0} unique appointments`);
