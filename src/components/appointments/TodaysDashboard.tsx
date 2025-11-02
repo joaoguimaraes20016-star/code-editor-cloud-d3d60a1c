@@ -572,7 +572,46 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
       )}
 
       {/* Appointments List */}
-      {(activeFilter === 'overdue' ? overdueAppointments : groupedAppointments.morning.length + groupedAppointments.afternoon.length + groupedAppointments.evening.length) === 0 ? (
+      {activeFilter === 'overdue' ? (
+        overdueAppointments.length === 0 ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No overdue tasks</h3>
+              <p className="text-sm text-muted-foreground">
+                Great! You don't have any overdue appointments.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <h3 className="text-lg font-semibold">Overdue Appointments</h3>
+              <Badge variant="destructive">{overdueAppointments.length}</Badge>
+            </div>
+            <div className="space-y-3">
+              {overdueAppointments.map(apt => (
+                <HorizontalAppointmentCard
+                  key={apt.id}
+                  appointment={apt}
+                  confirmationTask={confirmationTasks.get(apt.id)}
+                  teamId={teamId}
+                  userRole={userRole}
+                  showRescheduleButton={userRole === 'closer'}
+                  showCloseDealButton={userRole === 'closer'}
+                  onCloseDeal={() => handleCloseDeal(apt)}
+                  onDepositClick={() => handleDepositClick(apt)}
+                  onUpdate={() => {
+                    loadTodaysAppointments();
+                    loadOverdueTasks();
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      ) : (groupedAppointments.morning.length + groupedAppointments.afternoon.length + groupedAppointments.evening.length) === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
