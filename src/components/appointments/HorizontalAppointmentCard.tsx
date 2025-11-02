@@ -134,65 +134,7 @@ export function HorizontalAppointmentCard({
         </div>
       )}
 
-      {/* Closer View: Show confirmation status with full details */}
-      {confirmationTask && userRole === 'closer' && (
-        <div className="mb-4 pb-4 border-b space-y-3">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${
-              confirmationTask.completed_confirmations >= confirmationTask.required_confirmations
-                ? 'bg-success/10'
-                : confirmationTask.completed_confirmations > 0
-                ? 'bg-amber-500/10'
-                : 'bg-muted'
-            }`}>
-              <CheckCircle className={`w-5 h-5 ${
-                confirmationTask.completed_confirmations >= confirmationTask.required_confirmations
-                  ? 'text-success'
-                  : confirmationTask.completed_confirmations > 0
-                  ? 'text-amber-600'
-                  : 'text-muted-foreground'
-              }`} />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold">
-                {confirmationTask.completed_confirmations >= confirmationTask.required_confirmations
-                  ? '✓ Fully Confirmed'
-                  : confirmationTask.completed_confirmations > 0
-                  ? `Partially Confirmed`
-                  : 'Not Confirmed Yet'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Confirmed {confirmationTask.completed_confirmations} time{confirmationTask.completed_confirmations !== 1 ? 's' : ''} 
-                {confirmationTask.confirmation_attempts.length > 0 && ` • ${confirmationTask.confirmation_attempts.length} attempt${confirmationTask.confirmation_attempts.length !== 1 ? 's' : ''}`}
-              </p>
-            </div>
-          </div>
-
-          {/* Show all confirmation attempts */}
-          {confirmationTask.confirmation_attempts && confirmationTask.confirmation_attempts.length > 0 && (
-            <div className="space-y-2 pl-11">
-              <p className="text-xs font-medium text-muted-foreground uppercase">Confirmation History</p>
-              {confirmationTask.confirmation_attempts.map((attempt: any, idx: number) => (
-                <div key={idx} className="text-xs bg-muted/50 p-2 rounded">
-                  <div className="flex items-center justify-between mb-1">
-                    <Badge variant={attempt.confirmed ? "default" : "secondary"} className="text-[10px]">
-                      {attempt.confirmed ? 'Confirmed' : 'Attempted'}
-                    </Badge>
-                    {attempt.timestamp && (
-                      <span className="text-muted-foreground">
-                        {format(new Date(attempt.timestamp), "MMM dd 'at' h:mm a")}
-                      </span>
-                    )}
-                  </div>
-                  {attempt.notes && (
-                    <p className="text-muted-foreground mt-1">{attempt.notes}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Closers don't see confirmation tasks - those are for setters */}
       
       <div className="flex flex-col lg:flex-row lg:items-center gap-4">
         {/* Lead Information - Left Section */}
