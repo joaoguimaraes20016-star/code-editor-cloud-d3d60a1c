@@ -91,6 +91,16 @@ export function HorizontalAppointmentCard({
     onUpdate?.();
   };
 
+  // Debug logging
+  console.log('[HorizontalAppointmentCard] Financial data:', {
+    lead: appointment.lead_name,
+    cc_collected: appointment.cc_collected,
+    mrr_amount: appointment.mrr_amount,
+    cc_check: appointment.cc_collected && appointment.cc_collected > 0,
+    mrr_check: appointment.mrr_amount && appointment.mrr_amount > 0,
+    will_show_financial: ((appointment.cc_collected && appointment.cc_collected > 0) || (appointment.mrr_amount && appointment.mrr_amount > 0))
+  });
+
   return (
     <Card className={`p-4 hover:shadow-md transition-all duration-200 border-l-4 ${statusStyle.border} group`}>
       {/* Setter View ONLY: Show confirmation task */}
