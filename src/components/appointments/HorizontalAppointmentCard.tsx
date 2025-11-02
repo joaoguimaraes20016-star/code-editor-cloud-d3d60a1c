@@ -195,16 +195,16 @@ export function HorizontalAppointmentCard({
           </div>
 
           {/* Financial Info */}
-          {(appointment.cc_collected || appointment.mrr_amount) && (
+          {((appointment.cc_collected && appointment.cc_collected > 0) || (appointment.mrr_amount && appointment.mrr_amount > 0)) && (
             <div className="flex gap-2 text-xs">
-              {appointment.cc_collected && (
+              {appointment.cc_collected && appointment.cc_collected > 0 && (
                 <div className="flex items-center gap-1 px-2 py-1 bg-success/10 border border-success/30 rounded">
                   <DollarSign className="w-3 h-3 text-success" />
                   <span className="font-semibold text-success">${appointment.cc_collected.toLocaleString()}</span>
                   <span className="text-muted-foreground">paid</span>
                 </div>
               )}
-              {appointment.mrr_amount && (
+              {appointment.mrr_amount && appointment.mrr_amount > 0 && (
                 <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 border border-primary/30 rounded">
                   <DollarSign className="w-3 h-3 text-primary" />
                   <span className="font-semibold text-primary">${appointment.mrr_amount.toLocaleString()}</span>

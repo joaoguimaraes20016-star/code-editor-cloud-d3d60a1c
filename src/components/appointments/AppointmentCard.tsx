@@ -179,9 +179,9 @@ export function AppointmentCard({
           </div>
         )}
 
-        {(appointment.cc_collected || appointment.mrr_amount) && (
+        {((appointment.cc_collected && appointment.cc_collected > 0) || (appointment.mrr_amount && appointment.mrr_amount > 0)) && (
           <div className="flex gap-2 pt-2 border-t border-border">
-            {appointment.cc_collected && (
+            {appointment.cc_collected && appointment.cc_collected > 0 && (
               <div className="flex-1 p-3 bg-success/10 border border-success/30 rounded-md text-center">
                 <div className="text-2xl font-bold text-success tabular-nums">
                   ${appointment.cc_collected.toLocaleString()}
@@ -189,7 +189,7 @@ export function AppointmentCard({
                 <div className="text-xs text-muted-foreground mt-1">Cash Paid</div>
               </div>
             )}
-            {appointment.mrr_amount && (
+            {appointment.mrr_amount && appointment.mrr_amount > 0 && (
               <div className="flex-1 p-3 bg-primary/10 border border-primary/30 rounded-md text-center">
                 <div className="text-2xl font-bold text-primary tabular-nums">
                   ${appointment.mrr_amount.toLocaleString()}
