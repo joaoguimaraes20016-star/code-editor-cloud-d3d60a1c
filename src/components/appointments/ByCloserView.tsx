@@ -54,8 +54,7 @@ function CloserPipelineView({ group, stages, teamId }: CloserPipelineViewProps) 
     const { data: tasks } = await supabase
       .from('confirmation_tasks')
       .select('*')
-      .in('appointment_id', appointmentIds)
-      .eq('status', 'pending');
+      .in('appointment_id', appointmentIds);
     
     const tasksMap = new Map();
     tasks?.forEach(task => {
