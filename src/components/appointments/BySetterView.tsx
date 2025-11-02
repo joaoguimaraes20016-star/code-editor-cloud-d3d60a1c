@@ -38,19 +38,34 @@ export function BySetterView({ teamId }: BySetterViewProps) {
     try {
       setLoading(true);
 
-      // Get all appointments with setters assigned (from today onwards)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
+      // Get all appointments with setters assigned
       const { data: appointments, error } = await supabase
         .from('appointments')
         .select('*')
         .eq('team_id', teamId)
-        .not('setter_id', 'is', null)
-        .gte('start_at_utc', today.toISOString())
-        .order('start_at_utc', { ascending: true });
+        .not('setter_id', 'is', null);
 
       if (error) throw error;
+
+      // Sort appointments: upcoming first (ascending), then past (descending)
+      const now = new Date().toISOString();
+      appointments?.sort((a, b) => {
+        const aTime = new Date(a.start_at_utc).getTime();
+        const bTime = new Date(b.start_at_utc).getTime();
+        const nowTime = new Date(now).getTime();
+        
+        const aIsFuture = aTime >= nowTime;
+        const bIsFuture = bTime >= nowTime;
+        
+        // Both future: sort ascending (soonest first)
+        if (aIsFuture && bIsFuture) return aTime - bTime;
+        
+        // Both past: sort descending (most recent first)
+        if (!aIsFuture && !bIsFuture) return bTime - aTime;
+        
+        // One future, one past: future always comes first
+        return aIsFuture ? -1 : 1;
+      });
 
       // Group by setter
       const groups = new Map<string, any[]>();
