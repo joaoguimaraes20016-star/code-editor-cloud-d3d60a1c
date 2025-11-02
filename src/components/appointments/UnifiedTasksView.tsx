@@ -112,7 +112,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
           unifiedTasks.push({
             id: task.id,
             type: taskType,
-            title: task.task_type === 'call_confirmation' ? 'Call Confirmation' : 
+            title: task.task_type === 'call_confirmation' ? 'Pending Confirmation' : 
                    task.task_type === 'reschedule' ? 'Reschedule Appointment' : 'Follow-Up',
             dueDate: aptTime,
             status,
@@ -267,7 +267,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="call_confirmation">Call Confirmation</SelectItem>
+                  <SelectItem value="call_confirmation">Pending Confirmation</SelectItem>
                   <SelectItem value="reschedule">Reschedule</SelectItem>
                   <SelectItem value="follow_up">Follow-Up</SelectItem>
                   <SelectItem value="mrr_payment">MRR Payment</SelectItem>
