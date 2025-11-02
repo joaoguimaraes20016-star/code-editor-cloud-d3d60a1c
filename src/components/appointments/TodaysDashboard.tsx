@@ -170,8 +170,8 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
         }))
       });
 
-      // Load confirmation tasks - load for setters OR when viewing someone else
-      if (filteredData.length > 0 && (targetRole === 'setter' || targetRole === 'admin' || isViewingSpecificPerson)) {
+      // Load confirmation tasks - only for setters OR when viewing someone else
+      if (filteredData.length > 0 && (targetRole === 'setter' || isViewingSpecificPerson)) {
         const appointmentIds = filteredData.map(apt => apt.id);
         
         let tasksQuery = supabase
