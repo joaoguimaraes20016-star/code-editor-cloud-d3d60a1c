@@ -349,17 +349,6 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
       // Move to closed stage
       await performStageMove(appointmentId, newStage, appointment);
       
-      // Create follow-up task for the closer
-      if (appointment.closer_id) {
-        await supabase.rpc("create_task_with_assignment", {
-          p_team_id: appointment.team_id,
-          p_appointment_id: appointmentId,
-          p_task_type: "follow_up",
-          p_follow_up_date: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
-          p_follow_up_reason: "Deal closed - Schedule follow-up for retention and upsell"
-        });
-      }
-      
       // Open close deal dialog
       onCloseDeal({ ...appointment, pipeline_stage: newStage }, { trackAction, showUndoToast });
       return;
@@ -726,17 +715,6 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     if (isClosedStage) {
       // Move to closed stage and open the close deal dialog
       await performStageMove(appointmentId, stage, appointment);
-      
-      // Create a follow-up task for the closer
-      if (appointment.closer_id) {
-        await supabase.rpc("create_task_with_assignment", {
-          p_team_id: appointment.team_id,
-          p_appointment_id: appointmentId,
-          p_task_type: "follow_up",
-          p_follow_up_date: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
-          p_follow_up_reason: "Deal closed - Schedule follow-up for retention and upsell"
-        });
-      }
       
       // Open the close deal dialog to finalize details
       onCloseDeal({ ...appointment, pipeline_stage: stage }, { trackAction, showUndoToast });
