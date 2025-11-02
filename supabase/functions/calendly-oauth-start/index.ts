@@ -15,7 +15,16 @@ Deno.serve(async (req) => {
     // Initialize Supabase client with service role
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        },
+        db: {
+          schema: 'public'
+        }
+      }
     );
 
     // Get request body
@@ -30,7 +39,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify user is admin or offer_owner of this team
+    // Verify user is admin or owner of this team
     const { data: membership, error: membershipError } = await supabaseAdmin
       .from('team_members')
       .select('role')
@@ -39,7 +48,13 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (membershipError) {
-      console.error('Membership check failed:', membershipError);
+      console.error('Membership check failed:', {
+        message: membershipError.message,
+        details: membershipError.details,
+        hint: membershipError.hint,
+        code: membershipError.code,
+        fullError: JSON.stringify(membershipError)
+      });
       return new Response(
         JSON.stringify({ error: 'Failed to verify team membership' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
