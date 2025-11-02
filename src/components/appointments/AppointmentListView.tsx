@@ -97,7 +97,7 @@ export function AppointmentListView({
         .from("appointments")
         .select("*")
         .eq("team_id", teamId)
-        .order("start_at_utc", { ascending: false });
+        .order("start_at_utc", { ascending: true });
 
       const { data, error } = await query;
 

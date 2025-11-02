@@ -111,7 +111,7 @@ export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct, sh
         query = query.or(`setter_id.not.is.null,closer_id.not.is.null`);
       }
 
-      const { data, error } = await query.order('start_at_utc', { ascending: false });
+      const { data, error } = await query.order('start_at_utc', { ascending: true });
 
       if (error) throw error;
       

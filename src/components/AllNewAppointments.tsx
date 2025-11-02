@@ -284,7 +284,7 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
       const to = from + pageSize - 1;
 
       const { data, error } = await dataQuery
-        .order('start_at_utc', { ascending: false })
+        .order('start_at_utc', { ascending: true })
         .range(from, to);
 
       if (error) throw error;
