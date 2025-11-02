@@ -105,6 +105,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   const [followUpDialog, setFollowUpDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; stage: "cancelled" | "no_show" } | null>(null);
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; appointmentId: string; dealName: string; currentStatus: string | null } | null>(null);
   const [depositDialog, setDepositDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
+  const [confirmationTasks, setConfirmationTasks] = useState<Map<string, any>>(new Map());
   
   const { trackAction, showUndoToast } = useUndoAction(() => {
     // Refresh appointments after undo
@@ -162,6 +163,21 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
       const { data, error } = await query.order("updated_at", { ascending: false });
       console.log("Loaded appointments:", data?.length);
       setAppointments(data || []);
+
+      // Load confirmation tasks for all appointments
+      if (data && data.length > 0) {
+        const appointmentIds = data.map(a => a.id);
+        const { data: tasks } = await supabase
+          .from('confirmation_tasks')
+          .select('*')
+          .in('appointment_id', appointmentIds);
+        
+        const tasksMap = new Map();
+        tasks?.forEach(task => {
+          tasksMap.set(task.appointment_id, task);
+        });
+        setConfirmationTasks(tasksMap);
+      }
 
       // Auto-backfill missing reschedule URLs in background
       if (data && data.length > 0) {
@@ -257,22 +273,43 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
   const dealsByStage = useMemo(() => {
     const grouped: Record<string, Appointment[]> = {};
+    
+    // Initialize all stages with empty arrays (except 'booked' which we'll handle separately)
     stages.forEach((stage) => {
-      const stageDeals = filteredAppointments.filter(
-        (apt) => apt.pipeline_stage === stage.stage_id
-      );
-      
-      // Sort by date within each stage
-      stageDeals.sort((a, b) => {
+      if (stage.stage_id !== 'booked') {
+        grouped[stage.stage_id] = [];
+      }
+    });
+    
+    // Add "Appointments Booked" for NEW and BOOKED appointments
+    grouped['appointments_booked'] = [];
+    
+    // Group appointments
+    filteredAppointments.forEach((apt) => {
+      // NEW and BOOKED appointments go to "Appointments Booked"
+      if (!apt.pipeline_stage || apt.pipeline_stage === 'new' || apt.pipeline_stage === 'booked') {
+        grouped['appointments_booked'].push(apt);
+      } else {
+        // Other appointments go to their pipeline stage
+        const stageId = apt.pipeline_stage;
+        if (!grouped[stageId]) {
+          grouped[stageId] = [];
+        }
+        grouped[stageId].push(apt);
+      }
+    });
+    
+    // Sort by date within each stage
+    Object.keys(grouped).forEach((stageId) => {
+      grouped[stageId].sort((a, b) => {
         const dateA = new Date(a.start_at_utc).getTime();
         const dateB = new Date(b.start_at_utc).getTime();
         return sortBy === "closest" ? dateA - dateB : dateB - dateA;
       });
-      
-      grouped[stage.stage_id] = stageDeals;
     });
+    
     return grouped;
-  }, [filteredAppointments, stages, sortBy]);
+  }, [filteredAppointments, stages, sortBy, confirmationTasks]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -1177,7 +1214,57 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           onDragEnd={handleDragEnd}
         >
           <div className="flex gap-4 pb-4">
-            {stages.map((stage) => {
+            {/* Appointments Booked Column */}
+            <DroppableStageColumn key="appointments_booked" id="appointments_booked">
+              <Card className="h-full" style={{ width: '300px' }}>
+                <div 
+                  className="p-4 border-b bg-primary/10 border-b-primary"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">Appointments Booked</h3>
+                    <Badge variant="secondary">
+                      {dealsByStage['appointments_booked']?.length || 0}
+                    </Badge>
+                  </div>
+                </div>
+
+                <ScrollArea className="p-3" style={{ height: 'calc(100vh - 400px)' }}>
+                  <SortableContext
+                    items={(dealsByStage['appointments_booked'] || []).map((apt) => apt.id)}
+                    strategy={verticalListSortingStrategy}
+                    id="appointments_booked"
+                  >
+                    <div className="space-y-3 min-h-[200px]">
+                      {(dealsByStage['appointments_booked']?.length || 0) === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                          No deals
+                        </p>
+                      ) : (
+                        dealsByStage['appointments_booked'].map((appointment) => (
+                          <DealCard
+                            key={appointment.id}
+                            id={appointment.id}
+                            teamId={teamId}
+                            appointment={appointment}
+                            confirmationTask={confirmationTasks.get(appointment.id)}
+                            onCloseDeal={handleCloseDeal}
+                            onMoveTo={handleMoveTo}
+                            onDelete={handleDelete}
+                            onUndo={handleUndo}
+                            onChangeStatus={handleChangeStatus}
+                            onClearDealData={handleClearDealData}
+                            userRole={userRole}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </SortableContext>
+                </ScrollArea>
+              </Card>
+            </DroppableStageColumn>
+            
+            {/* Other Pipeline Stages */}
+            {stages.filter(stage => stage.stage_id !== 'booked').map((stage) => {
               const stageAppointments = dealsByStage[stage.stage_id] || [];
 
               return (
@@ -1244,6 +1331,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                     id={activeId}
                     teamId={teamId}
                     appointment={activeAppointment}
+                    confirmationTask={confirmationTasks.get(activeId)}
                     onCloseDeal={handleCloseDeal}
                     onMoveTo={handleMoveTo}
                     onDelete={handleDelete}
