@@ -168,11 +168,11 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
     }
   };
 
-  const getTaskBadgeVariant = (type: string): "default" | "secondary" | "info" | "warning" => {
+  const getTaskBadgeVariant = (type: string): "default" | "secondary" | "success" => {
     switch (type) {
-      case 'call_confirmation': return 'info';
-      case 'reschedule': return 'warning';
-      case 'follow_up': return 'secondary';
+      case 'call_confirmation': return 'success';
+      case 'reschedule': return 'success';
+      case 'follow_up': return 'success';
       case 'mrr_payment': return 'default';
       default: return 'secondary';
     }
@@ -229,9 +229,18 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               )}
             </div>
           </div>
-          <Button variant="outline" size="sm">
-            View Details
-          </Button>
+          <div className="flex gap-2">
+            {task.type === 'reschedule' && (
+              <Button variant="outline" size="sm">
+                <Calendar className="h-4 w-4 mr-1" />
+                Reschedule
+              </Button>
+            )}
+            <Button variant="success" size="sm">
+              <CheckCircle2 className="h-4 w-4 mr-1" />
+              Complete
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -313,8 +322,8 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
       {dueTodayTasks.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-warning" />
-            <h3 className="text-lg font-semibold text-warning">Due Today ({dueTodayTasks.length})</h3>
+            <Clock className="h-5 w-5 text-success" />
+            <h3 className="text-lg font-semibold text-success">Due Today ({dueTodayTasks.length})</h3>
           </div>
           {dueTodayTasks.map(task => <TaskCard key={task.id} task={task} />)}
         </div>

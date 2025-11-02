@@ -218,6 +218,7 @@ function TaskCard({ task, onComplete, isOverdue = false }: {
           <div className="flex items-center gap-2">
             <h4 className="font-medium">{task.appointment.lead_name}</h4>
             {isOverdue && <Badge variant="destructive">Overdue</Badge>}
+            {!isOverdue && <Badge variant="success">Follow Up</Badge>}
           </div>
           <p className="text-sm text-muted-foreground">{task.appointment.lead_email}</p>
           {task.follow_up_reason && (
@@ -231,14 +232,27 @@ function TaskCard({ task, onComplete, isOverdue = false }: {
             </p>
           )}
         </div>
-        <Button
-          size="sm"
-          onClick={() => onComplete(task.id)}
-          className="ml-4"
-        >
-          <CheckCircle className="h-4 w-4 mr-1" />
-          Complete
-        </Button>
+        <div className="flex gap-2 ml-4">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              // TODO: Implement reschedule functionality
+              toast.success('Reschedule dialog coming soon');
+            }}
+          >
+            <Calendar className="h-4 w-4 mr-1" />
+            Reschedule
+          </Button>
+          <Button
+            size="sm"
+            variant="success"
+            onClick={() => onComplete(task.id)}
+          >
+            <CheckCircle className="h-4 w-4 mr-1" />
+            Complete
+          </Button>
+        </div>
       </div>
     </div>
   );
