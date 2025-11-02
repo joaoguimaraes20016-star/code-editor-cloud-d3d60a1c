@@ -141,12 +141,12 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
       console.log('[TodaysDashboard] Applying filter:', {
         targetRole,
         isViewingSpecificPerson,
-        willFilterBy: targetRole === 'closer' ? 'closer_id' : targetRole === 'setter' ? 'setter_id' : 'none',
+        willFilterBy: (targetRole === 'closer' || targetRole === 'offer_owner' || targetRole === 'admin') ? 'closer_id' : targetRole === 'setter' ? 'setter_id' : 'none',
         filterValue: targetUserId
       });
       
-      if (targetRole === 'closer' || (targetRole === 'offer_owner' && !isViewingSpecificPerson) || (targetRole === 'admin' && !isViewingSpecificPerson)) {
-        // Closers, offer owners, and admins (when NOT viewing someone else) see their own closer appointments
+      if (targetRole === 'closer' || targetRole === 'offer_owner' || targetRole === 'admin') {
+        // Closers, offer owners, and admins see appointments where they are the closer
         query = query.eq('closer_id', targetUserId);
       } else if (targetRole === 'setter') {
         // Setters see their own setter appointments
