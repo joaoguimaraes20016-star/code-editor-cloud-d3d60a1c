@@ -386,7 +386,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={user?.id || ''}>
-                    👤 {teamMembers.find(m => m.id === user?.id)?.name || 'Me (Current User)'}
+                    {teamMembers.find(m => m.id === user?.id)?.name || 'Me (Current User)'}
                   </SelectItem>
                   {teamMembers
                     .filter(m => m.id !== user?.id)
