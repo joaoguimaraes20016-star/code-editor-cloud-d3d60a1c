@@ -807,7 +807,7 @@ export function CloserView({ teamId }: CloserViewProps) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="NEW">NEW</SelectItem>
+                          <SelectItem value="NEW">Pending Confirmation</SelectItem>
                           <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
                           <SelectItem value="SHOWED">SHOWED</SelectItem>
                           <SelectItem value="NO_SHOW">NO SHOW</SelectItem>
@@ -864,7 +864,7 @@ export function CloserView({ teamId }: CloserViewProps) {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="NEW">NEW</SelectItem>
+                            <SelectItem value="NEW">Pending Confirmation</SelectItem>
                             <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
                             <SelectItem value="SHOWED">SHOWED</SelectItem>
                             <SelectItem value="NO_SHOW">NO SHOW</SelectItem>

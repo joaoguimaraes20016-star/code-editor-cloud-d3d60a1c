@@ -49,13 +49,13 @@ interface HorizontalAppointmentCardProps {
 }
 
 const statusColors: Record<string, { badge: string; border: string }> = {
-  NEW: { badge: "default", border: "border-l-blue-500" },
-  SHOWED: { badge: "default", border: "border-l-green-500" },
+  NEW: { badge: "success", border: "border-l-green-500" },
+  SHOWED: { badge: "success", border: "border-l-green-500" },
   NO_SHOW: { badge: "destructive", border: "border-l-red-500" },
   CANCELLED: { badge: "secondary", border: "border-l-gray-400" },
-  CLOSED: { badge: "default", border: "border-l-green-600" },
-  RESCHEDULED: { badge: "default", border: "border-l-yellow-500" },
-  CONFIRMED: { badge: "default", border: "border-l-yellow-500" },
+  CLOSED: { badge: "success", border: "border-l-green-600" },
+  RESCHEDULED: { badge: "success", border: "border-l-green-500" },
+  CONFIRMED: { badge: "success", border: "border-l-green-500" },
 };
 
 export function HorizontalAppointmentCard({
@@ -80,9 +80,9 @@ export function HorizontalAppointmentCard({
   const formattedDate = format(new Date(appointment.start_at_utc), "MMM dd, yyyy 'at' h:mm a");
   const statusStyle = statusColors[appointment.status] || statusColors.NEW;
   
-  // For closers, show "BOOKED" instead of "NEW"
-  const displayStatus = userRole === 'closer' && appointment.status === 'NEW' 
-    ? 'BOOKED' 
+  // Always show "Pending Confirmation" instead of "NEW"
+  const displayStatus = appointment.status === 'NEW' 
+    ? 'Pending Confirmation' 
     : appointment.status;
 
   const handleReschedule = async (reason: string, notes?: string) => {

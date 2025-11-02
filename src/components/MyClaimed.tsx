@@ -268,7 +268,7 @@ export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct, sh
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NEW">NEW</SelectItem>
+                  <SelectItem value="NEW">Pending Confirmation</SelectItem>
                   <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
                   <SelectItem value="CANCELLED">CANCELLED</SelectItem>
                   <SelectItem value="RESCHEDULED">RESCHEDULED</SelectItem>
@@ -334,7 +334,7 @@ export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct, sh
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="NEW">NEW</SelectItem>
+                    <SelectItem value="NEW">Pending Confirmation</SelectItem>
                     <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
                     <SelectItem value="CANCELLED">CANCELLED</SelectItem>
                     <SelectItem value="RESCHEDULED">RESCHEDULED</SelectItem>

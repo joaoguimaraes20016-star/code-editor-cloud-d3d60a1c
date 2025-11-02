@@ -13,7 +13,7 @@ interface ChangeStatusDialogProps {
 }
 
 const STATUS_OPTIONS = [
-  { value: "NEW", label: "New" },
+  { value: "NEW", label: "Pending Confirmation" },
   { value: "CONFIRMED", label: "Confirmed" },
   { value: "RESCHEDULED", label: "Rescheduled" },
   { value: "CANCELLED", label: "Cancelled" },

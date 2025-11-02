@@ -50,7 +50,7 @@ export function AppointmentFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Statuses</SelectItem>
-          <SelectItem value="NEW">New</SelectItem>
+          <SelectItem value="NEW">Pending Confirmation</SelectItem>
           <SelectItem value="CONFIRMED">Confirmed</SelectItem>
           <SelectItem value="SHOWED">Showed</SelectItem>
           <SelectItem value="NO_SHOW">No Show</SelectItem>
