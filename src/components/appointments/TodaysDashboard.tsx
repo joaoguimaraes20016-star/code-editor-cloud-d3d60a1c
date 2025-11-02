@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, Phone, User, AlertCircle, Loader2, TrendingUp, Users } from 'lucide-react';
+import { Calendar, Clock, Phone, User, AlertCircle, Loader2, TrendingUp, Users, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { format, parseISO, isToday, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, isToday, startOfDay, endOfDay, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { HorizontalAppointmentCard } from './HorizontalAppointmentCard';
@@ -61,6 +61,8 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
   const [closeDealAppointment, setCloseDealAppointment] = useState<Appointment | null>(null);
   const [depositAppointment, setDepositAppointment] = useState<Appointment | null>(null);
   const [commissionSettings, setCommissionSettings] = useState({ closer: 10, setter: 5 });
+  const [activeFilter, setActiveFilter] = useState<'all' | 'confirmed' | 'pending' | 'overdue'>('all');
+  const [overdueAppointments, setOverdueAppointments] = useState<Appointment[]>([]);
 
   // Sanitize props in case they're malformed objects
   const sanitizedCloserId = typeof viewingAsCloserId === 'string' && viewingAsCloserId !== 'undefined' ? viewingAsCloserId : undefined;
@@ -69,6 +71,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
   useEffect(() => {
     loadTeamMembers();
     loadTodaysAppointments();
+    loadOverdueTasks();
     loadCommissionSettings();
 
     const channel = supabase
@@ -83,6 +86,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
         },
         () => {
           loadTodaysAppointments();
+          loadOverdueTasks();
         }
       )
       .subscribe();
@@ -279,6 +283,40 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
     }
   };
 
+  const loadOverdueTasks = async () => {
+    try {
+      const today = startOfDay(new Date()).toISOString();
+      const targetUserId = sanitizedCloserId || sanitizedSetterId || viewingAsUserId || user?.id;
+
+      let targetRole = userRole;
+      if (sanitizedCloserId || (viewingAsUserId && teamMembers.find(m => m.id === viewingAsUserId)?.role === 'closer')) {
+        targetRole = 'closer';
+      } else if (sanitizedSetterId || (viewingAsUserId && teamMembers.find(m => m.id === viewingAsUserId)?.role === 'setter')) {
+        targetRole = 'setter';
+      }
+
+      let query = supabase
+        .from('appointments')
+        .select('*')
+        .eq('team_id', teamId)
+        .lt('start_at_utc', today)
+        .in('status', ['NEW', 'NO_SHOW', 'RESCHEDULED', 'SHOWED']);
+
+      if (targetRole === 'closer' || targetRole === 'offer_owner' || targetRole === 'admin') {
+        query = query.eq('closer_id', targetUserId);
+      } else if (targetRole === 'setter') {
+        query = query.eq('setter_id', targetUserId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      setOverdueAppointments(data || []);
+    } catch (error) {
+      console.error('Error loading overdue tasks:', error);
+    }
+  };
+
   const handleCloseDeal = (appointment: Appointment) => {
     setCloseDealAppointment(appointment);
   };
@@ -317,7 +355,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
     }
   };
 
-  // Group appointments by time period
+  // Group appointments by time period and filter based on active filter
   const groupedAppointments = useMemo(() => {
     const morning: Appointment[] = [];
     const afternoon: Appointment[] = [];
@@ -325,7 +363,17 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
     const confirmed: Appointment[] = [];
     const pending: Appointment[] = [];
 
-    appointments.forEach(apt => {
+    // Determine which appointments to display based on active filter
+    let displayAppointments = appointments;
+    if (activeFilter === 'confirmed') {
+      displayAppointments = appointments.filter(apt => apt.status === 'CONFIRMED');
+    } else if (activeFilter === 'pending') {
+      displayAppointments = appointments.filter(apt => apt.status !== 'CONFIRMED');
+    } else if (activeFilter === 'overdue') {
+      displayAppointments = overdueAppointments;
+    }
+
+    displayAppointments.forEach(apt => {
       try {
         const aptDate = parseISO(apt.start_at_utc);
         const hour = aptDate.getHours();
@@ -349,12 +397,13 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
     });
 
     return { morning, afternoon, evening, confirmed, pending };
-  }, [appointments]);
+  }, [appointments, activeFilter, overdueAppointments]);
 
   const stats = {
     total: appointments.length,
-    confirmed: groupedAppointments.confirmed.length,
-    pending: groupedAppointments.pending.length,
+    confirmed: appointments.filter(apt => apt.status === 'CONFIRMED').length,
+    pending: appointments.filter(apt => apt.status !== 'CONFIRMED').length,
+    overdue: overdueAppointments.length,
     morning: groupedAppointments.morning.length,
     afternoon: groupedAppointments.afternoon.length,
     evening: groupedAppointments.evening.length,
@@ -433,7 +482,13 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
+        <Card 
+          className={cn(
+            "bg-gradient-to-br from-primary/10 to-primary/5 cursor-pointer hover:shadow-lg transition-all duration-200",
+            activeFilter === 'all' && "ring-2 ring-primary shadow-lg"
+          )}
+          onClick={() => setActiveFilter('all')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -445,7 +500,13 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5">
+        <Card 
+          className={cn(
+            "bg-gradient-to-br from-green-500/10 to-green-500/5 cursor-pointer hover:shadow-lg transition-all duration-200",
+            activeFilter === 'confirmed' && "ring-2 ring-green-500 shadow-lg"
+          )}
+          onClick={() => setActiveFilter('confirmed')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -457,7 +518,13 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5">
+        <Card 
+          className={cn(
+            "bg-gradient-to-br from-amber-500/10 to-amber-500/5 cursor-pointer hover:shadow-lg transition-all duration-200",
+            activeFilter === 'pending' && "ring-2 ring-amber-500 shadow-lg"
+          )}
+          onClick={() => setActiveFilter('pending')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -469,31 +536,43 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5">
+        <Card 
+          className={cn(
+            "bg-gradient-to-br from-red-500/10 to-red-500/5 cursor-pointer hover:shadow-lg transition-all duration-200",
+            activeFilter === 'overdue' && "ring-2 ring-red-500 shadow-lg"
+          )}
+          onClick={() => setActiveFilter('overdue')}
+        >
           <CardContent className="p-4">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Time Breakdown</p>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Morning:</span>
-                  <span className="font-semibold">{stats.morning}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Afternoon:</span>
-                  <span className="font-semibold">{stats.afternoon}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Evening:</span>
-                  <span className="font-semibold">{stats.evening}</span>
-                </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Overdue Tasks</p>
+                <p className="text-3xl font-bold text-red-600">{stats.overdue}</p>
               </div>
+              <AlertTriangle className="h-8 w-8 text-red-500/50" />
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Active Filter Indicator */}
+      {activeFilter !== 'all' && (
+        <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg">
+          <p className="text-sm font-medium">
+            Filtered by: <span className="font-bold capitalize">{activeFilter}</span>
+          </p>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => setActiveFilter('all')}
+          >
+            Clear Filter
+          </Button>
+        </div>
+      )}
+
       {/* Appointments List */}
-      {appointments.length === 0 ? (
+      {(activeFilter === 'overdue' ? overdueAppointments : groupedAppointments.morning.length + groupedAppointments.afternoon.length + groupedAppointments.evening.length) === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
