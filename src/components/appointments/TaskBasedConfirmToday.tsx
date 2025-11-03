@@ -106,17 +106,6 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
 
     filteredTasks.forEach(task => {
       try {
-        // Debug log for Byron's task
-        if (task.appointment?.lead_name === 'Byron') {
-          console.log('[Grouping] Byron task:', {
-            due_at: task.due_at,
-            appointment_date: task.appointment?.start_at_utc,
-            task_type: task.task_type,
-            isToday: task.due_at ? isToday(parseISO(task.due_at)) : false,
-            todayStart: todayStart.toISOString()
-          });
-        }
-
         // Use due_at if available (for call_confirmation tasks), otherwise fall back to appointment date
         if (task.due_at) {
           const dueDate = parseISO(task.due_at);
