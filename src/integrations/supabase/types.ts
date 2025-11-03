@@ -840,7 +840,7 @@ export type Database = {
           product_name: string | null
           revenue: number | null
           sales_rep: string
-          setter: string
+          setter: string | null
           setter_commission: number | null
           status: string
           team_id: string
@@ -857,7 +857,7 @@ export type Database = {
           product_name?: string | null
           revenue?: number | null
           sales_rep: string
-          setter: string
+          setter?: string | null
           setter_commission?: number | null
           status: string
           team_id: string
@@ -874,7 +874,7 @@ export type Database = {
           product_name?: string | null
           revenue?: number | null
           sales_rep?: string
-          setter?: string
+          setter?: string | null
           setter_commission?: number | null
           status?: string
           team_id?: string
