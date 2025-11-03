@@ -320,6 +320,82 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
       toast.error(error.message || "Failed to move deal");
     }
   };
+
+  const handleUndo = async (appointmentId: string) => {
+    const appointment = group.appointments.find(a => a.id === appointmentId);
+    if (!appointment) return;
+
+    const currentStage = appointment.pipeline_stage?.toLowerCase() || '';
+    const isDepositOrClosed = 
+      currentStage === 'deposit' || 
+      currentStage === 'won' || 
+      currentStage.includes('deposit') ||
+      currentStage.includes('closed') ||
+      currentStage.includes('won');
+
+    if (isDepositOrClosed) {
+      if (!confirm(`Reset ${appointment.lead_name} back to a fresh booked appointment? This will clear all deposit/sale details.`)) {
+        return;
+      }
+
+      try {
+        // Delete related financial records
+        await supabase
+          .from('mrr_commissions')
+          .delete()
+          .match({
+            team_id: appointment.team_id,
+            prospect_email: appointment.lead_email
+          });
+
+        await supabase
+          .from('sales')
+          .delete()
+          .match({
+            team_id: appointment.team_id,
+            customer_name: appointment.lead_name
+          });
+
+        // Reset appointment to booked
+        await supabase
+          .from('appointments')
+          .update({
+            pipeline_stage: 'booked',
+            status: 'NEW',
+            cc_collected: 0,
+            revenue: 0,
+            mrr_amount: 0,
+            mrr_months: 0,
+            product_name: null
+          })
+          .eq('id', appointmentId);
+
+        toast.success('Deal reset to booked successfully');
+        await onReload();
+      } catch (error) {
+        console.error('Error resetting deal:', error);
+        toast.error('Failed to reset deal');
+      }
+    } else {
+      // Just move back to booked for non-closed deals
+      if (!confirm(`Move ${appointment.lead_name} back to Appointments Booked?`)) {
+        return;
+      }
+
+      try {
+        await supabase
+          .from('appointments')
+          .update({ pipeline_stage: 'booked' })
+          .eq('id', appointmentId);
+
+        toast.success('Deal moved back to booked');
+        await onReload();
+      } catch (error) {
+        console.error('Error moving deal:', error);
+        toast.error('Failed to move deal');
+      }
+    }
+  };
   
   // Group appointments by stage for the selected closer
   const dealsByStage = useMemo(() => {
@@ -385,6 +461,7 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
                       confirmationTask={confirmationTasks.get(appointment.id)}
                       onCloseDeal={() => onCloseDeal(appointment, { trackAction, showUndoToast })}
                       onMoveTo={() => {}}
+                      onUndo={handleUndo}
                       userRole="closer"
                     />
                   ))}
@@ -425,6 +502,7 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
                         confirmationTask={confirmationTasks.get(appointment.id)}
                         onCloseDeal={() => onCloseDeal(appointment, { trackAction, showUndoToast })}
                         onMoveTo={() => {}}
+                        onUndo={handleUndo}
                         userRole="closer"
                       />
                     ))}
@@ -449,6 +527,7 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
                 confirmationTask={confirmationTasks.get(activeId)}
                 onCloseDeal={() => {}}
                 onMoveTo={() => {}}
+                onUndo={handleUndo}
                 userRole="closer"
               />
             </div>
