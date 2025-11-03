@@ -267,11 +267,13 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
       } 
       // Admin view: Show all assigned appointments (has setter_id)
       else if (showAllAssigned) {
+        console.log('[AllNewAppointments] Filtering for assigned appointments only (setter_id NOT NULL)');
         countQuery = countQuery.not('setter_id', 'is', null);
         dataQuery = dataQuery.not('setter_id', 'is', null);
       }
       // Default: Show unassigned appointments (setter_id IS null)
       else {
+        console.log('[AllNewAppointments] Filtering for unassigned appointments only (setter_id IS NULL)');
         countQuery = countQuery.is('setter_id', null);
         dataQuery = dataQuery.is('setter_id', null);
       }
@@ -288,6 +290,12 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
         .range(from, to);
 
       if (error) throw error;
+      
+      console.log('[AllNewAppointments] Loaded appointments:', {
+        showAllAssigned,
+        totalCount: data?.length,
+        sampleSetterIds: data?.slice(0, 3).map(a => ({ name: a.lead_name, setter_id: a.setter_id }))
+      });
       
       // Filter by event types if configured
       let filteredData = data || [];
