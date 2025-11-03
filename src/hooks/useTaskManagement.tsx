@@ -229,20 +229,11 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
             }
           }
           
-          // Backwards compatibility: if no due_at, fall back to appointment date logic
-          if (!appointment?.start_at_utc) return false;
-          
-          const appointmentDate = parseISO(appointment.start_at_utc);
-          const todayStart = startOfDay(new Date());
-          
-          // Include if appointment is today or in the past, or if explicitly overdue
-          if (task.is_overdue || appointmentDate <= todayStart) {
-            return true;
+          // If task has no due_at, skip it (all tasks should have due_at now)
+          if (!task.due_at) {
+            console.warn(`[48h Filter] Task ${task.id} missing due_at - skipping`);
+            return false;
           }
-          
-          // Also include appointments happening tomorrow (for 24h window)
-          const tomorrowEnd = endOfDay(addDays(new Date(), 1));
-          return appointmentDate <= tomorrowEnd;
         }
         
         // Show follow-up tasks only if they're due today or overdue (regardless of appointment status)

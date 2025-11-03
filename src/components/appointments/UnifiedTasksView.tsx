@@ -401,14 +401,21 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              {isUpcoming ? (
-                <span className="text-indigo-600 dark:text-indigo-400 font-medium">
-                  Due {format(task.dueDate, 'MMM d, h:mm a')}
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                {isUpcoming ? (
+                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                    Due {format(task.dueDate, 'MMM d, h:mm a')}
+                  </span>
+                ) : (
+                  apt?.start_at_utc ? formatTime(apt.start_at_utc) : format(task.dueDate, 'h:mm a')
+                )}
+              </div>
+              {task.type === 'call_confirmation' && apt?.start_at_utc && (
+                <span className="text-xs text-muted-foreground">
+                  Appointment: {formatTime(apt.start_at_utc)}
                 </span>
-              ) : (
-                apt?.start_at_utc ? formatTime(apt.start_at_utc) : format(task.dueDate, 'h:mm a')
               )}
             </div>
           </div>
