@@ -67,7 +67,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email via Resend
     const emailResponse = await resend.emails.send({
-      from: "GRWTH OP <onboarding@resend.dev>",
+      from: "GRWTH OP <noreply@notifications.grwthengine.org>",
       to: [email],
       subject: "Reset Your GRWTH OP Password",
       html: `
