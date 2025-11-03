@@ -307,6 +307,12 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                     Confirm by: {format(parseISO(task.due_at), 'MMM d, h:mm a')}
                   </Badge>
                 )}
+                {task.task_type === 'call_confirmation' && task.completed_confirmations > 0 && (
+                  <Badge className="text-xs font-semibold bg-green-500 hover:bg-green-600 text-white border-0">
+                    <CalendarCheck className="h-3 w-3 mr-1" />
+                    Confirmed {task.completed_confirmations}x
+                  </Badge>
+                )}
                 {apt.event_type_name && (
                   <Badge variant="outline" className="text-xs">
                     {apt.event_type_name}
@@ -620,11 +626,11 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               <CardContent className="space-y-3">
                 {groupedTasks.tomorrow.map((task) => {
                   const apt = task.appointment;
-                  const appointmentDate = parseISO(apt.start_at_utc);
+                  const dueDate = task.due_at ? parseISO(task.due_at) : parseISO(apt.start_at_utc);
                   return (
                     <div key={task.id}>
-                      <div className="text-xs font-medium text-muted-foreground mb-2">
-                        {format(appointmentDate, 'EEEE, MMMM d')}
+                      <div className="text-xs font-medium text-indigo-600 mb-2">
+                        Due: {format(dueDate, 'EEEE, MMMM d')}
                       </div>
                       {renderTaskCard(task)}
                     </div>
@@ -649,11 +655,11 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
               <CardContent className="space-y-3">
                 {groupedTasks.upcoming.map((task) => {
                   const apt = task.appointment;
-                  const appointmentDate = parseISO(apt.start_at_utc);
+                  const dueDate = task.due_at ? parseISO(task.due_at) : parseISO(apt.start_at_utc);
                   return (
                     <div key={task.id}>
-                      <div className="text-xs font-medium text-muted-foreground mb-2">
-                        {format(appointmentDate, 'EEEE, MMMM d')}
+                      <div className="text-xs font-medium text-indigo-600 mb-2">
+                        Due: {format(dueDate, 'EEEE, MMMM d')}
                       </div>
                       {renderTaskCard(task)}
                     </div>
