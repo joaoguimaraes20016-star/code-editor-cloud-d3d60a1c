@@ -265,14 +265,10 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
         countQuery = countQuery.eq('closer_id', currentUserId);
         dataQuery = dataQuery.eq('closer_id', currentUserId);
       } 
-      // Admin view: Show only manually assigned appointments (exclude booking link assignments)
+      // Admin view: Show all assigned appointments (has setter_id)
       else if (showAllAssigned) {
-        countQuery = countQuery
-          .not('setter_id', 'is', null)
-          .in('assignment_source', ['manual_claim', 'admin_assign']);
-        dataQuery = dataQuery
-          .not('setter_id', 'is', null)
-          .in('assignment_source', ['manual_claim', 'admin_assign']);
+        countQuery = countQuery.not('setter_id', 'is', null);
+        dataQuery = dataQuery.not('setter_id', 'is', null);
       }
       // Default: Show unassigned appointments (setter_id IS null)
       else {
