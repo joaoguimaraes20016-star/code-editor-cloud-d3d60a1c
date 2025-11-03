@@ -296,6 +296,15 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
 
       if (error) throw error;
 
+      // Cleanup confirmation tasks for terminal stages
+      const terminalStages = ['rescheduled', 'cancelled', 'no_show', 'won', 'closed', 'lost', 'disqualified'];
+      if (terminalStages.includes(newStageId)) {
+        await supabase.rpc('cleanup_confirmation_tasks', {
+          p_appointment_id: appointmentId,
+          p_reason: `Moved to ${newStageId} stage`
+        });
+      }
+
       if (additionalData?.rescheduleDate) {
         await supabase.rpc("create_task_with_assignment", {
           p_team_id: appointment.team_id,

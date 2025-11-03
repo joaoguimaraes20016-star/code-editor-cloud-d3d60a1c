@@ -1099,6 +1099,15 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
       if (error) throw error;
 
+      // Cleanup confirmation tasks for terminal statuses
+      const terminalStatuses = ['RESCHEDULED', 'CANCELLED', 'CLOSED', 'NO_SHOW'];
+      if (terminalStatuses.includes(newStatus)) {
+        await supabase.rpc('cleanup_confirmation_tasks', {
+          p_appointment_id: statusDialog.appointmentId,
+          p_reason: `Status changed to ${newStatus}`
+        });
+      }
+
       // Create reschedule task if status changed to RESCHEDULED
       if (newStatus === "RESCHEDULED") {
         await supabase.rpc("create_task_with_assignment", {

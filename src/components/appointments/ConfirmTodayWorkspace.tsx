@@ -168,6 +168,12 @@ export function ConfirmTodayWorkspace({ teamId, userRole }: ConfirmTodayWorkspac
 
       if (error) throw error;
 
+      // Cleanup confirmation tasks (status changed to CANCELLED)
+      await supabase.rpc('cleanup_confirmation_tasks', {
+        p_appointment_id: followUpDialog.appointmentId,
+        p_reason: 'No-show with follow-up scheduled'
+      });
+
       // Create follow-up task
       await supabase.rpc("create_task_with_assignment", {
         p_team_id: teamId,

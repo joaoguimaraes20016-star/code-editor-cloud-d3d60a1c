@@ -141,6 +141,13 @@ export function StageWorkspaceView({
         .eq('id', id);
 
       if (error) throw error;
+
+      // Cleanup confirmation tasks
+      await supabase.rpc('cleanup_confirmation_tasks', {
+        p_appointment_id: id,
+        p_reason: 'Lead disqualified'
+      });
+
       toast.success('Lead disqualified');
       loadStageAppointments();
     } catch (error) {
@@ -157,6 +164,13 @@ export function StageWorkspaceView({
         .eq('id', id);
 
       if (error) throw error;
+
+      // Cleanup confirmation tasks (though close_deal_transaction should handle this too)
+      await supabase.rpc('cleanup_confirmation_tasks', {
+        p_appointment_id: id,
+        p_reason: 'Deal closed'
+      });
+
       toast.success('Moved to closed');
       loadStageAppointments();
     } catch (error) {
@@ -180,6 +194,12 @@ export function StageWorkspaceView({
         .eq('id', followUpDialog.appointmentId);
 
       if (error) throw error;
+
+      // Cleanup confirmation tasks
+      await supabase.rpc('cleanup_confirmation_tasks', {
+        p_appointment_id: followUpDialog.appointmentId,
+        p_reason: `${followUpDialog.stageId} with follow-up scheduled`
+      });
 
       // Create follow-up task
       const appointment = appointments.find(a => a.id === followUpDialog.appointmentId);

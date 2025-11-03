@@ -1390,6 +1390,10 @@ export type Database = {
         }[]
       }
       check_overdue_tasks: { Args: never; Returns: undefined }
+      cleanup_confirmation_tasks: {
+        Args: { p_appointment_id: string; p_reason?: string }
+        Returns: undefined
+      }
       cleanup_expired_reset_tokens: { Args: never; Returns: undefined }
       close_deal_transaction: {
         Args: {
