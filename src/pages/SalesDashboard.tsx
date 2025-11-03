@@ -501,11 +501,20 @@ const Index = () => {
   });
 
   // Combine sales from sales table AND appointments in deposit/closed stages
+  // BUT exclude appointments that already have a sale record (to prevent duplicates)
   const depositsAsSales: Sale[] = filteredAppointments
     .filter(apt => {
       const hasDeposit = (apt.pipeline_stage?.toLowerCase().includes('deposit') || apt.status === 'CLOSED') && Number(apt.cc_collected || 0) > 0;
       const repMatch = selectedRep === 'all' || apt.closer_name === selectedRep || apt.setter_name === selectedRep;
-      return hasDeposit && repMatch;
+      
+      // Check if a sale record already exists for this appointment
+      const aptDate = apt.start_at_utc?.split('T')[0] || '';
+      const hasSaleRecord = sales.some(sale => 
+        sale.customerName === apt.lead_name && 
+        sale.date === aptDate
+      );
+      
+      return hasDeposit && repMatch && !hasSaleRecord;
     })
     .map(apt => ({
       id: apt.id,
