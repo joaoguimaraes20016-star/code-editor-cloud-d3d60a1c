@@ -111,6 +111,20 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
           const dueDate = parseISO(task.due_at);
           const dueDay = startOfDay(dueDate);
 
+          console.log(`[Grouping Debug] ${task.appointment?.lead_name}:`, {
+            due_at_raw: task.due_at,
+            due_at_parsed: dueDate.toISOString(),
+            due_day: dueDay.toISOString(),
+            today_start: todayStart.toISOString(),
+            is_today: isToday(dueDate),
+            is_tomorrow: isTomorrow(dueDate),
+            is_overdue: task.is_overdue,
+            will_group_as: task.is_overdue || dueDay < todayStart ? 'OVERDUE' : 
+                            isToday(dueDate) ? 'TODAY' : 
+                            isTomorrow(dueDate) ? 'TOMORROW' : 'UPCOMING',
+            browser_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          });
+
           if (task.is_overdue || dueDay < todayStart) {
             overdue.push(task);
           } else if (isToday(dueDate)) {

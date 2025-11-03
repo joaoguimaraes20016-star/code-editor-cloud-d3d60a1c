@@ -182,19 +182,22 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
           // If task has a due_at, only show if it's within 48 hours or already due
           // Apply this filter to BOTH assigned and unassigned tasks
           if (task.due_at) {
-            const dueDate = new Date(task.due_at);
+            const dueDate = parseISO(task.due_at);
             const now = new Date();
             const fortyEightHoursFromNow = new Date(now.getTime() + (48 * 60 * 60 * 1000));
             
             const shouldShow = dueDate <= fortyEightHoursFromNow || task.is_overdue;
-            console.log(`[Filter] ${appointment?.lead_name}:`, {
-              due_at: task.due_at,
-              dueDate: dueDate.toISOString(),
-              now: now.toISOString(),
+            console.log(`[48h Filter Debug] ${appointment?.lead_name}:`, {
+              due_at_raw: task.due_at,
+              due_at_parsed: dueDate.toISOString(),
+              now_utc: now.toISOString(),
+              now_local: now.toString(),
               fortyEightHoursFromNow: fortyEightHoursFromNow.toISOString(),
+              hours_until_due: ((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60)).toFixed(2),
+              within_48h: dueDate <= fortyEightHoursFromNow,
               is_overdue: task.is_overdue,
-              assigned_to: task.assigned_to,
-              shouldShow
+              shouldShow,
+              browser_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
             });
             
             // Show if due within 48 hours, overdue, or already past due time
