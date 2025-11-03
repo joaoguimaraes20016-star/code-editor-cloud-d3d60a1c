@@ -152,11 +152,23 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
           throw error;
         }
       } else {
+        // Optimistically update the member's booking code in state
+        setMembers(prevMembers => 
+          prevMembers.map(m => 
+            m.user_id === userId 
+              ? { ...m, booking_code: code.trim().toLowerCase() }
+              : m
+          )
+        );
+        
         toast({
           title: 'Success',
           description: 'Booking code saved',
         });
+        
+        // Still refresh from database to ensure consistency
         loadMembers();
+        
         setEditingCodes((prev) => {
           const newCodes = { ...prev };
           delete newCodes[userId];
@@ -364,7 +376,7 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
       <CardContent className="space-y-4">
         {filteredMembers.map((member) => {
           const currentCode = editingCodes[member.user_id] ?? member.booking_code ?? '';
-          const hasBookingCode = !!member.booking_code;
+          const hasBookingCode = !!(member.booking_code || (editingCodes[member.user_id] && saving !== member.user_id));
 
           return (
             <div key={member.user_id} className="border rounded-lg p-4 space-y-3">
