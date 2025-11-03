@@ -49,6 +49,7 @@ export type Database = {
       }
       appointments: {
         Row: {
+          assignment_source: string | null
           calendly_invitee_uri: string | null
           cancel_url: string | null
           cc_collected: number | null
@@ -81,6 +82,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          assignment_source?: string | null
           calendly_invitee_uri?: string | null
           cancel_url?: string | null
           cc_collected?: number | null
@@ -113,6 +115,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          assignment_source?: string | null
           calendly_invitee_uri?: string | null
           cancel_url?: string | null
           cc_collected?: number | null
@@ -1443,6 +1446,7 @@ export type Database = {
       insert_appointments_batch: {
         Args: { appointments_data: Json }
         Returns: {
+          assignment_source: string | null
           calendly_invitee_uri: string | null
           cancel_url: string | null
           cc_collected: number | null

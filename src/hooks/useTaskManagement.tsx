@@ -342,7 +342,10 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
       // Assign appointment to me if it's unassigned
       const { error: aptError } = await supabase
         .from('appointments')
-        .update({ setter_id: userId })
+        .update({ 
+          setter_id: userId,
+          assignment_source: 'manual_claim'
+        })
         .eq('id', appointmentId)
         .is('setter_id', null);
 

@@ -542,6 +542,7 @@ serve(async (req) => {
         reschedule_url: rescheduleUrl,
         cancel_url: cancelUrl,
         calendly_invitee_uri: calendlyInviteeUri,
+        assignment_source: appointmentData.setter_id ? 'booking_link' : null,
       };
 
       console.log('Inserting appointment with data:', JSON.stringify(appointmentToInsert));
