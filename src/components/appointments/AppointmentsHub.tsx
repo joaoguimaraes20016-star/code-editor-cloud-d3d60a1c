@@ -456,7 +456,7 @@ export function AppointmentsHub({
         </TabsContent>
 
         <TabsContent value="closers" className="mt-6">
-          <ByCloserView teamId={teamId} />
+          <ByCloserView teamId={teamId} onCloseDeal={handleCloseDeal} />
         </TabsContent>
 
         <TabsContent value="mrr" className="mt-6">

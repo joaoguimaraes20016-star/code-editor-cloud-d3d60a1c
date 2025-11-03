@@ -9,7 +9,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { TodaysDashboard } from "./TodaysDashboard";
 import { DroppableStageColumn } from "./DroppableStageColumn";
+import { RescheduleDialog } from "./RescheduleDialog";
+import { RescheduleWithLinkDialog } from "./RescheduleWithLinkDialog";
+import { FollowUpDialog } from "./FollowUpDialog";
+import { DepositCollectedDialog } from "./DepositCollectedDialog";
+import { useUndoAction } from "@/hooks/useUndoAction";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import {
   DndContext,
   DragEndEvent,
@@ -22,6 +28,7 @@ import {
 
 interface ByCloserViewProps {
   teamId: string;
+  onCloseDeal: (appointment: any, undoHandlers?: any) => void;
 }
 
 interface CloserGroup {
@@ -49,11 +56,20 @@ interface CloserPipelineViewProps {
   stages: PipelineStage[];
   teamId: string;
   onReload: () => Promise<void>;
+  onCloseDeal: (appointment: any, undoHandlers?: any) => void;
 }
 
-function CloserPipelineView({ group, stages, teamId, onReload }: CloserPipelineViewProps) {
+function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: CloserPipelineViewProps) {
   const [confirmationTasks, setConfirmationTasks] = useState<Map<string, any>>(new Map());
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [rescheduleDialog, setRescheduleDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
+  const [rescheduleLinkDialog, setRescheduleLinkDialog] = useState<{ open: boolean; appointmentId: string; rescheduleUrl: string; dealName: string } | null>(null);
+  const [followUpDialog, setFollowUpDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; stage: "cancelled" | "no_show" } | null>(null);
+  const [depositDialog, setDepositDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
+  
+  const { trackAction, showUndoToast } = useUndoAction(() => {
+    onReload();
+  });
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -112,26 +128,130 @@ function CloserPipelineView({ group, stages, teamId, onReload }: CloserPipelineV
     // Find target stage data for special handling
     const targetStage = stages.find(s => s.stage_id === targetStageId);
     
-    // Check if moving to won/closed stage
+    // Check if moving to won/closed stage - open close deal dialog
     const isClosedStage = targetStage && 
       (targetStage.stage_id === 'won' || 
        targetStage.stage_label.toLowerCase().includes('won') || 
-       targetStage.stage_label.toLowerCase().includes('closed'));
+       targetStage.stage_label.toLowerCase().includes('closed') ||
+       targetStage.stage_label.toLowerCase().includes('close'));
     
     if (isClosedStage) {
-      toast.info('Use the "Close Deal" button to mark deals as closed with revenue details');
+      // Move to closed stage first
+      await performStageMove(appointmentId, targetStageId, appointment);
+      // Open close deal dialog
+      onCloseDeal({ ...appointment, pipeline_stage: targetStageId }, { trackAction, showUndoToast });
       return;
     }
 
-    // Check for other special stages that need dialogs
-    if (targetStageId === 'rescheduled' || targetStageId === 'canceled' || 
-        targetStageId === 'no_show' || targetStageId === 'deposit') {
-      toast.info(`Please use the stage menu to move to ${targetStage?.stage_label || targetStageId}`);
+    // Check if moving to rescheduled
+    if (targetStageId === "rescheduled") {
+      // If reschedule URL is available, open the link dialog
+      if (appointment.reschedule_url) {
+        setRescheduleLinkDialog({
+          open: true,
+          appointmentId,
+          rescheduleUrl: appointment.reschedule_url,
+          dealName: appointment.lead_name
+        });
+        return;
+      }
+      
+      // Check if we can fetch the reschedule URL
+      if (!appointment.calendly_invitee_uri) {
+        toast.error("This appointment was imported before reschedule links were tracked. Please re-import appointments from Calendly in Team Settings.", { duration: 5000 });
+        return;
+      }
+
+      // Fetch reschedule URL from Calendly on-demand
+      toast.loading("Fetching reschedule link...", { id: 'fetch-reschedule' });
+      try {
+        const { data: teamData } = await supabase
+          .from('teams')
+          .select('calendly_access_token')
+          .eq('id', teamId)
+          .single();
+
+        if (!teamData?.calendly_access_token) {
+          toast.error("Calendly not configured for this team", { id: 'fetch-reschedule' });
+          return;
+        }
+
+        const response = await fetch(appointment.calendly_invitee_uri, {
+          headers: {
+            'Authorization': `Bearer ${teamData.calendly_access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch from Calendly');
+
+        const data = await response.json();
+        const rescheduleUrl = data.resource?.reschedule_url;
+
+        if (!rescheduleUrl) {
+          toast.error("No reschedule link available for this appointment", { id: 'fetch-reschedule' });
+          return;
+        }
+
+        await supabase
+          .from('appointments')
+          .update({ reschedule_url: rescheduleUrl })
+          .eq('id', appointmentId);
+
+        toast.success("Reschedule link fetched!", { id: 'fetch-reschedule' });
+
+        setRescheduleLinkDialog({
+          open: true,
+          appointmentId,
+          rescheduleUrl,
+          dealName: appointment.lead_name
+        });
+      } catch (error) {
+        console.error("Error fetching reschedule URL:", error);
+        toast.error("Failed to fetch reschedule link from Calendly", { id: 'fetch-reschedule' });
+      }
       return;
     }
+
+    // Check for canceled or no-show
+    if (targetStageId === "canceled" || targetStageId === "no_show") {
+      setFollowUpDialog({ 
+        open: true, 
+        appointmentId, 
+        stageId: targetStageId,
+        dealName: appointment.lead_name,
+        stage: targetStageId === "canceled" ? "cancelled" : "no_show"
+      });
+      return;
+    }
+
+    // Check if moving to deposit stage
+    if (targetStageId === "deposit" || targetStage?.stage_label.toLowerCase().includes("deposit")) {
+      setDepositDialog({
+        open: true,
+        appointmentId,
+        stageId: targetStageId,
+        dealName: appointment.lead_name
+      });
+      return;
+    }
+
+    // Track the action for undo
+    trackAction({
+      table: "appointments",
+      recordId: appointmentId,
+      previousData: { 
+        pipeline_stage: appointment.pipeline_stage,
+        status: appointment.status,
+        cc_collected: appointment.cc_collected,
+        mrr_amount: appointment.mrr_amount,
+        mrr_months: appointment.mrr_months,
+        product_name: appointment.product_name,
+      },
+      description: `Moved ${appointment.lead_name} to ${targetStage?.stage_label || targetStageId}`,
+    });
 
     try {
-      // Update the pipeline stage in database
       const { error } = await supabase
         .from('appointments')
         .update({ pipeline_stage: targetStageId })
@@ -140,13 +260,64 @@ function CloserPipelineView({ group, stages, teamId, onReload }: CloserPipelineV
       if (error) throw error;
 
       const stageName = targetStage?.stage_label || targetStageId;
-      toast.success(`Moved ${appointment.lead_name} to ${stageName}`);
+      showUndoToast(`Moved ${appointment.lead_name} to ${stageName}`);
       
-      // Reload all data to reflect changes
       await onReload();
     } catch (error) {
       console.error('Error moving appointment:', error);
       toast.error('Failed to move appointment');
+      await onReload();
+    }
+  };
+
+  const performStageMove = async (
+    appointmentId: string, 
+    newStageId: string, 
+    appointment: any,
+    additionalData?: { rescheduleDate?: Date; followUpDate?: Date; followUpReason?: string }
+  ) => {
+    try {
+      const updateData: any = { pipeline_stage: newStageId };
+      
+      if (newStageId === "rescheduled" && additionalData?.rescheduleDate) {
+        updateData.retarget_date = format(additionalData.rescheduleDate, "yyyy-MM-dd");
+        updateData.retarget_reason = "Rescheduled by user";
+      }
+
+      if (additionalData?.followUpDate && additionalData?.followUpReason) {
+        updateData.retarget_date = format(additionalData.followUpDate, "yyyy-MM-dd");
+        updateData.retarget_reason = additionalData.followUpReason;
+      }
+
+      const { error } = await supabase
+        .from("appointments")
+        .update(updateData)
+        .eq("id", appointmentId);
+
+      if (error) throw error;
+
+      if (additionalData?.rescheduleDate) {
+        await supabase.rpc("create_task_with_assignment", {
+          p_team_id: appointment.team_id,
+          p_appointment_id: appointmentId,
+          p_task_type: "reschedule",
+          p_reschedule_date: format(additionalData.rescheduleDate, "yyyy-MM-dd")
+        });
+      } else if (additionalData?.followUpDate && additionalData?.followUpReason) {
+        await supabase.rpc("create_task_with_assignment", {
+          p_team_id: appointment.team_id,
+          p_appointment_id: appointmentId,
+          p_task_type: "follow_up",
+          p_follow_up_date: format(additionalData.followUpDate, "yyyy-MM-dd"),
+          p_follow_up_reason: additionalData.followUpReason
+        });
+      }
+
+      toast.success("Deal moved successfully");
+      await onReload();
+    } catch (error: any) {
+      console.error("Error moving deal:", error);
+      toast.error(error.message || "Failed to move deal");
     }
   };
   
@@ -185,108 +356,157 @@ function CloserPipelineView({ group, stages, teamId, onReload }: CloserPipelineV
   }, [group, stages, confirmationTasks]);
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <ScrollArea className="w-full">
-        <div className="flex gap-4 pb-4">
-          {/* Appointments Booked Stage */}
-          <DroppableStageColumn id="appointments_booked">
-            <Card className="h-full">
-              <div className="p-4 border-b bg-primary/10 border-b-primary">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Appointments Booked</h3>
-                  <Badge variant="secondary">
-                    {dealsByStage.get('appointments_booked')?.length || 0}
-                  </Badge>
-                </div>
-              </div>
-              <div className="p-3 space-y-3 min-h-[200px]">
-                {dealsByStage.get('appointments_booked')?.map(appointment => (
-                  <DealCard
-                    key={appointment.id}
-                    id={appointment.id}
-                    teamId={teamId}
-                    appointment={appointment}
-                    confirmationTask={confirmationTasks.get(appointment.id)}
-                    onCloseDeal={() => {}}
-                    onMoveTo={() => {}}
-                    userRole="closer"
-                  />
-                ))}
-                {(!dealsByStage.get('appointments_booked') || dealsByStage.get('appointments_booked')?.length === 0) && (
-                  <p className="text-sm text-muted-foreground text-center py-8">No deals</p>
-                )}
-              </div>
-            </Card>
-          </DroppableStageColumn>
-
-          {/* Pipeline Stages */}
-          {stages
-            .filter(stage => stage.stage_id !== 'booked')
-            .map(stage => (
-            <DroppableStageColumn key={stage.stage_id} id={stage.stage_id}>
+    <>
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <ScrollArea className="w-full">
+          <div className="flex gap-4 pb-4">
+            {/* Appointments Booked Stage */}
+            <DroppableStageColumn id="appointments_booked">
               <Card className="h-full">
-                <div 
-                  className="p-4 border-b"
-                  style={{ 
-                    backgroundColor: `${stage.stage_color}15`,
-                    borderBottomColor: stage.stage_color
-                  }}
-                >
+                <div className="p-4 border-b bg-primary/10 border-b-primary">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">{stage.stage_label}</h3>
+                    <h3 className="font-semibold">Appointments Booked</h3>
                     <Badge variant="secondary">
-                      {dealsByStage.get(stage.stage_id)?.length || 0}
+                      {dealsByStage.get('appointments_booked')?.length || 0}
                     </Badge>
                   </div>
                 </div>
                 <div className="p-3 space-y-3 min-h-[200px]">
-                  {dealsByStage.get(stage.stage_id)?.map(appointment => (
+                  {dealsByStage.get('appointments_booked')?.map(appointment => (
                     <DealCard
                       key={appointment.id}
                       id={appointment.id}
                       teamId={teamId}
                       appointment={appointment}
                       confirmationTask={confirmationTasks.get(appointment.id)}
-                      onCloseDeal={() => {}}
+                      onCloseDeal={() => onCloseDeal(appointment, { trackAction, showUndoToast })}
                       onMoveTo={() => {}}
                       userRole="closer"
                     />
                   ))}
-                  {(!dealsByStage.get(stage.stage_id) || dealsByStage.get(stage.stage_id)?.length === 0) && (
+                  {(!dealsByStage.get('appointments_booked') || dealsByStage.get('appointments_booked')?.length === 0) && (
                     <p className="text-sm text-muted-foreground text-center py-8">No deals</p>
                   )}
                 </div>
               </Card>
             </DroppableStageColumn>
-          ))}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
 
-      <DragOverlay>
-        {activeId ? (
-          <div className="opacity-50">
-            <DealCard
-              id={activeId}
-              teamId={teamId}
-              appointment={group.appointments.find(a => a.id === activeId)!}
-              confirmationTask={confirmationTasks.get(activeId)}
-              onCloseDeal={() => {}}
-              onMoveTo={() => {}}
-              userRole="closer"
-            />
+            {/* Pipeline Stages */}
+            {stages
+              .filter(stage => stage.stage_id !== 'booked')
+              .map(stage => (
+              <DroppableStageColumn key={stage.stage_id} id={stage.stage_id}>
+                <Card className="h-full">
+                  <div 
+                    className="p-4 border-b"
+                    style={{ 
+                      backgroundColor: `${stage.stage_color}15`,
+                      borderBottomColor: stage.stage_color
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold">{stage.stage_label}</h3>
+                      <Badge variant="secondary">
+                        {dealsByStage.get(stage.stage_id)?.length || 0}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="p-3 space-y-3 min-h-[200px]">
+                    {dealsByStage.get(stage.stage_id)?.map(appointment => (
+                      <DealCard
+                        key={appointment.id}
+                        id={appointment.id}
+                        teamId={teamId}
+                        appointment={appointment}
+                        confirmationTask={confirmationTasks.get(appointment.id)}
+                        onCloseDeal={() => onCloseDeal(appointment, { trackAction, showUndoToast })}
+                        onMoveTo={() => {}}
+                        userRole="closer"
+                      />
+                    ))}
+                    {(!dealsByStage.get(stage.stage_id) || dealsByStage.get(stage.stage_id)?.length === 0) && (
+                      <p className="text-sm text-muted-foreground text-center py-8">No deals</p>
+                    )}
+                  </div>
+                </Card>
+              </DroppableStageColumn>
+            ))}
           </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+
+        <DragOverlay>
+          {activeId ? (
+            <div className="opacity-50">
+              <DealCard
+                id={activeId}
+                teamId={teamId}
+                appointment={group.appointments.find(a => a.id === activeId)!}
+                confirmationTask={confirmationTasks.get(activeId)}
+                onCloseDeal={() => {}}
+                onMoveTo={() => {}}
+                userRole="closer"
+              />
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+
+      {/* Dialogs */}
+      {rescheduleLinkDialog && (
+        <RescheduleWithLinkDialog
+          open={rescheduleLinkDialog.open}
+          onOpenChange={(open) => !open && setRescheduleLinkDialog(null)}
+          appointmentId={rescheduleLinkDialog.appointmentId}
+          rescheduleUrl={rescheduleLinkDialog.rescheduleUrl}
+          appointmentName={rescheduleLinkDialog.dealName}
+          onConfirm={async (reason, notes) => {
+            await performStageMove(rescheduleLinkDialog.appointmentId, "rescheduled", 
+              group.appointments.find(a => a.id === rescheduleLinkDialog.appointmentId)!);
+            setRescheduleLinkDialog(null);
+          }}
+        />
+      )}
+
+      {followUpDialog && (
+        <FollowUpDialog
+          open={followUpDialog.open}
+          onOpenChange={(open) => !open && setFollowUpDialog(null)}
+          dealName={followUpDialog.dealName}
+          stage={followUpDialog.stage}
+          onConfirm={async (date, reason) => {
+            await performStageMove(
+              followUpDialog.appointmentId, 
+              followUpDialog.stageId,
+              group.appointments.find(a => a.id === followUpDialog.appointmentId)!,
+              { followUpDate: date, followUpReason: reason }
+            );
+            setFollowUpDialog(null);
+          }}
+        />
+      )}
+
+      {depositDialog && (
+        <DepositCollectedDialog
+          open={depositDialog.open}
+          onOpenChange={(open) => !open && setDepositDialog(null)}
+          dealName={depositDialog.dealName}
+          onConfirm={async (amount, notes, followUpDate) => {
+            await performStageMove(depositDialog.appointmentId, depositDialog.stageId,
+              group.appointments.find(a => a.id === depositDialog.appointmentId)!);
+            setDepositDialog(null);
+          }}
+        />
+      )}
+    </>
   );
 }
 
-export function ByCloserView({ teamId }: ByCloserViewProps) {
+export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
   const [loading, setLoading] = useState(true);
   const [closerGroups, setCloserGroups] = useState<CloserGroup[]>([]);
   const [selectedCloser, setSelectedCloser] = useState<string | null>(null);
@@ -461,6 +681,7 @@ export function ByCloserView({ teamId }: ByCloserViewProps) {
                 stages={stages} 
                 teamId={teamId}
                 onReload={loadData}
+                onCloseDeal={onCloseDeal}
               />
             )}
           </TabsContent>
