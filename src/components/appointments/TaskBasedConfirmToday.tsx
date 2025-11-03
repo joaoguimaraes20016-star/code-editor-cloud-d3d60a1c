@@ -290,13 +290,19 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
             <div className="space-y-1">
               <p className="font-semibold">{apt.lead_name}</p>
               <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
-              <div className="flex items-center gap-2 flex-wrap">
+               <div className="flex items-center gap-2 flex-wrap">
                 {apt.event_type_name && (
                   <Badge variant="outline" className="text-xs">
                     {apt.event_type_name}
                   </Badge>
                 )}
                 {getTaskTypeBadge(task.task_type, isMRRTask)}
+                {task.task_type === 'call_confirmation' && task.due_at && (
+                  <Badge className="text-xs bg-indigo-500 hover:bg-indigo-600 text-white border-0">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Confirm by: {format(parseISO(task.due_at), 'MMM d, h:mm a')}
+                  </Badge>
+                )}
                 {isMRRTask && (
                   <Badge className="text-xs bg-emerald-600 text-white border-0">
                     {task.mrr_confirmed_months}/{task.mrr_total_months} months
@@ -339,9 +345,14 @@ export function TaskBasedConfirmToday({ teamId }: TaskBasedConfirmTodayProps) {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              {formatTime(apt.start_at_utc)}
+            <div className="flex flex-col items-end gap-1 text-sm">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <CalendarClock className="h-4 w-4" />
+                <span className="text-xs">Appt:</span>
+              </div>
+              <div className="font-medium">
+                {format(parseISO(apt.start_at_utc), 'MMM d')} at {formatTime(apt.start_at_utc)}
+              </div>
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
