@@ -32,6 +32,9 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
   const [myTasks, setMyTasks] = useState<Task[]>([]);
   const [queueTasks, setQueueTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Force fresh module load
+  console.log('[useTaskManagement] Hook initialized at:', new Date().toISOString());
 
   const loadTasks = async () => {
     try {
@@ -164,6 +167,24 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
         });
       }
 
+      // DEFENSIVE LOGGING: Check what code version is running
+      console.log('[FILTER VERSION CHECK] Using parseISO + defensive error handling - Code updated:', new Date().toISOString());
+      console.log('[FILTER INPUT] Total tasks before filter:', filteredTasks.length);
+      filteredTasks.forEach(t => {
+        if (t.appointment?.lead_name?.toLowerCase().includes('byron')) {
+          console.log('[BYRON DETECTED] Before filter:', {
+            id: t.id,
+            lead_name: t.appointment?.lead_name,
+            has_due_at: !!t.due_at,
+            due_at_value: t.due_at,
+            due_at_type: typeof t.due_at,
+            task_type: t.task_type,
+            status: t.status,
+            assigned_to: t.assigned_to
+          });
+        }
+      });
+
       // Filter tasks based on appointment status and due dates
       filteredTasks = filteredTasks.filter(task => {
         const aptStatus = task.appointment?.status;
@@ -182,26 +203,30 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
           // If task has a due_at, only show if it's within 48 hours or already due
           // Apply this filter to BOTH assigned and unassigned tasks
           if (task.due_at) {
-            const dueDate = parseISO(task.due_at);
-            const now = new Date();
-            const fortyEightHoursFromNow = new Date(now.getTime() + (48 * 60 * 60 * 1000));
-            
-            const shouldShow = dueDate <= fortyEightHoursFromNow || task.is_overdue;
-            console.log(`[48h Filter Debug] ${appointment?.lead_name}:`, {
-              due_at_raw: task.due_at,
-              due_at_parsed: dueDate.toISOString(),
-              now_utc: now.toISOString(),
-              now_local: now.toString(),
-              fortyEightHoursFromNow: fortyEightHoursFromNow.toISOString(),
-              hours_until_due: ((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60)).toFixed(2),
-              within_48h: dueDate <= fortyEightHoursFromNow,
-              is_overdue: task.is_overdue,
-              shouldShow,
-              browser_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-            });
-            
-            // Show if due within 48 hours, overdue, or already past due time
-            return shouldShow;
+            try {
+              const dueDate = parseISO(task.due_at);
+              const now = new Date();
+              const fortyEightHoursFromNow = new Date(now.getTime() + (48 * 60 * 60 * 1000));
+              
+              const shouldShow = dueDate <= fortyEightHoursFromNow || task.is_overdue;
+              console.log(`[48h Filter Debug] ${appointment?.lead_name}:`, {
+                due_at_raw: task.due_at,
+                due_at_parsed: dueDate.toISOString(),
+                now_utc: now.toISOString(),
+                hours_until_due: ((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60)).toFixed(2),
+                within_48h: dueDate <= fortyEightHoursFromNow,
+                is_overdue: task.is_overdue,
+                shouldShow,
+                RETURNING: shouldShow
+              });
+              
+              // Show if due within 48 hours, overdue, or already past due time
+              return shouldShow;
+            } catch (error) {
+              console.error(`[48h Filter ERROR] ${appointment?.lead_name}:`, error);
+              // If there's an error parsing, DON'T show the task (fail closed)
+              return false;
+            }
           }
           
           // Backwards compatibility: if no due_at, fall back to appointment date logic
@@ -230,7 +255,15 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
           return task.reschedule_date <= today;
         }
         
-        return true;
+        // Default: don't show tasks that don't match any criteria above (fail closed)
+        console.log('[FILTER] Task did not match any criteria - HIDING:', {
+          lead_name: appointment?.lead_name,
+          task_type: task.task_type,
+          has_due_at: !!task.due_at,
+          has_follow_up_date: !!task.follow_up_date,
+          has_reschedule_date: !!task.reschedule_date
+        });
+        return false;
       });
 
       // Use confirmation tasks + MRR tasks due today
