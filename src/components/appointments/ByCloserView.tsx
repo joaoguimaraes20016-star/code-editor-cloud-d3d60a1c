@@ -595,6 +595,13 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
     loadData();
   }, [teamId]);
 
+  // Wrap onCloseDeal to reload data after closing
+  const handleCloseDeal = async (appointment: any, undoHandlers?: any) => {
+    await onCloseDeal(appointment, undoHandlers);
+    // Reload to show updated revenue on cards
+    await loadCloserGroups();
+  };
+
   const loadData = async () => {
     await Promise.all([loadStages(), loadCloserGroups()]);
   };
@@ -759,8 +766,8 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
                 group={group} 
                 stages={stages} 
                 teamId={teamId}
-                onReload={loadData}
-                onCloseDeal={onCloseDeal}
+                onReload={loadCloserGroups}
+                onCloseDeal={handleCloseDeal}
               />
             )}
           </TabsContent>
