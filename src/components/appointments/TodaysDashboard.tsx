@@ -189,16 +189,51 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
         
         const { data: tasks } = await tasksQuery;
         
-        console.log('[TodaysDashboard] Tasks loaded:', {
+        console.log('[TodaysDashboard] Tasks loaded (BEFORE 48h filter):', {
           count: tasks?.length || 0,
           assignedTo: tasks?.[0]?.assigned_to,
           expectedUser: targetUserId,
-          isViewingSpecificPerson
+          isViewingSpecificPerson,
+          tasks: tasks?.map(t => ({
+            id: t.id,
+            due_at: t.due_at,
+            appointment_id: t.appointment_id
+          }))
         });
         
-        if (tasks) {
+        // CRITICAL: Apply 48-hour filter to tasks
+        const now = new Date();
+        const fortyEightHoursFromNow = new Date(now.getTime() + (48 * 60 * 60 * 1000));
+        const filteredTasks = (tasks || []).filter(task => {
+          if (!task.due_at) return true; // Show tasks without due_at (backwards compatibility)
+          
+          try {
+            const dueDate = parseISO(task.due_at);
+            const shouldShow = dueDate <= fortyEightHoursFromNow || task.is_overdue;
+            
+            console.log(`[TodaysDashboard 48h Filter] Task ${task.id}:`, {
+              due_at: task.due_at,
+              hours_until_due: ((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60)).toFixed(2),
+              within_48h: dueDate <= fortyEightHoursFromNow,
+              is_overdue: task.is_overdue,
+              shouldShow
+            });
+            
+            return shouldShow;
+          } catch (error) {
+            console.error('[TodaysDashboard 48h Filter ERROR]:', error);
+            return false; // Fail closed - don't show tasks that can't be parsed
+          }
+        });
+        
+        console.log('[TodaysDashboard] Tasks loaded (AFTER 48h filter):', {
+          before: tasks?.length || 0,
+          after: filteredTasks.length
+        });
+        
+        if (filteredTasks.length > 0) {
           const tasksMap = new Map<string, ConfirmationTask>();
-          tasks.forEach(task => {
+          filteredTasks.forEach(task => {
             tasksMap.set(task.appointment_id, {
               id: task.id,
               appointment_id: task.appointment_id,
@@ -215,7 +250,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
           
           // For setters: Only show appointments with pending confirmation tasks assigned to them
           if (targetRole === 'setter') {
-            const appointmentIdsWithTasks = new Set(tasks.map(t => t.appointment_id));
+            const appointmentIdsWithTasks = new Set(filteredTasks.map(t => t.appointment_id));
             filteredData = filteredData.filter(apt => appointmentIdsWithTasks.has(apt.id));
           }
         }
