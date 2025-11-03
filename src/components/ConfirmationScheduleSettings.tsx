@@ -63,6 +63,15 @@ const displayUnitToHours = (value: number, unit: 'minutes' | 'hours' | 'days'): 
   }
 };
 
+const generateLabel = (value: number, unit: 'minutes' | 'hours' | 'days'): string => {
+  const unitText = value === 1 
+    ? unit.slice(0, -1) // Remove 's' for singular
+    : unit;
+  
+  const capitalizedUnit = unitText.charAt(0).toUpperCase() + unitText.slice(1);
+  return `${value} ${capitalizedUnit} Before`;
+};
+
 export function ConfirmationScheduleSettings({ teamId }: ConfirmationScheduleSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -141,7 +150,7 @@ export function ConfirmationScheduleSettings({ teamId }: ConfirmationScheduleSet
     const newWindow: WindowWithUnit = {
       sequence: schedule.length + 1,
       hours_before: 1,
-      label: "New Reminder",
+      label: generateLabel(1, 'hours'),
       displayValue: 1,
       displayUnit: 'hours'
     };
@@ -178,12 +187,14 @@ export function ConfirmationScheduleSettings({ teamId }: ConfirmationScheduleSet
       const displayValue = field === 'displayValue' ? value : updated[index].displayValue;
       const displayUnit = field === 'displayUnit' ? value : updated[index].displayUnit;
       const hours_before = displayUnitToHours(displayValue, displayUnit);
+      const label = generateLabel(displayValue, displayUnit);
       
       updated[index] = {
         ...updated[index],
         displayValue,
         displayUnit,
-        hours_before
+        hours_before,
+        label
       };
     } else {
       updated[index] = { ...updated[index], [field]: value };
@@ -360,12 +371,16 @@ export function ConfirmationScheduleSettings({ teamId }: ConfirmationScheduleSet
                     </Select>
                     <span className="text-sm text-muted-foreground whitespace-nowrap">before appointment</span>
                   </div>
-                  <Input 
-                    value={window.label}
-                    onChange={(e) => updateWindow(idx, 'label', e.target.value)}
-                    placeholder="Display name (shown to setters)"
-                    className="w-full"
-                  />
+                  
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-normal">
+                      {window.label}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      (shown to setters)
+                    </span>
+                  </div>
+                  
                   <p className="text-xs text-muted-foreground">
                     = {window.hours_before.toFixed(2)} hours before
                   </p>
