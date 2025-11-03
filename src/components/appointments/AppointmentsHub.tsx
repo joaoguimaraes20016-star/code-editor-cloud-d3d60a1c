@@ -30,6 +30,7 @@ import { UnifiedTasksView } from "./UnifiedTasksView";
 import { TodaysDashboard } from "./TodaysDashboard";
 import { SetterEODReport } from "./SetterEODReport";
 import { CloserEODReport } from "./CloserEODReport";
+import { UnassignedAppointments } from "./UnassignedAppointments";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 
@@ -137,6 +138,14 @@ export function AppointmentsHub({
                 Today
               </TabsTrigger>
               <TabsTrigger value="mine" className="text-sm md:text-base whitespace-nowrap">My Appointments</TabsTrigger>
+              <TabsTrigger value="unassigned" className="text-sm md:text-base whitespace-nowrap">
+                Unassigned
+                {counts.unassigned > 0 && (
+                  <Badge variant="destructive" className="ml-2">
+                    {counts.unassigned}
+                  </Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="all" className="text-sm md:text-base whitespace-nowrap">All Assigned</TabsTrigger>
               <TabsTrigger value="pipeline" className="text-sm md:text-base whitespace-nowrap">Team Pipeline</TabsTrigger>
               <TabsTrigger value="stats" className="text-sm md:text-base whitespace-nowrap">My Stats</TabsTrigger>
@@ -164,6 +173,13 @@ export function AppointmentsHub({
               teamId={teamId}
               closerCommissionPct={closerCommissionPct}
               setterCommissionPct={setterCommissionPct}
+            />
+          </TabsContent>
+
+          <TabsContent value="unassigned" className="mt-6">
+            <UnassignedAppointments
+              teamId={teamId}
+              onUpdate={onUpdate}
             />
           </TabsContent>
 

@@ -9,6 +9,7 @@ export function useTabCounts(teamId: string, userId: string, userRole: string) {
     followUps: 0,
     overdue: 0,
     totalPendingTasks: 0,
+    unassigned: 0,
   });
 
   useEffect(() => {
@@ -109,6 +110,14 @@ export function useTabCounts(teamId: string, userId: string, userRole: string) {
         .not('appointment.status', 'in', '(CLOSED,CANCELLED,RESCHEDULED)')
         .not('appointment.pipeline_stage', 'in', '(won,closed,cancelled,no_show,lost,rescheduled,disqualified)');
 
+      // Unassigned appointments
+      const { count: unassignedCount } = await supabase
+        .from('appointments')
+        .select('*', { count: 'exact', head: true })
+        .eq('team_id', teamId)
+        .is('setter_id', null)
+        .eq('status', 'NEW');
+
       setCounts({
         myTasks: myTasksCount || 0,
         queueTasks: queueTasksCount || 0,
@@ -116,6 +125,7 @@ export function useTabCounts(teamId: string, userId: string, userRole: string) {
         followUps: followUpsCount || 0,
         overdue: overdueCount || 0,
         totalPendingTasks: totalPendingCount || 0,
+        unassigned: unassignedCount || 0,
       });
     } catch (error) {
       console.error('Error loading tab counts:', error);
