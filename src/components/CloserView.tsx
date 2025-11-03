@@ -916,6 +916,42 @@ export function CloserView({ teamId }: CloserViewProps) {
         </TabsContent>
 
         <TabsContent value="all-closed" className="mt-6">
+          {/* Metrics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total CC Collected</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      ${allClosedAppointments.reduce((sum, apt) => sum + (apt.cc_collected || 0), 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-green-600 opacity-50" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total MRR</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      ${allClosedAppointments.reduce((sum, apt) => sum + (apt.mrr_amount || 0), 0).toLocaleString()}/mo
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Avg {allClosedAppointments.filter(apt => apt.mrr_amount && apt.mrr_amount > 0).length > 0 
+                        ? Math.round(allClosedAppointments.reduce((sum, apt) => sum + (apt.mrr_months || 0), 0) / allClosedAppointments.filter(apt => apt.mrr_amount && apt.mrr_amount > 0).length)
+                        : 0} months
+                    </p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-blue-600 opacity-50" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {allClosedAppointments.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               No closed deals yet
@@ -1010,6 +1046,42 @@ export function CloserView({ teamId }: CloserViewProps) {
         </TabsContent>
 
         <TabsContent value="my-closed" className="mt-6">
+          {/* Metrics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total CC Collected</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      ${myClosedAppointments.reduce((sum, apt) => sum + (apt.cc_collected || 0), 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-green-600 opacity-50" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total MRR</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      ${myClosedAppointments.reduce((sum, apt) => sum + (apt.mrr_amount || 0), 0).toLocaleString()}/mo
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Avg {myClosedAppointments.filter(apt => apt.mrr_amount && apt.mrr_amount > 0).length > 0 
+                        ? Math.round(myClosedAppointments.reduce((sum, apt) => sum + (apt.mrr_months || 0), 0) / myClosedAppointments.filter(apt => apt.mrr_amount && apt.mrr_amount > 0).length)
+                        : 0} months
+                    </p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-blue-600 opacity-50" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {myClosedAppointments.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               No closed deals yet
