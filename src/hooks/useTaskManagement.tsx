@@ -179,12 +179,8 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
         
         // For call_confirmation tasks, check if they're actually due yet
         if (task.task_type === 'call_confirmation') {
-          // Always include unassigned tasks in queue
-          if (!task.assigned_to) {
-            return true;
-          }
-          
           // If task has a due_at, only show if it's within 48 hours or already due
+          // Apply this filter to BOTH assigned and unassigned tasks
           if (task.due_at) {
             const dueDate = new Date(task.due_at);
             const now = new Date();
@@ -197,6 +193,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
               now: now.toISOString(),
               fortyEightHoursFromNow: fortyEightHoursFromNow.toISOString(),
               is_overdue: task.is_overdue,
+              assigned_to: task.assigned_to,
               shouldShow
             });
             
