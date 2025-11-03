@@ -648,7 +648,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                 <Calendar className="h-5 w-5" />
                 Upcoming ({upcomingTasks.length})
               </h3>
-              <div className="border-l-4 border-indigo-500 pl-4 space-y-3">
+              <div className="border-l-4 border-orange-500 pl-4 space-y-3">
                 {upcomingTasks.map((task) => renderTaskCard(task, true))}
               </div>
             </div>
