@@ -187,7 +187,7 @@ export function AppointmentsHub({
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="booking-link" className="text-sm md:text-base whitespace-nowrap">My Link</TabsTrigger>
+              <TabsTrigger value="my-assets" className="text-sm md:text-base whitespace-nowrap">My Assets</TabsTrigger>
             </TabsList>
           </div>
 
@@ -248,15 +248,20 @@ export function AppointmentsHub({
             <UnifiedTasksView teamId={teamId} />
           </TabsContent>
 
-          <TabsContent value="booking-link" className="mt-6">
-            <SetterBookingLinks
-              teamId={teamId}
-              calendlyEventTypes={teamCalendlySettings.calendlyEventTypes}
-              calendlyAccessToken={teamCalendlySettings.calendlyAccessToken}
-              calendlyOrgUri={teamCalendlySettings.calendlyOrgUri}
-              currentUserId={user?.id}
-              isOwner={false}
-            />
+          <TabsContent value="my-assets" className="mt-6">
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">My Booking Link</h3>
+                <SetterBookingLinks
+                  teamId={teamId}
+                  calendlyEventTypes={teamCalendlySettings.calendlyEventTypes}
+                  calendlyAccessToken={teamCalendlySettings.calendlyAccessToken}
+                  calendlyOrgUri={teamCalendlySettings.calendlyOrgUri}
+                  currentUserId={user?.id}
+                  isOwner={false}
+                />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
 
