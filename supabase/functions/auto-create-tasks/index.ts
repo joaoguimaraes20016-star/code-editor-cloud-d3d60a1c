@@ -25,7 +25,7 @@ serve(async (req) => {
     // Check if team has auto_create_tasks enabled (defaults to true if not set)
     const { data: teamSettings, error: teamError } = await supabaseClient
       .from('teams')
-      .select('auto_create_tasks, confirmation_schedule')
+      .select('auto_create_tasks, confirmation_schedule, minimum_booking_notice_hours, fallback_confirmation_minutes')
       .eq('id', appointment.team_id)
       .single();
 
@@ -42,18 +42,47 @@ serve(async (req) => {
       );
     }
 
-    // Get confirmation schedule
+    // Get confirmation schedule and fallback settings
     const schedule = teamSettings?.confirmation_schedule || [
       {sequence: 1, hours_before: 24, label: "24h Before"},
       {sequence: 2, hours_before: 1, label: "1h Before"},
       {sequence: 3, hours_before: 0.17, label: "10min Before"}
     ];
 
-    const firstWindow = schedule[0];
+    const minimumBookingNoticeHours = teamSettings?.minimum_booking_notice_hours ?? 24;
+    const fallbackConfirmationMinutes = teamSettings?.fallback_confirmation_minutes ?? 60;
 
-    // Calculate due_at for first confirmation window
+    const now = new Date();
     const appointmentTime = new Date(appointment.start_at_utc);
-    const dueAt = new Date(appointmentTime.getTime() - (firstWindow.hours_before * 60 * 60 * 1000));
+    const hoursUntilAppointment = (appointmentTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    let dueAt: Date;
+    let usedFallback = false;
+
+    // Check if this is a last-minute booking
+    if (hoursUntilAppointment < minimumBookingNoticeHours) {
+      console.log(`Last-minute booking detected (${hoursUntilAppointment.toFixed(1)}h notice < ${minimumBookingNoticeHours}h minimum)`);
+      
+      // Use fallback: create single task due X minutes before appointment
+      const fallbackDueAt = new Date(appointmentTime.getTime() - (fallbackConfirmationMinutes * 60 * 1000));
+      
+      // Only use fallback if it's still in the future
+      if (fallbackDueAt > now) {
+        dueAt = fallbackDueAt;
+        usedFallback = true;
+        console.log(`Using fallback: task due at ${dueAt.toISOString()}`);
+      } else {
+        // If even fallback is too late, create immediate task
+        dueAt = now;
+        usedFallback = true;
+        console.log(`Fallback window passed, creating immediate task`);
+      }
+    } else {
+      // Normal schedule: use first confirmation window
+      const firstWindow = schedule[0];
+      dueAt = new Date(appointmentTime.getTime() - (firstWindow.hours_before * 60 * 60 * 1000));
+      console.log(`Using normal schedule: task due at ${dueAt.toISOString()}`);
+    }
 
     // Get active setters for this team
     const { data: activeSetters, error: settersError } = await supabaseClient
@@ -118,7 +147,7 @@ serve(async (req) => {
     team_id: appointment.team_id,
     appointment_id: appointment.id,
     status: 'pending',
-    required_confirmations: schedule.length,
+    required_confirmations: usedFallback ? 1 : schedule.length, // Only 1 confirmation for fallback
     confirmation_sequence: 1,
     due_at: dueAt.toISOString(),
     confirmation_attempts: [],
@@ -157,7 +186,9 @@ serve(async (req) => {
         actor_id: null,
         actor_name: 'System',
         action_type: 'Created',
-        note: assignedTo ? 'Task auto-assigned via round-robin' : 'Task created in queue'
+        note: usedFallback 
+          ? `Last-minute booking fallback: task due ${fallbackConfirmationMinutes}min before appointment`
+          : (assignedTo ? 'Task auto-assigned via round-robin' : 'Task created in queue')
       });
 
     if (activityError) console.error('Error logging activity:', activityError);

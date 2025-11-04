@@ -1264,8 +1264,10 @@ export type Database = {
           created_at: string | null
           created_by: string
           dashboard_preferences: Json | null
+          fallback_confirmation_minutes: number | null
           google_sheets_url: string | null
           id: string
+          minimum_booking_notice_hours: number | null
           name: string
           overdue_threshold_minutes: number | null
           setter_commission_percentage: number | null
@@ -1284,8 +1286,10 @@ export type Database = {
           created_at?: string | null
           created_by: string
           dashboard_preferences?: Json | null
+          fallback_confirmation_minutes?: number | null
           google_sheets_url?: string | null
           id?: string
+          minimum_booking_notice_hours?: number | null
           name: string
           overdue_threshold_minutes?: number | null
           setter_commission_percentage?: number | null
@@ -1304,8 +1308,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           dashboard_preferences?: Json | null
+          fallback_confirmation_minutes?: number | null
           google_sheets_url?: string | null
           id?: string
+          minimum_booking_notice_hours?: number | null
           name?: string
           overdue_threshold_minutes?: number | null
           setter_commission_percentage?: number | null

@@ -81,6 +81,8 @@ export function ConfirmationScheduleSettings({ teamId }: ConfirmationScheduleSet
     { sequence: 3, hours_before: 0.17, label: "10 Minutes Before", displayValue: 10, displayUnit: 'minutes' }
   ]);
   const [overdueThreshold, setOverdueThreshold] = useState(30);
+  const [minimumNoticeHours, setMinimumNoticeHours] = useState(24);
+  const [fallbackConfirmationMinutes, setFallbackConfirmationMinutes] = useState(60);
 
   useEffect(() => {
     loadSettings();
@@ -90,7 +92,7 @@ export function ConfirmationScheduleSettings({ teamId }: ConfirmationScheduleSet
     try {
       const { data, error } = await supabase
         .from('teams')
-        .select('confirmation_schedule, overdue_threshold_minutes')
+        .select('confirmation_schedule, overdue_threshold_minutes, minimum_booking_notice_hours, fallback_confirmation_minutes')
         .eq('id', teamId)
         .single();
       
@@ -107,6 +109,12 @@ export function ConfirmationScheduleSettings({ teamId }: ConfirmationScheduleSet
         }
         if (data.overdue_threshold_minutes) {
           setOverdueThreshold(data.overdue_threshold_minutes);
+        }
+        if (data.minimum_booking_notice_hours !== null && data.minimum_booking_notice_hours !== undefined) {
+          setMinimumNoticeHours(data.minimum_booking_notice_hours);
+        }
+        if (data.fallback_confirmation_minutes !== null && data.fallback_confirmation_minutes !== undefined) {
+          setFallbackConfirmationMinutes(data.fallback_confirmation_minutes);
         }
       }
     } catch (error) {
@@ -130,7 +138,9 @@ export function ConfirmationScheduleSettings({ teamId }: ConfirmationScheduleSet
         .from('teams')
         .update({
           confirmation_schedule: updatedSchedule,
-          overdue_threshold_minutes: overdueThreshold
+          overdue_threshold_minutes: overdueThreshold,
+          minimum_booking_notice_hours: minimumNoticeHours,
+          fallback_confirmation_minutes: fallbackConfirmationMinutes
         })
         .eq('id', teamId);
       
@@ -448,6 +458,64 @@ export function ConfirmationScheduleSettings({ teamId }: ConfirmationScheduleSet
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Last-Minute Booking Fallback */}
+        <div className="space-y-4 pt-4 border-t">
+          <Label className="text-base font-medium">Last-Minute Booking Fallback</Label>
+          <p className="text-sm text-muted-foreground">
+            When appointments are booked too close to the appointment time for your normal schedule to work
+          </p>
+          
+          <div className="space-y-3">
+            <div>
+              <Label>Minimum Booking Notice</Label>
+              <div className="flex gap-2 items-center">
+                <Input 
+                  type="number"
+                  value={minimumNoticeHours}
+                  onChange={(e) => setMinimumNoticeHours(parseFloat(e.target.value))}
+                  className="w-32"
+                  min="1"
+                />
+                <span className="text-sm text-muted-foreground">hours</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                If booked with less than this notice, use fallback confirmation
+              </p>
+            </div>
+            
+            <div>
+              <Label>Fallback Confirmation Time</Label>
+              <div className="flex gap-2 items-center">
+                <Input 
+                  type="number"
+                  value={fallbackConfirmationMinutes}
+                  onChange={(e) => setFallbackConfirmationMinutes(parseInt(e.target.value))}
+                  className="w-32"
+                  min="1"
+                />
+                <span className="text-sm text-muted-foreground">minutes before appointment</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Create task due this many minutes before the appointment (e.g., 30 = half hour, 60 = 1 hour, 120 = 2 hours)
+              </p>
+            </div>
+          </div>
+          
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="text-sm">
+                <strong>Example:</strong> If someone books at 2pm for a 3pm appointment (1 hour notice), 
+                and your minimum notice is 24 hours with fallback of 30 minutes before:
+                <br />
+                → Normal schedule ignored
+                <br />
+                → Task created due at 2:30pm (30 minutes before appointment)
+              </div>
+            </AlertDescription>
+          </Alert>
         </div>
 
         {/* Save Button */}
