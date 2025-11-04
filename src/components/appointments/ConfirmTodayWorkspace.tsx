@@ -74,7 +74,7 @@ export function ConfirmTodayWorkspace({ teamId, userRole }: ConfirmTodayWorkspac
 
       if (error) throw error;
 
-      const unassignedAppts = data?.filter(apt => apt.setter_id === null && apt.closer_id === null) || [];
+      const unassignedAppts = data?.filter(apt => apt.setter_id === null) || [];
       const myAppts = data?.filter(apt => apt.setter_id === user.id) || [];
 
       setUnassigned(unassignedAppts);

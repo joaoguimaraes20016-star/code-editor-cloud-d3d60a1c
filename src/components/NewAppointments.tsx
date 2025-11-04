@@ -422,7 +422,7 @@ export function NewAppointments({ teamId, closerCommissionPct, setterCommissionP
   };
 
   const filteredAppointments = getFilteredByDate(appointments)
-    .filter(apt => apt.setter_id === null && apt.closer_id === null)
+    .filter(apt => apt.setter_id === null)
     .filter(apt => {
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();

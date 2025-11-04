@@ -107,8 +107,8 @@ export function MyClaimed({ teamId, closerCommissionPct, setterCommissionPct, sh
       if (!showAllAppointments) {
         query = query.or(`setter_id.eq.${user.id},closer_id.eq.${user.id}`);
       } else {
-        // For admins/offer owners, show only assigned appointments
-        query = query.or(`setter_id.not.is.null,closer_id.not.is.null`);
+        // For admins/offer owners, show only appointments with assigned setters
+        query = query.not('setter_id', 'is', null);
       }
 
       const { data, error } = await query.order('start_at_utc', { ascending: true });
