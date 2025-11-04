@@ -172,7 +172,7 @@ export function AppointmentsHub({
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="all" className="text-sm md:text-base whitespace-nowrap">All Assigned</TabsTrigger>
+              <TabsTrigger value="all" className="text-sm md:text-base whitespace-nowrap">Assigned</TabsTrigger>
               <TabsTrigger value="pipeline" className="text-sm md:text-base whitespace-nowrap">Team Pipeline</TabsTrigger>
               <TabsTrigger value="stats" className="text-sm md:text-base whitespace-nowrap">My Stats</TabsTrigger>
               <TabsTrigger value="mrr" className="text-sm md:text-base whitespace-nowrap">
