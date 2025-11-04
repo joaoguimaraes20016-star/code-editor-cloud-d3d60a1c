@@ -270,10 +270,10 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
         countQuery = countQuery.not('setter_id', 'is', null);
         dataQuery = dataQuery.not('setter_id', 'is', null);
       }
-      // Default: Show unassigned appointments (setter_id IS null)
+      // Default: Show unassigned appointments (setter_id IS null AND closer_id IS null)
       else {
-        countQuery = countQuery.is('setter_id', null);
-        dataQuery = dataQuery.is('setter_id', null);
+        countQuery = countQuery.is('setter_id', null).is('closer_id', null);
+        dataQuery = dataQuery.is('setter_id', null).is('closer_id', null);
       }
 
       const { count, error: countError } = await countQuery;

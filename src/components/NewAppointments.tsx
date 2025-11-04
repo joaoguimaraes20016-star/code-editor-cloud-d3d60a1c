@@ -67,6 +67,7 @@ interface Appointment {
   lead_email: string;
   status: string;
   closer_name: string | null;
+  closer_id: string | null;
   event_type_uri: string | null;
   event_type_name: string | null;
   setter_id: string | null;
@@ -421,7 +422,7 @@ export function NewAppointments({ teamId, closerCommissionPct, setterCommissionP
   };
 
   const filteredAppointments = getFilteredByDate(appointments)
-    .filter(apt => apt.setter_id === null)
+    .filter(apt => apt.setter_id === null && apt.closer_id === null)
     .filter(apt => {
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();

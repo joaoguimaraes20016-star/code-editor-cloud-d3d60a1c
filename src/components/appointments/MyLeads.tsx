@@ -77,12 +77,15 @@ export function MyLeads({ teamId, currentUserId, onCloseDeal }: MyAppointmentsPr
 
       if (error) throw error;
       
-      // Separate into assigned to me and unassigned
-      const myAppts = (data || []).filter(apt => 
-        apt.setter_id === currentUserId || apt.closer_id === currentUserId
-      );
+      // First identify truly unassigned (no setter AND no closer)
       const unassignedAppts = (data || []).filter(apt => 
-        !apt.setter_id && !apt.closer_id
+        apt.setter_id === null && apt.closer_id === null
+      );
+      
+      // Then get appointments assigned to current user (must have setter OR closer assigned)
+      const myAppts = (data || []).filter(apt => 
+        (apt.setter_id === currentUserId || apt.closer_id === currentUserId) &&
+        (apt.setter_id !== null || apt.closer_id !== null)
       );
       
       setMyAppointments(myAppts);

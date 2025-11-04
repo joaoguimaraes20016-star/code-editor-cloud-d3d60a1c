@@ -347,7 +347,8 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
           assignment_source: 'manual_claim'
         })
         .eq('id', appointmentId)
-        .is('setter_id', null);
+        .is('setter_id', null)
+        .is('closer_id', null);
 
       if (aptError) throw aptError;
 
@@ -435,12 +436,13 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
 
         if (taskError) throw taskError;
 
-        // Update appointment setter if needed
+        // Update appointment setter if needed (only if both setter and closer are unassigned)
         const { error: aptError } = await supabase
           .from('appointments')
           .update({ setter_id: userId })
           .eq('id', appointmentId)
-          .is('setter_id', null);
+          .is('setter_id', null)
+          .is('closer_id', null);
 
         if (aptError) throw aptError;
 

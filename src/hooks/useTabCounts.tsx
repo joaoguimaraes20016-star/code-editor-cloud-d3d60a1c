@@ -116,6 +116,7 @@ export function useTabCounts(teamId: string, userId: string, userRole: string) {
         .select('*', { count: 'exact', head: true })
         .eq('team_id', teamId)
         .is('setter_id', null)
+        .is('closer_id', null)
         .eq('status', 'NEW');
 
       setCounts({
