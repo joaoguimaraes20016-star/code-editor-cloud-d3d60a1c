@@ -260,7 +260,7 @@ serve(async (req) => {
         console.log('Event data received:', JSON.stringify(eventData, null, 2));
 
         if (organizerEmail) {
-          console.log('Organizer details:', { email: organizerEmail, name: organizerName });
+          console.log('🔍 Organizer details:', { email: organizerEmail, name: organizerName });
           
           // Method 1: Try exact email match first
           let profiles = await supabase
@@ -270,9 +270,14 @@ serve(async (req) => {
             .maybeSingle()
             .then(({ data }) => data);
 
+          if (profiles) {
+            console.log(`✓ Exact email match found: ${profiles.full_name} (${profiles.email})`);
+          }
+
           // Method 2: Try partial email match (username part)
           if (!profiles && organizerEmail.includes('@')) {
             const emailUsername = organizerEmail.split('@')[0];
+            console.log(`🔍 Trying partial email match with username: ${emailUsername}`);
             const { data: partialMatches } = await supabase
               .from('profiles')
               .select('id, full_name, email')
@@ -286,6 +291,7 @@ serve(async (req) => {
 
           // Method 3: Try name matching (case-insensitive, partial)
           if (!profiles && organizerName) {
+            console.log(`🔍 Trying name match for: ${organizerName}`);
             const nameParts = organizerName.toLowerCase().split(' ');
             const { data: nameMatches } = await supabase
               .from('profiles')
@@ -293,6 +299,7 @@ serve(async (req) => {
             
             // Find best name match
             if (nameMatches && nameMatches.length > 0) {
+              console.log(`🔍 Found ${nameMatches.length} profiles to check against name`);
               const scored = nameMatches.map(profile => {
                 const profileNameLower = profile.full_name.toLowerCase();
                 const matches = nameParts.filter((part: string) => 
@@ -324,11 +331,43 @@ serve(async (req) => {
               closerName = profiles.full_name;
               console.log(`✓ Assigned meeting host as closer: ${closerName} (${profiles.email}) [${teamMember.role}]`);
             } else {
-              console.log(`✓ Matched organizer but not a team member: ${profiles.full_name} (${profiles.email})`);
+              console.log(`⚠️ Profile matched but not a team member: ${profiles.full_name} (${profiles.email})`);
             }
           } else {
-            console.log('✗ No closer match found');
+            console.log('✗ No profile match found for organizer');
           }
+        }
+      }
+      
+      // FALLBACK: If no closer assigned yet, check if there's only one active closer in the team
+      if (!closerId) {
+        console.log('🔍 No closer assigned yet, checking for fallback assignment...');
+        const { data: teamClosers } = await supabase
+          .from('team_members')
+          .select('user_id, is_active, role')
+          .eq('team_id', teamId)
+          .eq('is_active', true)
+          .in('role', ['closer', 'owner', 'admin']);
+        
+        console.log(`🔍 Found ${teamClosers?.length || 0} potential closers in team`);
+        
+        if (teamClosers && teamClosers.length === 1) {
+          // Only one closer - get their profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('id', teamClosers[0].user_id)
+            .maybeSingle();
+          
+          if (profile) {
+            closerId = profile.id;
+            closerName = profile.full_name;
+            console.log(`✅ FALLBACK: Auto-assigned to sole active closer: ${closerName}`);
+          }
+        } else if (teamClosers && teamClosers.length > 1) {
+          console.log(`⚠️ Multiple closers found (${teamClosers.length}), cannot auto-assign`);
+        } else {
+          console.log('⚠️ No active closers found in team');
         }
       }
     }

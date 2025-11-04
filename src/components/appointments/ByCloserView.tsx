@@ -16,6 +16,7 @@ import { DepositCollectedDialog } from "./DepositCollectedDialog";
 import { useUndoAction } from "@/hooks/useUndoAction";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { BulkAssignCloser } from "./BulkAssignCloser";
 import {
   DndContext,
   DragEndEvent,
@@ -709,8 +710,20 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-br from-accent/10 via-primary/10 to-accent/5 rounded-xl p-6 border border-accent/30">
-        <h3 className="text-xl font-bold">By Closer View</h3>
-        <p className="text-sm text-muted-foreground mt-1">See each closer's pipeline and deals</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-xl font-bold">By Closer View</h3>
+            <p className="text-sm text-muted-foreground mt-1">See each closer's pipeline and deals</p>
+          </div>
+          {selectedCloser && (
+            <BulkAssignCloser
+              teamId={teamId}
+              closerId={selectedCloser}
+              closerName={closerGroups.find(g => g.closerId === selectedCloser)?.closerName || ""}
+              onComplete={() => loadData()}
+            />
+          )}
+        </div>
       </div>
 
       <Tabs value={selectedCloser || undefined} onValueChange={setSelectedCloser}>
