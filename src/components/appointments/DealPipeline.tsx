@@ -106,6 +106,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; appointmentId: string; dealName: string; currentStatus: string | null } | null>(null);
   const [depositDialog, setDepositDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
   const [confirmationTasks, setConfirmationTasks] = useState<Map<string, any>>(new Map());
+  const [allowSetterPipelineUpdates, setAllowSetterPipelineUpdates] = useState(false);
   
   const { trackAction, showUndoToast } = useUndoAction(() => {
     // Refresh appointments after undo
@@ -120,14 +121,26 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
   const loadStages = async () => {
     try {
-      const { data, error } = await supabase
-        .from("team_pipeline_stages")
-        .select("*")
-        .eq("team_id", teamId)
-        .order("order_index");
+      // Load stages and team settings in parallel
+      const [stagesResult, teamSettingsResult] = await Promise.all([
+        supabase
+          .from("team_pipeline_stages")
+          .select("*")
+          .eq("team_id", teamId)
+          .order("order_index"),
+        supabase
+          .from("teams")
+          .select("allow_setter_pipeline_updates")
+          .eq("id", teamId)
+          .single()
+      ]);
 
-      if (error) throw error;
-      setStages(data || []);
+      if (stagesResult.error) throw stagesResult.error;
+      setStages(stagesResult.data || []);
+      
+      if (teamSettingsResult.data) {
+        setAllowSetterPipelineUpdates(teamSettingsResult.data.allow_setter_pipeline_updates ?? false);
+      }
     } catch (error) {
       console.error("Error loading stages:", error);
       toast.error("Failed to load stages");
@@ -323,6 +336,12 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     setActiveId(null);
 
     if (!over) return;
+
+    // Check if setter is allowed to move deals in pipeline
+    if (userRole === 'setter' && !allowSetterPipelineUpdates) {
+      toast.error("Setters are not allowed to move leads in the pipeline. Contact your admin to enable this feature.");
+      return;
+    }
 
     const appointmentId = active.id as string;
     const overId = over.id as string;
@@ -704,6 +723,12 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   };
 
   const handleMoveTo = async (appointmentId: string, stage: string) => {
+    // Check if setter is allowed to move deals in pipeline
+    if (userRole === 'setter' && !allowSetterPipelineUpdates) {
+      toast.error("Setters are not allowed to move leads in the pipeline. Contact your admin to enable this feature.");
+      return;
+    }
+
     const appointment = appointments.find((a) => a.id === appointmentId);
     if (!appointment) return;
 
@@ -1244,6 +1269,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                             onChangeStatus={handleChangeStatus}
                             onClearDealData={handleClearDealData}
                             userRole={userRole}
+                            allowSetterPipelineUpdates={allowSetterPipelineUpdates}
                           />
                         ))
                       )}
@@ -1300,6 +1326,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                                 onChangeStatus={handleChangeStatus}
                                 onClearDealData={handleClearDealData}
                                 userRole={userRole}
+                                allowSetterPipelineUpdates={allowSetterPipelineUpdates}
                               />
                             ))
                           )}
@@ -1329,6 +1356,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                     onChangeStatus={handleChangeStatus}
                     onClearDealData={handleClearDealData}
                     userRole={userRole}
+                    allowSetterPipelineUpdates={allowSetterPipelineUpdates}
                   />
                 </div>
               ) : null;

@@ -18,6 +18,7 @@ export function WorkflowSettings({ teamId }: WorkflowSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [autoCreateTasks, setAutoCreateTasks] = useState(true);
+  const [allowSetterPipelineUpdates, setAllowSetterPipelineUpdates] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -27,13 +28,14 @@ export function WorkflowSettings({ teamId }: WorkflowSettingsProps) {
     try {
       const { data, error } = await supabase
         .from("teams")
-        .select("auto_create_tasks")
+        .select("auto_create_tasks, allow_setter_pipeline_updates")
         .eq("id", teamId)
         .single();
 
       if (error) throw error;
       if (data) {
         setAutoCreateTasks(data.auto_create_tasks ?? true);
+        setAllowSetterPipelineUpdates(data.allow_setter_pipeline_updates ?? false);
       }
     } catch (error: any) {
       toast({
@@ -52,7 +54,10 @@ export function WorkflowSettings({ teamId }: WorkflowSettingsProps) {
     try {
       const { error } = await supabase
         .from("teams")
-        .update({ auto_create_tasks: autoCreateTasks })
+        .update({ 
+          auto_create_tasks: autoCreateTasks,
+          allow_setter_pipeline_updates: allowSetterPipelineUpdates
+        })
         .eq("id", teamId);
 
       if (error) throw error;
@@ -111,6 +116,23 @@ export function WorkflowSettings({ teamId }: WorkflowSettingsProps) {
               id="auto-tasks"
               checked={autoCreateTasks}
               onCheckedChange={setAutoCreateTasks}
+            />
+          </div>
+
+          <div className="flex items-center justify-between space-x-4 pt-4 border-t">
+            <div className="flex-1 space-y-1">
+              <Label htmlFor="setter-pipeline" className="text-base font-medium">
+                Allow setters to move leads in pipeline
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                When enabled, setters can drag and drop leads between pipeline stages. 
+                Disable this to restrict pipeline management to closers and admins only.
+              </p>
+            </div>
+            <Switch
+              id="setter-pipeline"
+              checked={allowSetterPipelineUpdates}
+              onCheckedChange={setAllowSetterPipelineUpdates}
             />
           </div>
 

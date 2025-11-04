@@ -48,12 +48,17 @@ interface DealCardProps {
   onChangeStatus?: (id: string, currentStatus: string | null, dealName: string) => void;
   onClearDealData?: (id: string) => void;
   userRole?: string;
+  allowSetterPipelineUpdates?: boolean;
 }
 
-export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDeal, onMoveTo, onDelete, onUndo, onChangeStatus, onClearDealData, userRole }: DealCardProps) {
+export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDeal, onMoveTo, onDelete, onUndo, onChangeStatus, onClearDealData, userRole, allowSetterPipelineUpdates }: DealCardProps) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showRescheduleHistory, setShowRescheduleHistory] = useState(false);
+  
+  // Determine if the user can drag this card
+  const canDrag = !(userRole === 'setter' && !allowSetterPipelineUpdates);
+  
   const {
     attributes,
     listeners,
@@ -61,7 +66,7 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
     transform,
     transition,
     isDragging,
-  } = useSortable({ id });
+  } = useSortable({ id, disabled: !canDrag });
 
   const canDelete = userRole === 'admin' || userRole === 'offer_owner';
 
@@ -99,13 +104,15 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="relative z-10">
         <div className="flex items-start justify-between gap-2 mb-3">
-          <div 
-            {...attributes} 
-            {...listeners} 
-            className="opacity-0 group-hover:opacity-100 cursor-grab flex-shrink-0 transition-opacity"
-          >
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
+          {canDrag && (
+            <div 
+              {...attributes} 
+              {...listeners} 
+              className="opacity-0 group-hover:opacity-100 cursor-grab flex-shrink-0 transition-opacity"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )}
           
           {hasRevenue && (
             <div className="flex-1 space-y-2">
@@ -165,9 +172,11 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
                 <DropdownMenuItem onClick={() => onCloseDeal(appointment)}>
                   Close Deal
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onMoveTo(id, 'lost')}>
-                  Mark as Lost
-                </DropdownMenuItem>
+                {canDrag && (
+                  <DropdownMenuItem onClick={() => onMoveTo(id, 'lost')}>
+                    Mark as Lost
+                  </DropdownMenuItem>
+                )}
                 {onChangeStatus && (
                   <DropdownMenuItem onClick={() => onChangeStatus(id, appointment.status, appointment.lead_name)}>
                     Change Status

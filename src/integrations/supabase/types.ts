@@ -1252,6 +1252,7 @@ export type Database = {
       }
       teams: {
         Row: {
+          allow_setter_pipeline_updates: boolean
           auto_create_tasks: boolean | null
           calendly_access_token: string | null
           calendly_event_types: string[] | null
@@ -1274,6 +1275,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          allow_setter_pipeline_updates?: boolean
           auto_create_tasks?: boolean | null
           calendly_access_token?: string | null
           calendly_event_types?: string[] | null
@@ -1296,6 +1298,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          allow_setter_pipeline_updates?: boolean
           auto_create_tasks?: boolean | null
           calendly_access_token?: string | null
           calendly_event_types?: string[] | null
