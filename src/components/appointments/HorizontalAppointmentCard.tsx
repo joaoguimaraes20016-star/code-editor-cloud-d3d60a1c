@@ -100,7 +100,12 @@ export function HorizontalAppointmentCard({
   };
 
   return (
-    <Card className={`p-4 hover:shadow-md transition-all duration-200 border-l-4 ${statusStyle.border} group`}>
+    <Card className={cn(
+      "p-4 hover:shadow-md transition-all duration-200 border-l-4 group",
+      isTaskOverdue 
+        ? "border-red-600 bg-red-50 dark:bg-red-950/30" 
+        : statusStyle.border
+    )}>
       {/* Setter View ONLY: Show confirmation task */}
       {confirmationTask && userRole === 'setter' && (
         <div className="mb-4 pb-4 border-b">

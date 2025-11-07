@@ -382,15 +382,25 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
   const renderTaskCard = (task: UnifiedTask, isUpcoming: boolean = false) => {
     const apt = appointments.find(a => a.id === task.appointmentId);
     const isMRRTask = task.scheduleId != null;
+    
+    // Check if task is overdue
+    const now = new Date();
+    const appointmentTime = task.appointmentDate ? new Date(task.appointmentDate) : null;
+    const overdueThresholdMs = (teamOverdueThreshold || 30) * 60 * 1000;
+    const appointmentDeadline = appointmentTime ? new Date(appointmentTime.getTime() + overdueThresholdMs) : null;
+    const isOverdue = appointmentDeadline ? now > appointmentDeadline : false;
+    
     const baseTaskColor = isMRRTask ? 'border-emerald-200 dark:border-emerald-900'
       : task.type === 'call_confirmation' ? 'border-blue-200 dark:border-blue-900' 
       : task.type === 'follow_up' ? 'border-purple-200 dark:border-purple-900'
       : task.type === 'reschedule' ? 'border-amber-200 dark:border-amber-900'
       : '';
 
-    const taskColor = isUpcoming 
-      ? `${baseTaskColor} border-l-4 border-l-orange-500` 
-      : baseTaskColor;
+    const taskColor = isOverdue
+      ? 'border-red-600 bg-red-50 dark:bg-red-950/30'
+      : isUpcoming 
+        ? `${baseTaskColor} border-l-4 border-l-orange-500` 
+        : baseTaskColor;
 
     // For MRR tasks, use the lead name from the task itself
     const displayName = isMRRTask ? task.leadName : (apt?.lead_name || task.leadName);
