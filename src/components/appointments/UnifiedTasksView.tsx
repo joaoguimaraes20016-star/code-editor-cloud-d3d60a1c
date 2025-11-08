@@ -353,7 +353,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
     return true;
   });
 
-  // Group tasks by date - separate completed from active
+  // Group tasks by date - separate completed from active tasks
   const completedTasks = filteredTasks.filter(task => task.status === 'completed');
   const activeTasks = filteredTasks.filter(task => task.status !== 'completed');
   
