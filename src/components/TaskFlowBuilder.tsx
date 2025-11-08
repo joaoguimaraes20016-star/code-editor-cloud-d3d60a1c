@@ -7,8 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { GripVertical, Plus, Trash2, Clock, User, UserCheck, XCircle, Shield, Crown } from "lucide-react";
+import { GripVertical, Plus, Trash2, Clock, User, UserCheck, XCircle, Shield, Crown, Info } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
@@ -134,22 +141,35 @@ function ConfirmationCard({
             />
 
             {/* Role Select */}
-            <Select
-              value={confirmation.assigned_role}
-              onValueChange={(value) => onUpdate(index, "assigned_role", value)}
-              disabled={!confirmation.enabled}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="setter">Setter</SelectItem>
-                    <SelectItem value="closer">Closer</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="offer_owner">Offer Owner</SelectItem>
-                    <SelectItem value="off">Off</SelectItem>
-                  </SelectContent>
-            </Select>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Select
+                      value={confirmation.assigned_role}
+                      onValueChange={(value) => onUpdate(index, "assigned_role", value)}
+                      disabled={!confirmation.enabled}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="setter">Setter</SelectItem>
+                        <SelectItem value="closer">Closer</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="offer_owner">Offer Owner</SelectItem>
+                        <SelectItem value="off">Off</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">
+                    Select which role should receive this confirmation task. The system automatically distributes tasks among active team members with that role.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             {/* Role Badge */}
             {getRoleBadge(confirmation.assigned_role)}
@@ -396,6 +416,12 @@ export function TaskFlowBuilder({ teamId }: TaskFlowBuilderProps) {
           <CardDescription>
             Configure when confirmations happen and who handles them. Drag to reorder.
           </CardDescription>
+          <Alert className="mt-4">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Tasks are automatically assigned using round-robin distribution to team members with the fewest pending tasks. Setters and Closers must be in rotation, while Admin and Offer Owner roles are always included.
+            </AlertDescription>
+          </Alert>
         </CardHeader>
         <CardContent className="space-y-3">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -427,6 +453,12 @@ export function TaskFlowBuilder({ teamId }: TaskFlowBuilderProps) {
           <CardDescription>
             Set default role assignments for other task types
           </CardDescription>
+          <Alert className="mt-4">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              These settings determine which role receives follow-up, reschedule, and manually created tasks by default.
+            </AlertDescription>
+          </Alert>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
