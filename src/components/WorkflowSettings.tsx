@@ -7,8 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserFriendlyError } from "@/lib/errorUtils";
 import { Loader2 } from "lucide-react";
-import { ConfirmationScheduleSettings } from "@/components/ConfirmationScheduleSettings";
-import { TaskRoutingSettings } from "@/components/TaskRoutingSettings";
+import { TaskFlowBuilder } from "./TaskFlowBuilder";
 
 interface WorkflowSettingsProps {
   teamId: string;
@@ -146,9 +145,7 @@ export function WorkflowSettings({ teamId }: WorkflowSettingsProps) {
         </CardContent>
       </Card>
 
-      <TaskRoutingSettings teamId={teamId} />
-
-      <ConfirmationScheduleSettings teamId={teamId} />
+      <TaskFlowBuilder teamId={teamId} />
     </div>
   );
 }

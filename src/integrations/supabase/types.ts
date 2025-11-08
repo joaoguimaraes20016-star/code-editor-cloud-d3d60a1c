@@ -1267,12 +1267,12 @@ export type Database = {
           calendly_token_expires_at: string | null
           calendly_webhook_id: string | null
           closer_commission_percentage: number | null
-          confirmation_routing_mode: string | null
+          confirmation_flow_config: Json | null
           confirmation_schedule: Json | null
-          confirmation_setter_count: number | null
           created_at: string | null
           created_by: string
           dashboard_preferences: Json | null
+          default_task_routing: Json | null
           fallback_confirmation_minutes: number | null
           google_sheets_url: string | null
           id: string
@@ -1294,12 +1294,12 @@ export type Database = {
           calendly_token_expires_at?: string | null
           calendly_webhook_id?: string | null
           closer_commission_percentage?: number | null
-          confirmation_routing_mode?: string | null
+          confirmation_flow_config?: Json | null
           confirmation_schedule?: Json | null
-          confirmation_setter_count?: number | null
           created_at?: string | null
           created_by: string
           dashboard_preferences?: Json | null
+          default_task_routing?: Json | null
           fallback_confirmation_minutes?: number | null
           google_sheets_url?: string | null
           id?: string
@@ -1321,12 +1321,12 @@ export type Database = {
           calendly_token_expires_at?: string | null
           calendly_webhook_id?: string | null
           closer_commission_percentage?: number | null
-          confirmation_routing_mode?: string | null
+          confirmation_flow_config?: Json | null
           confirmation_schedule?: Json | null
-          confirmation_setter_count?: number | null
           created_at?: string | null
           created_by?: string
           dashboard_preferences?: Json | null
+          default_task_routing?: Json | null
           fallback_confirmation_minutes?: number | null
           google_sheets_url?: string | null
           id?: string
