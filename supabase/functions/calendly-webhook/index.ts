@@ -374,40 +374,41 @@ serve(async (req) => {
 
     // Handle different event types
     if (event === 'invitee.created') {
-      // Fetch event type name from Calendly API
-      let eventTypeName = null;
-      if (eventTypeUri && accessToken) {
-        try {
-          const eventTypeResponse = await fetch(eventTypeUri, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          });
-          if (eventTypeResponse.ok) {
-            const eventTypeData = await eventTypeResponse.json();
-            eventTypeName = eventTypeData.resource?.name;
-            console.log(`Event type: ${eventTypeName}`);
+      try {
+        // Fetch event type name from Calendly API
+        let eventTypeName = null;
+        if (eventTypeUri && accessToken) {
+          try {
+            const eventTypeResponse = await fetch(eventTypeUri, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            if (eventTypeResponse.ok) {
+              const eventTypeData = await eventTypeResponse.json();
+              eventTypeName = eventTypeData.resource?.name;
+              console.log(`Event type: ${eventTypeName}`);
+            }
+          } catch (error) {
+            console.warn('Failed to fetch event type name:', error);
           }
-        } catch (error) {
-          console.warn('Failed to fetch event type name:', error);
         }
-      }
 
-      // Prepare appointment data with optional auto-assignment
-      const appointmentData: any = {
-        lead_name: leadName,
-        lead_email: leadEmail,
-        lead_phone: leadPhone,
-        start_at_utc: startTime,
-        closer_id: closerId,
-        closer_name: closerName,
-        status: 'NEW',
-        team_id: teamId,
-        event_type_uri: eventTypeUri,
-        event_type_name: eventTypeName,
-        pipeline_stage: 'booked', // Auto-assign to Appointment Booked stage
-      };
+        // Prepare appointment data with optional auto-assignment
+        const appointmentData: any = {
+          lead_name: leadName,
+          lead_email: leadEmail,
+          lead_phone: leadPhone,
+          start_at_utc: startTime,
+          closer_id: closerId,
+          closer_name: closerName,
+          status: 'NEW',
+          team_id: teamId,
+          event_type_uri: eventTypeUri,
+          event_type_name: eventTypeName,
+          pipeline_stage: 'booked', // Auto-assign to Appointment Booked stage
+        };
 
       // Fetch full invitee details for auto-assignment and Calendly URLs
       let rescheduleUrl = null;
@@ -658,6 +659,52 @@ serve(async (req) => {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+      
+      } catch (appointmentCreationError: any) {
+        // CRITICAL ERROR SAFETY NET: Log and return 200 to prevent Calendly retries
+        console.error('[SAFETY-NET] ❌ Appointment creation failed with error:', appointmentCreationError);
+        
+        try {
+          // Log error for admin visibility
+          await supabase.functions.invoke('log-error', {
+            body: {
+              team_id: teamId,
+              error_type: 'webhook_appointment_creation_fatal',
+              error_message: appointmentCreationError.message || 'Unknown fatal error',
+              error_context: {
+                event,
+                leadName,
+                leadEmail,
+                startTime,
+                error: {
+                  message: appointmentCreationError.message,
+                  stack: appointmentCreationError.stack,
+                  code: appointmentCreationError.code
+                }
+              }
+            }
+          });
+          
+          await logWebhookEvent(supabase, teamId, event, 'error', { 
+            error: 'Fatal appointment creation error',
+            details: appointmentCreationError.message 
+          });
+        } catch (logErr) {
+          console.error('[SAFETY-NET] Failed to log fatal error:', logErr);
+        }
+        
+        // Return 200 OK to Calendly to prevent infinite retries
+        return new Response(
+          JSON.stringify({ 
+            acknowledged: true, 
+            error: 'Internal error - logged for admin review' 
+          }), 
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
 
     } else if (event === 'invitee.canceled') {
       console.log('[CANCEL] Processing cancellation event');

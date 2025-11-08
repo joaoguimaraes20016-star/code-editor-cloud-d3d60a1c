@@ -31,7 +31,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Trash2, Users, DollarSign, Workflow, Link2, AlertTriangle, Settings2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Users, DollarSign, Workflow, Link2, AlertTriangle, Settings2, Activity } from 'lucide-react';
 import { CalendlyConfig } from '@/components/CalendlyConfig';
 import { SetterBookingLinks } from '@/components/SetterBookingLinks';
 import { CommissionSettings } from '@/components/CommissionSettings';
@@ -41,6 +41,8 @@ import { CleanupDuplicateSales } from '@/components/CleanupDuplicateSales';
 import { BackfillRescheduleUrls } from '@/components/BackfillRescheduleUrls';
 import { WorkflowSettings } from '@/components/WorkflowSettings';
 import { FollowUpSettings } from '@/components/FollowUpSettings';
+import { SystemMonitoring } from '@/components/SystemMonitoring';
+import { DataRecoveryPanel } from '@/components/DataRecoveryPanel';
 import { getUserFriendlyError } from '@/lib/errorUtils';
 
 interface TeamMember {
@@ -376,7 +378,7 @@ export default function TeamSettings() {
         {/* Admin View - Tabbed Interface */}
         {(isAdmin || role === 'offer_owner' || role === 'admin' || role === 'owner' || isSuperAdmin) ? (
           <Tabs defaultValue="team" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
               <TabsTrigger value="team" className="gap-2">
                 <Users className="h-4 w-4" />
                 Team
@@ -392,6 +394,10 @@ export default function TeamSettings() {
               <TabsTrigger value="integrations" className="gap-2">
                 <Link2 className="h-4 w-4" />
                 Integrations
+              </TabsTrigger>
+              <TabsTrigger value="monitoring" className="gap-2">
+                <Activity className="h-4 w-4" />
+                Monitoring
               </TabsTrigger>
               <TabsTrigger value="danger" className="gap-2 text-destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -586,6 +592,12 @@ export default function TeamSettings() {
                   return null;
                 }
               })()}
+            </TabsContent>
+
+            {/* Monitoring Tab */}
+            <TabsContent value="monitoring" className="space-y-6">
+              <SystemMonitoring teamId={teamId!} />
+              <DataRecoveryPanel teamId={teamId!} />
             </TabsContent>
 
             {/* Danger Zone Tab */}

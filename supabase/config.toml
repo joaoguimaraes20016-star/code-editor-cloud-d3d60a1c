@@ -38,3 +38,9 @@ verify_jwt = true
 
 [functions.create-client-account]
 verify_jwt = false
+
+[functions.health-check]
+verify_jwt = true
+
+[functions.recover-appointments]
+verify_jwt = true
