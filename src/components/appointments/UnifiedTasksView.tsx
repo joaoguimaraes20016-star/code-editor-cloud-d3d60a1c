@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RescheduleWithLinkDialog } from './RescheduleWithLinkDialog';
+import { FollowUpDialog } from './FollowUpDialog';
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/hooks/useAuth';
@@ -65,6 +66,12 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
   const [detailView, setDetailView] = useState<{
     open: boolean;
     task: any;
+  } | null>(null);
+  const [followUpDialog, setFollowUpDialog] = useState<{
+    open: boolean;
+    appointmentId: string;
+    taskId: string;
+    dealName: string;
   } | null>(null);
 
   useEffect(() => {
@@ -337,29 +344,56 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
   };
 
   const handleNoShow = async (taskId: string, appointmentId: string) => {
+    const apt = appointments.find(a => a.id === appointmentId);
+    if (!apt) return;
+
+    setFollowUpDialog({
+      open: true,
+      appointmentId,
+      taskId,
+      dealName: apt.lead_name
+    });
+  };
+
+  const handleFollowUpConfirm = async (followUpDate: Date, reason: string) => {
+    if (!followUpDialog) return;
+
     try {
-      const { error: taskError } = await supabase
-        .from('confirmation_tasks')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', taskId);
-
-      if (taskError) throw taskError;
-
-      const { error: aptError } = await supabase
+      // Update appointment
+      const { error } = await supabase
         .from('appointments')
-        .update({ status: 'NO_SHOW' })
-        .eq('id', appointmentId);
+        .update({
+          status: 'CANCELLED',
+          pipeline_stage: 'no_show',
+          retarget_date: format(followUpDate, "yyyy-MM-dd"),
+          retarget_reason: reason
+        })
+        .eq('id', followUpDialog.appointmentId);
 
-      if (aptError) throw aptError;
+      if (error) throw error;
 
-      toast.success('Marked as no-show');
+      // Cleanup old confirmation tasks
+      await supabase.rpc('cleanup_confirmation_tasks', {
+        p_appointment_id: followUpDialog.appointmentId,
+        p_reason: 'No-show with follow-up scheduled'
+      });
+
+      // Create new follow-up task
+      await supabase.rpc("create_task_with_assignment", {
+        p_team_id: teamId,
+        p_appointment_id: followUpDialog.appointmentId,
+        p_task_type: "follow_up",
+        p_follow_up_date: format(followUpDate, "yyyy-MM-dd"),
+        p_follow_up_reason: reason,
+        p_reschedule_date: null
+      });
+
+      toast.success("Follow-up scheduled successfully");
+      setFollowUpDialog(null);
       loadData();
-    } catch (error) {
-      console.error('Error marking no-show:', error);
-      toast.error('Failed to mark as no-show');
+    } catch (error: any) {
+      console.error("Error scheduling follow-up:", error);
+      toast.error(error.message || "Failed to schedule follow-up");
     }
   };
 
@@ -997,6 +1031,18 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Follow-Up Dialog */}
+      {followUpDialog && (
+        <FollowUpDialog
+          open={followUpDialog.open}
+          onOpenChange={(open) => !open && setFollowUpDialog(null)}
+          onConfirm={handleFollowUpConfirm}
+          dealName={followUpDialog.dealName}
+          stage="no_show"
+          teamId={teamId}
+        />
+      )}
     </div>
   );
 }
