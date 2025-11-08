@@ -463,6 +463,7 @@ export type Database = {
           follow_up_sequence: number | null
           id: string
           is_overdue: boolean | null
+          pipeline_stage: string | null
           required_confirmations: number | null
           reschedule_date: string | null
           routing_mode: string | null
@@ -488,6 +489,7 @@ export type Database = {
           follow_up_sequence?: number | null
           id?: string
           is_overdue?: boolean | null
+          pipeline_stage?: string | null
           required_confirmations?: number | null
           reschedule_date?: string | null
           routing_mode?: string | null
@@ -513,6 +515,7 @@ export type Database = {
           follow_up_sequence?: number | null
           id?: string
           is_overdue?: boolean | null
+          pipeline_stage?: string | null
           required_confirmations?: number | null
           reschedule_date?: string | null
           routing_mode?: string | null

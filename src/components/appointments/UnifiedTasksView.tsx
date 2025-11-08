@@ -36,6 +36,9 @@ interface UnifiedTask {
   followUpReason?: string;
   mrrAmount?: number;
   follow_up_sequence?: number;
+  total_follow_ups?: number;
+  pipeline_stage?: string;
+  is_overdue?: boolean;
 }
 
 export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
@@ -132,6 +135,22 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
         setTeamOverdueThreshold(teamData.overdue_threshold_minutes);
       }
 
+      // Load follow-up config to get total counts per stage
+      const { data: followUpConfigs } = await supabase
+        .from('team_follow_up_flow_config')
+        .select('pipeline_stage, sequence')
+        .eq('team_id', teamId)
+        .eq('enabled', true);
+
+      // Create map of total follow-ups per stage
+      const totalsByStage = (followUpConfigs || []).reduce((acc, config) => {
+        acc[config.pipeline_stage] = Math.max(
+          acc[config.pipeline_stage] || 0,
+          config.sequence
+        );
+        return acc;
+      }, {} as Record<string, number>);
+
       // Fetch tasks based on status filter
       const statusFilter = filterStatus === 'all' 
         ? ['pending', 'in_progress', 'completed'] 
@@ -199,6 +218,9 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
             appointmentId: task.appointment_id,
             followUpReason: task.follow_up_reason,
             follow_up_sequence: task.follow_up_sequence || 1,
+            total_follow_ups: task.pipeline_stage ? totalsByStage[task.pipeline_stage] : undefined,
+            pipeline_stage: task.pipeline_stage,
+            is_overdue: task.is_overdue,
           });
         });
       }
@@ -287,13 +309,23 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
           </Badge>
         );
       case 'follow_up':
-        const sequenceLabel = task.follow_up_sequence 
-          ? `${task.follow_up_sequence}${task.follow_up_sequence === 1 ? 'st' : task.follow_up_sequence === 2 ? 'nd' : task.follow_up_sequence === 3 ? 'rd' : 'th'} Follow-Up`
-          : 'Follow-Up';
+        const current = task.follow_up_sequence || 1;
+        const total = task.total_follow_ups || 1;
+        const isOverdue = task.is_overdue;
+        
+        const label = isOverdue 
+          ? `⚠️ Overdue ${current}/${total}`
+          : `Follow-Up ${current}/${total}`;
+        
         return (
-          <Badge className="text-xs bg-purple-500 hover:bg-purple-600 text-white border-0">
+          <Badge className={cn(
+            "text-xs border-0",
+            isOverdue 
+              ? "bg-red-500 hover:bg-red-600 text-white animate-pulse" 
+              : "bg-purple-500 hover:bg-purple-600 text-white"
+          )}>
             <RefreshCw className="h-3 w-3 mr-1" />
-            {sequenceLabel}
+            {label}
           </Badge>
         );
       case 'reschedule':
@@ -384,6 +416,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
       });
 
       // Create new follow-up task
+      const appointment = appointments.find(a => a.id === followUpDialog.appointmentId);
       await supabase.rpc("create_task_with_assignment", {
         p_team_id: teamId,
         p_appointment_id: followUpDialog.appointmentId,
@@ -392,6 +425,17 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
         p_follow_up_reason: reason,
         p_reschedule_date: null
       });
+
+      // Also manually insert with pipeline_stage for the first follow-up
+      const { error: insertError } = await supabase
+        .from('confirmation_tasks')
+        .update({
+          pipeline_stage: 'no_show',
+          follow_up_sequence: 1
+        })
+        .eq('appointment_id', followUpDialog.appointmentId)
+        .eq('task_type', 'follow_up')
+        .is('pipeline_stage', null);
 
       toast.success("Follow-up scheduled successfully");
       setFollowUpDialog(null);

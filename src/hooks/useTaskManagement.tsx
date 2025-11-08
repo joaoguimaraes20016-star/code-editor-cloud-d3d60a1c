@@ -28,6 +28,9 @@ interface Task {
   is_overdue?: boolean;
   assigned_role?: string | null;
   routing_mode?: string | null;
+  pipeline_stage?: string;
+  follow_up_sequence?: number;
+  total_follow_ups?: number;
 }
 
 export function useTaskManagement(teamId: string, userId: string, userRole?: string) {
@@ -51,6 +54,22 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
         .single();
 
       const savedEventTypes = teamData?.calendly_event_types || [];
+
+      // Load follow-up config to get total counts per stage
+      const { data: followUpConfigs } = await supabase
+        .from('team_follow_up_flow_config')
+        .select('pipeline_stage, sequence')
+        .eq('team_id', teamId)
+        .eq('enabled', true);
+
+      // Create map of total follow-ups per stage
+      const totalsByStage = (followUpConfigs || []).reduce((acc, config) => {
+        acc[config.pipeline_stage] = Math.max(
+          acc[config.pipeline_stage] || 0,
+          config.sequence
+        );
+        return acc;
+      }, {} as Record<string, number>);
 
       // Load confirmation tasks (including those awaiting reschedule)
       const { data: tasks, error } = await supabase
@@ -89,6 +108,12 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
         .order('due_date', { ascending: true });
 
       if (mrrError) throw mrrError;
+
+      // Add total_follow_ups to all tasks
+      const tasksWithTotals = (tasks || []).map(task => ({
+        ...task,
+        total_follow_ups: task.pipeline_stage ? totalsByStage[task.pipeline_stage] : undefined
+      }));
 
       // Deduplicate MRR tasks by client email
       const mrrTasksByClient = new Map();
@@ -154,7 +179,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
       }));
 
       // Filter tasks to only include appointments with event types that match saved filter
-      let filteredTasks = tasks || [];
+      let filteredTasks = tasksWithTotals || [];
       if (savedEventTypes.length > 0) {
         filteredTasks = filteredTasks.filter(task => {
           const eventTypeUri = task.appointment?.event_type_uri;
