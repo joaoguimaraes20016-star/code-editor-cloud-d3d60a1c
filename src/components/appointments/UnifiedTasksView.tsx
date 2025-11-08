@@ -416,7 +416,6 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
       });
 
       // Create new follow-up task
-      const appointment = appointments.find(a => a.id === followUpDialog.appointmentId);
       await supabase.rpc("create_task_with_assignment", {
         p_team_id: teamId,
         p_appointment_id: followUpDialog.appointmentId,
@@ -425,17 +424,6 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
         p_follow_up_reason: reason,
         p_reschedule_date: null
       });
-
-      // Also manually insert with pipeline_stage for the first follow-up
-      const { error: insertError } = await supabase
-        .from('confirmation_tasks')
-        .update({
-          pipeline_stage: 'no_show',
-          follow_up_sequence: 1
-        })
-        .eq('appointment_id', followUpDialog.appointmentId)
-        .eq('task_type', 'follow_up')
-        .is('pipeline_stage', null);
 
       toast.success("Follow-up scheduled successfully");
       setFollowUpDialog(null);
