@@ -600,13 +600,42 @@ serve(async (req) => {
         .single();
 
       if (insertError) {
-        console.error('Error creating appointment:', insertError);
+        console.error('[CREATE] ❌ Error creating appointment:', insertError);
+        console.error('[CREATE] Error details:', JSON.stringify(insertError, null, 2));
+        console.error('[CREATE] Attempted insert data:', JSON.stringify(appointmentToInsert, null, 2));
+        
+        // Log to error_logs table for tracking
+        try {
+          await supabase.functions.invoke('log-error', {
+            body: {
+              team_id: teamId,
+              error_type: 'webhook_appointment_creation',
+              error_message: insertError.message || 'Unknown error',
+              error_context: {
+                event,
+                appointmentData: appointmentToInsert,
+                error: insertError
+              }
+            }
+          });
+        } catch (logErr) {
+          console.error('[CREATE] Failed to log error:', logErr);
+        }
+        
         await logWebhookEvent(supabase, teamId, event, 'error', { error: insertError });
-        return new Response(JSON.stringify({ error: 'Failed to process appointment' }), {
+        return new Response(JSON.stringify({ error: 'Failed to process appointment', details: insertError }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+
+      console.log('[CREATE] ✅ Appointment created successfully:', insertedAppointment?.id);
+      console.log('[CREATE] Appointment details:', {
+        id: insertedAppointment?.id,
+        lead_name: insertedAppointment?.lead_name,
+        start_at_utc: insertedAppointment?.start_at_utc,
+        status: insertedAppointment?.status
+      });
 
       console.log('Created appointment:', insertedAppointment?.id);
       
