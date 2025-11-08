@@ -186,41 +186,44 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
   };
 
   return (
-    <div className="space-y-12 max-w-7xl">
+    <div className="space-y-6 sm:space-y-8 md:space-y-12 max-w-7xl w-full">
       {/* Welcome Banner with Stats */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/30 via-primary/20 to-primary/10 border border-primary/40 p-4 sm:p-8 md:p-12 lg:p-16 shadow-xl shadow-primary/10">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:radial-gradient(white,transparent_85%)]" />
-        <div className="relative z-10 flex items-start justify-between">
+        <div className="relative z-10 flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-0">
           <div className="flex-1">
             {isEditingName ? (
-              <div className="flex items-center gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <Input
                   value={editedName}
                   onChange={(e) => setEditedName(e.target.value)}
-                  className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold h-auto py-4 bg-background/50 border-primary/40"
+                  className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold h-auto py-3 sm:py-4 bg-background/50 border-primary/40 w-full"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSaveName();
                     if (e.key === 'Escape') handleCancelEdit();
                   }}
                 />
-                <Button
-                  onClick={handleSaveName}
-                  size="lg"
-                  className="bg-green-500 hover:bg-green-600"
-                >
-                  <Check className="h-6 w-6" />
-                </Button>
-                <Button
-                  onClick={handleCancelEdit}
-                  size="lg"
-                  variant="outline"
-                >
-                  <X className="h-6 w-6" />
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button
+                    onClick={handleSaveName}
+                    size="lg"
+                    className="bg-green-500 hover:bg-green-600 flex-1 sm:flex-none"
+                  >
+                    <Check className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </Button>
+                  <Button
+                    onClick={handleCancelEdit}
+                    size="lg"
+                    variant="outline"
+                    className="flex-1 sm:flex-none"
+                  >
+                    <X className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </Button>
+                </div>
               </div>
             ) : (
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 flex items-center gap-4">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 flex flex-wrap items-center gap-2 sm:gap-4">
                 <span className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                   {teamName}
                 </span>
@@ -236,17 +239,17 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                 )}
               </h2>
             )}
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground mb-6">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground mb-4 sm:mb-6">
               Everything you need to succeed, all in one place
             </p>
-            <div className="flex items-center gap-8 mt-8">
-              <div className="flex items-center gap-3 px-6 py-4 rounded-full bg-background/50 backdrop-blur-sm border border-border/50">
-                <FileText className="h-6 w-6 text-primary" />
-                <span className="text-sm sm:text-base md:text-lg font-medium">{assets.length} Assets</span>
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 md:gap-8 mt-4 sm:mt-6 md:mt-8">
+              <div className="flex items-center gap-2 sm:gap-3 px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4 rounded-full bg-background/50 backdrop-blur-sm border border-border/50">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-primary" />
+                <span className="text-xs sm:text-sm md:text-base lg:text-lg font-medium">{assets.length} Assets</span>
               </div>
-              <div className="flex items-center gap-3 px-6 py-4 rounded-full bg-background/50 backdrop-blur-sm border border-border/50">
-                <Video className="h-6 w-6 text-primary" />
-                <span className="text-sm sm:text-base md:text-lg font-medium">{assets.filter(a => a.loom_url).length} Videos</span>
+              <div className="flex items-center gap-2 sm:gap-3 px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4 rounded-full bg-background/50 backdrop-blur-sm border border-border/50">
+                <Video className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-primary" />
+                <span className="text-xs sm:text-sm md:text-base lg:text-lg font-medium">{assets.filter(a => a.loom_url).length} Videos</span>
               </div>
             </div>
           </div>
@@ -254,9 +257,9 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
             <Button
               onClick={() => setUploadDialogOpen(true)}
               size="lg"
-              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl hover:scale-105 transition-all text-sm sm:text-base md:text-lg px-4 py-3 sm:px-6 sm:py-4 md:px-8 md:py-6"
+              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl hover:scale-105 transition-all text-sm sm:text-base md:text-lg px-4 py-3 sm:px-6 sm:py-4 md:px-8 md:py-6 w-full sm:w-auto"
             >
-              <Plus className="h-6 w-6 mr-2" />
+              <Plus className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
               Add Asset
             </Button>
           )}
