@@ -543,20 +543,31 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
       // Create follow-up or reschedule task if needed
       if (additionalData?.rescheduleDate) {
-        await supabase.rpc("create_task_with_assignment", {
+        const { error: rpcError } = await supabase.rpc("create_task_with_assignment", {
           p_team_id: appointment.team_id,
           p_appointment_id: appointmentId,
           p_task_type: "reschedule",
+          p_follow_up_date: null,
+          p_follow_up_reason: null,
           p_reschedule_date: format(additionalData.rescheduleDate, "yyyy-MM-dd")
         });
+        if (rpcError) {
+          console.error("Error creating reschedule task:", rpcError);
+          throw rpcError;
+        }
       } else if (additionalData?.followUpDate && additionalData?.followUpReason) {
-        await supabase.rpc("create_task_with_assignment", {
+        const { error: rpcError } = await supabase.rpc("create_task_with_assignment", {
           p_team_id: appointment.team_id,
           p_appointment_id: appointmentId,
           p_task_type: "follow_up",
           p_follow_up_date: format(additionalData.followUpDate, "yyyy-MM-dd"),
-          p_follow_up_reason: additionalData.followUpReason
+          p_follow_up_reason: additionalData.followUpReason,
+          p_reschedule_date: null
         });
+        if (rpcError) {
+          console.error("Error creating follow-up task:", rpcError);
+          throw rpcError;
+        }
       }
 
       toast.success("Deal moved successfully");
@@ -625,6 +636,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           p_team_id: appointment.team_id,
           p_appointment_id: rescheduleLinkDialog.appointmentId,
           p_task_type: "reschedule",
+          p_follow_up_date: null,
+          p_follow_up_reason: null,
           p_reschedule_date: null
         });
       }
@@ -704,7 +717,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           p_appointment_id: depositDialog.appointmentId,
           p_task_type: "follow_up",
           p_follow_up_date: format(followUpDate, "yyyy-MM-dd"),
-          p_follow_up_reason: `Deposit collected: $${depositAmount}. ${notes}`
+          p_follow_up_reason: `Deposit collected: $${depositAmount}. ${notes}`,
+          p_reschedule_date: null
         });
 
         if (taskError) {
@@ -1139,6 +1153,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           p_team_id: appointment.team_id,
           p_appointment_id: statusDialog.appointmentId,
           p_task_type: "reschedule",
+          p_follow_up_date: null,
+          p_follow_up_reason: null,
           p_reschedule_date: null
         });
       }

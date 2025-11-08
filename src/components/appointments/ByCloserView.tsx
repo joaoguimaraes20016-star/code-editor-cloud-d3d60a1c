@@ -311,6 +311,8 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
           p_team_id: appointment.team_id,
           p_appointment_id: appointmentId,
           p_task_type: "reschedule",
+          p_follow_up_date: null,
+          p_follow_up_reason: null,
           p_reschedule_date: format(additionalData.rescheduleDate, "yyyy-MM-dd")
         });
       } else if (additionalData?.followUpDate && additionalData?.followUpReason) {
@@ -319,7 +321,8 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
           p_appointment_id: appointmentId,
           p_task_type: "follow_up",
           p_follow_up_date: format(additionalData.followUpDate, "yyyy-MM-dd"),
-          p_follow_up_reason: additionalData.followUpReason
+          p_follow_up_reason: additionalData.followUpReason,
+          p_reschedule_date: null
         });
       }
 

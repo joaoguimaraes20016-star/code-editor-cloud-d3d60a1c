@@ -209,7 +209,8 @@ export function StageWorkspaceView({
           p_appointment_id: followUpDialog.appointmentId,
           p_task_type: "follow_up",
           p_follow_up_date: format(followUpDate, "yyyy-MM-dd"),
-          p_follow_up_reason: reason
+          p_follow_up_reason: reason,
+          p_reschedule_date: null
         });
       }
 
