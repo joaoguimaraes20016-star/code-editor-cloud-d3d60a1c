@@ -208,14 +208,14 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
           return true;
         }
         
-        // Show follow-up tasks only if they're due today or overdue (regardless of appointment status)
+        // Show follow-up tasks for the next 30 days
         if (task.task_type === 'follow_up' && task.follow_up_date) {
-          return task.follow_up_date <= today;
+          return task.follow_up_date <= futureDate;
         }
         
-        // Show reschedule tasks only if due today or overdue
+        // Show reschedule tasks for the next 30 days
         if (task.task_type === 'reschedule' && task.reschedule_date) {
-          return task.reschedule_date <= today;
+          return task.reschedule_date <= futureDate;
         }
         
         // Default: don't show tasks that don't match any criteria above (fail closed)
