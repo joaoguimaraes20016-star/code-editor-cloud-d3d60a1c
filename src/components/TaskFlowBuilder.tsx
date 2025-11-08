@@ -343,13 +343,13 @@ export function TaskFlowBuilder({ teamId }: TaskFlowBuilderProps) {
                 .sort((a, b) => b.hours_before - a.hours_before)
                 .map((conf) => (
                   <div key={conf.sequence} className="flex flex-col items-center z-10">
-                    <div className={`w-4 h-4 rounded-full mb-2 ${
-                      conf.assigned_role === "setter" 
-                        ? "bg-primary" 
-                        : conf.assigned_role === "closer"
-                        ? "bg-info"
-                        : "bg-muted"
-                    }`}></div>
+                <div className={`w-4 h-4 rounded-full mb-2 ${
+                  conf.assigned_role === "setter" 
+                    ? "bg-primary" 
+                    : conf.assigned_role === "closer"
+                    ? "bg-primary"
+                    : "bg-muted"
+                }`}></div>
                     <span className="text-xs font-medium">{conf.label}</span>
                     <Badge variant="outline" className="mt-1 text-xs">
                       {conf.assigned_role === "setter" ? "Setter" : "Closer"}
