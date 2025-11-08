@@ -567,12 +567,21 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
           onOpenChange={(open) => !open && setFollowUpDialog(null)}
           dealName={followUpDialog.dealName}
           stage={followUpDialog.stage}
+          teamId={teamId}
           onConfirm={async (date, reason) => {
             await performStageMove(
               followUpDialog.appointmentId, 
               followUpDialog.stageId,
               group.appointments.find(a => a.id === followUpDialog.appointmentId)!,
               { followUpDate: date, followUpReason: reason }
+            );
+            setFollowUpDialog(null);
+          }}
+          onSkip={async () => {
+            await performStageMove(
+              followUpDialog.appointmentId, 
+              followUpDialog.stageId,
+              group.appointments.find(a => a.id === followUpDialog.appointmentId)!
             );
             setFollowUpDialog(null);
           }}

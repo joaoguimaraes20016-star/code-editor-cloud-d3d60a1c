@@ -1403,6 +1403,24 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           onConfirm={handleFollowUpConfirm}
           dealName={followUpDialog.dealName}
           stage={followUpDialog.stage}
+          teamId={teamId}
+          onSkip={async () => {
+            // Move without creating follow-up task
+            const { error } = await supabase
+              .from('appointments')
+              .update({ 
+                pipeline_stage: followUpDialog.stageId,
+              })
+              .eq('id', followUpDialog.appointmentId);
+
+            if (error) {
+              toast.error('Failed to move deal');
+              return;
+            }
+
+            toast.success('Deal moved successfully');
+            setFollowUpDialog(null);
+          }}
         />
       )}
 

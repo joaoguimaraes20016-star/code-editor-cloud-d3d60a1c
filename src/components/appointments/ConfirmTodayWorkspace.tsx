@@ -374,6 +374,26 @@ export function ConfirmTodayWorkspace({ teamId, userRole }: ConfirmTodayWorkspac
         onConfirm={handleFollowUpConfirm}
         dealName={followUpDialog?.dealName || ""}
         stage={followUpDialog?.stage || "no_show"}
+        teamId={teamId}
+        onSkip={async () => {
+          if (!followUpDialog) return;
+          
+          // Move without creating follow-up
+          const { error } = await supabase
+            .from('appointments')
+            .update({ 
+              pipeline_stage: followUpDialog.stageId,
+            })
+            .eq('id', followUpDialog.appointmentId);
+
+          if (error) {
+            toast.error('Failed to update appointment');
+            return;
+          }
+
+          toast.success('Appointment status updated');
+          setFollowUpDialog(null);
+        }}
       />
     </div>
   );

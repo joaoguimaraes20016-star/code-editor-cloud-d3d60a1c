@@ -1085,6 +1085,47 @@ export type Database = {
           },
         ]
       }
+      team_follow_up_settings: {
+        Row: {
+          created_at: string
+          default_days: number
+          default_time: string
+          id: string
+          pipeline_stage: string
+          suggest_follow_up: boolean
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_days?: number
+          default_time?: string
+          id?: string
+          pipeline_stage: string
+          suggest_follow_up?: boolean
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_days?: number
+          default_time?: string
+          id?: string
+          pipeline_stage?: string
+          suggest_follow_up?: boolean
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_follow_up_settings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_invitations: {
         Row: {
           accepted_at: string | null

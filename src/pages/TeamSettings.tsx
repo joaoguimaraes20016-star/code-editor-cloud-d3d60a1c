@@ -40,6 +40,7 @@ import { ClearTeamData } from '@/components/ClearTeamData';
 import { CleanupDuplicateSales } from '@/components/CleanupDuplicateSales';
 import { BackfillRescheduleUrls } from '@/components/BackfillRescheduleUrls';
 import { WorkflowSettings } from '@/components/WorkflowSettings';
+import { FollowUpSettings } from '@/components/FollowUpSettings';
 import { getUserFriendlyError } from '@/lib/errorUtils';
 
 interface TeamMember {
@@ -526,6 +527,7 @@ export default function TeamSettings() {
             {/* Workflow Tab */}
             <TabsContent value="workflow" className="space-y-6">
               <WorkflowSettings teamId={teamId!} />
+              <FollowUpSettings teamId={teamId!} />
             </TabsContent>
 
             {/* Integrations Tab */}
