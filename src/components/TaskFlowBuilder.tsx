@@ -32,7 +32,29 @@ interface TaskFlowBuilderProps {
   teamId: string;
 }
 
-function ConfirmationCard({ 
+const formatHoursLabel = (hours: number): string => {
+  // Less than 1 hour - show minutes
+  if (hours < 1) {
+    const minutes = Math.round(hours * 60);
+    return minutes === 1 ? "1 minute" : `${minutes} minutes`;
+  }
+  
+  // Less than 24 hours - show hours
+  if (hours < 24) {
+    return hours === 1 ? "1 hour" : `${hours} hours`;
+  }
+  
+  // 24 hours or more - show days
+  const days = hours / 24;
+  if (days === Math.floor(days)) {
+    return days === 1 ? "1 day" : `${days} days`;
+  }
+  
+  // Mixed (like 36 hours = 1.5 days) - just show hours
+  return `${hours} hours`;
+};
+
+function ConfirmationCard({
   confirmation, 
   index, 
   onUpdate, 
@@ -228,6 +250,12 @@ export function TaskFlowBuilder({ teamId }: TaskFlowBuilderProps) {
   const updateConfirmation = (index: number, field: keyof ConfirmationConfig, value: any) => {
     const updated = [...confirmations];
     updated[index] = { ...updated[index], [field]: value };
+    
+    // Auto-update label when hours_before changes
+    if (field === "hours_before") {
+      updated[index].label = formatHoursLabel(value);
+    }
+    
     setConfirmations(updated);
   };
 
@@ -238,7 +266,7 @@ export function TaskFlowBuilder({ teamId }: TaskFlowBuilderProps) {
       {
         sequence: newSequence,
         hours_before: 12,
-        label: "New Confirmation",
+        label: formatHoursLabel(12),
         assigned_role: "setter",
         enabled: true,
       },
