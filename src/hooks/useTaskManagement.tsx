@@ -26,6 +26,8 @@ interface Task {
   confirmation_sequence?: number;
   due_at?: string | null;
   is_overdue?: boolean;
+  assigned_role?: string | null;
+  routing_mode?: string | null;
 }
 
 export function useTaskManagement(teamId: string, userId: string, userRole?: string) {
@@ -55,7 +57,9 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
         .from('confirmation_tasks')
         .select(`
           *,
-          appointment:appointments(*)
+          appointment:appointments(*),
+          assigned_role,
+          routing_mode
         `)
         .eq('team_id', teamId)
         .in('status', ['pending', 'awaiting_reschedule'])

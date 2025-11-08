@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getUserFriendlyError } from "@/lib/errorUtils";
 import { Loader2 } from "lucide-react";
 import { ConfirmationScheduleSettings } from "@/components/ConfirmationScheduleSettings";
+import { TaskRoutingSettings } from "@/components/TaskRoutingSettings";
 
 interface WorkflowSettingsProps {
   teamId: string;
@@ -144,6 +145,8 @@ export function WorkflowSettings({ teamId }: WorkflowSettingsProps) {
           </div>
         </CardContent>
       </Card>
+
+      <TaskRoutingSettings teamId={teamId} />
 
       <ConfirmationScheduleSettings teamId={teamId} />
     </div>

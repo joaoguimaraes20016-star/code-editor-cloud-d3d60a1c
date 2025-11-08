@@ -2,7 +2,7 @@ import { format, isToday, parseISO, isBefore, startOfDay } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle, Edit, CalendarClock, Wallet, AlertCircle } from "lucide-react";
+import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle, Edit, CalendarClock, Wallet, AlertCircle, Wrench, Target } from "lucide-react";
 import { useState } from "react";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import { ConfirmationProgressTracker } from "./ConfirmationProgressTracker";
@@ -34,6 +34,8 @@ interface HorizontalAppointmentCardProps {
     due_at: string | null;
     is_overdue: boolean;
     confirmation_sequence: number;
+    assigned_role?: string | null;
+    routing_mode?: string | null;
   } | null;
   teamId?: string;
   userRole?: string;
@@ -99,6 +101,26 @@ export function HorizontalAppointmentCard({
     onUpdate?.();
   };
 
+  const renderRoleBadge = () => {
+    if (!confirmationTask?.assigned_role) return null;
+    
+    return (
+      <Badge variant={confirmationTask.assigned_role === "setter" ? "default" : "secondary"} className="gap-1">
+        {confirmationTask.assigned_role === "setter" ? (
+          <>
+            <Wrench className="h-3 w-3" />
+            Setter Task
+          </>
+        ) : (
+          <>
+            <Target className="h-3 w-3" />
+            Closer Task
+          </>
+        )}
+      </Badge>
+    );
+  };
+
   return (
     <Card className={cn(
       "p-4 hover:shadow-md transition-all duration-200 border-l-4 group",
@@ -162,6 +184,7 @@ export function HorizontalAppointmentCard({
             <Badge variant={statusStyle.badge as any} className="text-xs">
               {displayStatus}
             </Badge>
+            {renderRoleBadge()}
             {/* Visual Indicators */}
             {isTaskOverdue && (
               <Badge className="text-xs font-bold bg-red-600 text-white border-0 animate-pulse">

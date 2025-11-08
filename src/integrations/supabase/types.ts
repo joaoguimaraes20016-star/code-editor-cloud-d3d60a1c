@@ -448,6 +448,7 @@ export type Database = {
         Row: {
           appointment_id: string
           assigned_at: string | null
+          assigned_role: string | null
           assigned_to: string | null
           auto_return_at: string | null
           claimed_manually: boolean | null
@@ -463,6 +464,7 @@ export type Database = {
           is_overdue: boolean | null
           required_confirmations: number | null
           reschedule_date: string | null
+          routing_mode: string | null
           status: string
           task_type: Database["public"]["Enums"]["task_type"]
           team_id: string
@@ -470,6 +472,7 @@ export type Database = {
         Insert: {
           appointment_id: string
           assigned_at?: string | null
+          assigned_role?: string | null
           assigned_to?: string | null
           auto_return_at?: string | null
           claimed_manually?: boolean | null
@@ -485,6 +488,7 @@ export type Database = {
           is_overdue?: boolean | null
           required_confirmations?: number | null
           reschedule_date?: string | null
+          routing_mode?: string | null
           status?: string
           task_type?: Database["public"]["Enums"]["task_type"]
           team_id: string
@@ -492,6 +496,7 @@ export type Database = {
         Update: {
           appointment_id?: string
           assigned_at?: string | null
+          assigned_role?: string | null
           assigned_to?: string | null
           auto_return_at?: string | null
           claimed_manually?: boolean | null
@@ -507,6 +512,7 @@ export type Database = {
           is_overdue?: boolean | null
           required_confirmations?: number | null
           reschedule_date?: string | null
+          routing_mode?: string | null
           status?: string
           task_type?: Database["public"]["Enums"]["task_type"]
           team_id?: string
@@ -1261,7 +1267,9 @@ export type Database = {
           calendly_token_expires_at: string | null
           calendly_webhook_id: string | null
           closer_commission_percentage: number | null
+          confirmation_routing_mode: string | null
           confirmation_schedule: Json | null
+          confirmation_setter_count: number | null
           created_at: string | null
           created_by: string
           dashboard_preferences: Json | null
@@ -1269,9 +1277,11 @@ export type Database = {
           google_sheets_url: string | null
           id: string
           minimum_booking_notice_hours: number | null
+          mrr_task_assignment: string | null
           name: string
           overdue_threshold_minutes: number | null
           setter_commission_percentage: number | null
+          task_routing_config: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -1284,7 +1294,9 @@ export type Database = {
           calendly_token_expires_at?: string | null
           calendly_webhook_id?: string | null
           closer_commission_percentage?: number | null
+          confirmation_routing_mode?: string | null
           confirmation_schedule?: Json | null
+          confirmation_setter_count?: number | null
           created_at?: string | null
           created_by: string
           dashboard_preferences?: Json | null
@@ -1292,9 +1304,11 @@ export type Database = {
           google_sheets_url?: string | null
           id?: string
           minimum_booking_notice_hours?: number | null
+          mrr_task_assignment?: string | null
           name: string
           overdue_threshold_minutes?: number | null
           setter_commission_percentage?: number | null
+          task_routing_config?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -1307,7 +1321,9 @@ export type Database = {
           calendly_token_expires_at?: string | null
           calendly_webhook_id?: string | null
           closer_commission_percentage?: number | null
+          confirmation_routing_mode?: string | null
           confirmation_schedule?: Json | null
+          confirmation_setter_count?: number | null
           created_at?: string | null
           created_by?: string
           dashboard_preferences?: Json | null
@@ -1315,9 +1331,11 @@ export type Database = {
           google_sheets_url?: string | null
           id?: string
           minimum_booking_notice_hours?: number | null
+          mrr_task_assignment?: string | null
           name?: string
           overdue_threshold_minutes?: number | null
           setter_commission_percentage?: number | null
+          task_routing_config?: Json | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1422,17 +1440,30 @@ export type Database = {
         }
         Returns: Json
       }
-      create_task_with_assignment: {
-        Args: {
-          p_appointment_id: string
-          p_follow_up_date?: string
-          p_follow_up_reason?: string
-          p_reschedule_date?: string
-          p_task_type: Database["public"]["Enums"]["task_type"]
-          p_team_id: string
-        }
-        Returns: string
-      }
+      create_task_with_assignment:
+        | {
+            Args: {
+              p_appointment_id: string
+              p_follow_up_date?: string
+              p_follow_up_reason?: string
+              p_reschedule_date?: string
+              p_task_type: Database["public"]["Enums"]["task_type"]
+              p_team_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_appointment_id: string
+              p_follow_up_date?: string
+              p_follow_up_reason?: string
+              p_preferred_role?: string
+              p_reschedule_date?: string
+              p_task_type: Database["public"]["Enums"]["task_type"]
+              p_team_id: string
+            }
+            Returns: string
+          }
       get_team_role: {
         Args: { _team_id: string; _user_id: string }
         Returns: string
