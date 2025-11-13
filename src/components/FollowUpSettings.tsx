@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { getUserFriendlyError } from '@/lib/errorUtils';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Clock } from 'lucide-react';
 
 interface FollowUpSettingsProps {
   teamId: string;
@@ -22,10 +23,11 @@ interface FollowUpAttempt {
   role: string;
 }
 
-const STAGES = [
-  { value: 'no_show', label: 'No Show Follow-Ups' },
-  { value: 'canceled', label: 'Canceled Follow-Ups' },
-  { value: 'disqualified', label: 'Disqualified Follow-Ups' },
+const DEFAULT_STAGES = [
+  { value: 'no_show', label: 'No Show Follow-Ups', icon: '🚫' },
+  { value: 'canceled', label: 'Canceled Follow-Ups', icon: '❌' },
+  { value: 'rescheduled', label: 'Rescheduled Follow-Ups', icon: '📅' },
+  { value: 'disqualified', label: 'Disqualified Follow-Ups', icon: '⛔' },
 ];
 
 const HOUR_OPTIONS = [1, 2, 6, 12, 24, 48, 72];
@@ -39,6 +41,9 @@ const DEFAULT_ATTEMPTS: Record<string, FollowUpAttempt[]> = {
   canceled: [
     { sequence: 1, enabled: true, timeValue: 2, timeUnit: 'days', role: 'setter' },
   ],
+  rescheduled: [
+    { sequence: 1, enabled: true, timeValue: 1, timeUnit: 'days', role: 'setter' },
+  ],
   disqualified: [
     { sequence: 1, enabled: true, timeValue: 7, timeUnit: 'days', role: 'setter' },
   ],
@@ -47,12 +52,54 @@ const DEFAULT_ATTEMPTS: Record<string, FollowUpAttempt[]> = {
 export function FollowUpSettings({ teamId }: FollowUpSettingsProps) {
   const { toast } = useToast();
   const [settings, setSettings] = useState<Record<string, FollowUpAttempt[]>>(DEFAULT_ATTEMPTS);
+  const [stages, setStages] = useState(DEFAULT_STAGES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
+    loadCustomStages();
     loadSettings();
   }, [teamId]);
+
+  const loadCustomStages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_pipeline_stages')
+        .select('stage_id, stage_label')
+        .eq('team_id', teamId)
+        .order('order_index');
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Add custom stages to the default ones
+        const customStages = data
+          .filter(stage => !DEFAULT_STAGES.some(ds => ds.value === stage.stage_id))
+          .map(stage => ({
+            value: stage.stage_id,
+            label: `${stage.stage_label} Follow-Ups`,
+            icon: '🎯'
+          }));
+
+        setStages([...DEFAULT_STAGES, ...customStages]);
+
+        // Initialize default attempts for custom stages
+        const customDefaults: Record<string, FollowUpAttempt[]> = {};
+        customStages.forEach(stage => {
+          if (!DEFAULT_ATTEMPTS[stage.value]) {
+            customDefaults[stage.value] = [
+              { sequence: 1, enabled: false, timeValue: 1, timeUnit: 'days', role: 'setter' }
+            ];
+          }
+        });
+
+        setSettings(prev => ({ ...DEFAULT_ATTEMPTS, ...customDefaults, ...prev }));
+      }
+    } catch (error) {
+      console.error('Error loading custom stages:', error);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -207,7 +254,7 @@ export function FollowUpSettings({ teamId }: FollowUpSettingsProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
-        {STAGES.map(stage => (
+        {stages.map(stage => (
           <div key={stage.value} className="space-y-3">
             <h3 className="font-semibold text-base">{stage.label}</h3>
             

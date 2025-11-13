@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserFriendlyError } from "@/lib/errorUtils";
-import { Loader2 } from "lucide-react";
+import { Loader2, Phone, RefreshCw, Settings as SettingsIcon } from "lucide-react";
 import { TaskFlowBuilder } from "./TaskFlowBuilder";
+import { FollowUpSettings } from "./FollowUpSettings";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface WorkflowSettingsProps {
   teamId: string;
@@ -96,7 +98,10 @@ export function WorkflowSettings({ teamId }: WorkflowSettingsProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Workflow Settings</CardTitle>
+          <div className="flex items-center gap-2">
+            <SettingsIcon className="h-5 w-5 text-primary" />
+            <CardTitle>Workflow Settings</CardTitle>
+          </div>
           <CardDescription>
             Configure how your team's workflows operate
           </CardDescription>
@@ -145,7 +150,32 @@ export function WorkflowSettings({ teamId }: WorkflowSettingsProps) {
         </CardContent>
       </Card>
 
-      <TaskFlowBuilder teamId={teamId} />
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Phone className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Call Confirmation Flow</h2>
+        </div>
+        <Alert>
+          <AlertDescription>
+            Configure when and who handles call confirmations before appointments. 
+            These tasks are automatically created for each appointment.
+          </AlertDescription>
+        </Alert>
+        <TaskFlowBuilder teamId={teamId} />
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Automated Follow-Up Flows</h2>
+        </div>
+        <Alert>
+          <AlertDescription>
+            Set up automatic follow-up tasks for appointments that don't show, cancel, reschedule, or get disqualified.
+          </AlertDescription>
+        </Alert>
+        <FollowUpSettings teamId={teamId} />
+      </div>
     </div>
   );
 }
