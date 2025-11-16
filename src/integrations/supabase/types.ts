@@ -1100,6 +1100,7 @@ export type Database = {
           id: string
           label: string
           pipeline_stage: string
+          require_no_status_change_for_next: boolean | null
           sequence: number
           team_id: string
           updated_at: string | null
@@ -1112,6 +1113,7 @@ export type Database = {
           id?: string
           label: string
           pipeline_stage: string
+          require_no_status_change_for_next?: boolean | null
           sequence: number
           team_id: string
           updated_at?: string | null
@@ -1124,6 +1126,7 @@ export type Database = {
           id?: string
           label?: string
           pipeline_stage?: string
+          require_no_status_change_for_next?: boolean | null
           sequence?: number
           team_id?: string
           updated_at?: string | null
