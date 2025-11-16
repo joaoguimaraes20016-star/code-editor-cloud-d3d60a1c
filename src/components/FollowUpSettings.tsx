@@ -36,17 +36,17 @@ const DAY_OPTIONS = [1, 2, 3, 5, 7, 14, 30];
 
 const DEFAULT_ATTEMPTS: Record<string, FollowUpAttempt[]> = {
   no_show: [
-    { sequence: 1, enabled: true, timeValue: 24, timeUnit: 'hours', role: 'setter' },
-    { sequence: 2, enabled: true, timeValue: 3, timeUnit: 'days', role: 'closer' },
+    { sequence: 1, enabled: true, timeValue: 24, timeUnit: 'hours', role: 'setter', requireNoStatusChange: true },
+    { sequence: 2, enabled: true, timeValue: 3, timeUnit: 'days', role: 'closer', requireNoStatusChange: true },
   ],
   canceled: [
-    { sequence: 1, enabled: true, timeValue: 2, timeUnit: 'days', role: 'setter' },
+    { sequence: 1, enabled: true, timeValue: 2, timeUnit: 'days', role: 'setter', requireNoStatusChange: true },
   ],
   rescheduled: [
-    { sequence: 1, enabled: true, timeValue: 1, timeUnit: 'days', role: 'setter' },
+    { sequence: 1, enabled: true, timeValue: 1, timeUnit: 'days', role: 'setter', requireNoStatusChange: true },
   ],
   disqualified: [
-    { sequence: 1, enabled: true, timeValue: 7, timeUnit: 'days', role: 'setter' },
+    { sequence: 1, enabled: true, timeValue: 7, timeUnit: 'days', role: 'setter', requireNoStatusChange: true },
   ],
 };
 
@@ -90,7 +90,7 @@ export function FollowUpSettings({ teamId }: FollowUpSettingsProps) {
         customStages.forEach(stage => {
           if (!DEFAULT_ATTEMPTS[stage.value]) {
             customDefaults[stage.value] = [
-              { sequence: 1, enabled: false, timeValue: 1, timeUnit: 'days', role: 'setter' }
+              { sequence: 1, enabled: false, timeValue: 1, timeUnit: 'days', role: 'setter', requireNoStatusChange: true }
             ];
           }
         });
@@ -176,6 +176,7 @@ export function FollowUpSettings({ teamId }: FollowUpSettingsProps) {
           timeValue: 1,
           timeUnit: 'days',
           role: 'setter',
+          requireNoStatusChange: true,
         },
       ],
     }));
