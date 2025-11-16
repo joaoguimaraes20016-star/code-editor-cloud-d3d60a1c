@@ -25,7 +25,7 @@ serve(async (req) => {
     // Check if team has auto_create_tasks enabled (defaults to true if not set)
     const { data: teamSettings, error: teamError } = await supabaseClient
       .from('teams')
-      .select('auto_create_tasks, confirmation_schedule, minimum_booking_notice_hours, fallback_confirmation_minutes')
+      .select('auto_create_tasks, confirmation_schedule, confirmation_flow_config, minimum_booking_notice_hours, fallback_confirmation_minutes')
       .eq('id', appointment.team_id)
       .single();
 
@@ -84,43 +84,67 @@ serve(async (req) => {
       console.log(`Using normal schedule: task due at ${dueAt.toISOString()}`);
     }
 
-    // Get active setters for this team
-    const { data: activeSetters, error: settersError } = await supabaseClient
-      .from('team_members')
-      .select('user_id')
-      .eq('team_id', appointment.team_id)
-      .eq('role', 'setter')
-      .eq('is_active', true);
-
-    if (settersError) throw settersError;
-
+    // Determine assignment based on confirmation flow config
+    const confirmationFlowConfig = teamSettings?.confirmation_flow_config || [];
+    const firstConfirmation = Array.isArray(confirmationFlowConfig) && confirmationFlowConfig.length > 0 
+      ? confirmationFlowConfig[0] 
+      : null;
+    
     let assignedTo = null;
+    let assignedRole = 'setter'; // default role
+    let routingMode = 'round_robin'; // default mode
 
-    if (activeSetters && activeSetters.length > 0) {
-      // Get task counts for each active setter
-      const { data: taskCounts, error: countError } = await supabaseClient
-        .from('confirmation_tasks')
-        .select('assigned_to')
+    // Get assignment settings from first confirmation step
+    if (firstConfirmation) {
+      assignedRole = firstConfirmation.assigned_role || 'setter';
+      routingMode = firstConfirmation.assignment_mode || 'round_robin';
+      
+      // If individual assignment mode, use the specified user
+      if (routingMode === 'individual' && firstConfirmation.assigned_user_id) {
+        assignedTo = firstConfirmation.assigned_user_id;
+        console.log(`Using individual assignment to user: ${assignedTo}`);
+      }
+    }
+
+    // If not individual assignment or no user specified, use round-robin
+    if (!assignedTo && routingMode === 'round_robin' && assignedRole !== 'off') {
+      // Get active team members for the assigned role
+      const { data: activeMembers, error: membersError } = await supabaseClient
+        .from('team_members')
+        .select('user_id')
         .eq('team_id', appointment.team_id)
-        .eq('status', 'pending')
-        .in('assigned_to', activeSetters.map(s => s.user_id));
+        .eq('role', assignedRole)
+        .eq('is_active', true);
 
-      if (countError) throw countError;
+      if (membersError) throw membersError;
 
-      // Count tasks per setter
-      const counts: Record<string, number> = {};
-      activeSetters.forEach(setter => {
-        counts[setter.user_id] = 0;
-      });
-      taskCounts?.forEach(task => {
-        if (task.assigned_to) {
-          counts[task.assigned_to] = (counts[task.assigned_to] || 0) + 1;
-        }
-      });
+      if (activeMembers && activeMembers.length > 0) {
+        // Get task counts for each active member
+        const { data: taskCounts, error: countError } = await supabaseClient
+          .from('confirmation_tasks')
+          .select('assigned_to')
+          .eq('team_id', appointment.team_id)
+          .eq('status', 'pending')
+          .in('assigned_to', activeMembers.map(m => m.user_id));
 
-    // Assign to setter with fewest tasks
-    assignedTo = Object.entries(counts).sort((a, b) => a[1] - b[1])[0][0];
-  }
+        if (countError) throw countError;
+
+        // Count tasks per member
+        const counts: Record<string, number> = {};
+        activeMembers.forEach(member => {
+          counts[member.user_id] = 0;
+        });
+        taskCounts?.forEach(task => {
+          if (task.assigned_to) {
+            counts[task.assigned_to] = (counts[task.assigned_to] || 0) + 1;
+          }
+        });
+
+        // Assign to member with fewest tasks
+        assignedTo = Object.entries(counts).sort((a, b) => a[1] - b[1])[0][0];
+        console.log(`Round-robin assignment to ${assignedRole}: ${assignedTo}`);
+      }
+    }
 
   // Check if task already exists for this appointment (idempotency)
   const { data: existingTask, error: existingTaskError } = await supabaseClient
@@ -157,6 +181,8 @@ serve(async (req) => {
 
   if (assignedTo) {
     taskData.assigned_to = assignedTo;
+    taskData.assigned_role = assignedRole;
+    taskData.routing_mode = routingMode;
     taskData.assigned_at = new Date().toISOString();
     taskData.auto_return_at = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
   }
@@ -188,7 +214,9 @@ serve(async (req) => {
         action_type: 'Created',
         note: usedFallback 
           ? `Last-minute booking fallback: task due ${fallbackConfirmationMinutes}min before appointment`
-          : (assignedTo ? 'Task auto-assigned via round-robin' : 'Task created in queue')
+          : (assignedTo 
+            ? `Task auto-assigned to ${assignedRole} via ${routingMode === 'individual' ? 'individual assignment' : 'round-robin'}` 
+            : 'Task created in queue')
       });
 
     if (activityError) console.error('Error logging activity:', activityError);

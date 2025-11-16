@@ -26,7 +26,7 @@ interface ConfirmationConfig {
   hours_before: number;
   label: string;
   assigned_role: "setter" | "closer" | "admin" | "offer_owner" | "off";
-  assignment_mode?: "role" | "round_robin" | "individual";
+  assignment_mode?: "round_robin" | "individual";
   assigned_user_id?: string | null;
   enabled: boolean;
 }
@@ -106,9 +106,8 @@ function ConfirmationCard({
   };
 
   const getAssignmentModeLabel = (mode?: string) => {
-    if (mode === "round_robin") return "Round-robin";
     if (mode === "individual") return "Individual";
-    return "Role-based";
+    return "Round-robin";
   };
 
   const filteredMembers = teamMembers.filter(m => m.role === confirmation.assigned_role);
@@ -214,14 +213,13 @@ function ConfirmationCard({
               <div className="flex items-center gap-4">
                 <Label className="text-sm font-medium">Assignment:</Label>
                 <Select
-                  value={confirmation.assignment_mode || "role"}
+                  value={confirmation.assignment_mode || "round_robin"}
                   onValueChange={(value) => onUpdate(index, "assignment_mode", value)}
                 >
                   <SelectTrigger className="w-48">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="role">Role-based (any {confirmation.assigned_role})</SelectItem>
                     <SelectItem value="round_robin">Round-robin rotation</SelectItem>
                     <SelectItem value="individual">Specific person</SelectItem>
                   </SelectContent>
