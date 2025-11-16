@@ -26,7 +26,18 @@ interface ConfirmationConfig {
   hours_before: number;
   label: string;
   assigned_role: "setter" | "closer" | "admin" | "offer_owner" | "off";
+  assignment_mode?: "role" | "round_robin" | "individual";
+  assigned_user_id?: string | null;
   enabled: boolean;
+}
+
+interface TeamMember {
+  user_id: string;
+  role: string;
+  profiles: {
+    full_name: string | null;
+    email: string | null;
+  };
 }
 
 interface DefaultTaskRouting {
@@ -66,13 +77,15 @@ function ConfirmationCard({
   index, 
   onUpdate, 
   onDelete, 
-  canDelete 
+  canDelete,
+  teamMembers,
 }: { 
   confirmation: ConfirmationConfig; 
   index: number; 
   onUpdate: (index: number, field: keyof ConfirmationConfig, value: any) => void;
   onDelete: (index: number) => void;
   canDelete: boolean;
+  teamMembers: TeamMember[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
     id: confirmation.sequence.toString() 
@@ -92,6 +105,14 @@ function ConfirmationCard({
     return <Badge variant="outline"><XCircle className="w-3 h-3 mr-1" />Off</Badge>;
   };
 
+  const getAssignmentModeLabel = (mode?: string) => {
+    if (mode === "round_robin") return "Round-robin";
+    if (mode === "individual") return "Individual";
+    return "Role-based";
+  };
+
+  const filteredMembers = teamMembers.filter(m => m.role === confirmation.assigned_role);
+
   return (
     <div ref={setNodeRef} style={style} className="group">
       <Card className={`border-l-4 transition-all ${
@@ -103,7 +124,7 @@ function ConfirmationCard({
             : "border-l-muted"
           : "border-l-muted opacity-60"
       }`}>
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-3">
             {/* Drag Handle */}
             <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
@@ -165,7 +186,7 @@ function ConfirmationCard({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="max-w-xs">
-                    Select which role should receive this confirmation task. The system automatically distributes tasks among active team members with that role.
+                    Select which role should receive this confirmation task.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -186,6 +207,57 @@ function ConfirmationCard({
               </Button>
             )}
           </div>
+
+          {/* Assignment Mode - Only show if role is not "off" */}
+          {confirmation.enabled && confirmation.assigned_role !== "off" && (
+            <div className="pl-11 space-y-3 pt-2 border-t">
+              <div className="flex items-center gap-4">
+                <Label className="text-sm font-medium">Assignment:</Label>
+                <Select
+                  value={confirmation.assignment_mode || "role"}
+                  onValueChange={(value) => onUpdate(index, "assignment_mode", value)}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="role">Role-based (any {confirmation.assigned_role})</SelectItem>
+                    <SelectItem value="round_robin">Round-robin rotation</SelectItem>
+                    <SelectItem value="individual">Specific person</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Badge variant="secondary">{getAssignmentModeLabel(confirmation.assignment_mode)}</Badge>
+              </div>
+
+              {/* Individual User Selection */}
+              {confirmation.assignment_mode === "individual" && (
+                <div className="flex items-center gap-4 pl-24">
+                  <Label className="text-sm">Person:</Label>
+                  <Select
+                    value={confirmation.assigned_user_id || ""}
+                    onValueChange={(value) => onUpdate(index, "assigned_user_id", value)}
+                  >
+                    <SelectTrigger className="w-64">
+                      <SelectValue placeholder={`Select ${confirmation.assigned_role}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredMembers.length === 0 ? (
+                        <div className="p-2 text-sm text-muted-foreground">
+                          No {confirmation.assigned_role}s found
+                        </div>
+                      ) : (
+                        filteredMembers.map((member) => (
+                          <SelectItem key={member.user_id} value={member.user_id}>
+                            {member.profiles.full_name || member.profiles.email || "Unknown"}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -197,6 +269,7 @@ export function TaskFlowBuilder({ teamId }: TaskFlowBuilderProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmations, setConfirmations] = useState<ConfirmationConfig[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [defaultRouting, setDefaultRouting] = useState<DefaultTaskRouting>({
     follow_up: "setter",
     reschedule: "setter",
@@ -212,7 +285,32 @@ export function TaskFlowBuilder({ teamId }: TaskFlowBuilderProps) {
 
   useEffect(() => {
     loadSettings();
+    loadTeamMembers();
   }, [teamId]);
+
+  const loadTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select(`
+          user_id,
+          role,
+          profiles (
+            full_name,
+            email
+          )
+        `)
+        .eq("team_id", teamId)
+        .eq("is_active", true);
+
+      if (error) throw error;
+      if (data) {
+        setTeamMembers(data as unknown as TeamMember[]);
+      }
+    } catch (error) {
+      console.error("Error loading team members:", error);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -292,6 +390,8 @@ export function TaskFlowBuilder({ teamId }: TaskFlowBuilderProps) {
         hours_before: 12,
         label: formatHoursLabel(12),
         assigned_role: "setter",
+        assignment_mode: "round_robin",
+        assigned_user_id: null,
         enabled: true,
       },
     ]);
@@ -434,6 +534,7 @@ export function TaskFlowBuilder({ teamId }: TaskFlowBuilderProps) {
                   onUpdate={updateConfirmation}
                   onDelete={deleteConfirmation}
                   canDelete={confirmations.length > 1}
+                  teamMembers={teamMembers}
                 />
               ))}
             </SortableContext>
