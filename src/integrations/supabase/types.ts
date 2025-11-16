@@ -1373,6 +1373,7 @@ export type Database = {
           fallback_confirmation_minutes: number | null
           google_sheets_url: string | null
           id: string
+          last_task_assignment: Json | null
           minimum_booking_notice_hours: number | null
           mrr_task_assignment: string | null
           name: string
@@ -1400,6 +1401,7 @@ export type Database = {
           fallback_confirmation_minutes?: number | null
           google_sheets_url?: string | null
           id?: string
+          last_task_assignment?: Json | null
           minimum_booking_notice_hours?: number | null
           mrr_task_assignment?: string | null
           name: string
@@ -1427,6 +1429,7 @@ export type Database = {
           fallback_confirmation_minutes?: number | null
           google_sheets_url?: string | null
           id?: string
+          last_task_assignment?: Json | null
           minimum_booking_notice_hours?: number | null
           mrr_task_assignment?: string | null
           name?: string
