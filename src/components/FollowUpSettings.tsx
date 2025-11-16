@@ -159,7 +159,7 @@ export function FollowUpSettings({ teamId }: FollowUpSettingsProps) {
   const updateAttempt = (stage: string, index: number, field: keyof FollowUpAttempt, value: any) => {
     setSettings(prev => ({
       ...prev,
-      [stage]: prev[stage].map((attempt, i) => 
+      [stage]: (prev[stage] || []).map((attempt, i) => 
         i === index ? { ...attempt, [field]: value } : attempt
       ),
     }));
@@ -169,9 +169,9 @@ export function FollowUpSettings({ teamId }: FollowUpSettingsProps) {
     setSettings(prev => ({
       ...prev,
       [stage]: [
-        ...prev[stage],
+        ...(prev[stage] || []),
         {
-          sequence: prev[stage].length + 1,
+          sequence: (prev[stage] || []).length + 1,
           enabled: true,
           timeValue: 1,
           timeUnit: 'days',
@@ -183,11 +183,11 @@ export function FollowUpSettings({ teamId }: FollowUpSettingsProps) {
   };
 
   const removeAttempt = (stage: string, index: number) => {
-    if (settings[stage].length <= 1) return;
+    if ((settings[stage] || []).length <= 1) return;
     
     setSettings(prev => ({
       ...prev,
-      [stage]: prev[stage]
+      [stage]: (prev[stage] || [])
         .filter((_, i) => i !== index)
         .map((attempt, i) => ({ ...attempt, sequence: i + 1 })),
     }));
@@ -214,6 +214,7 @@ export function FollowUpSettings({ teamId }: FollowUpSettingsProps) {
           hours_after: attempt.timeUnit === 'days' ? attempt.timeValue * 24 : attempt.timeValue,
           assigned_role: attempt.role,
           enabled: attempt.enabled,
+          require_no_status_change_for_next: attempt.requireNoStatusChange,
         }))
       );
 
@@ -262,7 +263,7 @@ export function FollowUpSettings({ teamId }: FollowUpSettingsProps) {
             <h3 className="font-semibold text-base">{stage.label}</h3>
             
             <div className="space-y-2">
-              {settings[stage.value].map((attempt, index) => (
+              {(settings[stage.value] || []).map((attempt, index) => (
                 <div 
                   key={index}
                   className="flex items-center gap-3 p-3 border rounded-lg bg-card"
@@ -331,7 +332,7 @@ export function FollowUpSettings({ teamId }: FollowUpSettingsProps) {
                     variant="ghost"
                     size="icon"
                     onClick={() => removeAttempt(stage.value, index)}
-                    disabled={settings[stage.value].length <= 1}
+                    disabled={(settings[stage.value] || []).length <= 1}
                     className="ml-auto h-9 w-9"
                   >
                     <X className="h-4 w-4" />
