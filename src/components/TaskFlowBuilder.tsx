@@ -243,13 +243,13 @@ function ConfirmationCard({
                         <div className="p-2 text-sm text-muted-foreground">
                           No {confirmation.assigned_role}s found
                         </div>
-                      ) : (
+                       ) : (
                         filteredMembers.map((member) => (
                           <SelectItem key={member.user_id} value={member.user_id}>
-                            {member.profiles.full_name || member.profiles.email || "Unknown"}
+                            {member?.profiles?.full_name || member?.profiles?.email || "Unknown"}
                           </SelectItem>
                         ))
-                      )}
+                       )}
                     </SelectContent>
                   </Select>
                 </div>

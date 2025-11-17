@@ -186,7 +186,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
         }
 
         // Fetch profile names separately
-        const assignedUserIds = [...new Set(confirmTasks?.filter(t => t.assigned_to).map(t => t.assigned_to))];
+        const assignedUserIds = [...new Set((confirmTasks || []).filter(t => t.assigned_to).map(t => t.assigned_to!))];
         const profilesMap = new Map<string, string>();
         
         if (assignedUserIds.length > 0) {
@@ -195,10 +195,10 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
             .select('id, full_name')
             .in('id', assignedUserIds);
           
-          profiles?.forEach(p => profilesMap.set(p.id, p.full_name || 'Unknown'));
+          (profiles || []).forEach(p => profilesMap.set(p.id, p.full_name || 'Unknown'));
         }
 
-        confirmTasks?.forEach(task => {
+        (confirmTasks || []).forEach(task => {
           const taskType = task.task_type as 'call_confirmation' | 'reschedule' | 'follow_up';
           const appointment = task.appointment as any;
           

@@ -180,7 +180,7 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
 
       // Filter tasks to only include appointments with event types that match saved filter
       let filteredTasks = tasksWithTotals || [];
-      if (savedEventTypes.length > 0) {
+      if (savedEventTypes && savedEventTypes.length > 0) {
         filteredTasks = filteredTasks.filter(task => {
           const eventTypeUri = task.appointment?.event_type_uri;
           // If no event type URI, still show the task (don't filter it out)
