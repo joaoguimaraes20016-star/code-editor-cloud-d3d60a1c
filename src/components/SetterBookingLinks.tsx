@@ -134,6 +134,7 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
 
   const autoGenerateAndSaveCodes = async (membersWithoutCodes: TeamMemberWithBooking[]) => {
     console.log('🔄 Auto-generating booking codes for:', membersWithoutCodes.length, 'members');
+    const isCurrentUserOnly = membersWithoutCodes.length === 1 && membersWithoutCodes[0].user_id === currentUserId;
     
     for (const member of membersWithoutCodes) {
       const generatedCode = generateCodeFromName(member.profiles.full_name);
@@ -150,11 +151,14 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
         
         if (checkError) {
           console.error('❌ Error checking existing code:', checkError);
-          toast({
-            title: 'Database Error',
-            description: `Failed to check for existing codes: ${checkError.message}`,
-            variant: 'destructive',
-          });
+          // Only show error for current user or if admin
+          if (isCurrentUserOnly || isOwner) {
+            toast({
+              title: 'Database Error',
+              description: `Failed to check for existing codes: ${checkError.message}`,
+              variant: 'destructive',
+            });
+          }
           throw checkError;
         }
         
@@ -200,76 +204,54 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
         
         if (saveError) {
           console.error('❌ Database save FAILED:', saveError);
-          toast({
-            title: 'Failed to save booking code',
-            description: `Could not save code for ${member.profiles.full_name}: ${saveError.message}`,
-            variant: 'destructive',
-          });
+          // Only show error for current user or if admin
+          if (isCurrentUserOnly || isOwner) {
+            toast({
+              title: 'Failed to save booking code',
+              description: `Could not save code for ${member.profiles.full_name}: ${saveError.message}`,
+              variant: 'destructive',
+            });
+          }
           throw saveError;
         }
         
         if (!savedData || savedData.length === 0) {
-          console.error('❌ Save returned no data - possible permission issue');
-          toast({
-            title: 'Save verification failed',
-            description: `Code may not have been saved for ${member.profiles.full_name}. Check permissions.`,
-            variant: 'destructive',
-          });
-          throw new Error('No data returned from save operation');
+          console.error('❌ Save returned empty data - likely a permissions issue');
+          // Only show error for current user or if admin
+          if (isCurrentUserOnly || isOwner) {
+            toast({
+              title: 'Permission Error',
+              description: `Could not set up booking code for ${member.profiles.full_name}. Error: insufficient permissions`,
+              variant: 'destructive',
+            });
+          }
+          throw new Error('No data returned from save - permissions issue');
         }
         
-        console.log(`✅ SUCCESS! Saved booking code "${finalCode}" for ${member.profiles.full_name}`);
-        console.log('📊 Database confirmed:', savedData);
+        console.log('✅ Successfully saved code:', savedData[0].booking_code);
+        // Only show success toast for current user or if explicitly requested
+        if (isCurrentUserOnly) {
+          toast({
+            title: 'Success',
+            description: `Booking code "${finalCode}" created for you!`,
+          });
+        }
         
-        // Update local state only after confirmed database save
-        setMembers(prevMembers =>
-          prevMembers.map(m =>
-            m.user_id === member.user_id
-              ? { ...m, booking_code: finalCode }
-              : m
-          )
-        );
-        
-        // Show success feedback to user
-        toast({
-          title: 'Booking code ready!',
-          description: `Your code "${finalCode}" is active and ready to use`,
-        });
-        
-      } catch (error: any) {
-        console.error('❌ FAILED to auto-generate code for', member.profiles.full_name, error);
-        toast({
-          title: 'Setup Failed',
-          description: `Could not set up booking code for ${member.profiles.full_name}. Error: ${error?.message || 'Unknown error'}`,
-          variant: 'destructive',
-        });
-        break;
+      } catch (error) {
+        console.error(`❌ Failed to auto-generate code for ${member.profiles.full_name}:`, error);
+        // Only show error for current user or if admin
+        if (isCurrentUserOnly || isOwner) {
+          toast({
+            title: 'Setup Failed',
+            description: `Could not set up booking code for ${member.profiles.full_name}. ${error instanceof Error ? `Error: ${error.message}` : ''}`,
+            variant: 'destructive',
+          });
+        }
       }
     }
     
-    // Reload from database to verify persistence
-    console.log('🔄 Reloading all members from database to verify...');
-    try {
-      const { data: refreshedMembers, error: refreshError } = await supabase
-        .from('team_members')
-        .select('user_id, role, booking_code, profiles!inner(full_name)')
-        .eq('team_id', teamId)
-        .in('role', ['setter', 'closer', 'admin', 'offer_owner']);
-      
-      if (!refreshError && refreshedMembers) {
-        setMembers(refreshedMembers);
-        console.log('✅ Members refreshed from database:', refreshedMembers);
-        
-        const stillNull = refreshedMembers.filter(m => !m.booking_code);
-        if (stillNull.length > 0) {
-          console.error('⚠️ WARNING: Some booking codes are still null after save attempt:', stillNull);
-        }
-      } else {
-        console.error('❌ Failed to refresh members:', refreshError);
-      }
-    } catch (error) {
-      console.error('❌ Error during refresh:', error);
-    }
+    // Reload members to show updated codes
+    await loadMembers();
   };
 
   const generateCodeFromName = (fullName: string): string => {

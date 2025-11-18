@@ -466,6 +466,8 @@ export type Database = {
           pipeline_stage: string | null
           required_confirmations: number | null
           reschedule_date: string | null
+          reschedule_notes: string | null
+          reschedule_reason: string | null
           routing_mode: string | null
           status: string
           task_type: Database["public"]["Enums"]["task_type"]
@@ -492,6 +494,8 @@ export type Database = {
           pipeline_stage?: string | null
           required_confirmations?: number | null
           reschedule_date?: string | null
+          reschedule_notes?: string | null
+          reschedule_reason?: string | null
           routing_mode?: string | null
           status?: string
           task_type?: Database["public"]["Enums"]["task_type"]
@@ -518,6 +522,8 @@ export type Database = {
           pipeline_stage?: string | null
           required_confirmations?: number | null
           reschedule_date?: string | null
+          reschedule_notes?: string | null
+          reschedule_reason?: string | null
           routing_mode?: string | null
           status?: string
           task_type?: Database["public"]["Enums"]["task_type"]

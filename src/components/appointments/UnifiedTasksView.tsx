@@ -1007,7 +1007,8 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               .from('confirmation_tasks')
               .update({ 
                 status: 'awaiting_reschedule',
-                notes: notes || reason
+                reschedule_reason: reason,
+                reschedule_notes: notes || null
               })
               .eq('id', rescheduleWithLinkDialog.taskId);
             

@@ -619,11 +619,13 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
     notes?: string
   ): Promise<void> => {
     try {
-      // Update task status to awaiting_reschedule
+      // Update task status to awaiting_reschedule with reason and notes
       const { error: taskError } = await supabase
         .from('confirmation_tasks')
         .update({ 
           status: 'awaiting_reschedule',
+          reschedule_reason: reason,
+          reschedule_notes: notes || null,
           auto_return_at: null, // Remove auto-return since we're waiting for webhook
         })
         .eq('id', taskId);
