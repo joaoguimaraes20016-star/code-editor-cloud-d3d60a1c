@@ -109,7 +109,13 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
       setMembers(members);
       
       // Auto-generate and save booking codes for members without them
-      const membersWithoutCodes = members.filter(m => !m.booking_code);
+      // If user is not admin/owner, only generate for themselves
+      let membersWithoutCodes = members.filter(m => !m.booking_code);
+      
+      // If not admin/owner, only auto-generate for current user
+      if (!isOwner && currentUserId) {
+        membersWithoutCodes = membersWithoutCodes.filter(m => m.user_id === currentUserId);
+      }
       
       if (membersWithoutCodes.length > 0) {
         await autoGenerateAndSaveCodes(membersWithoutCodes);
