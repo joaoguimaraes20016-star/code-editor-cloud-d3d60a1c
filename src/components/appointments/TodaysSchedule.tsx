@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon, Calendar } from "lucide-react";
 import { format } from "date-fns";
+import { useTeamRole } from "@/hooks/useTeamRole";
 
 interface Appointment {
   id: string;
@@ -34,6 +35,7 @@ export function TodaysSchedule({ teamId, currentUserId, onCloseDeal }: TodaysSch
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("all");
+  const { role } = useTeamRole(teamId);
 
   useEffect(() => {
     loadAppointments();
@@ -57,7 +59,7 @@ export function TodaysSchedule({ teamId, currentUserId, onCloseDeal }: TodaysSch
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [teamId, currentUserId]);
+  }, [teamId, currentUserId, role]);
 
   const loadAppointments = async () => {
     try {
@@ -66,14 +68,22 @@ export function TodaysSchedule({ teamId, currentUserId, onCloseDeal }: TodaysSch
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("appointments")
         .select("*")
         .eq("team_id", teamId)
-        .eq("closer_id", currentUserId)
         .gte("start_at_utc", today.toISOString())
-        .lt("start_at_utc", tomorrow.toISOString())
-        .order("start_at_utc", { ascending: true });
+        .lt("start_at_utc", tomorrow.toISOString());
+
+      // Filter based on user's role
+      if (role === 'setter') {
+        query = query.eq('setter_id', currentUserId);
+      } else {
+        // For closers, admins, offer_owners
+        query = query.eq('closer_id', currentUserId);
+      }
+
+      const { data, error } = await query.order("start_at_utc", { ascending: true });
 
       if (error) throw error;
       setAppointments(data || []);

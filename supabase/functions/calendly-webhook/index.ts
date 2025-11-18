@@ -347,7 +347,7 @@ serve(async (req) => {
           .select('user_id, is_active, role')
           .eq('team_id', teamId)
           .eq('is_active', true)
-          .in('role', ['closer', 'owner', 'admin']);
+          .in('role', ['closer', 'owner', 'admin', 'offer_owner']);
         
         console.log(`🔍 Found ${teamClosers?.length || 0} potential closers in team`);
         
@@ -365,7 +365,23 @@ serve(async (req) => {
             console.log(`✅ FALLBACK: Auto-assigned to sole active closer: ${closerName}`);
           }
         } else if (teamClosers && teamClosers.length > 1) {
-          console.log(`⚠️ Multiple closers found (${teamClosers.length}), cannot auto-assign`);
+          // Multiple closers - prioritize offer_owner
+          const offerOwner = teamClosers.find(tc => tc.role === 'offer_owner');
+          if (offerOwner) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .eq('id', offerOwner.user_id)
+              .maybeSingle();
+            
+            if (profile) {
+              closerId = profile.id;
+              closerName = profile.full_name;
+              console.log(`✅ FALLBACK: Auto-assigned to offer_owner: ${closerName}`);
+            }
+          } else {
+            console.log(`⚠️ Multiple closers found (${teamClosers.length}), no offer_owner to auto-assign`);
+          }
         } else {
           console.log('⚠️ No active closers found in team');
         }
@@ -473,6 +489,38 @@ serve(async (req) => {
                 console.log(`Auto-assigned to setter: ${profile?.full_name} (${bookingCode})`);
               } else {
                 console.log('No team member found for booking code:', bookingCode);
+              }
+            }
+            
+            // SETTER FALLBACK: If no setter assigned via UTM, check if there's only one active setter
+            if (!appointmentData.setter_id) {
+              console.log('🔍 No setter assigned yet, checking for fallback setter assignment...');
+              const { data: teamSetters } = await supabase
+                .from('team_members')
+                .select('user_id, is_active, role')
+                .eq('team_id', teamId)
+                .eq('is_active', true)
+                .eq('role', 'setter');
+              
+              console.log(`🔍 Found ${teamSetters?.length || 0} active setters in team`);
+              
+              if (teamSetters && teamSetters.length === 1) {
+                // Only one setter - auto-assign to them
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('id, full_name')
+                  .eq('id', teamSetters[0].user_id)
+                  .maybeSingle();
+                
+                if (profile) {
+                  appointmentData.setter_id = profile.id;
+                  appointmentData.setter_name = profile.full_name;
+                  console.log(`✅ SETTER FALLBACK: Auto-assigned to sole active setter: ${profile.full_name}`);
+                }
+              } else if (teamSetters && teamSetters.length > 1) {
+                console.log(`⚠️ Multiple setters found (${teamSetters.length}), cannot auto-assign`);
+              } else {
+                console.log('⚠️ No active setters found in team');
               }
             }
           } else {
