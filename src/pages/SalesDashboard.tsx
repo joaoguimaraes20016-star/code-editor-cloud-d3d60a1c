@@ -609,14 +609,17 @@ const Index = () => {
     return isClosedStatus || hasDeposit;
   });
   
-  // Only count CC from appointments (sales are derived from appointments, no double counting)
-  const totalCCRevenue = closedAppointments.reduce((sum, apt) => sum + (Number(apt.cc_collected) || 0), 0);
+  // Count CC from both appointments AND manually added sales
+  const ccFromAppointments = closedAppointments.reduce((sum, apt) => sum + (Number(apt.cc_collected) || 0), 0);
+  const ccFromManualSales = filteredSalesFromTable
+    .filter(s => s.status === 'closed')
+    .reduce((sum, sale) => sum + sale.revenue, 0);
+  const totalCCRevenue = ccFromAppointments + ccFromManualSales;
   
   const totalMRR = closedAppointments.reduce((sum, apt) => sum + (Number(apt.mrr_amount) || 0), 0);
   
-  // Only calculate commissions from appointments to avoid double counting
-  // Offer owners don't get commissions
-  const totalCommissions = closedAppointments.reduce((sum, apt) => {
+  // Calculate commissions from both appointments and manual sales
+  const commissionsFromAppointments = closedAppointments.reduce((sum, apt) => {
     const cc = Number(apt.cc_collected) || 0;
     const closerMember = teamMembers.find(m => m.id === apt.closer_id);
     const closerComm = (closerMember?.role !== 'offer_owner') ? cc * (closerCommissionPct / 100) : 0;
@@ -624,11 +627,19 @@ const Index = () => {
     return sum + closerComm + setterComm;
   }, 0);
   
-  // Calculate appointment-based metrics (only from appointments, sales are auto-created from appointments)
+  const commissionsFromManualSales = filteredSalesFromTable
+    .filter(s => s.status === 'closed')
+    .reduce((sum, sale) => sum + sale.commission + sale.setterCommission, 0);
+  
+  const totalCommissions = commissionsFromAppointments + commissionsFromManualSales;
+  
+  // Calculate appointment-based metrics
   const showedAppointments = filteredAppointments.filter(apt => apt.status === 'SHOWED' || apt.status === 'CLOSED');
   const noShowAppointments = filteredAppointments.filter(apt => apt.status === 'NO_SHOW');
   const totalScheduledAppointments = filteredAppointments.length;
-  const totalClosedDeals = closedAppointments.length;
+  
+  // Count closed deals from both appointments and manual sales
+  const totalClosedDeals = closedAppointments.length + filteredSalesFromTable.filter(s => s.status === 'closed').length;
   
   // Close Rate: Closed deals / Showed appointments (appointments that actually happened)
   const closeRate = showedAppointments.length > 0 
