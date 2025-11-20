@@ -154,7 +154,7 @@ export function AppointmentFilters({
           
           orgEventTypes.forEach((et: any) => {
             // Only include if selected by admin
-            if (selectedEventTypeUris.includes(et.uri) && !allEventTypesMap.has(et.uri)) {
+            if (selectedEventTypeUris.includes(et.uri)) {
               allEventTypesMap.set(et.uri, {
                 uri: et.uri,
                 name: et.name,

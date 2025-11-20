@@ -46,17 +46,23 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventT
 
   useEffect(() => {
     loadMembers();
-    // If availableEventTypes is provided from parent, use it
+    
+    // Use availableEventTypes from parent if it has data
     if (availableEventTypes.length > 0) {
+      console.log('Using event types from parent:', availableEventTypes);
       setEventTypeDetails(availableEventTypes);
-    } else if (calendlyAccessToken && calendlyOrgUri && !fetchingEventTypes) {
-      // Otherwise fetch event types
+    }
+    
+    // ALWAYS fetch if we don't have event details yet AND have credentials
+    // This handles cases where parent passed empty array or didn't fetch yet
+    if (eventTypeDetails.length === 0 && calendlyAccessToken && calendlyOrgUri && !fetchingEventTypes) {
+      console.log('Event details empty, fetching from Calendly API...');
       const timer = setTimeout(() => {
         fetchEventTypeNames();
       }, 200);
       return () => clearTimeout(timer);
     }
-  }, [teamId, calendlyAccessToken, calendlyOrgUri, availableEventTypes]);
+  }, [teamId, calendlyAccessToken, calendlyOrgUri, availableEventTypes, eventTypeDetails.length]);
 
   const fetchEventTypeNames = async () => {
     if (!calendlyAccessToken || !calendlyOrgUri) {
