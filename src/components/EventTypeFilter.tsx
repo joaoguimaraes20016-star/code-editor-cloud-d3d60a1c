@@ -62,8 +62,11 @@ export function EventTypeFilter({
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `https://api.calendly.com/event_types?organization=${encodeURIComponent(calendlyOrgUri)}`,
+      console.log('Fetching all event types (user-level + org-level) for dropdown...');
+      
+      // Step 1: Fetch organization members
+      const membersResponse = await fetch(
+        `https://api.calendly.com/organization_memberships?organization=${encodeURIComponent(calendlyOrgUri)}&count=100`,
         {
           headers: {
             'Authorization': `Bearer ${calendlyAccessToken}`,
@@ -72,26 +75,97 @@ export function EventTypeFilter({
         }
       );
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Token expired, don't retry - let parent component handle refresh
+      if (!membersResponse.ok) {
+        if (membersResponse.status === 401) {
           console.log('Token expired in EventTypeFilter');
         }
         setLoading(false);
         return;
       }
 
-      const data = await response.json();
-      const details: EventTypeDetails[] = data.collection.map((et: any) => ({
-        uri: et.uri,
-        scheduling_url: et.scheduling_url,
-        name: et.name,
-        profile: et.profile,
-        pooling_type: et.pooling_type,
-      }));
+      const membersData = await membersResponse.json();
+      const members = membersData.collection || [];
+      console.log(`Found ${members.length} organization members`);
 
-      console.log('Loaded event types for filter:', details);
-      setEventTypes(details);
+      // Step 2: Fetch user-level event types for each member
+      const allEventTypesMap = new Map<string, EventTypeDetails>();
+      
+      for (const member of members) {
+        const userUri = member.user?.uri;
+        if (!userUri) continue;
+
+        try {
+          const userEventTypesResponse = await fetch(
+            `https://api.calendly.com/event_types?user=${encodeURIComponent(userUri)}&count=100`,
+            {
+              headers: {
+                'Authorization': `Bearer ${calendlyAccessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (userEventTypesResponse.ok) {
+            const userEventTypesData = await userEventTypesResponse.json();
+            const userEventTypes = userEventTypesData.collection || [];
+            
+            userEventTypes.forEach((et: any) => {
+              if (!allEventTypesMap.has(et.uri)) {
+                allEventTypesMap.set(et.uri, {
+                  uri: et.uri,
+                  scheduling_url: et.scheduling_url,
+                  name: et.name,
+                  profile: et.profile,
+                  pooling_type: et.pooling_type,
+                });
+              }
+            });
+          }
+        } catch (userError) {
+          console.error(`Failed to fetch user event types:`, userError);
+        }
+      }
+
+      // Step 3: Fetch organization-level event types (Round Robin/Team)
+      try {
+        console.log('Fetching organization-level event types (Round Robin/Team)...');
+        const orgEventTypesResponse = await fetch(
+          `https://api.calendly.com/event_types?organization=${encodeURIComponent(calendlyOrgUri)}&count=100`,
+          {
+            headers: {
+              'Authorization': `Bearer ${calendlyAccessToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (orgEventTypesResponse.ok) {
+          const orgEventTypesData = await orgEventTypesResponse.json();
+          const orgEventTypes = orgEventTypesData.collection || [];
+          
+          orgEventTypes.forEach((et: any) => {
+            if (!allEventTypesMap.has(et.uri)) {
+              allEventTypesMap.set(et.uri, {
+                uri: et.uri,
+                scheduling_url: et.scheduling_url,
+                name: et.name,
+                profile: et.profile,
+                pooling_type: et.pooling_type,
+              });
+            }
+          });
+          
+          console.log(`Found ${orgEventTypes.length} organization-level event types`);
+        }
+      } catch (orgError) {
+        console.error('Error fetching org-level event types:', orgError);
+      }
+
+      const allEventTypes = Array.from(allEventTypesMap.values());
+      console.log(`Total event types for dropdown: ${allEventTypes.length}`);
+      console.log(`Round Robin events: ${allEventTypes.filter(et => et.pooling_type === 'round_robin').length}`);
+      
+      setEventTypes(allEventTypes);
     } catch (error) {
       console.error('Error loading event types:', error);
     } finally {
