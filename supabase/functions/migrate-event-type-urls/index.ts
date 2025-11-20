@@ -82,12 +82,9 @@ serve(async (req) => {
             return url;
           }
 
-          // Extract slug from scheduling URL (e.g., "appointment-30min" from "https://calendly.com/user/appointment-30min")
-          const slug = url.split('/').pop();
-          
-          // Find matching event type by slug
+          // Find matching event type by full scheduling URL
           const matchingEvent = allEventTypes.find((et: any) => 
-            et.slug === slug || et.scheduling_url === url
+            et.scheduling_url === url
           );
 
           if (matchingEvent) {
