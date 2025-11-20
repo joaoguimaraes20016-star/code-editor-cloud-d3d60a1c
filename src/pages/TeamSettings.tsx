@@ -73,6 +73,12 @@ export default function TeamSettings() {
   const [calendlyOrgUri, setCalendlyOrgUri] = useState<string | null>(null);
   const [calendlyWebhookId, setCalendlyWebhookId] = useState<string | null>(null);
   const [calendlyEventTypes, setCalendlyEventTypes] = useState<string[] | null>(null);
+  const [availableEventTypes, setAvailableEventTypes] = useState<Array<{
+    uri: string;
+    name: string;
+    scheduling_url: string;
+    pooling_type?: string | null;
+  }>>([]);
 
   useEffect(() => {
     if (!user || !teamId) {
@@ -150,6 +156,11 @@ export default function TeamSettings() {
         setCalendlyOrgUri(data.calendly_organization_uri);
         setCalendlyWebhookId(data.calendly_webhook_id);
         setCalendlyEventTypes(data.calendly_event_types);
+        
+        // Fetch event type details if Calendly is connected
+        if (data.calendly_access_token && data.calendly_organization_uri) {
+          await fetchEventTypeDetails(data.calendly_access_token, data.calendly_organization_uri);
+        }
       }
     } catch (error: any) {
       toast({
@@ -159,6 +170,67 @@ export default function TeamSettings() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEventTypeDetails = async (accessToken: string, orgUri: string) => {
+    try {
+      console.log('Fetching organization members for event types...');
+      const membersResponse = await fetch(
+        `https://api.calendly.com/organization_memberships?organization=${encodeURIComponent(orgUri)}&count=100`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!membersResponse.ok) return;
+
+      const membersData = await membersResponse.json();
+      const members = membersData.collection || [];
+
+      const allEventTypesMap = new Map<string, any>();
+      
+      for (const member of members) {
+        const userUri = member.user?.uri;
+        if (!userUri) continue;
+
+        try {
+          const userEventTypesResponse = await fetch(
+            `https://api.calendly.com/event_types?user=${encodeURIComponent(userUri)}&count=100`,
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (userEventTypesResponse.ok) {
+            const userEventTypesData = await userEventTypesResponse.json();
+            const userEventTypes = userEventTypesData.collection || [];
+            
+            userEventTypes.forEach((et: any) => {
+              if (!allEventTypesMap.has(et.uri)) {
+                allEventTypesMap.set(et.uri, {
+                  uri: et.uri,
+                  name: et.name,
+                  scheduling_url: et.scheduling_url,
+                  pooling_type: et.pooling_type,
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching event types for user:', error);
+        }
+      }
+
+      setAvailableEventTypes(Array.from(allEventTypesMap.values()));
+    } catch (error) {
+      console.error('Error fetching event type details:', error);
     }
   };
 
@@ -582,6 +654,7 @@ export default function TeamSettings() {
                         <SetterBookingLinks
                           teamId={teamId!}
                           calendlyEventTypes={calendlyEventTypes}
+                          availableEventTypes={availableEventTypes}
                           calendlyAccessToken={calendlyAccessToken}
                           calendlyOrgUri={calendlyOrgUri}
                           onRefresh={loadTeamData}
@@ -670,6 +743,7 @@ export default function TeamSettings() {
                 <SetterBookingLinks
                   teamId={teamId!}
                   calendlyEventTypes={calendlyEventTypes}
+                  availableEventTypes={availableEventTypes}
                   calendlyAccessToken={calendlyAccessToken}
                   calendlyOrgUri={calendlyOrgUri}
                   onRefresh={loadTeamData}

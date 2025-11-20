@@ -1261,6 +1261,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                 eventTypeFilter={eventTypeFilter}
                 onEventTypeFilterChange={setEventTypeFilter}
                 eventTypes={eventTypes}
+                teamId={teamId}
                 onClearFilters={() => {
                   setSearchQuery("");
                   setStatusFilter("all");

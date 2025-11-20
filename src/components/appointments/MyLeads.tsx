@@ -169,6 +169,7 @@ export function MyLeads({ teamId, currentUserId, onCloseDeal }: MyAppointmentsPr
         onEventTypeFilterChange={setEventTypeFilter}
         eventTypes={eventTypes}
         onClearFilters={handleClearFilters}
+        teamId={teamId}
       />
 
       {/* Unassigned Appointments Section */}

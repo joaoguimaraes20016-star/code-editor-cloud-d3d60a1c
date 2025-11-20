@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AppointmentFiltersProps {
   searchQuery: string;
@@ -18,6 +20,13 @@ interface AppointmentFiltersProps {
   onEventTypeFilterChange: (value: string) => void;
   eventTypes: string[];
   onClearFilters: () => void;
+  teamId?: string;
+}
+
+interface EventTypeWithCount {
+  name: string;
+  count: number;
+  uri: string;
 }
 
 export function AppointmentFilters({
@@ -29,8 +38,140 @@ export function AppointmentFilters({
   onEventTypeFilterChange,
   eventTypes,
   onClearFilters,
+  teamId,
 }: AppointmentFiltersProps) {
   const hasActiveFilters = searchQuery || statusFilter !== "all" || eventTypeFilter !== "all";
+  const [eventTypesWithCount, setEventTypesWithCount] = useState<EventTypeWithCount[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (teamId) {
+      fetchEventTypesWithCounts();
+    }
+  }, [teamId]);
+
+  const fetchEventTypesWithCounts = async () => {
+    if (!teamId) return;
+    
+    setLoading(true);
+    try {
+      // Fetch selected event types from team settings
+      const { data: teamData, error: teamError } = await supabase
+        .from('teams')
+        .select('calendly_event_types, calendly_access_token, calendly_organization_uri')
+        .eq('id', teamId)
+        .single();
+
+      if (teamError) throw teamError;
+
+      const selectedEventTypeUris = teamData?.calendly_event_types || [];
+      
+      // If no event types selected, use the ones passed from appointments
+      if (selectedEventTypeUris.length === 0) {
+        setEventTypesWithCount(eventTypes.map(name => ({ name, count: 0, uri: '' })));
+        return;
+      }
+
+      // Fetch event type details from Calendly
+      const accessToken = teamData?.calendly_access_token;
+      const orgUri = teamData?.calendly_organization_uri;
+      
+      if (!accessToken || !orgUri) {
+        setEventTypesWithCount(eventTypes.map(name => ({ name, count: 0, uri: '' })));
+        return;
+      }
+
+      // Fetch organization members to get all event types
+      const membersResponse = await fetch(
+        `https://api.calendly.com/organization_memberships?organization=${encodeURIComponent(orgUri)}&count=100`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!membersResponse.ok) {
+        setEventTypesWithCount(eventTypes.map(name => ({ name, count: 0, uri: '' })));
+        return;
+      }
+
+      const membersData = await membersResponse.json();
+      const members = membersData.collection || [];
+
+      const allEventTypesMap = new Map<string, { uri: string; name: string }>();
+      
+      for (const member of members) {
+        const userUri = member.user?.uri;
+        if (!userUri) continue;
+
+        try {
+          const userEventTypesResponse = await fetch(
+            `https://api.calendly.com/event_types?user=${encodeURIComponent(userUri)}&count=100`,
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (userEventTypesResponse.ok) {
+            const userEventTypesData = await userEventTypesResponse.json();
+            const userEventTypes = userEventTypesData.collection || [];
+            
+            userEventTypes.forEach((et: any) => {
+              if (selectedEventTypeUris.includes(et.uri)) {
+                allEventTypesMap.set(et.uri, {
+                  uri: et.uri,
+                  name: et.name,
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching event types for user:', error);
+        }
+      }
+
+      // Get appointment counts for each event type
+      const { data: appointments, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select('event_type_name, event_type_uri')
+        .eq('team_id', teamId);
+
+      if (appointmentsError) throw appointmentsError;
+
+      // Count appointments by event type
+      const countByUri = new Map<string, number>();
+      const countByName = new Map<string, number>();
+      
+      appointments?.forEach(apt => {
+        if (apt.event_type_uri) {
+          countByUri.set(apt.event_type_uri, (countByUri.get(apt.event_type_uri) || 0) + 1);
+        }
+        if (apt.event_type_name) {
+          countByName.set(apt.event_type_name, (countByName.get(apt.event_type_name) || 0) + 1);
+        }
+      });
+
+      // Build the final list with counts
+      const eventTypesWithCounts: EventTypeWithCount[] = Array.from(allEventTypesMap.values()).map(et => ({
+        name: et.name,
+        uri: et.uri,
+        count: countByUri.get(et.uri) || countByName.get(et.name) || 0,
+      }));
+
+      setEventTypesWithCount(eventTypesWithCounts);
+    } catch (error) {
+      console.error('Error fetching event types with counts:', error);
+      // Fallback to using eventTypes prop
+      setEventTypesWithCount(eventTypes.map(name => ({ name, count: 0, uri: '' })));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -60,18 +201,26 @@ export function AppointmentFilters({
         </SelectContent>
       </Select>
 
-      {eventTypes.length > 0 && (
+      {(eventTypesWithCount.length > 0 || eventTypes.length > 0) && (
         <Select value={eventTypeFilter} onValueChange={onEventTypeFilterChange}>
-          <SelectTrigger className="w-full sm:w-[200px]">
+          <SelectTrigger className="w-full sm:w-[240px]">
             <SelectValue placeholder="All Event Types" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Event Types</SelectItem>
-            {eventTypes.map((type) => (
-              <SelectItem key={type} value={type}>
-                {type}
-              </SelectItem>
-            ))}
+            {eventTypesWithCount.length > 0 ? (
+              eventTypesWithCount.map((type) => (
+                <SelectItem key={type.uri || type.name} value={type.name}>
+                  {type.name} ({type.count})
+                </SelectItem>
+              ))
+            ) : (
+              eventTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       )}

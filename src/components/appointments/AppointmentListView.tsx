@@ -182,6 +182,7 @@ export function AppointmentListView({
         onEventTypeFilterChange={setEventTypeFilter}
         eventTypes={eventTypes}
         onClearFilters={handleClearFilters}
+        teamId={teamId}
       />
 
       {filteredAppointments.length === 0 ? (

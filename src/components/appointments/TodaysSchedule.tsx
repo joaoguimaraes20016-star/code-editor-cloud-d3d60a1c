@@ -150,6 +150,7 @@ export function TodaysSchedule({ teamId, currentUserId, onCloseDeal }: TodaysSch
         onEventTypeFilterChange={setEventTypeFilter}
         eventTypes={eventTypes}
         onClearFilters={handleClearFilters}
+        teamId={teamId}
       />
 
       {appointments.length === 0 ? (

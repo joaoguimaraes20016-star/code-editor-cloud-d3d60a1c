@@ -20,11 +20,13 @@ interface EventTypeDetails {
   uri: string;
   scheduling_url: string;
   name: string;
+  pooling_type?: string | null;
 }
 
 interface SetterBookingLinksProps {
   teamId: string;
   calendlyEventTypes: string[];
+  availableEventTypes?: EventTypeDetails[];
   calendlyAccessToken?: string | null;
   calendlyOrgUri?: string | null;
   onRefresh?: () => void;
@@ -32,7 +34,7 @@ interface SetterBookingLinksProps {
   isOwner?: boolean;
 }
 
-export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessToken, calendlyOrgUri, onRefresh, currentUserId, isOwner = false }: SetterBookingLinksProps) {
+export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventTypes = [], calendlyAccessToken, calendlyOrgUri, onRefresh, currentUserId, isOwner = false }: SetterBookingLinksProps) {
   const [members, setMembers] = useState<TeamMemberWithBooking[]>([]);
   const [editingCodes, setEditingCodes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -44,14 +46,17 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
 
   useEffect(() => {
     loadMembers();
-    if (calendlyAccessToken && calendlyOrgUri && !fetchingEventTypes) {
-      // Add small delay to prevent race conditions with token refresh
+    // If availableEventTypes is provided from parent, use it
+    if (availableEventTypes.length > 0) {
+      setEventTypeDetails(availableEventTypes);
+    } else if (calendlyAccessToken && calendlyOrgUri && !fetchingEventTypes) {
+      // Otherwise fetch event types
       const timer = setTimeout(() => {
         fetchEventTypeNames();
       }, 200);
       return () => clearTimeout(timer);
     }
-  }, [teamId, calendlyAccessToken, calendlyOrgUri]);
+  }, [teamId, calendlyAccessToken, calendlyOrgUri, availableEventTypes]);
 
   const fetchEventTypeNames = async () => {
     if (!calendlyAccessToken || !calendlyOrgUri) {
@@ -83,6 +88,7 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
         uri: et.uri,
         scheduling_url: et.scheduling_url,
         name: et.name,
+        pooling_type: et.pooling_type,
       }));
       
       console.log('✓ Fetched event type details:', details);
@@ -497,14 +503,30 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
     );
   }
 
+  // Separate Round Robin events from individual events
+  const roundRobinEvents = validBookingUrls
+    .map(url => {
+      const detail = eventTypeDetails.find(et => et.scheduling_url === url);
+      return detail;
+    })
+    .filter((detail): detail is EventTypeDetails => 
+      detail !== undefined && 
+      (detail.pooling_type === 'round_robin_max_availability' || detail.pooling_type === 'round_robin_equal_priority')
+    );
+
+  const individualEventUrls = validBookingUrls.filter(url => {
+    const detail = eventTypeDetails.find(et => et.scheduling_url === url);
+    return !detail || (!detail.pooling_type || detail.pooling_type === 'null');
+  });
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Setter Booking Links</CardTitle>
+            <CardTitle>Booking Links</CardTitle>
             <CardDescription>
-              Create personalized booking links that automatically assign appointments to specific team members
+              Team booking links for appointments
             </CardDescription>
           </div>
           {onRefresh && (
@@ -520,138 +542,197 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, calendlyAccessT
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {filteredMembers.map((member) => {
-          const currentCode = editingCodes[member.user_id] ?? member.booking_code ?? '';
-          const hasBookingCode = !!(member.booking_code);
-          const isGenerating = loading && !member.booking_code;
-
-          return (
-            <div key={member.user_id} className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{member.profiles.full_name}</p>
-                  <Badge variant="secondary" className="mt-1">
-                    {member.role === 'offer_owner' ? 'Offer Owner' : member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+      <CardContent className="space-y-6">
+        {/* Round Robin Events Section */}
+        {roundRobinEvents.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-sm text-muted-foreground">Round Robin Events (Shared Links)</h3>
+            </div>
+            {roundRobinEvents.map((eventType) => (
+              <div key={eventType.uri} className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium">{eventType.name}</h4>
+                  <Badge variant="secondary" className="text-xs">
+                    Round Robin
                   </Badge>
                 </div>
+                <div className="space-y-2">
+                  <Input
+                    value={eventType.scheduling_url}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(eventType.scheduling_url, eventType.name)}
+                      className="flex-1"
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Link
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(eventType.scheduling_url, '_blank')}
+                      className="flex-1"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    This is a shared booking link. Calendly will automatically assign leads to team members in rotation.
+                  </p>
+                </div>
               </div>
+            ))}
+          </div>
+        )}
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Booking Code</label>
-                <Input
-                  placeholder="e.g., john_s"
-                  value={currentCode}
-                  onChange={(e) =>
-                    setEditingCodes((prev) => ({
-                      ...prev,
-                      [member.user_id]: e.target.value,
-                    }))
-                  }
-                  onBlur={(e) => {
-                    const newCode = e.target.value.trim();
-                    if (newCode && newCode !== member.booking_code) {
-                      handleSaveCode(member.user_id, newCode);
-                    }
-                  }}
-                  className="flex-1"
-                  disabled={!isOwner && member.user_id !== currentUserId}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {member.booking_code ? 
-                    'Edit and press Enter or click away to update' : 
-                    'Generating personalized code...'
-                  }
-                </p>
-                
-                {/* Status indicator */}
-                <div className="mt-1">
-                  {member.booking_code ? (
-                    <div className="flex items-center gap-1 text-xs text-green-600">
-                      <Check className="h-3 w-3" />
-                      <span>Code active - your links are ready</span>
+        {/* Individual Event Links Section */}
+        {individualEventUrls.length > 0 && (
+          <div className="space-y-3">
+            {roundRobinEvents.length > 0 && (
+              <div className="flex items-center gap-2 pt-3 border-t">
+                <h3 className="font-semibold text-sm text-muted-foreground">Individual Booking Links</h3>
+              </div>
+            )}
+            {filteredMembers.map((member) => {
+              const currentCode = editingCodes[member.user_id] ?? member.booking_code ?? '';
+              const hasBookingCode = !!(member.booking_code);
+              const isGenerating = loading && !member.booking_code;
+
+              return (
+                <div key={member.user_id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{member.profiles.full_name}</p>
+                      <Badge variant="secondary" className="mt-1">
+                        {member.role === 'offer_owner' ? 'Offer Owner' : member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                      </Badge>
                     </div>
-                  ) : isGenerating ? (
-                    <div className="flex items-center gap-1 text-xs text-blue-600">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>Generating your unique code...</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Booking Code</label>
+                    <Input
+                      placeholder="e.g., john_s"
+                      value={currentCode}
+                      onChange={(e) =>
+                        setEditingCodes((prev) => ({
+                          ...prev,
+                          [member.user_id]: e.target.value,
+                        }))
+                      }
+                      onBlur={(e) => {
+                        const newCode = e.target.value.trim();
+                        if (newCode && newCode !== member.booking_code) {
+                          handleSaveCode(member.user_id, newCode);
+                        }
+                      }}
+                      className="flex-1"
+                      disabled={!isOwner && member.user_id !== currentUserId}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {member.booking_code ? 
+                        'Edit and press Enter or click away to update' : 
+                        'Generating personalized code...'
+                      }
+                    </p>
+                    
+                    {/* Status indicator */}
+                    <div className="mt-1">
+                      {member.booking_code ? (
+                        <div className="flex items-center gap-1 text-xs text-green-600">
+                          <Check className="h-3 w-3" />
+                          <span>Code active - your links are ready</span>
+                        </div>
+                      ) : isGenerating ? (
+                        <div className="flex items-center gap-1 text-xs text-blue-600">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span>Generating your unique code...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-xs text-amber-600">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>No code - links won't work yet</span>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-xs text-amber-600">
-                      <AlertCircle className="h-3 w-3" />
-                      <span>No code - links won't work yet</span>
+                    
+                    {/* Manual generate button if code is still null */}
+                    {!member.booking_code && (isOwner || member.user_id === currentUserId) && (
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          console.log('🔧 Manual generation triggered for:', member.profiles.full_name);
+                          await autoGenerateAndSaveCodes([member]);
+                        }}
+                        disabled={loading}
+                        className="mt-2"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Generate My Code Now
+                      </Button>
+                    )}
+                  </div>
+
+                  {hasBookingCode && (
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium">
+                        Personalized Booking Links ({individualEventUrls.length} event {individualEventUrls.length === 1 ? 'type' : 'types'})
+                      </label>
+                      
+                      {individualEventUrls.map((eventTypeUrl, index) => {
+                        const bookingLink = getBookingLink(eventTypeUrl, member.booking_code!);
+                        const eventName = getEventTypeName(eventTypeUrl);
+                        
+                        return (
+                          <div key={index} className="border rounded p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-muted-foreground">
+                                {eventName}
+                              </span>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => copyToClipboard(bookingLink, `${eventName} booking link`)}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => window.open(bookingLink, '_blank')}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <Input
+                              value={bookingLink}
+                              readOnly
+                              className="font-mono text-xs"
+                            />
+                          </div>
+                        );
+                      })}
+                      
+                      <p className="text-xs text-muted-foreground">
+                        Appointments booked through these links will automatically assign to{' '}
+                        {member.profiles.full_name}
+                      </p>
                     </div>
                   )}
                 </div>
-                
-                {/* Manual generate button if code is still null */}
-                {!member.booking_code && (isOwner || member.user_id === currentUserId) && (
-                  <Button
-                    size="sm"
-                    onClick={async () => {
-                      console.log('🔧 Manual generation triggered for:', member.profiles.full_name);
-                      await autoGenerateAndSaveCodes([member]);
-                    }}
-                    disabled={loading}
-                    className="mt-2"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Generate My Code Now
-                  </Button>
-                )}
-              </div>
-
-              {hasBookingCode && (
-                <div className="space-y-3">
-                  <label className="text-sm font-medium">
-                    Personalized Booking Links ({validBookingUrls.length} event {validBookingUrls.length === 1 ? 'type' : 'types'})
-                  </label>
-                  
-                  {validBookingUrls.map((eventTypeUrl, index) => {
-                    const bookingLink = getBookingLink(eventTypeUrl, member.booking_code!);
-                    const eventName = getEventTypeName(eventTypeUrl);
-                    
-                    return (
-                      <div key={index} className="border rounded p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-muted-foreground">
-                            {eventName}
-                          </span>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => copyToClipboard(bookingLink, `${eventName} booking link`)}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => window.open(bookingLink, '_blank')}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <Input
-                          value={bookingLink}
-                          readOnly
-                          className="font-mono text-xs"
-                        />
-                      </div>
-                    );
-                  })}
-                  
-                  <p className="text-xs text-muted-foreground">
-                    Appointments booked through these links will automatically assign to{' '}
-                    {member.profiles.full_name}
-                  </p>
-                </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

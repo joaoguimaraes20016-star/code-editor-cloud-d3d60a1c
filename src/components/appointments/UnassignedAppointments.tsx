@@ -160,6 +160,7 @@ export function UnassignedAppointments({ teamId, onUpdate }: UnassignedAppointme
         onEventTypeFilterChange={setEventTypeFilter}
         eventTypes={eventTypes}
         onClearFilters={handleClearFilters}
+        teamId={teamId}
       />
 
       {appointments.length === 0 ? (
