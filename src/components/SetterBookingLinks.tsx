@@ -579,10 +579,9 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventT
       detail.pooling_type === 'round_robin'
     );
 
-  const individualEventUrls = validBookingUrls.filter(url => {
-    const detail = eventTypeDetails.find(et => et.scheduling_url === url);
-    return !detail || (!detail.pooling_type || detail.pooling_type === 'null');
-  });
+  // Include ALL event types (including Round Robin) in individual setter links
+  // Each setter gets a personalized link with their UTM code for auto-assignment
+  const individualEventUrls = validBookingUrls;
 
   return (
     <Card>
