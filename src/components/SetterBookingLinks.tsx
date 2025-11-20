@@ -576,7 +576,7 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventT
     })
     .filter((detail): detail is EventTypeDetails => 
       detail !== undefined && 
-      (detail.pooling_type === 'round_robin_max_availability' || detail.pooling_type === 'round_robin_equal_priority')
+      detail.pooling_type === 'round_robin'
     );
 
   const individualEventUrls = validBookingUrls.filter(url => {
