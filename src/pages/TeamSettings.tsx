@@ -228,6 +228,39 @@ export default function TeamSettings() {
         }
       }
 
+      // Fetch organization-level event types (includes Round Robin)
+      try {
+        console.log('Fetching organization-level event types (Round Robin)...');
+        const orgEventTypesResponse = await fetch(
+          `https://api.calendly.com/event_types?organization=${encodeURIComponent(orgUri)}&count=100`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (orgEventTypesResponse.ok) {
+          const orgEventTypesData = await orgEventTypesResponse.json();
+          const orgEventTypes = orgEventTypesData.collection || [];
+          
+          orgEventTypes.forEach((et: any) => {
+            if (!allEventTypesMap.has(et.uri)) {
+              allEventTypesMap.set(et.uri, {
+                uri: et.uri,
+                name: et.name,
+                scheduling_url: et.scheduling_url,
+                pooling_type: et.pooling_type,
+              });
+            }
+          });
+          console.log(`Found ${orgEventTypes.length} organization-level event types`);
+        }
+      } catch (error) {
+        console.error('Error fetching org-level event types:', error);
+      }
+
       setAvailableEventTypes(Array.from(allEventTypesMap.values()));
     } catch (error) {
       console.error('Error fetching event type details:', error);
