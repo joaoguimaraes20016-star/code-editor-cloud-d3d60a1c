@@ -150,16 +150,22 @@ export function CalendlyConfig({
 
     setLoadingEventTypes(true);
     try {
-      const response = await fetch(`https://api.calendly.com/event_types?organization=${encodeURIComponent(currentOrgUri)}`, {
-        headers: {
-          'Authorization': `Bearer ${currentAccessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      console.log('Fetching organization members to get all event types including Round Robin...');
+      
+      // Step 1: Fetch organization members
+      const membersResponse = await fetch(
+        `https://api.calendly.com/organization_memberships?organization=${encodeURIComponent(currentOrgUri)}&count=100`,
+        {
+          headers: {
+            'Authorization': `Bearer ${currentAccessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      if (!response.ok) {
-        console.warn('Failed to fetch Calendly event types:', response.status);
-        if (response.status === 401 && !tokenRefreshInProgress) {
+      if (!membersResponse.ok) {
+        console.warn('Failed to fetch organization members:', membersResponse.status);
+        if (membersResponse.status === 401 && !tokenRefreshInProgress) {
           setTokenRefreshInProgress(true);
           try {
             const { data: refreshData, error: refreshError } = await supabase.functions.invoke('refresh-calendly-token', {
@@ -173,7 +179,6 @@ export function CalendlyConfig({
               return;
             }
 
-            // Token refreshed - wait for parent to update props
             console.log('Token refreshed successfully');
             setLoadingEventTypes(false);
             setTokenRefreshInProgress(false);
@@ -190,9 +195,9 @@ export function CalendlyConfig({
         return;
       }
 
-      const data = await response.json();
+      const membersData = await membersResponse.json();
       
-      if (data.title === 'Unauthenticated') {
+      if (membersData.title === 'Unauthenticated') {
         console.warn('Calendly authentication failed');
         setTokenValidationFailed(true);
         toast({
@@ -203,16 +208,58 @@ export function CalendlyConfig({
         setLoadingEventTypes(false);
         return;
       }
+
+      const members = membersData.collection || [];
+      console.log(`Found ${members.length} organization members`);
+
+      // Step 2: Fetch event types for each user
+      const allEventTypesMap = new Map<string, EventType>();
       
-      const eventTypes = data.collection.map((et: any) => ({
-        uri: et.uri,
-        name: et.name,
-        active: et.active,
-        scheduling_url: et.scheduling_url,
-        profile: et.profile,
-        pooling_type: et.pooling_type,
-        type: et.type,
-      }));
+      for (const member of members) {
+        const userUri = member.user?.uri;
+        if (!userUri) continue;
+
+        try {
+          console.log(`Fetching event types for user: ${member.user?.name || userUri}`);
+          const userEventTypesResponse = await fetch(
+            `https://api.calendly.com/event_types?user=${encodeURIComponent(userUri)}&count=100`,
+            {
+              headers: {
+                'Authorization': `Bearer ${currentAccessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (userEventTypesResponse.ok) {
+            const userEventTypesData = await userEventTypesResponse.json();
+            const userEventTypes = userEventTypesData.collection || [];
+            
+            // Add to map (deduplicates by URI automatically)
+            userEventTypes.forEach((et: any) => {
+              if (!allEventTypesMap.has(et.uri)) {
+                allEventTypesMap.set(et.uri, {
+                  uri: et.uri,
+                  name: et.name,
+                  active: et.active,
+                  scheduling_url: et.scheduling_url,
+                  profile: et.profile,
+                  pooling_type: et.pooling_type,
+                  type: et.type,
+                });
+              }
+            });
+            
+            console.log(`  → Found ${userEventTypes.length} event types for this user`);
+          }
+        } catch (userError) {
+          console.error(`Failed to fetch event types for user ${userUri}:`, userError);
+        }
+      }
+
+      const eventTypes = Array.from(allEventTypesMap.values());
+      console.log(`Total unique event types found: ${eventTypes.length}`);
+      console.log(`Round Robin events: ${eventTypes.filter(et => et.pooling_type).length}`);
       
       setAvailableEventTypes(eventTypes);
       setTokenValidationFailed(false);
@@ -658,9 +705,11 @@ export function CalendlyConfig({
 
     setIsFetchingManual(true);
     try {
-      // Fetch all event types from the API
-      const response = await fetch(
-        `https://api.calendly.com/event_types?organization=${encodeURIComponent(currentOrgUri!)}`,
+      console.log('Fetching organization members to find matching event type...');
+      
+      // Step 1: Fetch organization members
+      const membersResponse = await fetch(
+        `https://api.calendly.com/organization_memberships?organization=${encodeURIComponent(currentOrgUri!)}&count=100`,
         {
           headers: {
             'Authorization': `Bearer ${currentAccessToken}`,
@@ -669,20 +718,56 @@ export function CalendlyConfig({
         }
       );
 
-      if (!response.ok) {
+      if (!membersResponse.ok) {
         toast({
           title: "Error",
-          description: "Failed to fetch event types from Calendly",
+          description: "Failed to fetch organization members",
           variant: "destructive",
         });
         return;
       }
 
-      const data = await response.json();
-      const matchedEventType = data.collection.find((et: any) => 
-        et.scheduling_url.toLowerCase().includes(manualUrl.toLowerCase()) ||
-        manualUrl.toLowerCase().includes(et.slug)
-      );
+      const membersData = await membersResponse.json();
+      const members = membersData.collection || [];
+
+      // Step 2: Fetch event types for each user and find match
+      let matchedEventType: any = null;
+      
+      for (const member of members) {
+        const userUri = member.user?.uri;
+        if (!userUri || matchedEventType) continue;
+
+        try {
+          const userEventTypesResponse = await fetch(
+            `https://api.calendly.com/event_types?user=${encodeURIComponent(userUri)}&count=100`,
+            {
+              headers: {
+                'Authorization': `Bearer ${currentAccessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (userEventTypesResponse.ok) {
+            const userEventTypesData = await userEventTypesResponse.json();
+            const userEventTypes = userEventTypesData.collection || [];
+            
+            // Try to find a match in this user's event types
+            matchedEventType = userEventTypes.find((et: any) => 
+              et.scheduling_url.toLowerCase().includes(manualUrl.toLowerCase()) ||
+              manualUrl.toLowerCase().includes(et.slug) ||
+              manualUrl.toLowerCase() === et.scheduling_url.toLowerCase()
+            );
+
+            if (matchedEventType) {
+              console.log(`Found matching event type: ${matchedEventType.name}`);
+              break;
+            }
+          }
+        } catch (userError) {
+          console.error(`Failed to fetch event types for user ${userUri}:`, userError);
+        }
+      }
 
       if (matchedEventType) {
         const eventTypeDetail: EventType = {
@@ -704,15 +789,15 @@ export function CalendlyConfig({
         if (!exists) {
           // Add new event type and automatically select it
           setAvailableEventTypes(prev => [...prev, eventTypeDetail]);
-          setSelectedEventTypes(prev => [...prev, eventTypeDetail.scheduling_url]);
+          setSelectedEventTypes(prev => [...prev, eventTypeDetail.uri]);
           toast({
             title: "Success",
             description: `Added and selected: ${eventTypeDetail.name}`,
           });
         } else {
           // If it exists but isn't selected, select it
-          if (!selectedEventTypes.includes(eventTypeDetail.scheduling_url)) {
-            setSelectedEventTypes(prev => [...prev, eventTypeDetail.scheduling_url]);
+          if (!selectedEventTypes.includes(eventTypeDetail.uri)) {
+            setSelectedEventTypes(prev => [...prev, eventTypeDetail.uri]);
             toast({
               title: "Event type selected",
               description: `${eventTypeDetail.name} is now selected`,
@@ -730,7 +815,7 @@ export function CalendlyConfig({
       } else {
         toast({
           title: "Not found",
-          description: "Could not find a matching event type for that URL",
+          description: "Could not find a matching event type for that URL. Make sure the URL is correct.",
           variant: "destructive",
         });
       }
