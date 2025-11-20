@@ -152,9 +152,9 @@ serve(async (req) => {
     
     console.log('Webhook created successfully with ID:', webhookId);
     
-    // Fetch event types from Calendly
+    // Fetch event types from Calendly (including inactive ones)
     console.log('Fetching event types from Calendly...');
-    const eventTypesResponse = await fetch(`https://api.calendly.com/event_types?organization=${encodeURIComponent(organizationUri)}&active=true`, {
+    const eventTypesResponse = await fetch(`https://api.calendly.com/event_types?organization=${encodeURIComponent(organizationUri)}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -164,7 +164,8 @@ serve(async (req) => {
     let eventTypes: string[] = [];
     if (eventTypesResponse.ok) {
       const eventTypesData = await eventTypesResponse.json();
-      eventTypes = eventTypesData.collection?.map((et: any) => et.scheduling_url) || [];
+      // Store API URIs (not scheduling URLs) to match what CalendlyConfig expects
+      eventTypes = eventTypesData.collection?.map((et: any) => et.uri) || [];
       console.log('Fetched event types:', eventTypes);
     } else {
       console.error('Failed to fetch event types:', await eventTypesResponse.text());
