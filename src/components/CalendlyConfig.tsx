@@ -748,7 +748,7 @@ export function CalendlyConfig({
 
   return (
     <div className="space-y-6">
-      {!isConnected && <MigrateEventTypes />}
+      <MigrateEventTypes />
       
       <Card>
       <CardHeader>

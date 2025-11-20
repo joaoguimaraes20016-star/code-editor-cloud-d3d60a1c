@@ -1,17 +1,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { RefreshCw, CheckCircle, XCircle } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RefreshCw, AlertCircle } from "lucide-react";
 
 export function MigrateEventTypes() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [migrating, setMigrating] = useState(false);
 
-  const handleMigration = async () => {
-    setIsLoading(true);
-    setResult(null);
+  const handleMigrate = async () => {
+    setMigrating(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('migrate-event-type-urls', {
@@ -20,83 +18,44 @@ export function MigrateEventTypes() {
 
       if (error) throw error;
 
-      setResult(data);
-      
-      if (data.success) {
-        toast.success(data.message);
+      if (data?.success) {
+        toast.success(data.message || 'Migration completed successfully');
+        // Reload page after a short delay to show updated event types
+        setTimeout(() => window.location.reload(), 1500);
       } else {
-        toast.error(data.error || 'Migration failed');
+        toast.error(data?.error || 'Migration failed');
       }
     } catch (error) {
       console.error('Migration error:', error);
       toast.error('Failed to run migration');
     } finally {
-      setIsLoading(false);
+      setMigrating(false);
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Migrate Calendly Event Types</CardTitle>
-        <CardDescription>
-          Convert existing scheduling URLs to API URIs for proper Round Robin event detection
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Alert className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-800">
+      <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+      <AlertDescription className="flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+            Round Robin events not showing?
+          </p>
+          <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
+            Click to migrate your event types to the correct format.
+          </p>
+        </div>
         <Button 
-          onClick={handleMigration} 
-          disabled={isLoading}
-          className="w-full"
+          onClick={handleMigrate} 
+          disabled={migrating}
+          size="sm"
+          variant="outline"
+          className="border-yellow-300 hover:bg-yellow-100 dark:border-yellow-700 dark:hover:bg-yellow-900/30 shrink-0"
         >
-          {isLoading ? (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Running Migration...
-            </>
-          ) : (
-            'Run Migration'
-          )}
+          <RefreshCw className={`w-4 h-4 mr-2 ${migrating ? 'animate-spin' : ''}`} />
+          {migrating ? "Migrating..." : "Fix Now"}
         </Button>
-
-        {result && (
-          <div className="space-y-2 rounded-lg border p-4">
-            <div className="flex items-center gap-2 font-semibold">
-              {result.success ? (
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              ) : (
-                <XCircle className="h-5 w-5 text-destructive" />
-              )}
-              <span>{result.message}</span>
-            </div>
-            
-            {result.success && (
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>• Teams migrated: {result.migrated}</p>
-                <p>• Teams skipped: {result.skipped}</p>
-                <p>• Total teams: {result.total}</p>
-              </div>
-            )}
-
-            {result.results && result.results.length > 0 && (
-              <details className="mt-4">
-                <summary className="cursor-pointer text-sm font-medium">
-                  View Details
-                </summary>
-                <div className="mt-2 space-y-2 text-xs">
-                  {result.results.map((r: any, i: number) => (
-                    <div key={i} className="rounded border p-2">
-                      <p><strong>Team:</strong> {r.team_id}</p>
-                      <p><strong>Status:</strong> {r.status}</p>
-                      {r.error && <p className="text-destructive"><strong>Error:</strong> {r.error}</p>}
-                    </div>
-                  ))}
-                </div>
-              </details>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      </AlertDescription>
+    </Alert>
   );
 }
