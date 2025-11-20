@@ -43,6 +43,7 @@ import { WorkflowSettings } from '@/components/WorkflowSettings';
 import { FollowUpSettings } from '@/components/FollowUpSettings';
 import { SystemMonitoring } from '@/components/SystemMonitoring';
 import { DataRecoveryPanel } from '@/components/DataRecoveryPanel';
+import { EmailAliasManager } from '@/components/EmailAliasManager';
 import { getUserFriendlyError } from '@/lib/errorUtils';
 
 interface TeamMember {
@@ -407,6 +408,9 @@ export default function TeamSettings() {
 
             {/* Team Members Tab */}
             <TabsContent value="team" className="space-y-6">
+              {/* Email Aliases */}
+              <EmailAliasManager teamId={teamId!} />
+              
               <Card className="border-primary/20 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">

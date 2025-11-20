@@ -262,16 +262,39 @@ serve(async (req) => {
         if (organizerEmail) {
           console.log('🔍 Organizer details:', { email: organizerEmail, name: organizerName });
           
-          // Method 1: Try exact email match first
-          let profiles = await supabase
-            .from('profiles')
-            .select('id, full_name, email')
-            .eq('email', organizerEmail)
-            .maybeSingle()
-            .then(({ data }) => data);
+          // Method 0: Check email aliases first (highest priority)
+          const { data: aliasMatches } = await supabase
+            .from('email_aliases')
+            .select('user_id')
+            .eq('alias_email', organizerEmail);
+          
+          let profiles = null;
+          if (aliasMatches && aliasMatches.length > 0) {
+            // Get the profile for the matched user_id
+            const { data: aliasProfile } = await supabase
+              .from('profiles')
+              .select('id, full_name, email')
+              .eq('id', aliasMatches[0].user_id)
+              .maybeSingle();
+            
+            if (aliasProfile) {
+              profiles = aliasProfile;
+              console.log(`✓ Email alias match found: "${organizerEmail}" → ${profiles.full_name} (${profiles.email})`);
+            }
+          }
+          
+          // Method 1: Try exact email match
+          if (!profiles) {
+            profiles = await supabase
+              .from('profiles')
+              .select('id, full_name, email')
+              .eq('email', organizerEmail)
+              .maybeSingle()
+              .then(({ data }) => data);
 
-          if (profiles) {
-            console.log(`✓ Exact email match found: ${profiles.full_name} (${profiles.email})`);
+            if (profiles) {
+              console.log(`✓ Exact email match found: ${profiles.full_name} (${profiles.email})`);
+            }
           }
 
           // Method 2: Try partial email match (username part)

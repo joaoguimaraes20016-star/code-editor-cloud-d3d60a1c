@@ -596,6 +596,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_aliases: {
+        Row: {
+          alias_email: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          notes: string | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          alias_email: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          alias_email?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       error_logs: {
         Row: {
           created_at: string
