@@ -11,6 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Calendar, AlertCircle, CheckCircle2, Unplug, Settings, ChevronDown, Plus, Download, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { EventTypeFilter } from "@/components/EventTypeFilter";
+import { MigrateEventTypes } from "@/components/MigrateEventTypes";
 
 interface CalendlyConfigProps {
   teamId: string;
@@ -746,7 +747,10 @@ export function CalendlyConfig({
   };
 
   return (
-    <Card>
+    <div className="space-y-6">
+      {!isConnected && <MigrateEventTypes />}
+      
+      <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="w-5 h-5" />
@@ -1117,5 +1121,6 @@ export function CalendlyConfig({
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }
