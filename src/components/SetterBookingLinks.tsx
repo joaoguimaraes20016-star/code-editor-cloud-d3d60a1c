@@ -67,30 +67,89 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventT
     setFetchingEventTypes(true);
     try {
       console.log('Fetching event types from Calendly API...');
-      const response = await fetch(`https://api.calendly.com/event_types?organization=${encodeURIComponent(calendlyOrgUri)}&active=true`, {
-        headers: {
-          'Authorization': `Bearer ${calendlyAccessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Token expired, don't retry - let parent component handle refresh
-          console.log('Token expired in SetterBookingLinks');
+      
+      // Fetch organization members first
+      const membersResponse = await fetch(
+        `https://api.calendly.com/organization_memberships?organization=${encodeURIComponent(calendlyOrgUri)}&count=100`,
+        {
+          headers: {
+            'Authorization': `Bearer ${calendlyAccessToken}`,
+            'Content-Type': 'application/json',
+          },
         }
+      );
+
+      if (!membersResponse.ok) {
         setFetchingEventTypes(false);
         return;
       }
 
-      const data = await response.json();
-      const details: EventTypeDetails[] = data.collection.map((et: any) => ({
-        uri: et.uri,
-        scheduling_url: et.scheduling_url,
-        name: et.name,
-        pooling_type: et.pooling_type,
-      }));
-      
+      const membersData = await membersResponse.json();
+      const members = membersData.collection || [];
+      const allEventTypesMap = new Map();
+
+      // 1. Fetch organization-level event types (includes Round Robin)
+      try {
+        const orgResponse = await fetch(
+          `https://api.calendly.com/event_types?organization=${encodeURIComponent(calendlyOrgUri)}&count=100`,
+          {
+            headers: {
+              'Authorization': `Bearer ${calendlyAccessToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (orgResponse.ok) {
+          const orgData = await orgResponse.json();
+          (orgData.collection || []).forEach((et: any) => {
+            allEventTypesMap.set(et.uri, {
+              uri: et.uri,
+              scheduling_url: et.scheduling_url,
+              name: et.name,
+              pooling_type: et.pooling_type,
+            });
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching org event types:', error);
+      }
+
+      // 2. Fetch per-user event types
+      for (const member of members) {
+        const userUri = member.user?.uri;
+        if (!userUri) continue;
+
+        try {
+          const userResponse = await fetch(
+            `https://api.calendly.com/event_types?user=${encodeURIComponent(userUri)}&count=100`,
+            {
+              headers: {
+                'Authorization': `Bearer ${calendlyAccessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            (userData.collection || []).forEach((et: any) => {
+              if (!allEventTypesMap.has(et.uri)) {
+                allEventTypesMap.set(et.uri, {
+                  uri: et.uri,
+                  scheduling_url: et.scheduling_url,
+                  name: et.name,
+                  pooling_type: et.pooling_type,
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching user event types:', error);
+        }
+      }
+
+      const details = Array.from(allEventTypesMap.values());
       console.log('✓ Fetched event type details:', details);
       console.log('Database event types:', calendlyEventTypes);
       setEventTypeDetails(details);
