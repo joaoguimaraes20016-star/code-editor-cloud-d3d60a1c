@@ -51,40 +51,47 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventT
   }, [teamId]);
 
   useEffect(() => {
-    console.log('[SetterBookingLinks] Credentials check:', {
+    console.log('[SetterBookingLinks] Effect triggered:', {
       hasToken: !!calendlyAccessToken,
       hasOrgUri: !!calendlyOrgUri,
-      parentEventTypes: availableEventTypes.length,
-      currentEventTypes: eventTypeDetails.length
+      parentEventTypes: availableEventTypes?.length || 0,
+      currentEventTypes: eventTypeDetails.length,
+      fetchingEventTypes
     });
 
     // Use parent event types if available
-    if (availableEventTypes.length > 0) {
-      console.log('[SetterBookingLinks] Using event types from parent:', availableEventTypes);
+    if (availableEventTypes && availableEventTypes.length > 0) {
+      console.log('[SetterBookingLinks] ✓ Using event types from parent:', availableEventTypes.length);
       setEventTypeDetails(availableEventTypes);
       setFetchError(null);
+      setFetchingEventTypes(false);
       return;
     }
     
     // Try to fetch if we have credentials but no event details
     if (calendlyAccessToken && calendlyOrgUri && eventTypeDetails.length === 0 && !fetchingEventTypes) {
-      console.log('[SetterBookingLinks] No event details, attempting fetch...');
+      console.log('[SetterBookingLinks] No parent event types, will fetch from API');
+      setFetchingEventTypes(true);
+      
       const timer = setTimeout(() => {
         fetchEventTypeNames();
       }, 300);
-      return () => clearTimeout(timer);
+
+      // Set timeout for loading state
+      const loadingTimer = setTimeout(() => {
+        if (fetchingEventTypes) {
+          console.warn('[SetterBookingLinks] ⚠️ Loading timeout reached after 10s');
+          setLoadingTimeout(true);
+          setFetchError('Loading is taking longer than expected');
+          setFetchingEventTypes(false);
+        }
+      }, 10000);
+
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(loadingTimer);
+      };
     }
-
-    // Set timeout for loading state
-    const loadingTimer = setTimeout(() => {
-      if (fetchingEventTypes || loading) {
-        console.warn('[SetterBookingLinks] Loading timeout reached');
-        setLoadingTimeout(true);
-        setFetchError('Loading is taking longer than expected');
-      }
-    }, 10000);
-
-    return () => clearTimeout(loadingTimer);
   }, [calendlyAccessToken, calendlyOrgUri, availableEventTypes]);
 
   const fetchEventTypeNames = async () => {
@@ -185,7 +192,12 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventT
 
       const details = Array.from(allEventTypesMap.values());
       console.log('[SetterBookingLinks] ✓ Successfully fetched', details.length, 'event types');
-      console.log('[SetterBookingLinks] Selected event URIs:', calendlyEventTypes);
+      console.log('[SetterBookingLinks] Event type details:', details.map(et => ({
+        name: et.name,
+        uri: et.uri,
+        scheduling_url: et.scheduling_url
+      })));
+      console.log('[SetterBookingLinks] Selected event URIs from DB:', calendlyEventTypes);
       
       if (details.length === 0) {
         setFetchError('No event types found. Please select event types in Team Settings.');
@@ -584,40 +596,47 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventT
   }
 
   // Convert API URIs to scheduling URLs and filter to ONLY admin-selected event types
+  console.log('[SetterBookingLinks] Building validBookingUrls:', {
+    calendlyEventTypes: calendlyEventTypes.length,
+    eventTypeDetails: eventTypeDetails.length
+  });
+  
   const validBookingUrls = calendlyEventTypes
     .map(url => {
-      console.log('Processing URL:', url);
+      console.log('[SetterBookingLinks] Processing URL:', url);
       // If it's an API URI, find the corresponding scheduling URL
       if (url.includes('api.calendly.com/event_types/')) {
         const detail = eventTypeDetails.find(et => et.uri === url);
-        console.log('Found detail for API URI:', detail);
+        console.log('[SetterBookingLinks] Found detail for API URI:', detail?.name || 'NOT FOUND');
         if (!detail) {
-          console.warn('No scheduling URL found for API URI:', url);
+          console.warn('[SetterBookingLinks] ⚠️ No scheduling URL found for API URI:', url);
         }
         return detail?.scheduling_url || null;
       }
       // If it's already a scheduling URL, keep it
       if (url.startsWith('https://calendly.com/') && !url.includes('/event_types/')) {
-        console.log('Valid scheduling URL:', url);
+        console.log('[SetterBookingLinks] Valid scheduling URL:', url);
         return url;
       }
-      console.log('URL filtered out:', url);
+      console.log('[SetterBookingLinks] URL filtered out:', url);
       return null;
     })
     .filter((url): url is string => url !== null)
     .filter(url => {
       // Double-check: Only include URLs that correspond to admin-selected event types
       // This ensures we only show event types that are in calendlyEventTypes
-      return calendlyEventTypes.some(savedType => {
+      const isValid = calendlyEventTypes.some(savedType => {
         if (savedType === url) return true;
         // Check if the saved type is an API URI that matches this scheduling URL
         const detail = eventTypeDetails.find(et => et.uri === savedType);
         return detail?.scheduling_url === url;
       });
+      console.log('[SetterBookingLinks] URL validation result for', url, ':', isValid);
+      return isValid;
     });
 
-  console.log('Valid booking URLs:', validBookingUrls);
-  console.log('Event type details available:', eventTypeDetails.length);
+  console.log('[SetterBookingLinks] ✓ Final valid booking URLs:', validBookingUrls.length, 'of', calendlyEventTypes.length);
+  console.log('[SetterBookingLinks] Event type details available:', eventTypeDetails.length);
 
   if (!validBookingUrls.length) {
     return (

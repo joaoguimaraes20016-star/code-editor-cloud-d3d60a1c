@@ -70,6 +70,7 @@ export function AppointmentsHub({
     calendlyOrgUri: string | null;
   }>({ calendlyEventTypes: [], calendlyAccessToken: null, calendlyOrgUri: null });
   const [loadingCalendlySettings, setLoadingCalendlySettings] = useState(true);
+  const [availableEventTypes, setAvailableEventTypes] = useState<any[]>([]);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -99,6 +100,42 @@ export function AppointmentsHub({
     loadAppointments();
   }, [teamId]);
 
+  const fetchEventTypeDetails = async (accessToken: string, eventTypeUris: string[]) => {
+    try {
+      console.log('[AppointmentsHub] Fetching event type details for:', eventTypeUris.length, 'URIs');
+      const eventTypes = await Promise.all(
+        eventTypeUris.map(async (uri) => {
+          try {
+            const response = await fetch(uri, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            
+            if (!response.ok) {
+              console.error(`[AppointmentsHub] Failed to fetch ${uri}:`, response.status);
+              return null;
+            }
+            
+            const data = await response.json();
+            console.log('[AppointmentsHub] Fetched event type:', data.resource?.name);
+            return data.resource;
+          } catch (error) {
+            console.error(`[AppointmentsHub] Error fetching ${uri}:`, error);
+            return null;
+          }
+        })
+      );
+      
+      const validEventTypes = eventTypes.filter(Boolean);
+      console.log('[AppointmentsHub] Valid event types fetched:', validEventTypes.length);
+      setAvailableEventTypes(validEventTypes);
+    } catch (error) {
+      console.error('[AppointmentsHub] Error fetching event type details:', error);
+    }
+  };
+
   const loadTeamCalendlySettings = async () => {
     setLoadingCalendlySettings(true);
     try {
@@ -119,6 +156,11 @@ export function AppointmentsHub({
           calendlyAccessToken: data.calendly_access_token,
           calendlyOrgUri: data.calendly_organization_uri,
         });
+
+        // Fetch event type details if Calendly is connected
+        if (data.calendly_access_token && data.calendly_event_types?.length > 0) {
+          await fetchEventTypeDetails(data.calendly_access_token, data.calendly_event_types);
+        }
       }
     } catch (error) {
       console.error('[AppointmentsHub] Error loading Calendly settings:', error);
@@ -133,6 +175,7 @@ export function AppointmentsHub({
 
   const handleRefreshCalendlySettings = async () => {
     console.log('[AppointmentsHub] Refreshing Calendly settings...');
+    setAvailableEventTypes([]);
     await loadTeamCalendlySettings();
   };
 
@@ -276,6 +319,7 @@ export function AppointmentsHub({
                   <SetterBookingLinks
                     teamId={teamId}
                     calendlyEventTypes={teamCalendlySettings.calendlyEventTypes}
+                    availableEventTypes={availableEventTypes}
                     calendlyAccessToken={teamCalendlySettings.calendlyAccessToken}
                     calendlyOrgUri={teamCalendlySettings.calendlyOrgUri}
                     onRefresh={handleRefreshCalendlySettings}
