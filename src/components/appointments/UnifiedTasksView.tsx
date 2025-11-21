@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { RescheduleWithLinkDialog } from './RescheduleWithLinkDialog';
 import { FollowUpDialog } from './FollowUpDialog';
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTimeWithTimezone } from "@/lib/utils";
 import { useAuth } from '@/hooks/useAuth';
 
 interface UnifiedTasksViewProps {
@@ -640,12 +640,12 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 <span className={isUpcoming ? "text-orange-600 dark:text-orange-400 font-medium" : ""}>
-                  Due {format(task.dueDate, 'MMM d, h:mm a')}
+                  Due {formatDateTimeWithTimezone(task.dueDate, 'MMM d, h:mm a')}
                 </span>
               </div>
               {task.appointmentDate && (
                 <span className="text-xs text-muted-foreground">
-                  Appt: {format(task.appointmentDate, 'MMM d, h:mm a')}
+                  Appt: {formatDateTimeWithTimezone(task.appointmentDate, 'MMM d, h:mm a')}
                 </span>
               )}
             </div>

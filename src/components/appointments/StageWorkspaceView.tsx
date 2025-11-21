@@ -7,6 +7,7 @@ import { format, parseISO } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { StageActionMenu } from "./StageActionMenu";
 import { FollowUpDialog } from "./FollowUpDialog";
+import { formatDateTimeWithTimezone } from "@/lib/utils";
 
 interface Appointment {
   id: string;
@@ -225,7 +226,7 @@ export function StageWorkspaceView({
 
   const formatDate = (dateStr: string) => {
     try {
-      return format(parseISO(dateStr), 'MMM d, h:mm a');
+      return formatDateTimeWithTimezone(parseISO(dateStr), 'MMM d, h:mm a');
     } catch {
       return dateStr;
     }

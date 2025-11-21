@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, CheckCircle, AlertCircle, Clock, Phone, TrendingUp, Download, DollarSign, PhoneCall, XCircle, RefreshCw, CalendarIcon } from "lucide-react";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTimeWithTimezone } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
@@ -416,7 +416,7 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                         <p className="text-sm text-muted-foreground">{apt.lead_phone || 'No phone'}</p>
                         {apt.event_type_name && <Badge variant="secondary" className="mt-1">{apt.event_type_name}</Badge>}
                         <p className="text-xs text-muted-foreground mt-1">
-                          Appointment: {format(new Date(apt.start_at_utc), 'MMM dd, h:mm a')}
+                          Appointment: {formatDateTimeWithTimezone(new Date(apt.start_at_utc), 'MMM dd, h:mm a')}
                         </p>
                       </div>
                     </div>
@@ -438,7 +438,7 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_phone || 'No phone'}</p>
                         {task.appointment?.start_at_utc && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            For: {format(new Date(task.appointment.start_at_utc), 'MMM dd, h:mm a')}
+                            For: {formatDateTimeWithTimezone(new Date(task.appointment.start_at_utc), 'MMM dd, h:mm a')}
                           </p>
                         )}
                       </div>
@@ -526,7 +526,7 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                         )}
                         {task.appointment?.start_at_utc && (
                           <p className="text-xs text-destructive mt-1">
-                            Due: {format(new Date(task.appointment.start_at_utc), 'MMM dd, h:mm a')}
+                            Due: {formatDateTimeWithTimezone(new Date(task.appointment.start_at_utc), 'MMM dd, h:mm a')}
                           </p>
                         )}
                       </div>
