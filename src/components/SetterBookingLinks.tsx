@@ -42,35 +42,63 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventT
   const [refreshing, setRefreshing] = useState(false);
   const [eventTypeDetails, setEventTypeDetails] = useState<EventTypeDetails[]>([]);
   const [fetchingEventTypes, setFetchingEventTypes] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     loadMembers();
-    
-    // Use availableEventTypes from parent if it has data
+  }, [teamId]);
+
+  useEffect(() => {
+    console.log('[SetterBookingLinks] Credentials check:', {
+      hasToken: !!calendlyAccessToken,
+      hasOrgUri: !!calendlyOrgUri,
+      parentEventTypes: availableEventTypes.length,
+      currentEventTypes: eventTypeDetails.length
+    });
+
+    // Use parent event types if available
     if (availableEventTypes.length > 0) {
-      console.log('Using event types from parent:', availableEventTypes);
+      console.log('[SetterBookingLinks] Using event types from parent:', availableEventTypes);
       setEventTypeDetails(availableEventTypes);
+      setFetchError(null);
+      return;
     }
     
-    // ALWAYS fetch if we don't have event details yet AND have credentials
-    // This handles cases where parent passed empty array or didn't fetch yet
-    if (eventTypeDetails.length === 0 && calendlyAccessToken && calendlyOrgUri && !fetchingEventTypes) {
-      console.log('Event details empty, fetching from Calendly API...');
+    // Try to fetch if we have credentials but no event details
+    if (calendlyAccessToken && calendlyOrgUri && eventTypeDetails.length === 0 && !fetchingEventTypes) {
+      console.log('[SetterBookingLinks] No event details, attempting fetch...');
       const timer = setTimeout(() => {
         fetchEventTypeNames();
-      }, 200);
+      }, 300);
       return () => clearTimeout(timer);
     }
-  }, [teamId, calendlyAccessToken, calendlyOrgUri, availableEventTypes, eventTypeDetails.length]);
+
+    // Set timeout for loading state
+    const loadingTimer = setTimeout(() => {
+      if (fetchingEventTypes || loading) {
+        console.warn('[SetterBookingLinks] Loading timeout reached');
+        setLoadingTimeout(true);
+        setFetchError('Loading is taking longer than expected');
+      }
+    }, 10000);
+
+    return () => clearTimeout(loadingTimer);
+  }, [calendlyAccessToken, calendlyOrgUri, availableEventTypes]);
 
   const fetchEventTypeNames = async () => {
     if (!calendlyAccessToken || !calendlyOrgUri) {
-      console.log('Missing Calendly credentials for fetching event types');
+      console.log('[SetterBookingLinks] Missing Calendly credentials');
+      setFetchError('Calendly not connected. Please set up in Team Settings.');
       return;
     }
 
+    console.log('[SetterBookingLinks] Starting event type fetch...');
     setFetchingEventTypes(true);
+    setFetchError(null);
+    setLoadingTimeout(false);
+    
     try {
       console.log('Fetching event types from Calendly API...');
       
@@ -156,13 +184,26 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventT
       }
 
       const details = Array.from(allEventTypesMap.values());
-      console.log('✓ Fetched event type details:', details);
-      console.log('Database event types:', calendlyEventTypes);
-      setEventTypeDetails(details);
+      console.log('[SetterBookingLinks] ✓ Successfully fetched', details.length, 'event types');
+      console.log('[SetterBookingLinks] Selected event URIs:', calendlyEventTypes);
+      
+      if (details.length === 0) {
+        setFetchError('No event types found. Please select event types in Team Settings.');
+      } else {
+        setEventTypeDetails(details);
+        setFetchError(null);
+      }
     } catch (error) {
-      console.error('Error fetching event type names:', error);
+      console.error('[SetterBookingLinks] Error fetching event types:', error);
+      setFetchError('Failed to load booking links. Please try again.');
+      toast({
+        title: 'Failed to load event types',
+        description: 'Could not fetch booking links from Calendly. Check your connection.',
+        variant: 'destructive',
+      });
     } finally {
       setFetchingEventTypes(false);
+      setLoadingTimeout(false);
     }
   };
 
@@ -484,8 +525,62 @@ export function SetterBookingLinks({ teamId, calendlyEventTypes, availableEventT
     });
   };
 
-  if (loading || fetchingEventTypes) {
-    return <div className="text-sm text-muted-foreground">Loading booking links...</div>;
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Loading team members...</div>;
+  }
+
+  // Show loading state for event types with timeout warning
+  if (fetchingEventTypes) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Loading booking links from Calendly...</span>
+        </div>
+        {loadingTimeout && (
+          <div className="flex items-center gap-2 text-sm text-amber-600">
+            <AlertCircle className="h-4 w-4" />
+            <span>This is taking longer than expected. You can try refreshing.</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Show error state with retry button
+  if (fetchError) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          <span>{fetchError}</span>
+        </div>
+        <Button
+          onClick={() => fetchEventTypeNames()}
+          variant="outline"
+          size="sm"
+          disabled={fetchingEventTypes}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${fetchingEventTypes ? 'animate-spin' : ''}`} />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  // Check if Calendly is set up
+  if (!calendlyAccessToken || !calendlyOrgUri) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <AlertCircle className="h-4 w-4" />
+          <span>Calendly integration not set up yet.</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Please connect Calendly in Team Settings → Integrations to use booking links.
+        </p>
+      </div>
+    );
   }
 
   // Convert API URIs to scheduling URLs and filter to ONLY admin-selected event types

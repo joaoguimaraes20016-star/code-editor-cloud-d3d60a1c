@@ -69,6 +69,7 @@ export function AppointmentsHub({
     calendlyAccessToken: string | null;
     calendlyOrgUri: string | null;
   }>({ calendlyEventTypes: [], calendlyAccessToken: null, calendlyOrgUri: null });
+  const [loadingCalendlySettings, setLoadingCalendlySettings] = useState(true);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -98,8 +99,9 @@ export function AppointmentsHub({
     loadAppointments();
   }, [teamId]);
 
-  useEffect(() => {
-    const loadTeamCalendlySettings = async () => {
+  const loadTeamCalendlySettings = async () => {
+    setLoadingCalendlySettings(true);
+    try {
       const { data } = await supabase
         .from('teams')
         .select('calendly_event_types, calendly_access_token, calendly_organization_uri')
@@ -107,16 +109,32 @@ export function AppointmentsHub({
         .single();
       
       if (data) {
+        console.log('[AppointmentsHub] Loaded Calendly settings:', {
+          eventTypesCount: data.calendly_event_types?.length || 0,
+          hasToken: !!data.calendly_access_token,
+          hasOrgUri: !!data.calendly_organization_uri
+        });
         setTeamCalendlySettings({
           calendlyEventTypes: data.calendly_event_types || [],
           calendlyAccessToken: data.calendly_access_token,
           calendlyOrgUri: data.calendly_organization_uri,
         });
       }
-    };
-    
+    } catch (error) {
+      console.error('[AppointmentsHub] Error loading Calendly settings:', error);
+    } finally {
+      setLoadingCalendlySettings(false);
+    }
+  };
+
+  useEffect(() => {
     loadTeamCalendlySettings();
   }, [teamId]);
+
+  const handleRefreshCalendlySettings = async () => {
+    console.log('[AppointmentsHub] Refreshing Calendly settings...');
+    await loadTeamCalendlySettings();
+  };
 
   const handleCloseDeal = (
     appointment: any,
@@ -252,14 +270,19 @@ export function AppointmentsHub({
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-4">My Booking Link</h3>
-                <SetterBookingLinks
-                  teamId={teamId}
-                  calendlyEventTypes={teamCalendlySettings.calendlyEventTypes}
-                  calendlyAccessToken={teamCalendlySettings.calendlyAccessToken}
-                  calendlyOrgUri={teamCalendlySettings.calendlyOrgUri}
-                  currentUserId={user?.id}
-                  isOwner={false}
-                />
+                {loadingCalendlySettings ? (
+                  <div className="text-sm text-muted-foreground">Loading settings...</div>
+                ) : (
+                  <SetterBookingLinks
+                    teamId={teamId}
+                    calendlyEventTypes={teamCalendlySettings.calendlyEventTypes}
+                    calendlyAccessToken={teamCalendlySettings.calendlyAccessToken}
+                    calendlyOrgUri={teamCalendlySettings.calendlyOrgUri}
+                    onRefresh={handleRefreshCalendlySettings}
+                    currentUserId={user?.id}
+                    isOwner={false}
+                  />
+                )}
               </div>
             </div>
           </TabsContent>
