@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { useTeamRole } from "@/hooks/useTeamRole";
+import { formatDateTimeWithTimezone } from "@/lib/utils";
 
 interface Appointment {
   id: string;
@@ -137,7 +138,7 @@ export function TodaysSchedule({ teamId, currentUserId, onCloseDeal }: TodaysSch
       <div className="flex items-center gap-2 mb-4">
         <Calendar className="h-5 w-5 text-primary" />
         <h3 className="text-lg font-semibold">
-          Today's Schedule - {format(new Date(), 'MMMM d, yyyy')}
+          Today's Schedule - {formatDateTimeWithTimezone(new Date(), 'MMMM d, yyyy')}
         </h3>
       </div>
 

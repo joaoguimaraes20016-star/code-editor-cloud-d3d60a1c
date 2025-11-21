@@ -195,7 +195,12 @@ export function ConfirmTodayWorkspace({ teamId, userRole }: ConfirmTodayWorkspac
 
   const formatTime = (utcDate: string) => {
     try {
-      return format(parseISO(utcDate), 'h:mm a');
+      const dateObj = parseISO(utcDate);
+      const formattedTime = format(dateObj, 'h:mm a');
+      const timezone = new Intl.DateTimeFormat('en-US', { 
+        timeZoneName: 'short' 
+      }).formatToParts(dateObj).find(part => part.type === 'timeZoneName')?.value || '';
+      return `${formattedTime} ${timezone}`.trim();
     } catch {
       return utcDate;
     }

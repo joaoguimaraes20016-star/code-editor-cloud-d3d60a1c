@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
+import { formatDateTimeWithTimezone } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Mail, User, Clock, MessageSquare, History, ArrowRight } from "lucide-react";
@@ -61,7 +62,7 @@ export function AppointmentCard({
 }: AppointmentCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showRescheduleHistory, setShowRescheduleHistory] = useState(false);
-  const formattedDate = format(new Date(appointment.start_at_utc), "MMM dd, yyyy 'at' h:mm a");
+  const formattedDate = formatDateTimeWithTimezone(appointment.start_at_utc);
 
   return (
     <Card className="p-5 card-hover group relative overflow-hidden">

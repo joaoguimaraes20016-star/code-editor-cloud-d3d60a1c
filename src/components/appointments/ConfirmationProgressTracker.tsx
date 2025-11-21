@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format, formatDistanceToNow } from "date-fns";
 import { CheckCircle2, Clock, Phone, Calendar, XCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTimeWithTimezone } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -256,7 +256,7 @@ export function ConfirmationProgressTracker({ task, onUpdate }: ConfirmationProg
                       )}
                     </div>
                     <div className="text-muted-foreground text-right ml-2">
-                      {format(new Date(attempt.timestamp), 'MMM d, h:mm a')}
+                      {formatDateTimeWithTimezone(attempt.timestamp, 'MMM d, h:mm a')}
                     </div>
                   </div>
                 ))}

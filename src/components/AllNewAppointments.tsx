@@ -466,7 +466,12 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
   };
 
   const formatLocalTime = (utcTime: string) => {
-    return format(new Date(utcTime), 'MMM d, yyyy h:mm a');
+    const dateObj = new Date(utcTime);
+    const formattedDate = format(dateObj, 'MMM d, yyyy h:mm a');
+    const timezone = new Intl.DateTimeFormat('en-US', { 
+      timeZoneName: 'short' 
+    }).formatToParts(dateObj).find(part => part.type === 'timeZoneName')?.value || '';
+    return `${formattedDate} ${timezone}`.trim();
   };
 
   if (loading) {

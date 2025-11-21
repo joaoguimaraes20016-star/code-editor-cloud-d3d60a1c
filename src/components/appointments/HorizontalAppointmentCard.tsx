@@ -8,7 +8,7 @@ import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import { ConfirmationProgressTracker } from "./ConfirmationProgressTracker";
 import { RescheduleWithLinkDialog } from "./RescheduleWithLinkDialog";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTimeWithTimezone } from "@/lib/utils";
 
 interface HorizontalAppointmentCardProps {
   appointment: {
@@ -80,7 +80,7 @@ export function HorizontalAppointmentCard({
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
-  const formattedDate = format(new Date(appointment.start_at_utc), "MMM dd, yyyy 'at' h:mm a");
+  const formattedDate = formatDateTimeWithTimezone(appointment.start_at_utc);
   const statusStyle = statusColors[appointment.status] || statusColors.NEW;
   
   // Always show "Pending Confirmation" instead of "NEW"
@@ -153,7 +153,7 @@ export function HorizontalAppointmentCard({
                   }`}>
                     {new Date() >= new Date(confirmationTask.due_at) 
                       ? 'CONFIRM NOW' 
-                      : format(new Date(confirmationTask.due_at), "h:mm a")}
+                      : formatDateTimeWithTimezone(confirmationTask.due_at, "h:mm a")}
                   </p>
                 </div>
               </div>
@@ -161,7 +161,7 @@ export function HorizontalAppointmentCard({
               {/* Appointment Time */}
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Call Time</p>
-                <p className="text-lg font-semibold">{format(new Date(appointment.start_at_utc), "h:mm a")}</p>
+                <p className="text-lg font-semibold">{formatDateTimeWithTimezone(appointment.start_at_utc, "h:mm a")}</p>
               </div>
             </div>
           )}

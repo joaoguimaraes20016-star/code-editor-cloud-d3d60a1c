@@ -6,6 +6,7 @@ import { CalendarIcon, ArrowRight, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DealAvatar } from "./DealAvatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatDateTimeWithTimezone } from "@/lib/utils";
 
 interface RescheduleHistoryProps {
   open: boolean;
@@ -135,7 +136,7 @@ export function RescheduleHistory({ open, onOpenChange, appointmentId }: Resched
                     <div className="flex items-center gap-2 mb-3">
                       <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                       <span className="font-semibold">
-                        {format(new Date(appt.start_at_utc), "PPP 'at' p")}
+                        {formatDateTimeWithTimezone(appt.start_at_utc, "PPP 'at' p")}
                       </span>
                     </div>
 
@@ -163,7 +164,7 @@ export function RescheduleHistory({ open, onOpenChange, appointmentId }: Resched
 
                     {/* Created date */}
                     <div className="mt-3 text-xs text-muted-foreground">
-                      Created {format(new Date(appt.created_at), "MMM d, yyyy 'at' h:mm a")}
+                      Created {formatDateTimeWithTimezone(appt.created_at, "MMM d, yyyy 'at' h:mm a")}
                     </div>
                   </div>
 

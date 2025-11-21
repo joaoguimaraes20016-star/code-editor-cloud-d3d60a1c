@@ -8,6 +8,7 @@ import { Calendar, DollarSign, Loader2, TrendingUp, Trash2 } from 'lucide-react'
 import { toast } from 'sonner';
 import { format, parseISO, isPast, differenceInDays } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { formatDateTimeWithTimezone } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -306,7 +307,7 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
                               <span>Next Due</span>
                             </div>
                             <span className="font-semibold">
-                              {format(parseISO(schedule.next_renewal_date), 'MMM dd, yyyy')}
+                              {formatDateTimeWithTimezone(schedule.next_renewal_date, 'MMM dd, yyyy')}
                             </span>
                           </div>
                           <div className={`mt-1 text-xs font-medium ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
@@ -315,7 +316,7 @@ export function MRRScheduleList({ teamId, userRole, currentUserId }: MRRSchedule
                         </div>
 
                         <div className="pt-2 border-t border-border/30 text-xs text-muted-foreground">
-                          <span>Started: {format(parseISO(schedule.first_charge_date), 'MMM dd, yyyy')}</span>
+                          <span>Started: {formatDateTimeWithTimezone(schedule.first_charge_date, 'MMM dd, yyyy')}</span>
                         </div>
                       </div>
 
