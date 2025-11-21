@@ -415,7 +415,7 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                         <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
                         <p className="text-sm text-muted-foreground">{apt.lead_phone || 'No phone'}</p>
                         {apt.event_type_name && <Badge variant="secondary" className="mt-1">{apt.event_type_name}</Badge>}
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-sm font-medium mt-1">
                           Appointment: {formatDateTimeWithTimezone(new Date(apt.start_at_utc), 'MMM dd, h:mm a')}
                         </p>
                       </div>
@@ -437,7 +437,7 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_email}</p>
                         <p className="text-sm text-muted-foreground">{task.appointment?.lead_phone || 'No phone'}</p>
                         {task.appointment?.start_at_utc && (
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-sm font-medium mt-1">
                             For: {formatDateTimeWithTimezone(new Date(task.appointment.start_at_utc), 'MMM dd, h:mm a')}
                           </p>
                         )}
@@ -525,7 +525,7 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
                           </p>
                         )}
                         {task.appointment?.start_at_utc && (
-                          <p className="text-xs text-destructive mt-1">
+                          <p className="text-sm font-medium text-destructive mt-1">
                             Due: {formatDateTimeWithTimezone(new Date(task.appointment.start_at_utc), 'MMM dd, h:mm a')}
                           </p>
                         )}

@@ -269,7 +269,7 @@ export function StageWorkspaceView({
                     <p className="font-semibold">{apt.lead_name}</p>
                     <p className="text-sm text-muted-foreground">{apt.lead_email}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-sm font-medium">
                         {formatDate(apt.start_at_utc)}
                       </Badge>
                       {apt.setter_name && (
