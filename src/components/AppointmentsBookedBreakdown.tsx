@@ -342,11 +342,30 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
           
           const data = setterMap.get(apt.setter_id)!;
           const aptDate = new Date(apt.start_at_utc);
+          const createdDate = new Date(apt.created_at);
           const isConfirmed = confirmedAppointmentIds.has(apt.id);
           const showed = apt.status !== 'NO_SHOW' && apt.status !== 'CANCELLED';
           const closed = apt.status === 'CLOSED';
           
-          data.booked[0] += 1; // total
+          // Only count as "booked" if the setter actually booked it (not just assigned for confirmation)
+          // We check created_at date instead of start_at_utc to track when they actually booked it
+          const wasActuallyBooked = !apt.assignment_source || apt.assignment_source === 'calendly' || apt.assignment_source === 'booking_link';
+          
+          if (wasActuallyBooked) {
+            data.booked[0] += 1; // total
+            
+            if (createdDate >= monthStart) {
+              data.booked[1] += 1;
+            }
+            if (createdDate >= weekStart) {
+              data.booked[2] += 1;
+            }
+            if (createdDate >= todayStart && createdDate <= todayEnd) {
+              data.booked[3] += 1;
+            }
+          }
+          
+          // Track confirmed/showed/closed based on appointment date
           if (isConfirmed) {
             data.confirmed[0] += 1;
             if (showed) data.confirmedShowed[0] += 1;
@@ -355,7 +374,6 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
           if (showed) data.showed[0] += 1;
           
           if (aptDate >= monthStart) {
-            data.booked[1] += 1;
             if (isConfirmed) {
               data.confirmed[1] += 1;
               if (showed) data.confirmedShowed[1] += 1;
@@ -364,7 +382,6 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
             if (showed) data.showed[1] += 1;
           }
           if (aptDate >= weekStart) {
-            data.booked[2] += 1;
             if (isConfirmed) {
               data.confirmed[2] += 1;
               if (showed) data.confirmedShowed[2] += 1;
@@ -373,7 +390,6 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
             if (showed) data.showed[2] += 1;
           }
           if (aptDate >= todayStart && aptDate <= todayEnd) {
-            data.booked[3] += 1;
             if (isConfirmed) {
               data.confirmed[3] += 1;
               if (showed) data.confirmedShowed[3] += 1;
