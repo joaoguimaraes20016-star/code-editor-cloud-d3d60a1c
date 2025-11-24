@@ -347,11 +347,13 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
           const showed = apt.status !== 'NO_SHOW' && apt.status !== 'CANCELLED';
           const closed = apt.status === 'CLOSED';
           
-          // Only count as "booked" if the setter actually booked it (not just assigned for confirmation)
-          // We check created_at date instead of start_at_utc to track when they actually booked it
-          const wasActuallyBooked = !apt.assignment_source || apt.assignment_source === 'calendly' || apt.assignment_source === 'booking_link';
+          // Only count as "booked" if it actually came from their booking link
+          // Must have BOTH: correct assignment_source AND calendly_invitee_uri (proves it came from Calendly)
+          const wasActuallyBookedThroughLink = 
+            (apt.assignment_source === 'calendly' || apt.assignment_source === 'booking_link') && 
+            apt.calendly_invitee_uri != null;
           
-          if (wasActuallyBooked) {
+          if (wasActuallyBookedThroughLink) {
             data.booked[0] += 1; // total
             
             if (createdDate >= monthStart) {
