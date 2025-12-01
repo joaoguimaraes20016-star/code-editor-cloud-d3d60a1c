@@ -222,8 +222,8 @@ export function HorizontalAppointmentCard({
                 Appointment Today
               </Badge>
             )}
-            {/* Rescheduled Badge with Date */}
-            {isRescheduled && (
+            {/* Rescheduled Badge with Date - Don't show for rebooked leads */}
+            {isRescheduled && !appointment.original_appointment_id && (
               <Badge className="text-xs font-semibold bg-yellow-500 text-white border-0">
                 <RefreshCw className="w-3 h-3 mr-1" />
                 Rescheduled

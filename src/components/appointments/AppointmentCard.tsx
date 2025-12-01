@@ -95,8 +95,8 @@ export function AppointmentCard({
             {appointment.status}
           </Badge>
           
-          {/* Rescheduled Badge with Date */}
-          {isRescheduled && (
+          {/* Rescheduled Badge with Date - Don't show for rebooked leads */}
+          {isRescheduled && !appointment.original_appointment_id && (
             <Badge className="bg-yellow-500 text-white border-0 gap-1">
               <RefreshCw className="h-3 w-3" />
               Rescheduled
