@@ -411,14 +411,14 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
 
           {/* Rebooked Lead Warning */}
           {appointment.original_appointment_id && (
-            <div className="text-xs p-2.5 rounded-lg border-l-4 font-semibold shadow-sm bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100">
+            <div className="text-xs p-2.5 rounded-lg border-l-4 font-semibold bg-purple-500/10 border-purple-400 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
               <strong>REBOOKED LEAD</strong> — This lead has a previous booking. Click "View" above to see history.
             </div>
           )}
 
           {/* Rebooked for New Time Warning */}
           {appointment.rescheduled_to_appointment_id && (
-            <div className="text-xs p-2.5 rounded-lg border-l-4 font-semibold shadow-sm bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100">
+            <div className="text-xs p-2.5 rounded-lg border-l-4 font-semibold bg-purple-500/10 border-purple-400 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
               <strong>LEAD REBOOKED</strong> — This lead booked a new appointment. Click "View" above to see the new booking.
             </div>
           )}

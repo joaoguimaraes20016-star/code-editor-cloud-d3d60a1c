@@ -809,10 +809,10 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               {/* Rebooking warning message - BRIGHT and prominent with View Original link */}
               {task.rebooking_type && (
                 <div className={cn(
-                  "text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm",
-                  task.rebooking_type === 'returning_client' && "bg-emerald-100 border-emerald-500 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100",
-                  task.rebooking_type === 'win_back' && "bg-blue-100 border-blue-500 text-blue-900 dark:bg-blue-900/40 dark:text-blue-100",
-                  (task.rebooking_type === 'rebooking' || task.rebooking_type === 'reschedule') && "bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100",
+                  "text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold",
+                  task.rebooking_type === 'returning_client' && "bg-emerald-500/10 border-emerald-400 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+                  task.rebooking_type === 'win_back' && "bg-blue-500/10 border-blue-400 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
+                  (task.rebooking_type === 'rebooking' || task.rebooking_type === 'reschedule') && "bg-purple-500/10 border-purple-400 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
                 )}>
                   <div className="flex items-center justify-between gap-2">
                     <span>
@@ -848,7 +848,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               )}
               {/* Warning for ORIGINAL appointments that have been rebooked */}
               {task.rescheduled_to_appointment_id && !task.rebooking_type && (
-                <div className="text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100">
+                <div className="text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold bg-purple-500/10 border-purple-400 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
                   <div className="flex items-center justify-between gap-2">
                     <span>
                       <strong>LEAD REBOOKED</strong> — This lead booked a new appointment. See the new booking details!
