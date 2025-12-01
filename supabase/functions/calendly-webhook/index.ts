@@ -792,6 +792,60 @@ serve(async (req) => {
         }
       }
       
+      // ============= OVERRIDE ORIGINAL TASK WITH REBOOKING WARNING =============
+      // If this is a rebooking (not a recent Calendly reschedule), find and update the original task
+      if (priorAppointment && !recentlyCancelled && insertedAppointment?.id) {
+        console.log(`[REBOOKING-TASK] Looking for existing task on prior appointment ${priorAppointment.id}...`);
+        
+        // Find existing pending confirmation task for the ORIGINAL appointment
+        const { data: existingTask } = await adminClient
+          .from('confirmation_tasks')
+          .select('id, status')
+          .eq('appointment_id', priorAppointment.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        const newAppointmentDate = startTime ? new Date(startTime).toLocaleDateString() : 'soon';
+        const warningMsg = `⚠️ LEAD REBOOKED: Originally had appointment for ${new Date(priorAppointment.start_at_utc).toLocaleDateString()}. Now booked for ${newAppointmentDate}. Confirm they want the new date!`;
+        
+        if (existingTask) {
+          // UPDATE the existing task to point to NEW appointment with warning
+          const { error: taskUpdateError } = await adminClient
+            .from('confirmation_tasks')
+            .update({
+              appointment_id: insertedAppointment.id,
+              follow_up_reason: warningMsg,
+              due_at: new Date().toISOString() // Make it urgent
+            })
+            .eq('id', existingTask.id);
+          
+          if (taskUpdateError) {
+            console.error(`[REBOOKING-TASK] Failed to update existing task:`, taskUpdateError);
+          } else {
+            console.log(`[REBOOKING-TASK] ✓ Updated existing task ${existingTask.id} with rebooking warning`);
+          }
+          
+          // Mark original appointment as rebooked
+          const { error: apptUpdateError } = await adminClient
+            .from('appointments')
+            .update({ 
+              pipeline_stage: 'rescheduled',
+              rescheduled_to_appointment_id: insertedAppointment.id
+            })
+            .eq('id', priorAppointment.id);
+          
+          if (apptUpdateError) {
+            console.error(`[REBOOKING-TASK] Failed to update prior appointment:`, apptUpdateError);
+          } else {
+            console.log(`[REBOOKING-TASK] ✓ Marked prior appointment ${priorAppointment.id} as rescheduled`);
+          }
+        } else {
+          console.log(`[REBOOKING-TASK] No pending task found for prior appointment - new task will be created by trigger`);
+        }
+      }
+      
       // Log activity for returning lead detection
       if (rebookingType && insertedAppointment?.id) {
         const warningMessages: Record<string, string> = {

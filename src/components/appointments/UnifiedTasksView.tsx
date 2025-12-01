@@ -752,48 +752,47 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                 )}
                 {/* Rebooking type badges */}
                 {task.rebooking_type === 'returning_client' && (
-                  <Badge className="text-xs bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700">
+                  <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-400/50 dark:text-emerald-300 dark:border-emerald-600/50">
                     <Star className="h-3 w-3 mr-1" />
                     Returning Client
                   </Badge>
                 )}
                 {task.rebooking_type === 'win_back' && (
-                  <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700">
+                  <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-400/50 dark:text-blue-300 dark:border-blue-600/50">
                     <RotateCcw className="h-3 w-3 mr-1" />
                     Win-Back
                   </Badge>
                 )}
                 {task.rebooking_type === 'rebooking' && (
-                  <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700">
+                  <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 border-amber-400/50 dark:text-amber-300 dark:border-amber-600/50">
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     Rebooking
                   </Badge>
                 )}
                 {task.rebooking_type === 'reschedule' && (
-                  <Badge className="text-xs bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-700">
+                  <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-700 border-purple-400/50 dark:text-purple-300 dark:border-purple-600/50">
                     <CalendarClock className="h-3 w-3 mr-1" />
                     Rescheduled
                   </Badge>
                 )}
               </div>
-              {/* Rebooking warning message */}
+              {/* Rebooking warning message - subtle blur/gradient styling */}
               {task.rebooking_type && (
                 <div className={cn(
-                  "text-xs p-2 rounded border-l-2 mt-2",
-                  task.rebooking_type === 'returning_client' && "bg-emerald-50 border-emerald-500 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-                  task.rebooking_type === 'win_back' && "bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
-                  task.rebooking_type === 'rebooking' && "bg-amber-50 border-amber-500 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
-                  task.rebooking_type === 'reschedule' && "bg-purple-50 border-purple-500 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300",
+                  "text-xs p-2 rounded-md border-l-2 mt-2 backdrop-blur-sm",
+                  task.rebooking_type === 'returning_client' && "bg-gradient-to-r from-emerald-500/10 to-transparent border-emerald-500 text-emerald-700 dark:text-emerald-300",
+                  task.rebooking_type === 'win_back' && "bg-gradient-to-r from-blue-500/10 to-transparent border-blue-500 text-blue-700 dark:text-blue-300",
+                  task.rebooking_type === 'rebooking' && "bg-gradient-to-r from-amber-500/10 to-transparent border-amber-500 text-amber-700 dark:text-amber-300",
+                  task.rebooking_type === 'reschedule' && "bg-gradient-to-r from-purple-500/10 to-transparent border-purple-500 text-purple-700 dark:text-purple-300",
                 )}>
-                  <AlertTriangle className="h-3 w-3 inline mr-1" />
                   {task.rebooking_type === 'returning_client' && (
-                    <>🎉 <strong>RETURNING CLIENT</strong> - This lead previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they're booking again!</>
+                    <>🎉 <strong>RETURNING CLIENT</strong> - Previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they're booking again!</>
                   )}
                   {task.rebooking_type === 'win_back' && (
                     <>🔄 <strong>WIN-BACK</strong> - Was {task.previous_status?.replace('_', ' ')}. They're giving you another chance!</>
                   )}
                   {task.rebooking_type === 'rebooking' && (
-                    <>⚠️ <strong>REBOOKING</strong> - Originally booked {task.original_booking_date ? `for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm new date!</>
+                    <>⚠️ <strong>REBOOKING</strong> - Originally booked{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm new date!</>
                   )}
                   {task.rebooking_type === 'reschedule' && (
                     <>📅 <strong>RESCHEDULE</strong> - Lead changed their appointment. Confirm intentional.</>
