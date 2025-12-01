@@ -322,8 +322,8 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
             <div className="flex items-center gap-2 flex-wrap">
               {appointment.original_appointment_id && (
                 <Badge 
-                  variant="info" 
-                  className="cursor-pointer hover:bg-info/20 flex items-center gap-1"
+                  variant="outline" 
+                  className="cursor-pointer hover:bg-purple-500/20 border-purple-400/40 text-purple-600 dark:text-purple-400 flex items-center gap-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowRescheduleHistory(true);
@@ -331,8 +331,12 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
                 >
                   <History className="h-3 w-3" />
                   Previously Rescheduled
-                  {appointment.reschedule_count > 0 && ` (${appointment.reschedule_count}x)`}
-                  <span className="ml-1 px-1.5 py-0.5 bg-info/30 rounded text-[10px] font-bold hover:bg-info/50">
+                  {appointment.reschedule_count > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 bg-purple-500/30 rounded-full text-[10px] font-bold">
+                      {appointment.reschedule_count}x
+                    </span>
+                  )}
+                  <span className="ml-1 px-1.5 py-0.5 bg-purple-500/20 rounded text-[10px] font-bold hover:bg-purple-500/30">
                     View
                   </span>
                 </Badge>
