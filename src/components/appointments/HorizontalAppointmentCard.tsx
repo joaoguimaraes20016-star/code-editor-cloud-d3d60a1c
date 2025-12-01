@@ -26,6 +26,7 @@ interface HorizontalAppointmentCardProps {
     cc_collected: number | null;
     mrr_amount: number | null;
     reschedule_url: string | null;
+    reschedule_count?: number;
     pipeline_stage?: string | null;
     retarget_date?: string | null;
     original_appointment_id?: string | null;
@@ -244,12 +245,17 @@ export function HorizontalAppointmentCard({
             {appointment.original_appointment_id && (
               <Badge 
                 variant="outline" 
-                className="text-xs font-medium cursor-pointer hover:bg-info/20 border-info/40 text-info-foreground"
+                className="text-xs font-medium cursor-pointer hover:bg-purple-500/20 border-purple-400/40 text-purple-600 dark:text-purple-400"
                 onClick={() => setShowRescheduleHistory(true)}
               >
                 <History className="w-3 h-3 mr-1" />
                 Previously Rescheduled
-                <span className="ml-1 px-1.5 py-0.5 bg-info/20 rounded text-[10px] font-bold hover:bg-info/30">
+                {appointment.reschedule_count && appointment.reschedule_count > 1 && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-purple-500/30 rounded-full text-[10px] font-bold">
+                    {appointment.reschedule_count}x
+                  </span>
+                )}
+                <span className="ml-1 px-1.5 py-0.5 bg-purple-500/20 rounded text-[10px] font-bold hover:bg-purple-500/30">
                   View
                 </span>
               </Badge>
