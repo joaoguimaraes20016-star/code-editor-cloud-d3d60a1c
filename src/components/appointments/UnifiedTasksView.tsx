@@ -770,39 +770,39 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                 {task.rebooking_type === 'returning_client' && (
                   <Badge className="text-xs bg-emerald-500 text-white border-0 font-bold shadow-sm shadow-emerald-500/30">
                     <Star className="h-3 w-3 mr-1" />
-                    🎉 Returning Client
+                    Returning Client
                   </Badge>
                 )}
                 {task.rebooking_type === 'win_back' && (
                   <Badge className="text-xs bg-blue-500 text-white border-0 font-bold shadow-sm shadow-blue-500/30">
                     <RotateCcw className="h-3 w-3 mr-1" />
-                    🔄 Win-Back
+                    Win-Back
                   </Badge>
                 )}
                 {task.rebooking_type === 'rebooking' && (
                   <Badge className="text-xs bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-500/30">
                     <AlertTriangle className="h-3 w-3 mr-1" />
-                    ⚠️ Rebooked
+                    Rebooked
                   </Badge>
                 )}
                 {task.rebooking_type === 'reschedule' && (
                   <Badge className="text-xs bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-500/30">
                     <CalendarClock className="h-3 w-3 mr-1" />
-                    📅 Rebooked
+                    Rebooked
                   </Badge>
                 )}
                 {/* Badge for ORIGINAL appointments that lead rebooked from */}
                 {task.rescheduled_to_appointment_id && !task.rebooking_type && (
                   <Badge className="text-xs bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-500/30">
                     <ArrowRight className="h-3 w-3 mr-1" />
-                    📅 Lead Rebooked
+                    Lead Rebooked
                   </Badge>
                 )}
                 {/* Badge for rebooking conflict - BOTH appointments need confirmation */}
                 {task.pipeline_stage === 'rebooking_conflict' && (
                   <Badge className="text-xs bg-red-500 text-white border-0 font-bold shadow-sm shadow-red-500/30 animate-pulse">
                     <AlertTriangle className="h-3 w-3 mr-1" />
-                    ⚠️ Rebooking Conflict
+                    Rebooking Conflict
                   </Badge>
                 )}
               </div>
@@ -817,16 +817,16 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                   <div className="flex items-center justify-between gap-2">
                     <span>
                       {task.rebooking_type === 'returning_client' && (
-                        <>🎉 <strong>RETURNING CLIENT</strong> — Previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they're booking again!</>
+                        <><strong>RETURNING CLIENT</strong> — Previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they're booking again!</>
                       )}
                       {task.rebooking_type === 'win_back' && (
-                        <>🔄 <strong>WIN-BACK</strong> — Was {task.previous_status?.replace('_', ' ')}. They're giving you another chance!</>
+                        <><strong>WIN-BACK</strong> — Was {task.previous_status?.replace('_', ' ')}. They're giving you another chance!</>
                       )}
                       {task.rebooking_type === 'rebooking' && (
-                        <>⚠️ <strong>REBOOKED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
+                        <><strong>REBOOKED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
                       )}
                       {task.rebooking_type === 'reschedule' && (
-                        <>📅 <strong>REBOOKED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
+                        <><strong>REBOOKED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
                       )}
                     </span>
                     {task.original_appointment_id && (
@@ -851,7 +851,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                 <div className="text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100">
                   <div className="flex items-center justify-between gap-2">
                     <span>
-                      📅 <strong>LEAD REBOOKED</strong> — This lead booked a new appointment. See the new booking details!
+                      <strong>LEAD REBOOKED</strong> — This lead booked a new appointment. See the new booking details!
                     </span>
                     <Button
                       size="sm"
@@ -873,7 +873,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                 <div className="text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm bg-red-100 border-red-500 text-red-900 dark:bg-red-900/40 dark:text-red-100">
                   <div className="flex items-center justify-between gap-2">
                     <span>
-                      ⚠️ <strong>REBOOKING CONFLICT</strong> — This lead ALSO booked another appointment! Confirm which date they actually want before proceeding.
+                      <strong>REBOOKING CONFLICT</strong> — This lead ALSO booked another appointment! Confirm which date they actually want before proceeding.
                     </span>
                   </div>
                 </div>
