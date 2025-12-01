@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Calendar, Phone, RefreshCw, Clock, UserPlus, CalendarCheck, CalendarX, Loader2, CalendarClock, AlertCircle, CheckCircle2, Star, RotateCcw, AlertTriangle } from "lucide-react";
+import { Calendar, Phone, RefreshCw, Clock, UserPlus, CalendarCheck, CalendarX, Loader2, CalendarClock, AlertCircle, CheckCircle2, Star, RotateCcw, AlertTriangle, Eye } from "lucide-react";
 import { format, parseISO, isToday, isTomorrow, startOfDay, differenceInMinutes } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -44,6 +44,9 @@ interface UnifiedTask {
   rebooking_type?: 'returning_client' | 'win_back' | 'rebooking' | 'reschedule' | null;
   original_booking_date?: string | null;
   previous_status?: string | null;
+  original_appointment_id?: string | null;
+  rescheduled_to_appointment_id?: string | null;
+  setter_notes?: string | null;
 }
 
 export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
@@ -81,6 +84,11 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
     appointmentId: string;
     taskId: string;
     dealName: string;
+  } | null>(null);
+  const [originalAppointmentModal, setOriginalAppointmentModal] = useState<{
+    open: boolean;
+    appointment: any;
+    loading: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -165,7 +173,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
       if (filterStatus === 'pending' || filterStatus === 'all' || filterStatus === 'completed') {
         const { data: confirmTasks } = await supabase
           .from('confirmation_tasks')
-          .select('*, appointment:appointments(start_at_utc, lead_name, lead_email, lead_phone, rescheduled_to_appointment_id, pipeline_stage, rebooking_type, original_booking_date, previous_status)')
+          .select('*, appointment:appointments(start_at_utc, lead_name, lead_email, lead_phone, rescheduled_to_appointment_id, pipeline_stage, rebooking_type, original_booking_date, previous_status, original_appointment_id, setter_notes)')
           .eq('team_id', teamId)
           .in('status', statusFilter);
         
@@ -238,6 +246,9 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
             rebooking_type: appointment?.rebooking_type as UnifiedTask['rebooking_type'],
             original_booking_date: appointment?.original_booking_date,
             previous_status: appointment?.previous_status,
+            original_appointment_id: appointment?.original_appointment_id,
+            rescheduled_to_appointment_id: appointment?.rescheduled_to_appointment_id,
+            setter_notes: appointment?.setter_notes,
           });
         });
       }
@@ -355,6 +366,30 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
       default:
         return null;
     }
+  };
+
+  const viewOriginalAppointment = async (originalAppointmentId: string) => {
+    setOriginalAppointmentModal({ open: true, appointment: null, loading: true });
+    
+    const { data: appointment } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('id', originalAppointmentId)
+      .single();
+    
+    setOriginalAppointmentModal({ open: true, appointment, loading: false });
+  };
+
+  const viewNewAppointment = async (newAppointmentId: string) => {
+    setOriginalAppointmentModal({ open: true, appointment: null, loading: true });
+    
+    const { data: appointment } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('id', newAppointmentId)
+      .single();
+    
+    setOriginalAppointmentModal({ open: true, appointment, loading: false });
   };
 
   const formatTime = (utcDate: string) => {
@@ -775,8 +810,15 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                     📅 Rescheduled
                   </Badge>
                 )}
+                {/* Badge for ORIGINAL appointments that lead rescheduled from */}
+                {task.rescheduled_to_appointment_id && !task.rebooking_type && (
+                  <Badge className="text-xs bg-orange-500 text-white border-0 font-bold shadow-sm shadow-orange-500/30">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    📅 Lead Rescheduled
+                  </Badge>
+                )}
               </div>
-              {/* Rebooking warning message - BRIGHT and prominent */}
+              {/* Rebooking warning message - BRIGHT and prominent with View Original link */}
               {task.rebooking_type && (
                 <div className={cn(
                   "text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm",
@@ -784,18 +826,58 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                   task.rebooking_type === 'win_back' && "bg-blue-100 border-blue-500 text-blue-900 dark:bg-blue-900/40 dark:text-blue-100",
                   (task.rebooking_type === 'rebooking' || task.rebooking_type === 'reschedule') && "bg-cyan-100 border-cyan-500 text-cyan-900 dark:bg-cyan-900/40 dark:text-cyan-100",
                 )}>
-                  {task.rebooking_type === 'returning_client' && (
-                    <>🎉 <strong>RETURNING CLIENT</strong> — Previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they're booking again!</>
-                  )}
-                  {task.rebooking_type === 'win_back' && (
-                    <>🔄 <strong>WIN-BACK</strong> — Was {task.previous_status?.replace('_', ' ')}. They're giving you another chance!</>
-                  )}
-                  {task.rebooking_type === 'rebooking' && (
-                    <>⚠️ <strong>REBOOKED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
-                  )}
-                  {task.rebooking_type === 'reschedule' && (
-                    <>📅 <strong>RESCHEDULED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
-                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <span>
+                      {task.rebooking_type === 'returning_client' && (
+                        <>🎉 <strong>RETURNING CLIENT</strong> — Previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they're booking again!</>
+                      )}
+                      {task.rebooking_type === 'win_back' && (
+                        <>🔄 <strong>WIN-BACK</strong> — Was {task.previous_status?.replace('_', ' ')}. They're giving you another chance!</>
+                      )}
+                      {task.rebooking_type === 'rebooking' && (
+                        <>⚠️ <strong>REBOOKED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
+                      )}
+                      {task.rebooking_type === 'reschedule' && (
+                        <>📅 <strong>RESCHEDULED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
+                      )}
+                    </span>
+                    {task.original_appointment_id && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7 bg-white/50 hover:bg-white border-current shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          viewOriginalAppointment(task.original_appointment_id!);
+                        }}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View Original
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Warning for ORIGINAL appointments that have been rescheduled */}
+              {task.rescheduled_to_appointment_id && !task.rebooking_type && (
+                <div className="text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm bg-orange-100 border-orange-500 text-orange-900 dark:bg-orange-900/40 dark:text-orange-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>
+                      📅 <strong>LEAD RESCHEDULED</strong> — This lead booked a new appointment. See the new booking details!
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7 bg-white/50 hover:bg-white border-current shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        viewNewAppointment(task.rescheduled_to_appointment_id!);
+                      }}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      View New Booking
+                    </Button>
+                  </div>
                 </div>
               )}
               {/* Show follow_up_reason warning (from webhook override) */}
@@ -1272,6 +1354,92 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
           teamId={teamId}
         />
       )}
+
+      {/* Original/New Appointment Modal */}
+      <Dialog 
+        open={originalAppointmentModal?.open || false} 
+        onOpenChange={(open) => !open && setOriginalAppointmentModal(null)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Appointment Details
+            </DialogTitle>
+          </DialogHeader>
+          {originalAppointmentModal?.loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : originalAppointmentModal?.appointment ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Lead Name</Label>
+                  <p className="font-semibold">{originalAppointmentModal.appointment.lead_name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Email</Label>
+                  <p className="font-medium text-sm">{originalAppointmentModal.appointment.lead_email || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Phone</Label>
+                  <p className="font-medium text-sm">{originalAppointmentModal.appointment.lead_phone || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Status</Label>
+                  <Badge variant="outline">{originalAppointmentModal.appointment.status}</Badge>
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-muted-foreground text-xs">Scheduled For</Label>
+                  <p className="font-semibold text-primary">
+                    {originalAppointmentModal.appointment.start_at_utc 
+                      ? formatDateTimeWithTimezone(new Date(originalAppointmentModal.appointment.start_at_utc), 'EEEE, MMM d, yyyy h:mm a')
+                      : 'N/A'}
+                  </p>
+                </div>
+                {originalAppointmentModal.appointment.event_type_name && (
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground text-xs">Event Type</Label>
+                    <p className="font-medium text-sm">{originalAppointmentModal.appointment.event_type_name}</p>
+                  </div>
+                )}
+                {originalAppointmentModal.appointment.setter_name && (
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Setter</Label>
+                    <p className="font-medium text-sm">{originalAppointmentModal.appointment.setter_name}</p>
+                  </div>
+                )}
+                {originalAppointmentModal.appointment.closer_name && (
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Closer</Label>
+                    <p className="font-medium text-sm">{originalAppointmentModal.appointment.closer_name}</p>
+                  </div>
+                )}
+              </div>
+              {originalAppointmentModal.appointment.setter_notes && (
+                <div className="border-t pt-3">
+                  <Label className="text-muted-foreground text-xs">Setter Notes</Label>
+                  <p className="mt-1 text-sm bg-muted p-2 rounded">{originalAppointmentModal.appointment.setter_notes}</p>
+                </div>
+              )}
+              {originalAppointmentModal.appointment.pipeline_stage && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Pipeline Stage</Label>
+                  <Badge className="mt-1">{originalAppointmentModal.appointment.pipeline_stage}</Badge>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-4">Appointment not found</p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOriginalAppointmentModal(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
