@@ -1071,7 +1071,7 @@ serve(async (req) => {
       // Try by email + team first (most reliable for reschedules)
       const searchResult = await supabase
         .from('appointments')
-        .select('id, team_id, setter_id, setter_name, closer_id, closer_name, reschedule_count, original_appointment_id, calendly_invitee_uri, lead_name')
+        .select('id, team_id, setter_id, setter_name, closer_id, closer_name, reschedule_count, original_appointment_id, original_booking_date, calendly_invitee_uri, lead_name, start_at_utc')
         .eq('lead_email', leadEmail)
         .eq('team_id', teamId)
         .neq('start_at_utc', startTime) // Exclude the new time to avoid finding newly created appointment
@@ -1159,6 +1159,10 @@ serve(async (req) => {
         // Link to old appointment and track reschedule count
         original_appointment_id: oldAppointment.original_appointment_id || oldAppointment.id,
         reschedule_count: (oldAppointment.reschedule_count || 0) + 1,
+        // Add rebooking context for UI warning display
+        rebooking_type: 'reschedule',
+        original_booking_date: oldAppointment.original_booking_date || oldAppointment.start_at_utc,
+        previous_status: 'booked',
       };
 
       const { data: newAppointment, error: createError } = await adminClient
