@@ -119,17 +119,17 @@ export function AppointmentCard({
           {appointment.original_appointment_id && (
             <Badge 
               variant="outline" 
-              className="cursor-pointer hover:bg-purple-500/20 border-purple-400/40 text-purple-600 dark:text-purple-400 gap-1"
+              className="cursor-pointer hover:bg-purple-400/20 border-purple-400/50 text-purple-500 dark:text-purple-300 gap-1"
               onClick={() => setShowRescheduleHistory(true)}
             >
               <History className="h-3 w-3" />
               Previously Rescheduled
               {appointment.reschedule_count && appointment.reschedule_count > 1 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-purple-500/30 rounded-full text-xs font-bold">
+                <span className="ml-1 px-1.5 py-0.5 bg-purple-400/40 rounded-full text-xs font-bold">
                   {appointment.reschedule_count}x
                 </span>
               )}
-              <span className="ml-1 px-1.5 py-0.5 bg-purple-500/20 rounded text-xs font-medium hover:bg-purple-500/30">
+              <span className="ml-1 px-1.5 py-0.5 bg-purple-400/30 rounded text-xs font-medium hover:bg-purple-400/40">
                 View
               </span>
             </Badge>
