@@ -257,7 +257,7 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
               </span>
             </Badge>
           )}
-          {isRescheduled && !appointment.original_appointment_id && (
+          {isRescheduled && !appointment.original_appointment_id && !appointment.rescheduled_to_appointment_id && (
             <Badge variant="rescheduled" className="shadow-sm">
               <span className="flex items-center gap-1">
                 <RefreshCw className="h-3 w-3" />
