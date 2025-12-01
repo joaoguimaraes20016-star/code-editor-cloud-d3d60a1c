@@ -2,13 +2,14 @@ import { format, isToday, parseISO, isBefore, startOfDay } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle, Edit, CalendarClock, Wallet, AlertCircle, Wrench, Target } from "lucide-react";
-import { useState } from "react";
+import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle, Edit, CalendarClock, Wallet, AlertCircle, Wrench, Target, RefreshCw, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import { ConfirmationProgressTracker } from "./ConfirmationProgressTracker";
 import { RescheduleWithLinkDialog } from "./RescheduleWithLinkDialog";
 import { toast } from "sonner";
 import { cn, formatDateTimeWithTimezone } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface HorizontalAppointmentCardProps {
   appointment: {
@@ -25,6 +26,10 @@ interface HorizontalAppointmentCardProps {
     cc_collected: number | null;
     mrr_amount: number | null;
     reschedule_url: string | null;
+    pipeline_stage?: string | null;
+    retarget_date?: string | null;
+    original_appointment_id?: string | null;
+    rescheduled_to_appointment_id?: string | null;
   };
   confirmationTask?: {
     id: string;
@@ -80,6 +85,7 @@ export function HorizontalAppointmentCard({
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [originalCloserName, setOriginalCloserName] = useState<string | null>(null);
   const formattedDate = formatDateTimeWithTimezone(appointment.start_at_utc);
   const statusStyle = statusColors[appointment.status] || statusColors.NEW;
   
@@ -87,6 +93,27 @@ export function HorizontalAppointmentCard({
   const displayStatus = appointment.status === 'NEW' 
     ? 'Pending Confirmation' 
     : appointment.status;
+
+  // Check if this is a rescheduled appointment
+  const isRescheduled = appointment.status === 'RESCHEDULED' || appointment.pipeline_stage === 'rescheduled';
+  const hasCloserReassignment = originalCloserName && appointment.closer_name && originalCloserName !== appointment.closer_name;
+
+  // Fetch original appointment's closer if this is a rescheduled appointment
+  useEffect(() => {
+    const fetchOriginalCloser = async () => {
+      if (appointment.original_appointment_id) {
+        const { data } = await supabase
+          .from('appointments')
+          .select('closer_name')
+          .eq('id', appointment.original_appointment_id)
+          .single();
+        if (data?.closer_name) {
+          setOriginalCloserName(data.closer_name);
+        }
+      }
+    };
+    fetchOriginalCloser();
+  }, [appointment.original_appointment_id]);
 
   // Determine visual indicators
   const appointmentDate = parseISO(appointment.start_at_utc);
@@ -208,6 +235,25 @@ export function HorizontalAppointmentCard({
               <Badge className="text-xs font-semibold bg-green-500 text-white border-0">
                 <Calendar className="w-3 h-3 mr-1" />
                 Appointment Today
+              </Badge>
+            )}
+            {/* Rescheduled Badge with Date */}
+            {isRescheduled && (
+              <Badge className="text-xs font-semibold bg-yellow-500 text-white border-0">
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Rescheduled
+                {appointment.retarget_date && (
+                  <span className="ml-1">
+                    for {format(parseISO(appointment.retarget_date), "MMM d")}
+                  </span>
+                )}
+              </Badge>
+            )}
+            {/* Closer Reassignment Warning */}
+            {hasCloserReassignment && (
+              <Badge className="text-xs font-semibold bg-orange-600 text-white border-0 animate-pulse">
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                Closer Changed: {originalCloserName} → {appointment.closer_name}
               </Badge>
             )}
           </div>

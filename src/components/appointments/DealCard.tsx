@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
@@ -12,11 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, MoreVertical, Calendar, MessageSquare, Undo2, History, ArrowRight } from "lucide-react";
-import { differenceInDays } from "date-fns";
+import { GripVertical, MoreVertical, Calendar, MessageSquare, Undo2, History, ArrowRight, AlertTriangle, RefreshCw } from "lucide-react";
+import { differenceInDays, format, parseISO } from "date-fns";
 import { formatDateTimeWithTimezone } from "@/lib/utils";
 import { DealAvatar } from "./DealAvatar";
 import { ActivityTimeline } from "./ActivityTimeline";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DealCardProps {
   id: string;
@@ -37,6 +38,8 @@ interface DealCardProps {
     rescheduled_to_appointment_id: string | null;
     reschedule_count: number;
     rebooking_type?: string | null;
+    retarget_date?: string | null;
+    closer_id?: string | null;
   };
   confirmationTask?: {
     completed_confirmations: number;
@@ -57,6 +60,26 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
   const [showTimeline, setShowTimeline] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showRescheduleHistory, setShowRescheduleHistory] = useState(false);
+  const [originalCloserName, setOriginalCloserName] = useState<string | null>(null);
+
+  // Fetch original appointment's closer if this is a rescheduled appointment
+  useEffect(() => {
+    const fetchOriginalCloser = async () => {
+      if (appointment.original_appointment_id) {
+        const { data } = await supabase
+          .from('appointments')
+          .select('closer_name')
+          .eq('id', appointment.original_appointment_id)
+          .single();
+        if (data?.closer_name) {
+          setOriginalCloserName(data.closer_name);
+        }
+      }
+    };
+    fetchOriginalCloser();
+  }, [appointment.original_appointment_id]);
+
+  const hasCloserReassignment = originalCloserName && appointment.closer_name && originalCloserName !== appointment.closer_name;
   
   // Determine if the user can drag this card
   const canDrag = !(userRole === 'setter' && !allowSetterPipelineUpdates);
@@ -254,7 +277,22 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
           {isRescheduled && (
             <Badge variant="rescheduled" className="shadow-sm">
               <span className="flex items-center gap-1">
-                ⟳ Rescheduled
+                <RefreshCw className="h-3 w-3" />
+                Rescheduled
+                {appointment.retarget_date && (
+                  <span className="ml-1">
+                    for {format(parseISO(appointment.retarget_date), "MMM d")}
+                  </span>
+                )}
+              </span>
+            </Badge>
+          )}
+          {/* Closer Reassignment Warning */}
+          {hasCloserReassignment && (
+            <Badge className="bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-sm animate-pulse">
+              <span className="flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Closer: {originalCloserName} → {appointment.closer_name}
               </span>
             </Badge>
           )}

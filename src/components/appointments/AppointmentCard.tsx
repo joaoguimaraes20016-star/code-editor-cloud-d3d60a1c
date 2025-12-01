@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { format } from "date-fns";
+import { useState, useEffect } from "react";
+import { format, parseISO } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { formatDateTimeWithTimezone } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Mail, User, Clock, MessageSquare, History, ArrowRight } from "lucide-react";
+import { Calendar, Mail, User, Clock, MessageSquare, History, ArrowRight, AlertTriangle, RefreshCw } from "lucide-react";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import { RescheduleHistory } from "./RescheduleHistory";
 import {
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AppointmentCardProps {
   appointment: {
@@ -32,6 +33,8 @@ interface AppointmentCardProps {
     original_appointment_id?: string | null;
     rescheduled_to_appointment_id?: string | null;
     reschedule_count?: number;
+    pipeline_stage?: string | null;
+    retarget_date?: string | null;
   };
   teamId?: string;
   onUpdateStatus?: (id: string, status: string) => void;
@@ -62,7 +65,29 @@ export function AppointmentCard({
 }: AppointmentCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showRescheduleHistory, setShowRescheduleHistory] = useState(false);
+  const [originalCloserName, setOriginalCloserName] = useState<string | null>(null);
   const formattedDate = formatDateTimeWithTimezone(appointment.start_at_utc);
+
+  // Check if this is a rescheduled appointment
+  const isRescheduled = appointment.status === 'RESCHEDULED' || appointment.pipeline_stage === 'rescheduled';
+  const hasCloserReassignment = originalCloserName && appointment.closer_name && originalCloserName !== appointment.closer_name;
+
+  // Fetch original appointment's closer if this is a rescheduled appointment
+  useEffect(() => {
+    const fetchOriginalCloser = async () => {
+      if (appointment.original_appointment_id) {
+        const { data } = await supabase
+          .from('appointments')
+          .select('closer_name')
+          .eq('id', appointment.original_appointment_id)
+          .single();
+        if (data?.closer_name) {
+          setOriginalCloserName(data.closer_name);
+        }
+      }
+    };
+    fetchOriginalCloser();
+  }, [appointment.original_appointment_id]);
 
   return (
     <Card className="p-5 card-hover group relative overflow-hidden">
@@ -85,6 +110,27 @@ export function AppointmentCard({
           <Badge variant={statusColors[appointment.status] as any || "secondary"}>
             {appointment.status}
           </Badge>
+          
+          {/* Rescheduled Badge with Date */}
+          {isRescheduled && (
+            <Badge className="bg-yellow-500 text-white border-0 gap-1">
+              <RefreshCw className="h-3 w-3" />
+              Rescheduled
+              {appointment.retarget_date && (
+                <span className="ml-1">
+                  for {format(parseISO(appointment.retarget_date), "MMM d")}
+                </span>
+              )}
+            </Badge>
+          )}
+
+          {/* Closer Reassignment Warning */}
+          {hasCloserReassignment && (
+            <Badge className="bg-orange-600 text-white border-0 gap-1 animate-pulse">
+              <AlertTriangle className="h-3 w-3" />
+              Closer: {originalCloserName} → {appointment.closer_name}
+            </Badge>
+          )}
           
           {appointment.original_appointment_id && (
             <Badge 
