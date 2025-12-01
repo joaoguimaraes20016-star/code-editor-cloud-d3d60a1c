@@ -66,8 +66,11 @@ export type Database = {
           mrr_amount: number | null
           mrr_months: number | null
           original_appointment_id: string | null
+          original_booking_date: string | null
           pipeline_stage: string | null
+          previous_status: string | null
           product_name: string | null
+          rebooking_type: string | null
           reschedule_count: number | null
           reschedule_url: string | null
           rescheduled_to_appointment_id: string | null
@@ -100,8 +103,11 @@ export type Database = {
           mrr_amount?: number | null
           mrr_months?: number | null
           original_appointment_id?: string | null
+          original_booking_date?: string | null
           pipeline_stage?: string | null
+          previous_status?: string | null
           product_name?: string | null
+          rebooking_type?: string | null
           reschedule_count?: number | null
           reschedule_url?: string | null
           rescheduled_to_appointment_id?: string | null
@@ -134,8 +140,11 @@ export type Database = {
           mrr_amount?: number | null
           mrr_months?: number | null
           original_appointment_id?: string | null
+          original_booking_date?: string | null
           pipeline_stage?: string | null
+          previous_status?: string | null
           product_name?: string | null
+          rebooking_type?: string | null
           reschedule_count?: number | null
           reschedule_url?: string | null
           rescheduled_to_appointment_id?: string | null
@@ -1646,8 +1655,11 @@ export type Database = {
           mrr_amount: number | null
           mrr_months: number | null
           original_appointment_id: string | null
+          original_booking_date: string | null
           pipeline_stage: string | null
+          previous_status: string | null
           product_name: string | null
+          rebooking_type: string | null
           reschedule_count: number | null
           reschedule_url: string | null
           rescheduled_to_appointment_id: string | null

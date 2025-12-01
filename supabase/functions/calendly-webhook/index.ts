@@ -580,40 +580,99 @@ serve(async (req) => {
         });
       }
 
-      // Check if this is a rescheduled appointment (cancelled within last 2 minutes with same email)
-      console.log('[RESCHEDULE-DETECTION] Checking for recently cancelled appointments...');
-      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-      const { data: recentlyCancelled } = await supabase
+      // ============= INTELLIGENT RETURNING LEAD DETECTION =============
+      console.log('[RETURNING-LEAD] Checking for ANY prior appointments with same email/phone...');
+      
+      // Search for ANY prior appointment (not just recently cancelled)
+      let priorQuery = supabase
         .from('appointments')
-        .select('id, setter_id, setter_name, closer_id, closer_name, calendly_invitee_uri')
+        .select('id, setter_id, setter_name, closer_id, closer_name, calendly_invitee_uri, pipeline_stage, status, revenue, start_at_utc, original_booking_date, reschedule_count')
         .eq('team_id', teamId)
         .eq('lead_email', leadEmail)
-        .or(`status.eq.CANCELLED,pipeline_stage.eq.canceled`)
-        .gte('updated_at', twoMinutesAgo)
-        .maybeSingle();
-
-      // If there's a recently cancelled appointment, this is a reschedule
-      if (recentlyCancelled) {
-        console.log(`🔄 [RESCHEDULE-DETECTION] Detected reschedule!`);
-        console.log(`🔄 Old appointment ID: ${recentlyCancelled.id}`);
-        console.log(`🔄 Old appointment URI: ${recentlyCancelled.calendly_invitee_uri}`);
-        console.log(`🔄 Preserving team members from old appointment...`);
+        .neq('start_at_utc', startTime) // Don't match the same appointment
+        .order('start_at_utc', { ascending: false })
+        .limit(1);
+      
+      const { data: priorAppointments } = await priorQuery;
+      const priorAppointment = priorAppointments?.[0] || null;
+      
+      // Variables to track rebooking context
+      let rebookingType: string | null = null;
+      let previousStatus: string | null = null;
+      let originalBookingDate: string | null = null;
+      let recentlyCancelled: any = null;
+      
+      if (priorAppointment) {
+        const previousStage = priorAppointment.pipeline_stage;
+        const previousDate = new Date(priorAppointment.start_at_utc);
+        const newDate = startTime ? new Date(startTime) : new Date();
+        const now = new Date();
+        const isPast = previousDate < now;
+        const hasRevenue = (priorAppointment.revenue || 0) > 0;
         
-        // Preserve setter/closer from old appointment if not already assigned
-        if (!appointmentData.setter_id && recentlyCancelled.setter_id) {
-          appointmentData.setter_id = recentlyCancelled.setter_id;
-          appointmentData.setter_name = recentlyCancelled.setter_name;
-          console.log(`✓ Preserved setter: ${recentlyCancelled.setter_name}`);
-        }
-        if (!appointmentData.closer_id && recentlyCancelled.closer_id) {
-          appointmentData.closer_id = recentlyCancelled.closer_id;
-          appointmentData.closer_name = recentlyCancelled.closer_name;
-          console.log(`✓ Preserved closer: ${recentlyCancelled.closer_name}`);
+        console.log(`[RETURNING-LEAD] Found prior appointment:`);
+        console.log(`  - ID: ${priorAppointment.id}`);
+        console.log(`  - Stage: ${previousStage}`);
+        console.log(`  - Date: ${previousDate.toISOString()}`);
+        console.log(`  - Has Revenue: ${hasRevenue}`);
+        console.log(`  - Is Past: ${isPast}`);
+        
+        // Determine rebooking type
+        if (previousStage === 'won' || hasRevenue) {
+          rebookingType = 'returning_client';
+          console.log(`[RETURNING-LEAD] 🎉 RETURNING CLIENT detected - previously closed!`);
+        } else if (['lost', 'no_show', 'disqualified', 'canceled'].includes(previousStage || '')) {
+          rebookingType = 'win_back';
+          console.log(`[RETURNING-LEAD] 🔄 WIN-BACK detected - was ${previousStage}`);
+        } else if (isPast) {
+          rebookingType = 'rebooking';
+          console.log(`[RETURNING-LEAD] ⚠️ REBOOKING detected - past appointment`);
+        } else {
+          rebookingType = 'reschedule';
+          console.log(`[RETURNING-LEAD] 📅 RESCHEDULE detected - upcoming appointment`);
         }
         
-        appointmentData.status = 'RESCHEDULED';
+        previousStatus = previousStage || priorAppointment.status;
+        originalBookingDate = priorAppointment.original_booking_date || priorAppointment.start_at_utc;
+        
+        // Preserve setter/closer from prior appointment if not already assigned via UTM
+        if (!appointmentData.setter_id && priorAppointment.setter_id) {
+          appointmentData.setter_id = priorAppointment.setter_id;
+          appointmentData.setter_name = priorAppointment.setter_name;
+          console.log(`✓ Preserved setter from prior appointment: ${priorAppointment.setter_name}`);
+        }
+        if (!appointmentData.closer_id && priorAppointment.closer_id) {
+          appointmentData.closer_id = priorAppointment.closer_id;
+          appointmentData.closer_name = priorAppointment.closer_name;
+          console.log(`✓ Preserved closer from prior appointment: ${priorAppointment.closer_name}`);
+        }
+        
+        // Check if this is a recent Calendly reschedule (within 2 minutes)
+        const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+        if (priorAppointment.status === 'CANCELLED' || previousStage === 'canceled') {
+          const { data: recentCancel } = await supabase
+            .from('appointments')
+            .select('id')
+            .eq('id', priorAppointment.id)
+            .gte('updated_at', twoMinutesAgo)
+            .maybeSingle();
+          
+          if (recentCancel) {
+            recentlyCancelled = priorAppointment;
+            appointmentData.status = 'RESCHEDULED';
+            console.log(`[RETURNING-LEAD] Also a recent Calendly reschedule - marking as RESCHEDULED`);
+          }
+        }
+        
+        // Store rebooking context on the new appointment
+        (appointmentData as any).original_appointment_id = priorAppointment.id;
+        (appointmentData as any).original_booking_date = originalBookingDate;
+        (appointmentData as any).rebooking_type = rebookingType;
+        (appointmentData as any).previous_status = previousStatus;
+        (appointmentData as any).reschedule_count = (priorAppointment.reschedule_count || 0) + 1;
+        
       } else {
-        console.log('[RESCHEDULE-DETECTION] No recently cancelled appointments found - treating as new booking');
+        console.log('[RETURNING-LEAD] No prior appointments found - treating as new lead');
       }
 
       // Create admin client for operations that need service role
@@ -653,7 +712,7 @@ serve(async (req) => {
         closer_name: appointmentData.closer_name || null,
         setter_id: appointmentData.setter_id || null,
         setter_name: appointmentData.setter_name || null,
-        booking_code: appointmentData.booking_code || null, // Include booking code
+        booking_code: appointmentData.booking_code || null,
         status: appointmentData.status,
         event_type_uri: appointmentData.event_type_uri || null,
         event_type_name: appointmentData.event_type_name || null,
@@ -662,6 +721,12 @@ serve(async (req) => {
         cancel_url: cancelUrl,
         calendly_invitee_uri: calendlyInviteeUri,
         assignment_source: appointmentData.setter_id ? 'booking_link' : null,
+        // Rebooking context fields
+        original_appointment_id: (appointmentData as any).original_appointment_id || null,
+        original_booking_date: (appointmentData as any).original_booking_date || null,
+        rebooking_type: (appointmentData as any).rebooking_type || null,
+        previous_status: (appointmentData as any).previous_status || null,
+        reschedule_count: (appointmentData as any).reschedule_count || 0,
       };
 
       console.log('Inserting appointment with data:', JSON.stringify(appointmentToInsert));
@@ -725,6 +790,26 @@ serve(async (req) => {
         } else {
           console.log(`✓ Updated tasks to point to new appointment ${insertedAppointment.id}`);
         }
+      }
+      
+      // Log activity for returning lead detection
+      if (rebookingType && insertedAppointment?.id) {
+        const warningMessages: Record<string, string> = {
+          returning_client: `🎉 RETURNING CLIENT: This lead previously closed${priorAppointment?.revenue ? ` ($${priorAppointment.revenue})` : ''}. Find out why they're booking again - could be upsell or new deal!`,
+          win_back: `🔄 WIN-BACK OPPORTUNITY: Lead was previously ${previousStatus?.replace('_', ' ')}. They're giving you another chance - find out what changed!`,
+          rebooking: `⚠️ REBOOKING: Originally booked for ${originalBookingDate ? new Date(originalBookingDate).toLocaleDateString() : 'unknown'}. Confirm they want the new date.`,
+          reschedule: `📅 RESCHEDULE: Lead changed their appointment. Confirm this is intentional.`
+        };
+        
+        await adminClient.from('activity_logs').insert({
+          team_id: teamId,
+          appointment_id: insertedAppointment.id,
+          actor_name: 'System',
+          action_type: `${rebookingType.replace('_', ' ').toUpperCase()} Detected`,
+          note: warningMessages[rebookingType] || `Returning lead detected: ${rebookingType}`
+        });
+        
+        console.log(`[RETURNING-LEAD] Activity logged for ${rebookingType}`);
       }
       
       await logWebhookEvent(supabase, teamId, event, 'success', { appointmentId: insertedAppointment?.id });

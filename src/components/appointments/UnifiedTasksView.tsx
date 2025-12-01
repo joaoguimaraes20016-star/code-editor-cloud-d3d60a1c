@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Calendar, Phone, RefreshCw, Clock, UserPlus, CalendarCheck, CalendarX, Loader2, CalendarClock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Calendar, Phone, RefreshCw, Clock, UserPlus, CalendarCheck, CalendarX, Loader2, CalendarClock, AlertCircle, CheckCircle2, Star, RotateCcw, AlertTriangle } from "lucide-react";
 import { format, parseISO, isToday, isTomorrow, startOfDay, differenceInMinutes } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -40,6 +40,10 @@ interface UnifiedTask {
   pipeline_stage?: string;
   is_overdue?: boolean;
   noAnswerCount?: number;
+  // Rebooking context
+  rebooking_type?: 'returning_client' | 'win_back' | 'rebooking' | 'reschedule' | null;
+  original_booking_date?: string | null;
+  previous_status?: string | null;
 }
 
 export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
@@ -161,7 +165,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
       if (filterStatus === 'pending' || filterStatus === 'all' || filterStatus === 'completed') {
         const { data: confirmTasks } = await supabase
           .from('confirmation_tasks')
-          .select('*, appointment:appointments(start_at_utc, lead_name, lead_email, lead_phone, rescheduled_to_appointment_id, pipeline_stage)')
+          .select('*, appointment:appointments(start_at_utc, lead_name, lead_email, lead_phone, rescheduled_to_appointment_id, pipeline_stage, rebooking_type, original_booking_date, previous_status)')
           .eq('team_id', teamId)
           .in('status', statusFilter);
         
@@ -230,6 +234,10 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
             pipeline_stage: task.pipeline_stage,
             is_overdue: task.is_overdue,
             noAnswerCount: countNoAnswerAttempts(attempts),
+            // Rebooking context from appointment
+            rebooking_type: appointment?.rebooking_type as UnifiedTask['rebooking_type'],
+            original_booking_date: appointment?.original_booking_date,
+            previous_status: appointment?.previous_status,
           });
         });
       }
@@ -742,8 +750,57 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                     {task.noAnswerCount} attempt{task.noAnswerCount > 1 ? 's' : ''}
                   </Badge>
                 )}
+                {/* Rebooking type badges */}
+                {task.rebooking_type === 'returning_client' && (
+                  <Badge className="text-xs bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700">
+                    <Star className="h-3 w-3 mr-1" />
+                    Returning Client
+                  </Badge>
+                )}
+                {task.rebooking_type === 'win_back' && (
+                  <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700">
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Win-Back
+                  </Badge>
+                )}
+                {task.rebooking_type === 'rebooking' && (
+                  <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Rebooking
+                  </Badge>
+                )}
+                {task.rebooking_type === 'reschedule' && (
+                  <Badge className="text-xs bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-700">
+                    <CalendarClock className="h-3 w-3 mr-1" />
+                    Rescheduled
+                  </Badge>
+                )}
               </div>
-              {task.details && (
+              {/* Rebooking warning message */}
+              {task.rebooking_type && (
+                <div className={cn(
+                  "text-xs p-2 rounded border-l-2 mt-2",
+                  task.rebooking_type === 'returning_client' && "bg-emerald-50 border-emerald-500 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
+                  task.rebooking_type === 'win_back' && "bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
+                  task.rebooking_type === 'rebooking' && "bg-amber-50 border-amber-500 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
+                  task.rebooking_type === 'reschedule' && "bg-purple-50 border-purple-500 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300",
+                )}>
+                  <AlertTriangle className="h-3 w-3 inline mr-1" />
+                  {task.rebooking_type === 'returning_client' && (
+                    <>🎉 <strong>RETURNING CLIENT</strong> - This lead previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they're booking again!</>
+                  )}
+                  {task.rebooking_type === 'win_back' && (
+                    <>🔄 <strong>WIN-BACK</strong> - Was {task.previous_status?.replace('_', ' ')}. They're giving you another chance!</>
+                  )}
+                  {task.rebooking_type === 'rebooking' && (
+                    <>⚠️ <strong>REBOOKING</strong> - Originally booked {task.original_booking_date ? `for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm new date!</>
+                  )}
+                  {task.rebooking_type === 'reschedule' && (
+                    <>📅 <strong>RESCHEDULE</strong> - Lead changed their appointment. Confirm intentional.</>
+                  )}
+                </div>
+              )}
+              {task.details && !task.rebooking_type && (
                 <p className="text-xs text-muted-foreground border-l-2 pl-2 mt-1">
                   {task.details}
                 </p>
