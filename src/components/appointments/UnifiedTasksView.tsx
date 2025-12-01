@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Calendar, Phone, RefreshCw, Clock, UserPlus, CalendarCheck, CalendarX, Loader2, CalendarClock, AlertCircle, CheckCircle2, Star, RotateCcw, AlertTriangle, Eye } from "lucide-react";
+import { Calendar, Phone, RefreshCw, Clock, UserPlus, CalendarCheck, CalendarX, Loader2, CalendarClock, AlertCircle, CheckCircle2, Star, RotateCcw, AlertTriangle, Eye, ArrowRight } from "lucide-react";
 import { format, parseISO, isToday, isTomorrow, startOfDay, differenceInMinutes } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -744,9 +744,9 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                 )}
                 {getTaskTypeBadge(task, isMRRTask)}
                 {apt?.rescheduled_to_appointment_id && (
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-400 dark:border-green-800">
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Client Rescheduled
+                  <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-700">
+                    <ArrowRight className="h-3 w-3 mr-1" />
+                    Lead Rebooked
                   </Badge>
                 )}
                 {isFollowUpFromOverdue && (
@@ -780,22 +780,22 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                   </Badge>
                 )}
                 {task.rebooking_type === 'rebooking' && (
-                  <Badge className="text-xs bg-cyan-500 text-white border-0 font-bold shadow-sm shadow-cyan-500/30">
+                  <Badge className="text-xs bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-500/30">
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     ⚠️ Rebooked
                   </Badge>
                 )}
                 {task.rebooking_type === 'reschedule' && (
-                  <Badge className="text-xs bg-cyan-500 text-white border-0 font-bold shadow-sm shadow-cyan-500/30">
+                  <Badge className="text-xs bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-500/30">
                     <CalendarClock className="h-3 w-3 mr-1" />
-                    📅 Rescheduled
+                    📅 Rebooked
                   </Badge>
                 )}
-                {/* Badge for ORIGINAL appointments that lead rescheduled from */}
+                {/* Badge for ORIGINAL appointments that lead rebooked from */}
                 {task.rescheduled_to_appointment_id && !task.rebooking_type && (
-                  <Badge className="text-xs bg-orange-500 text-white border-0 font-bold shadow-sm shadow-orange-500/30">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    📅 Lead Rescheduled
+                  <Badge className="text-xs bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-500/30">
+                    <ArrowRight className="h-3 w-3 mr-1" />
+                    📅 Lead Rebooked
                   </Badge>
                 )}
                 {/* Badge for rebooking conflict - BOTH appointments need confirmation */}
@@ -812,7 +812,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                   "text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm",
                   task.rebooking_type === 'returning_client' && "bg-emerald-100 border-emerald-500 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100",
                   task.rebooking_type === 'win_back' && "bg-blue-100 border-blue-500 text-blue-900 dark:bg-blue-900/40 dark:text-blue-100",
-                  (task.rebooking_type === 'rebooking' || task.rebooking_type === 'reschedule') && "bg-cyan-100 border-cyan-500 text-cyan-900 dark:bg-cyan-900/40 dark:text-cyan-100",
+                  (task.rebooking_type === 'rebooking' || task.rebooking_type === 'reschedule') && "bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100",
                 )}>
                   <div className="flex items-center justify-between gap-2">
                     <span>
@@ -826,7 +826,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                         <>⚠️ <strong>REBOOKED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
                       )}
                       {task.rebooking_type === 'reschedule' && (
-                        <>📅 <strong>RESCHEDULED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
+                        <>📅 <strong>REBOOKED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
                       )}
                     </span>
                     {task.original_appointment_id && (
@@ -846,12 +846,12 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                   </div>
                 </div>
               )}
-              {/* Warning for ORIGINAL appointments that have been rescheduled */}
+              {/* Warning for ORIGINAL appointments that have been rebooked */}
               {task.rescheduled_to_appointment_id && !task.rebooking_type && (
-                <div className="text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm bg-orange-100 border-orange-500 text-orange-900 dark:bg-orange-900/40 dark:text-orange-100">
+                <div className="text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100">
                   <div className="flex items-center justify-between gap-2">
                     <span>
-                      📅 <strong>LEAD RESCHEDULED</strong> — This lead booked a new appointment. See the new booking details!
+                      📅 <strong>LEAD REBOOKED</strong> — This lead booked a new appointment. See the new booking details!
                     </span>
                     <Button
                       size="sm"

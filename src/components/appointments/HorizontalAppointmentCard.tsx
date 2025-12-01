@@ -264,12 +264,12 @@ export function HorizontalAppointmentCard({
             {appointment.rescheduled_to_appointment_id && (
               <Badge 
                 variant="outline" 
-                className="text-xs font-medium cursor-pointer hover:bg-chart-2/20 border-chart-2/40 text-chart-2"
+                className="text-xs font-medium cursor-pointer hover:bg-purple-400/20 border-purple-400/50 text-purple-500 dark:text-purple-300"
                 onClick={() => setShowRescheduleHistory(true)}
               >
                 <ArrowRight className="w-3 h-3 mr-1" />
                 Rebooked for a New Time
-                <span className="ml-1 px-1.5 py-0.5 bg-chart-2/20 rounded text-[10px] font-bold hover:bg-chart-2/30">
+                <span className="ml-1 px-1.5 py-0.5 bg-purple-400/30 rounded text-[10px] font-bold hover:bg-purple-400/40">
                   View
                 </span>
               </Badge>

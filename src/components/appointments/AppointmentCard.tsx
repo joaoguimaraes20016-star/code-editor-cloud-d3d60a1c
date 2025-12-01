@@ -138,12 +138,12 @@ export function AppointmentCard({
           {appointment.rescheduled_to_appointment_id && (
             <Badge 
               variant="outline" 
-              className="cursor-pointer hover:bg-info/20 border-info/40 text-info-foreground gap-1"
+              className="cursor-pointer hover:bg-purple-400/20 border-purple-400/50 text-purple-500 dark:text-purple-300 gap-1"
               onClick={() => setShowRescheduleHistory(true)}
             >
               <ArrowRight className="h-3 w-3" />
               Rebooked for a New Time
-              <span className="ml-1 px-1.5 py-0.5 bg-info/20 rounded text-xs font-medium hover:bg-info/30">
+              <span className="ml-1 px-1.5 py-0.5 bg-purple-400/30 rounded text-xs font-medium hover:bg-purple-400/40">
                 View
               </span>
             </Badge>

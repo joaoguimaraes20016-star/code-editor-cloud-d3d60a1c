@@ -343,8 +343,8 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
               )}
               {appointment.rescheduled_to_appointment_id && (
                 <Badge 
-                  variant="warning"
-                  className="cursor-pointer hover:bg-chart-2/30 flex items-center gap-1"
+                  variant="outline"
+                  className="cursor-pointer hover:bg-purple-400/20 border-purple-400/50 text-purple-500 dark:text-purple-300 flex items-center gap-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowRescheduleHistory(true);
@@ -352,7 +352,7 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
                 >
                   <ArrowRight className="h-3 w-3" />
                   Rebooked for a New Time
-                  <span className="ml-1 px-1.5 py-0.5 bg-chart-2/30 rounded text-[10px] font-bold hover:bg-chart-2/50">
+                  <span className="ml-1 px-1.5 py-0.5 bg-purple-400/30 rounded text-[10px] font-bold hover:bg-purple-400/40">
                     View
                   </span>
                 </Badge>
