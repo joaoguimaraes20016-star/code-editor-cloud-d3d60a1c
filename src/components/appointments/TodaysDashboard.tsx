@@ -469,6 +469,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
     const evening: Appointment[] = [];
     const confirmed: Appointment[] = [];
     const pending: Appointment[] = [];
+    const futureWithTasksDueToday: Appointment[] = [];
 
     // Determine which appointments to display based on active filter
     let displayAppointments = appointments;
@@ -484,6 +485,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
       try {
         const aptDate = parseISO(apt.start_at_utc);
         const hour = aptDate.getHours();
+        const isAppointmentToday = isToday(aptDate);
 
         if (apt.status === 'CONFIRMED') {
           confirmed.push(apt);
@@ -491,19 +493,25 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
           pending.push(apt);
         }
 
-        if (hour < 12) {
-          morning.push(apt);
-        } else if (hour < 17) {
-          afternoon.push(apt);
+        // Only group into time slots if appointment is actually TODAY
+        if (isAppointmentToday) {
+          if (hour < 12) {
+            morning.push(apt);
+          } else if (hour < 17) {
+            afternoon.push(apt);
+          } else {
+            evening.push(apt);
+          }
         } else {
-          evening.push(apt);
+          // Appointment is not today but has a task due today - show in separate section
+          futureWithTasksDueToday.push(apt);
         }
       } catch (error) {
         console.error('Error parsing date:', error);
       }
     });
 
-    return { morning, afternoon, evening, confirmed, pending };
+    return { morning, afternoon, evening, confirmed, pending, futureWithTasksDueToday };
   }, [appointments, activeFilter, overdueAppointments]);
 
   const stats = {
@@ -799,6 +807,36 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
               </div>
               <div className="space-y-3">
                 {groupedAppointments.evening.map(apt => (
+                  <HorizontalAppointmentCard
+                    key={apt.id}
+                    appointment={apt}
+                    confirmationTask={confirmationTasks.get(apt.id)}
+                    teamId={teamId}
+                    userRole={userRole}
+                    showRescheduleButton={userRole === 'closer'}
+                    showCloseDealButton={userRole === 'closer'}
+                    onCloseDeal={() => handleCloseDeal(apt)}
+                    onDepositClick={() => handleDepositClick(apt)}
+                    onUpdate={loadTodaysAppointments}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Upcoming Appointments with Tasks Due Today */}
+          {groupedAppointments.futureWithTasksDueToday.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-info" />
+                <h3 className="text-lg font-semibold">Upcoming (Tasks Due Today)</h3>
+                <Badge variant="info">{groupedAppointments.futureWithTasksDueToday.length}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                These appointments are scheduled for future dates but have confirmation tasks due today.
+              </p>
+              <div className="space-y-3">
+                {groupedAppointments.futureWithTasksDueToday.map(apt => (
                   <HorizontalAppointmentCard
                     key={apt.id}
                     appointment={apt}
