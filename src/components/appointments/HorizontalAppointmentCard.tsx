@@ -2,11 +2,12 @@ import { format, isToday, parseISO, isBefore, startOfDay } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle, Edit, CalendarClock, Wallet, AlertCircle, Wrench, Target, RefreshCw, AlertTriangle } from "lucide-react";
+import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle, Edit, CalendarClock, Wallet, AlertCircle, Wrench, Target, RefreshCw, AlertTriangle, History, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import { ConfirmationProgressTracker } from "./ConfirmationProgressTracker";
 import { RescheduleWithLinkDialog } from "./RescheduleWithLinkDialog";
+import { RescheduleHistory } from "./RescheduleHistory";
 import { toast } from "sonner";
 import { cn, formatDateTimeWithTimezone } from "@/lib/utils";
 
@@ -84,6 +85,7 @@ export function HorizontalAppointmentCard({
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [showRescheduleHistory, setShowRescheduleHistory] = useState(false);
   const formattedDate = formatDateTimeWithTimezone(appointment.start_at_utc);
   const statusStyle = statusColors[appointment.status] || statusColors.NEW;
   
@@ -236,6 +238,34 @@ export function HorizontalAppointmentCard({
               <Badge variant="outline" className="text-xs font-medium border-warning bg-warning/10 text-warning-foreground">
                 <AlertTriangle className="w-3 h-3 mr-1" />
                 Reassigned: {originalCloserName} → {appointment.closer_name}
+              </Badge>
+            )}
+            {/* Previously Rescheduled Badge */}
+            {appointment.original_appointment_id && (
+              <Badge 
+                variant="outline" 
+                className="text-xs font-medium cursor-pointer hover:bg-info/20 border-info/40 text-info-foreground"
+                onClick={() => setShowRescheduleHistory(true)}
+              >
+                <History className="w-3 h-3 mr-1" />
+                Previously Rescheduled
+                <span className="ml-1 px-1.5 py-0.5 bg-info/20 rounded text-[10px] font-bold hover:bg-info/30">
+                  View
+                </span>
+              </Badge>
+            )}
+            {/* Rescheduled to New Time Badge */}
+            {appointment.rescheduled_to_appointment_id && (
+              <Badge 
+                variant="outline" 
+                className="text-xs font-medium cursor-pointer hover:bg-chart-2/20 border-chart-2/40 text-chart-2"
+                onClick={() => setShowRescheduleHistory(true)}
+              >
+                <ArrowRight className="w-3 h-3 mr-1" />
+                Rescheduled to New Time
+                <span className="ml-1 px-1.5 py-0.5 bg-chart-2/20 rounded text-[10px] font-bold hover:bg-chart-2/30">
+                  View
+                </span>
               </Badge>
             )}
           </div>
@@ -432,6 +462,12 @@ export function HorizontalAppointmentCard({
           onConfirm={handleReschedule}
         />
       )}
+
+      <RescheduleHistory
+        open={showRescheduleHistory}
+        onOpenChange={setShowRescheduleHistory}
+        appointmentId={appointment.id}
+      />
     </Card>
   );
 }
