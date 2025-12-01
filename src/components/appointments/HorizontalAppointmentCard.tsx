@@ -260,7 +260,7 @@ export function HorizontalAppointmentCard({
                 </span>
               </Badge>
             )}
-            {/* Rescheduled to New Time Badge */}
+            {/* Rebooked for a New Time Badge */}
             {appointment.rescheduled_to_appointment_id && (
               <Badge 
                 variant="outline" 
@@ -268,7 +268,7 @@ export function HorizontalAppointmentCard({
                 onClick={() => setShowRescheduleHistory(true)}
               >
                 <ArrowRight className="w-3 h-3 mr-1" />
-                Rescheduled to New Time
+                Rebooked for a New Time
                 <span className="ml-1 px-1.5 py-0.5 bg-chart-2/20 rounded text-[10px] font-bold hover:bg-chart-2/30">
                   View
                 </span>

@@ -351,7 +351,7 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
                   }}
                 >
                   <ArrowRight className="h-3 w-3" />
-                  Rescheduled to New Time
+                  Rebooked for a New Time
                   <span className="ml-1 px-1.5 py-0.5 bg-chart-2/30 rounded text-[10px] font-bold hover:bg-chart-2/50">
                     View
                   </span>

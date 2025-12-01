@@ -142,7 +142,7 @@ export function AppointmentCard({
               onClick={() => setShowRescheduleHistory(true)}
             >
               <ArrowRight className="h-3 w-3" />
-              Rescheduled to New Time
+              Rebooked for a New Time
               <span className="ml-1 px-1.5 py-0.5 bg-info/20 rounded text-xs font-medium hover:bg-info/30">
                 View
               </span>
