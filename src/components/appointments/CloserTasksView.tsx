@@ -4,11 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, Calendar, AlertCircle, DollarSign } from 'lucide-react';
+import { CheckCircle, Calendar, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { formatDateTimeWithTimezone } from '@/lib/utils';
 import { MRRFollowUps } from './MRRFollowUps';
-
 interface Task {
   id: string;
   appointment_id: string;
@@ -246,6 +246,11 @@ function TaskCard({ task, onComplete, isOverdue = false }: {
               ⚠️ <strong>REBOOKING CONFLICT</strong> — This lead also booked another appointment! Verify which date they want.
             </div>
           )}
+          {/* Show appointment date/time with timezone */}
+          <p className="text-sm text-muted-foreground mt-1">
+            <Calendar className="h-3 w-3 inline mr-1" />
+            Appt: {formatDateTimeWithTimezone(task.appointment.start_at_utc, "MMM d, yyyy 'at' h:mm a")}
+          </p>
           {task.follow_up_reason && (
             <p className="text-sm mt-2">
               <span className="font-medium">Reason:</span> {task.follow_up_reason}
