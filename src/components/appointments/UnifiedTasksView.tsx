@@ -809,24 +809,24 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               {/* Rebooking warning message - BRIGHT and prominent with View Original link */}
               {task.rebooking_type && (
                 <div className={cn(
-                  "text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold",
-                  task.rebooking_type === 'returning_client' && "bg-emerald-500/10 border-emerald-400 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-                  task.rebooking_type === 'win_back' && "bg-blue-500/10 border-blue-400 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
-                  (task.rebooking_type === 'rebooking' || task.rebooking_type === 'reschedule') && "bg-purple-500/10 border-purple-400 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+                  "text-sm p-3 rounded-lg border-l-4 mt-2",
+                  task.rebooking_type === 'returning_client' && "bg-emerald-500/10 border-emerald-400 dark:bg-emerald-500/15",
+                  task.rebooking_type === 'win_back' && "bg-blue-500/10 border-blue-400 dark:bg-blue-500/15",
+                  (task.rebooking_type === 'rebooking' || task.rebooking_type === 'reschedule') && "bg-purple-500/10 border-purple-400 dark:bg-purple-500/15",
                 )}>
                   <div className="flex items-center justify-between gap-2">
                     <span>
                       {task.rebooking_type === 'returning_client' && (
-                        <><strong>RETURNING CLIENT</strong> — Previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they're booking again!</>
+                        <><strong className="text-emerald-700 dark:text-emerald-300">RETURNING CLIENT</strong><span className="text-foreground/70"> — Previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they are booking again!</span></>
                       )}
                       {task.rebooking_type === 'win_back' && (
-                        <><strong>WIN-BACK</strong> — Was {task.previous_status?.replace('_', ' ')}. They're giving you another chance!</>
+                        <><strong className="text-blue-700 dark:text-blue-300">WIN-BACK</strong><span className="text-foreground/70"> — Was {task.previous_status?.replace('_', ' ')}. They are giving you another chance!</span></>
                       )}
                       {task.rebooking_type === 'rebooking' && (
-                        <><strong>REBOOKED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
+                        <><strong className="text-purple-700 dark:text-purple-300">REBOOKED</strong><span className="text-foreground/70"> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</span></>
                       )}
                       {task.rebooking_type === 'reschedule' && (
-                        <><strong>REBOOKED</strong> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</>
+                        <><strong className="text-purple-700 dark:text-purple-300">REBOOKED</strong><span className="text-foreground/70"> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</span></>
                       )}
                     </span>
                     {task.original_appointment_id && (
@@ -848,10 +848,11 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               )}
               {/* Warning for ORIGINAL appointments that have been rebooked */}
               {task.rescheduled_to_appointment_id && !task.rebooking_type && (
-                <div className="text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold bg-purple-500/10 border-purple-400 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
+                <div className="text-sm p-3 rounded-lg border-l-4 mt-2 bg-purple-500/10 border-purple-400 dark:bg-purple-500/15">
                   <div className="flex items-center justify-between gap-2">
                     <span>
-                      <strong>LEAD REBOOKED</strong> — This lead booked a new appointment. See the new booking details!
+                      <strong className="text-purple-700 dark:text-purple-300">LEAD REBOOKED</strong>
+                      <span className="text-foreground/70"> — This lead booked a new appointment. See the new booking details!</span>
                     </span>
                     <Button
                       size="sm"
