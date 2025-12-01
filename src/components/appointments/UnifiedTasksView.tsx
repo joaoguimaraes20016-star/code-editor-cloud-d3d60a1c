@@ -750,39 +750,39 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                     {task.noAnswerCount} attempt{task.noAnswerCount > 1 ? 's' : ''}
                   </Badge>
                 )}
-                {/* Rebooking type badges - cyan for reschedule/rebooking to pop */}
+                {/* Rebooking type badges - bright colors that pop */}
                 {task.rebooking_type === 'returning_client' && (
-                  <Badge className="text-xs bg-emerald-500/20 text-emerald-700 border border-emerald-500/50 dark:text-emerald-300 dark:border-emerald-400/50 font-semibold">
+                  <Badge className="text-xs bg-emerald-500 text-white border-0 font-bold shadow-sm shadow-emerald-500/30">
                     <Star className="h-3 w-3 mr-1" />
-                    Returning Client
+                    🎉 Returning Client
                   </Badge>
                 )}
                 {task.rebooking_type === 'win_back' && (
-                  <Badge className="text-xs bg-blue-500/20 text-blue-700 border border-blue-500/50 dark:text-blue-300 dark:border-blue-400/50 font-semibold">
+                  <Badge className="text-xs bg-blue-500 text-white border-0 font-bold shadow-sm shadow-blue-500/30">
                     <RotateCcw className="h-3 w-3 mr-1" />
-                    Win-Back
+                    🔄 Win-Back
                   </Badge>
                 )}
                 {task.rebooking_type === 'rebooking' && (
-                  <Badge className="text-xs bg-cyan-500/20 text-cyan-700 border border-cyan-500/50 dark:text-cyan-300 dark:border-cyan-400/50 font-semibold">
+                  <Badge className="text-xs bg-cyan-500 text-white border-0 font-bold shadow-sm shadow-cyan-500/30">
                     <AlertTriangle className="h-3 w-3 mr-1" />
-                    Rebooked
+                    ⚠️ Rebooked
                   </Badge>
                 )}
                 {task.rebooking_type === 'reschedule' && (
-                  <Badge className="text-xs bg-cyan-500/20 text-cyan-700 border border-cyan-500/50 dark:text-cyan-300 dark:border-cyan-400/50 font-semibold">
+                  <Badge className="text-xs bg-cyan-500 text-white border-0 font-bold shadow-sm shadow-cyan-500/30">
                     <CalendarClock className="h-3 w-3 mr-1" />
-                    Rescheduled
+                    📅 Rescheduled
                   </Badge>
                 )}
               </div>
-              {/* Rebooking warning message - prominent styling */}
+              {/* Rebooking warning message - BRIGHT and prominent */}
               {task.rebooking_type && (
                 <div className={cn(
-                  "text-sm p-3 rounded-md border-l-4 mt-2 backdrop-blur-sm font-medium",
-                  task.rebooking_type === 'returning_client' && "bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 border-emerald-500 text-emerald-800 dark:text-emerald-200",
-                  task.rebooking_type === 'win_back' && "bg-gradient-to-r from-blue-500/15 to-blue-500/5 border-blue-500 text-blue-800 dark:text-blue-200",
-                  (task.rebooking_type === 'rebooking' || task.rebooking_type === 'reschedule') && "bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 border-cyan-500 text-cyan-800 dark:text-cyan-200",
+                  "text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm",
+                  task.rebooking_type === 'returning_client' && "bg-emerald-100 border-emerald-500 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100",
+                  task.rebooking_type === 'win_back' && "bg-blue-100 border-blue-500 text-blue-900 dark:bg-blue-900/40 dark:text-blue-100",
+                  (task.rebooking_type === 'rebooking' || task.rebooking_type === 'reschedule') && "bg-cyan-100 border-cyan-500 text-cyan-900 dark:bg-cyan-900/40 dark:text-cyan-100",
                 )}>
                   {task.rebooking_type === 'returning_client' && (
                     <>🎉 <strong>RETURNING CLIENT</strong> — Previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they're booking again!</>
@@ -800,7 +800,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               )}
               {/* Show follow_up_reason warning (from webhook override) */}
               {task.followUpReason && task.followUpReason.includes('REBOOKED') && !task.rebooking_type && (
-                <div className="text-sm p-3 rounded-md border-l-4 mt-2 backdrop-blur-sm font-medium bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 border-cyan-500 text-cyan-800 dark:text-cyan-200">
+                <div className="text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm bg-cyan-100 border-cyan-500 text-cyan-900 dark:bg-cyan-900/40 dark:text-cyan-100">
                   {task.followUpReason}
                 </div>
               )}
