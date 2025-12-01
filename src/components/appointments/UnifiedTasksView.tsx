@@ -644,55 +644,36 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
 
   activeTasks.forEach(task => {
     try {
-      // Determine which date to use for categorization
-      let categorizationDate: Date;
-      if (task.type === 'call_confirmation') {
-        // For confirmations, use appointment date if available
-        if (!task.appointmentDate) {
-          futureTasks.push(task);
-          return;
-        }
-        categorizationDate = new Date(task.appointmentDate);
-      } else {
-        // For follow-ups, reschedules, MRR - use due date
-        categorizationDate = task.dueDate;
-      }
+      // ALWAYS use due date for categorization to show when task is actually due
+      const categorizationDate = task.dueDate;
       
       const now = new Date();
-      const startOfToday = startOfDay(now);
-      const startOfTomorrow = startOfDay(new Date(now.getTime() + (24 * 60 * 60 * 1000)));
       const startOfNextWeek = startOfDay(new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000)));
       
+      // Check if task is overdue based on task type
+      let isOverdue = false;
+      
       if (task.type === 'call_confirmation' && task.appointmentDate) {
-        // For confirmations, check if appointment + grace period has passed
+        // For confirmations, overdue = appointment time + grace period has passed
         const appointmentTime = new Date(task.appointmentDate);
         const overdueThresholdMs = (teamOverdueThreshold || 30) * 60 * 1000;
         const appointmentDeadline = new Date(appointmentTime.getTime() + overdueThresholdMs);
-        
-        if (now > appointmentDeadline) {
-          overdueTasks.push(task);
-        } else if (isToday(appointmentTime)) {
-          dueTodayTasks.push(task);
-        } else if (isTomorrow(appointmentTime)) {
-          tomorrowTasks.push(task);
-        } else if (appointmentTime < startOfNextWeek) {
-          thisWeekTasks.push(task);
-        } else {
-          futureTasks.push(task);
-        }
+        isOverdue = now > appointmentDeadline;
       } else {
-        // For follow-ups, reschedules, and MRR tasks - use due date
-        if (categorizationDate < now) {
-          overdueTasks.push(task);
-        } else if (isToday(categorizationDate)) {
-          dueTodayTasks.push(task);
-        } else if (isTomorrow(categorizationDate)) {
-          tomorrowTasks.push(task);
-        } else if (categorizationDate < startOfNextWeek) {
-          thisWeekTasks.push(task);
-        } else {
-          futureTasks.push(task);
-        }
+        // For follow-ups, reschedules, MRR - overdue = due date has passed
+        isOverdue = categorizationDate < now;
+      }
+      
+      if (isOverdue) {
+        overdueTasks.push(task);
+      } else if (isToday(categorizationDate)) {
+        dueTodayTasks.push(task);
+      } else if (isTomorrow(categorizationDate)) {
+        tomorrowTasks.push(task);
+      } else if (categorizationDate < startOfNextWeek) {
+        thisWeekTasks.push(task);
+      } else {
+        futureTasks.push(task);
       }
     } catch (error) {
       console.error('Error parsing date:', error);
