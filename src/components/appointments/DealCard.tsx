@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { GripVertical, MoreVertical, Calendar, MessageSquare, Undo2, History, ArrowRight } from "lucide-react";
-import { format, differenceInDays } from "date-fns";
+import { differenceInDays } from "date-fns";
+import { formatDateTimeWithTimezone } from "@/lib/utils";
 import { DealAvatar } from "./DealAvatar";
 import { ActivityTimeline } from "./ActivityTimeline";
 
@@ -367,14 +368,14 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
             )}
           </div>
 
-          <div className="flex items-center justify-between text-xs pt-2 border-t border-primary/10">
+          <div className="flex flex-col gap-1 text-xs pt-2 border-t border-primary/10">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Calendar className="h-3 w-3" />
-              <span>{format(new Date(appointment.start_at_utc), "MMM dd")}</span>
+              <span className="font-medium">{formatDateTimeWithTimezone(appointment.start_at_utc, "MMM d, yyyy 'at' h:mm a")}</span>
             </div>
             <div className={`flex items-center gap-1.5 font-bold ${getDaysColor(daysInStage)}`}>
               <div className="h-2 w-2 rounded-full bg-current animate-pulse" />
-              {daysInStage} {daysInStage === 1 ? 'day' : 'days'} ago
+              {daysInStage} {daysInStage === 1 ? 'day' : 'days'} in stage
             </div>
           </div>
         </div>
