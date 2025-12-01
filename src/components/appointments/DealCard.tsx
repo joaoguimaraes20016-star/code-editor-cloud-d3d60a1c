@@ -283,29 +283,39 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
           {isRebookingConflict && (
             <Badge className="bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm animate-pulse">
               <span className="flex items-center gap-1">
-                ⚠️ Rebooking Conflict
+                <AlertTriangle className="h-3 w-3" />
+                Rebooking Conflict
               </span>
             </Badge>
           )}
           {/* Rebooking Type Badges */}
           {appointment.rebooking_type === 'rebooking' && (
-            <Badge className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-sm">
+            <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm">
               <span className="flex items-center gap-1">
-                ⚠️ Rebooked
+                <AlertTriangle className="h-3 w-3" />
+                Rebooked
+              </span>
+            </Badge>
+          )}
+          {appointment.rebooking_type === 'reschedule' && (
+            <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm">
+              <span className="flex items-center gap-1">
+                <RefreshCw className="h-3 w-3" />
+                Rebooked
               </span>
             </Badge>
           )}
           {appointment.rebooking_type === 'returning_client' && (
             <Badge className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-sm">
               <span className="flex items-center gap-1">
-                🎉 Returning Client
+                Returning Client
               </span>
             </Badge>
           )}
           {appointment.rebooking_type === 'win_back' && (
             <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm">
               <span className="flex items-center gap-1">
-                🔄 Win-Back
+                Win-Back
               </span>
             </Badge>
           )}
@@ -398,6 +408,20 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
               </div>
             )}
           </div>
+
+          {/* Rebooked Lead Warning */}
+          {appointment.original_appointment_id && (
+            <div className="text-xs p-2.5 rounded-lg border-l-4 font-semibold shadow-sm bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100">
+              <strong>REBOOKED LEAD</strong> — This lead has a previous booking. Click "View" above to see history.
+            </div>
+          )}
+
+          {/* Rebooked for New Time Warning */}
+          {appointment.rescheduled_to_appointment_id && (
+            <div className="text-xs p-2.5 rounded-lg border-l-4 font-semibold shadow-sm bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100">
+              <strong>LEAD REBOOKED</strong> — This lead booked a new appointment. Click "View" above to see the new booking.
+            </div>
+          )}
 
           <div className="flex flex-col gap-1 text-xs pt-2 border-t border-primary/10">
             <div className="flex items-center gap-1.5 text-muted-foreground">
