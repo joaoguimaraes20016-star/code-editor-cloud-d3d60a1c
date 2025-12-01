@@ -1,7 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UnassignedAppointments } from "../appointments/UnassignedAppointments";
 import { AllNewAppointments } from "../AllNewAppointments";
-import { MyClaimed } from "../MyClaimed";
 import { useAuth } from "@/hooks/useAuth";
 import { useTeamRole } from "@/hooks/useTeamRole";
 
@@ -15,8 +14,8 @@ export function SettersView({ teamId, closerCommissionPct, setterCommissionPct }
   const { user } = useAuth();
   const { role } = useTeamRole(teamId);
   
-  // Admins and offer owners see all appointments, setters see only theirs
-  const showAllInMyAppointments = role === 'admin' || role === 'offer_owner';
+  // Admins and offer owners see all appointments
+  const isAdmin = role === 'admin' || role === 'offer_owner';
 
   return (
     <div className="space-y-4">
@@ -35,8 +34,8 @@ export function SettersView({ teamId, closerCommissionPct, setterCommissionPct }
           <TabsTrigger value="assigned">
             Assigned
           </TabsTrigger>
-          <TabsTrigger value="my-appointments">
-            {showAllInMyAppointments ? 'All Appointments' : 'My Appointments'}
+          <TabsTrigger value="all-appointments">
+            All Appointments
           </TabsTrigger>
         </TabsList>
 
@@ -55,12 +54,14 @@ export function SettersView({ teamId, closerCommissionPct, setterCommissionPct }
           />
         </TabsContent>
 
-        <TabsContent value="my-appointments" className="mt-6">
-          <MyClaimed
+        <TabsContent value="all-appointments" className="mt-6">
+          <AllNewAppointments
             teamId={teamId}
             closerCommissionPct={closerCommissionPct}
             setterCommissionPct={setterCommissionPct}
-            showAllAppointments={showAllInMyAppointments}
+            userRole="admin"
+            currentUserId={user?.id}
+            showAllAppointments={true}
           />
         </TabsContent>
       </Tabs>

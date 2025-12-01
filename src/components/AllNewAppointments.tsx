@@ -101,9 +101,10 @@ interface AllNewAppointmentsProps {
   userRole?: string;
   currentUserId?: string;
   showAllAssigned?: boolean;
+  showAllAppointments?: boolean;
 }
 
-export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissionPct, userRole, currentUserId, showAllAssigned }: AllNewAppointmentsProps) {
+export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissionPct, userRole, currentUserId, showAllAssigned, showAllAppointments }: AllNewAppointmentsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -265,6 +266,10 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
         countQuery = countQuery.eq('closer_id', currentUserId);
         dataQuery = dataQuery.eq('closer_id', currentUserId);
       } 
+      // Show ALL appointments (both assigned and unassigned)
+      else if (showAllAppointments) {
+        // No filter on setter_id - show everything
+      }
       // Admin view: Show all assigned appointments (has setter_id)
       else if (showAllAssigned) {
         countQuery = countQuery.not('setter_id', 'is', null);
