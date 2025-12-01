@@ -749,7 +749,7 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
                   )}
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-wrap gap-2 pt-2">
                   <Button
                     size="sm"
                     onClick={() => handleOpenAssignDialog(apt)}
@@ -758,6 +758,17 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
                     <Hand className="h-3 w-3" />
                     {apt.setter_id ? "Reassign" : "Assign"}
                   </Button>
+                  {apt.reschedule_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(apt.reschedule_url!, '_blank')}
+                      className="flex items-center gap-1"
+                    >
+                      <CalendarIcon className="h-3 w-3" />
+                      Reschedule
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     onClick={() => handleOpenCloseDeal(apt)}
@@ -785,10 +796,15 @@ export function AllNewAppointments({ teamId, closerCommissionPct, setterCommissi
             <HorizontalAppointmentCard
               key={apt.id}
               appointment={apt}
+              teamId={teamId}
+              showAssignButton={!apt.setter_id}
               showReassignButton={apt.setter_id !== null}
               showCloseDealButton={true}
+              showRescheduleButton={!!apt.reschedule_url}
+              onAssign={() => handleOpenAssignDialog(apt)}
               onReassign={() => handleOpenAssignDialog(apt)}
               onCloseDeal={() => handleOpenCloseDeal(apt)}
+              onUpdate={loadAppointments}
             />
           ))}
         </div>
