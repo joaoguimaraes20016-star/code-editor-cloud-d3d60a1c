@@ -728,12 +728,12 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-br from-accent/10 via-primary/10 to-accent/5 rounded-xl p-6 border border-accent/30">
-        <div className="flex justify-between items-center">
+    <div className="space-y-4 md:space-y-6">
+      <div className="bg-gradient-to-br from-accent/10 via-primary/10 to-accent/5 rounded-lg md:rounded-xl p-3 md:p-6 border border-accent/30">
+        <div className="flex justify-between items-center gap-2">
           <div>
-            <h3 className="text-xl font-bold">By Closer View</h3>
-            <p className="text-sm text-muted-foreground mt-1">See each closer's pipeline and deals</p>
+            <h3 className="text-base md:text-xl font-bold">By Closer View</h3>
+            <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1">See each closer's pipeline and deals</p>
           </div>
           {selectedCloser && (
             <BulkAssignCloser
@@ -748,20 +748,20 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
 
       <Tabs value={selectedCloser || undefined} onValueChange={setSelectedCloser}>
         <div className="w-full overflow-x-auto">
-          <TabsList className="w-max min-w-full h-auto p-2 flex-wrap gap-2">
+          <TabsList className="w-max min-w-full h-auto p-1 md:p-2 flex-wrap gap-1 md:gap-2">
             {closerGroups.map(group => (
               <TabsTrigger 
                 key={group.closerId} 
                 value={group.closerId}
-                className="flex items-center gap-2 data-[state=active]:bg-accent"
+                className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm data-[state=active]:bg-accent"
               >
-                <Avatar className="h-6 w-6">
-                  <AvatarFallback className="text-xs bg-primary/10">
+                <Avatar className="h-4 w-4 md:h-6 md:w-6">
+                  <AvatarFallback className="text-[10px] md:text-xs bg-primary/10">
                     {group.closerName.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span>{group.closerName}</span>
-                <Badge variant="secondary" className="ml-1">
+                <span className="max-w-[60px] md:max-w-none truncate">{group.closerName}</span>
+                <Badge variant="secondary" className="ml-0.5 md:ml-1 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
                   {group.stats.total}
                 </Badge>
               </TabsTrigger>
@@ -770,10 +770,10 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
         </div>
 
         {closerGroups.map(group => (
-          <TabsContent key={group.closerId} value={group.closerId} className="mt-6">
+          <TabsContent key={group.closerId} value={group.closerId} className="mt-4 md:mt-6">
             {/* Today's Schedule for this Closer */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-4">Today's Schedule - {group.closerName}</h3>
+            <div className="mb-4 md:mb-8">
+              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Today's Schedule - {group.closerName}</h3>
               <TodaysDashboard 
                 teamId={teamId} 
                 userRole="closer"
@@ -782,27 +782,27 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Total Deals</p>
-                <p className="text-2xl font-bold">{group.stats.total}</p>
+            <div className="grid grid-cols-4 gap-1.5 md:gap-4 mb-4 md:mb-6">
+              <Card className="p-2 md:p-4">
+                <p className="text-[10px] md:text-sm text-muted-foreground">Total Deals</p>
+                <p className="text-sm md:text-2xl font-bold">{group.stats.total}</p>
               </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">In Pipeline</p>
-                <p className="text-2xl font-bold">{group.stats.inPipeline}</p>
+              <Card className="p-2 md:p-4">
+                <p className="text-[10px] md:text-sm text-muted-foreground">In Pipeline</p>
+                <p className="text-sm md:text-2xl font-bold">{group.stats.inPipeline}</p>
               </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Closed</p>
-                <p className="text-2xl font-bold text-green-600">{group.stats.closed}</p>
+              <Card className="p-2 md:p-4">
+                <p className="text-[10px] md:text-sm text-muted-foreground">Closed</p>
+                <p className="text-sm md:text-2xl font-bold text-green-600">{group.stats.closed}</p>
               </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Revenue</p>
-                <p className="text-2xl font-bold">${group.stats.revenue.toLocaleString()}</p>
+              <Card className="p-2 md:p-4">
+                <p className="text-[10px] md:text-sm text-muted-foreground">Revenue</p>
+                <p className="text-sm md:text-2xl font-bold">${group.stats.revenue.toLocaleString()}</p>
               </Card>
             </div>
 
             {/* Pipeline View */}
-            <h3 className="text-lg font-semibold mb-4">Full Pipeline</h3>
+            <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Full Pipeline</h3>
             {group.closerId === selectedCloser && (
               <CloserPipelineView 
                 group={group} 
