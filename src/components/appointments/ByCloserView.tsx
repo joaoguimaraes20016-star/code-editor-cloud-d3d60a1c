@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { DealCard } from "./DealCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -17,6 +18,8 @@ import { useUndoAction } from "@/hooks/useUndoAction";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { BulkAssignCloser } from "./BulkAssignCloser";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   DndContext,
   DragEndEvent,
@@ -451,6 +454,20 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
     return grouped;
   }, [group, stages, confirmationTasks]);
 
+  const [selectedStageIndex, setSelectedStageIndex] = useState(0);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  
+  // Build ordered stages for mobile view
+  const orderedStages = [
+    { id: 'appointments_booked', stage_id: 'appointments_booked', stage_label: 'Appointments Booked', stage_color: 'hsl(var(--primary))', order_index: -1 },
+    ...stages.filter(s => s.stage_id !== 'booked')
+  ];
+  
+  const selectedStage = orderedStages[selectedStageIndex];
+  const mobileStageDeals = selectedStage.stage_id === 'appointments_booked' 
+    ? dealsByStage.get('appointments_booked') || []
+    : dealsByStage.get(selectedStage.stage_id) || [];
+
   return (
     <>
       <DndContext
@@ -458,7 +475,131 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <ScrollArea className="w-full">
+        {/* Mobile Pipeline View */}
+        <div className="md:hidden flex flex-col">
+          {/* Stage Selector - compact app-like tabs */}
+          <div className="flex items-center gap-1 mb-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0"
+              onClick={() => setSelectedStageIndex(prev => Math.max(0, prev - 1))}
+              disabled={selectedStageIndex === 0}
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </Button>
+
+            <ScrollArea className="flex-1">
+              <div className="flex gap-1 pb-0.5">
+                {orderedStages.map((stage, index) => {
+                  const count = stage.stage_id === 'appointments_booked' 
+                    ? dealsByStage.get('appointments_booked')?.length || 0
+                    : dealsByStage.get(stage.stage_id)?.length || 0;
+                  const isSelected = index === selectedStageIndex;
+                  
+                  return (
+                    <button
+                      key={stage.id}
+                      onClick={() => setSelectedStageIndex(index)}
+                      className={cn(
+                        "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium whitespace-nowrap transition-all shrink-0",
+                        isSelected
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      )}
+                      style={isSelected && stage.stage_id !== 'appointments_booked' ? {
+                        backgroundColor: stage.stage_color,
+                        color: 'white'
+                      } : undefined}
+                    >
+                      <span className="truncate max-w-[60px]">{stage.stage_label}</span>
+                      <span className={cn(
+                        "text-[9px] font-bold",
+                        isSelected ? "opacity-80" : "opacity-60"
+                      )}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0"
+              onClick={() => setSelectedStageIndex(prev => Math.min(orderedStages.length - 1, prev + 1))}
+              disabled={selectedStageIndex === orderedStages.length - 1}
+            >
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+          </div>
+
+          {/* Stage Header - minimal */}
+          <div 
+            className="mb-2 px-2 py-1.5 rounded-lg border-l-2"
+            style={{ 
+              borderLeftColor: selectedStage.stage_id === 'appointments_booked' 
+                ? 'hsl(var(--primary))' 
+                : selectedStage.stage_color,
+              backgroundColor: selectedStage.stage_id === 'appointments_booked'
+                ? 'hsl(var(--primary) / 0.08)'
+                : `${selectedStage.stage_color}10`
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-[11px]">{selectedStage.stage_label}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {mobileStageDeals.length} {mobileStageDeals.length === 1 ? 'deal' : 'deals'}
+              </span>
+            </div>
+          </div>
+
+          {/* Appointments List */}
+          <div className="space-y-2 pb-3">
+            {mobileStageDeals.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-[11px] text-muted-foreground">
+                No deals in this stage
+              </div>
+            ) : (
+              mobileStageDeals.map((appointment) => (
+                <DealCard
+                  key={appointment.id}
+                  id={appointment.id}
+                  teamId={teamId}
+                  appointment={appointment}
+                  confirmationTask={confirmationTasks.get(appointment.id)}
+                  onCloseDeal={() => onCloseDeal(appointment, { trackAction, showUndoToast })}
+                  onMoveTo={() => {}}
+                  onUndo={handleUndo}
+                  userRole="closer"
+                />
+              ))
+            )}
+          </div>
+
+          {/* Quick stage navigation dots */}
+          <div className="flex justify-center gap-1 pt-1.5 pb-0.5">
+            {orderedStages.map((stage, index) => (
+              <button
+                key={stage.id}
+                onClick={() => setSelectedStageIndex(index)}
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full transition-all",
+                  index === selectedStageIndex
+                    ? "bg-primary w-3"
+                    : "bg-muted-foreground/25 hover:bg-muted-foreground/40"
+                )}
+                aria-label={`Go to ${stage.stage_label}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop Pipeline View */}
+        <ScrollArea className="w-full hidden md:block">
           <div className="flex gap-4 pb-4">
             {/* Appointments Booked Stage */}
             <DroppableStageColumn id="appointments_booked">
