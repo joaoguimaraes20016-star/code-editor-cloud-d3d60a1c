@@ -783,14 +783,14 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                 )}
                 {task.rebooking_type === 'rebooking' && (
                   <Badge className="text-xs bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-500/30">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    Rebooked
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Rebook
                   </Badge>
                 )}
                 {task.rebooking_type === 'reschedule' && (
-                  <Badge className="text-xs bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-500/30">
-                    <CalendarClock className="h-3 w-3 mr-1" />
-                    Rebooked
+                  <Badge className="text-xs bg-amber-500 text-white border-0 font-bold shadow-sm shadow-amber-500/30">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Double Book
                   </Badge>
                 )}
                 {/* Badge for ORIGINAL appointments that lead rebooked from */}
@@ -814,7 +814,8 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                   "text-sm p-3 rounded-lg border-l-4 mt-2",
                   task.rebooking_type === 'returning_client' && "bg-emerald-500/10 border-emerald-400 dark:bg-emerald-500/15",
                   task.rebooking_type === 'win_back' && "bg-blue-500/10 border-blue-400 dark:bg-blue-500/15",
-                  (task.rebooking_type === 'rebooking' || task.rebooking_type === 'reschedule') && "bg-purple-500/10 border-purple-400 dark:bg-purple-500/15",
+                  task.rebooking_type === 'rebooking' && "bg-purple-500/10 border-purple-400 dark:bg-purple-500/15",
+                  task.rebooking_type === 'reschedule' && "bg-amber-500/10 border-amber-400 dark:bg-amber-500/15",
                 )}>
                   <div className="flex items-center justify-between gap-2">
                     <span>
@@ -825,10 +826,10 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                         <><strong className="text-blue-700 dark:text-blue-300">WIN-BACK</strong><span className="text-foreground/70"> — Was {task.previous_status?.replace('_', ' ')}. They are giving you another chance!</span></>
                       )}
                       {task.rebooking_type === 'rebooking' && (
-                        <><strong className="text-purple-700 dark:text-purple-300">REBOOKED</strong><span className="text-foreground/70"> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</span></>
+                        <><strong className="text-purple-700 dark:text-purple-300">REBOOK</strong><span className="text-foreground/70"> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''} (after original date passed).</span></>
                       )}
                       {task.rebooking_type === 'reschedule' && (
-                        <><strong className="text-purple-700 dark:text-purple-300">REBOOKED</strong><span className="text-foreground/70"> — Previously scheduled{task.original_booking_date ? ` for ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm if intentional!</span></>
+                        <><strong className="text-amber-700 dark:text-amber-300">DOUBLE BOOK</strong><span className="text-foreground/70"> — This lead has an existing appointment{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Confirm which date is correct!</span></>
                       )}
                     </span>
                     {task.original_appointment_id && (

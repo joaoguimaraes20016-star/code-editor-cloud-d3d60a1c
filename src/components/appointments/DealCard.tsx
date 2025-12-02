@@ -292,16 +292,16 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
           {appointment.rebooking_type === 'rebooking' && (
             <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm">
               <span className="flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                Rebooked
+                <RefreshCw className="h-3 w-3" />
+                Rebook
               </span>
             </Badge>
           )}
           {appointment.rebooking_type === 'reschedule' && (
-            <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm">
+            <Badge className="bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm">
               <span className="flex items-center gap-1">
-                <RefreshCw className="h-3 w-3" />
-                Rebooked
+                <AlertTriangle className="h-3 w-3" />
+                Double Book
               </span>
             </Badge>
           )}
@@ -330,7 +330,41 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
           {/* Reschedule Badges */}
           {(appointment.original_appointment_id || appointment.rescheduled_to_appointment_id) && (
             <div className="flex items-center gap-2 flex-wrap">
-              {appointment.original_appointment_id && (
+              {/* Double Book badge (reschedule type) */}
+              {appointment.rebooking_type === 'reschedule' && appointment.original_appointment_id && (
+                <Badge 
+                  className="bg-amber-500 text-white border-0 cursor-pointer hover:bg-amber-600 flex items-center gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowRescheduleHistory(true);
+                  }}
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                  Double Book
+                  <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-[10px] font-bold">
+                    View
+                  </span>
+                </Badge>
+              )}
+              {/* Rebook badge (rebooking type) */}
+              {appointment.rebooking_type === 'rebooking' && appointment.original_appointment_id && (
+                <Badge 
+                  variant="outline" 
+                  className="cursor-pointer hover:bg-purple-400/20 border-purple-400/50 text-purple-500 dark:text-purple-300 flex items-center gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowRescheduleHistory(true);
+                  }}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Rebook
+                  <span className="ml-1 px-1.5 py-0.5 bg-purple-400/30 rounded text-[10px] font-bold hover:bg-purple-400/40">
+                    View
+                  </span>
+                </Badge>
+              )}
+              {/* Generic rebooked lead badge */}
+              {appointment.original_appointment_id && !appointment.rebooking_type && (
                 <Badge 
                   variant="outline" 
                   className="cursor-pointer hover:bg-purple-400/20 border-purple-400/50 text-purple-500 dark:text-purple-300 flex items-center gap-1"
@@ -360,7 +394,7 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
                   }}
                 >
                   <ArrowRight className="h-3 w-3" />
-                  Rebooked
+                  Lead Rebooked
                   <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-[10px] font-bold">
                     View
                   </span>
@@ -408,18 +442,34 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
             )}
           </div>
 
-          {/* Rebooked Lead Warning */}
-          {appointment.original_appointment_id && (
+          {/* Double Book Warning (reschedule type) */}
+          {appointment.rebooking_type === 'reschedule' && appointment.original_appointment_id && (
+            <div className="text-xs p-2.5 rounded-lg border-l-4 bg-amber-500/10 border-amber-400 dark:bg-amber-500/15">
+              <strong className="text-amber-700 dark:text-amber-300">DOUBLE BOOK</strong>
+              <span className="text-foreground/70"> — This lead has an existing appointment. Confirm which date is correct!</span>
+            </div>
+          )}
+
+          {/* Rebook Warning (rebooking type - original date passed) */}
+          {appointment.rebooking_type === 'rebooking' && appointment.original_appointment_id && (
+            <div className="text-xs p-2.5 rounded-lg border-l-4 bg-purple-500/10 border-purple-400 dark:bg-purple-500/15">
+              <strong className="text-purple-700 dark:text-purple-300">REBOOK</strong>
+              <span className="text-foreground/70"> — This lead previously booked (after original date passed). Click "View" above.</span>
+            </div>
+          )}
+
+          {/* Generic rebooked lead (no rebooking_type but has original) */}
+          {appointment.original_appointment_id && !appointment.rebooking_type && (
             <div className="text-xs p-2.5 rounded-lg border-l-4 bg-purple-500/10 border-purple-400 dark:bg-purple-500/15">
               <strong className="text-purple-700 dark:text-purple-300">REBOOKED LEAD</strong>
               <span className="text-foreground/70"> — This lead has a previous booking. Click "View" above to see history.</span>
             </div>
           )}
 
-          {/* Rebooked for New Time Warning */}
+          {/* Original appointment that has a new booking */}
           {appointment.rescheduled_to_appointment_id && (
             <div className="text-xs p-2.5 rounded-lg border-l-4 bg-purple-500/10 border-purple-400 dark:bg-purple-500/15">
-              <strong className="text-purple-700 dark:text-purple-300">REBOOKED</strong>
+              <strong className="text-purple-700 dark:text-purple-300">LEAD REBOOKED</strong>
               <span className="text-foreground/70"> — This lead booked a new appointment.{appointment.closer_name && ` Original closer: ${appointment.closer_name}.`} Click "View" above.</span>
             </div>
           )}
