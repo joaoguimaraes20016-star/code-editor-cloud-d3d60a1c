@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -91,21 +89,21 @@ export function MobilePipelineView({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Stage Selector with swipe navigation */}
-      <div className="flex items-center gap-2 mb-3">
+      {/* Stage Selector - compact app-like tabs */}
+      <div className="flex items-center gap-1 mb-2">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0"
+          className="h-6 w-6 shrink-0"
           onClick={goToPrevStage}
           disabled={selectedStageIndex === 0}
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3 w-3" />
         </Button>
 
-        {/* Scrollable stage tabs */}
+        {/* Scrollable stage pills */}
         <ScrollArea className="flex-1">
-          <div className="flex gap-1.5 pb-1">
+          <div className="flex gap-1 pb-0.5">
             {orderedStages.map((stage, index) => {
               const count = dealsByStage[stage.stage_id]?.length || 0;
               const isSelected = index === selectedStageIndex;
@@ -115,26 +113,23 @@ export function MobilePipelineView({
                   key={stage.id}
                   onClick={() => setSelectedStageIndex(index)}
                   className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0",
+                    "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium whitespace-nowrap transition-all shrink-0",
                     isSelected
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
                   )}
                   style={isSelected && stage.stage_id !== 'appointments_booked' ? {
                     backgroundColor: stage.stage_color,
                     color: 'white'
                   } : undefined}
                 >
-                  <span className="truncate max-w-[80px]">{stage.stage_label}</span>
-                  <Badge 
-                    variant={isSelected ? "secondary" : "outline"} 
-                    className={cn(
-                      "h-5 min-w-[20px] px-1.5 text-[10px]",
-                      isSelected && "bg-white/20 text-inherit border-0"
-                    )}
-                  >
+                  <span className="truncate max-w-[60px]">{stage.stage_label}</span>
+                  <span className={cn(
+                    "text-[9px] font-bold",
+                    isSelected ? "opacity-80" : "opacity-60"
+                  )}>
                     {count}
-                  </Badge>
+                  </span>
                 </button>
               );
             })}
@@ -144,39 +139,39 @@ export function MobilePipelineView({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0"
+          className="h-6 w-6 shrink-0"
           onClick={goToNextStage}
           disabled={selectedStageIndex === orderedStages.length - 1}
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3 w-3" />
         </Button>
       </div>
 
-      {/* Stage Header */}
-      <Card 
-        className="mb-3 p-3 border-l-4"
+      {/* Stage Header - minimal */}
+      <div 
+        className="mb-2 px-2 py-1.5 rounded-lg border-l-2"
         style={{ 
           borderLeftColor: selectedStage.stage_id === 'appointments_booked' 
             ? 'hsl(var(--primary))' 
             : selectedStage.stage_color,
           backgroundColor: selectedStage.stage_id === 'appointments_booked'
-            ? 'hsl(var(--primary) / 0.1)'
-            : `${selectedStage.stage_color}15`
+            ? 'hsl(var(--primary) / 0.08)'
+            : `${selectedStage.stage_color}10`
         }}
       >
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-sm">{selectedStage.stage_label}</h3>
-          <Badge variant="secondary" className="text-xs">
+          <span className="font-semibold text-[11px]">{selectedStage.stage_label}</span>
+          <span className="text-[10px] text-muted-foreground">
             {stageAppointments.length} {stageAppointments.length === 1 ? 'deal' : 'deals'}
-          </Badge>
+          </span>
         </div>
-      </Card>
+      </div>
 
       {/* Appointments List */}
-      <ScrollArea className="flex-1 -mx-1 px-1">
-        <div className="space-y-3 pb-4">
+      <ScrollArea className="flex-1 -mx-0.5 px-0.5">
+        <div className="space-y-2 pb-3">
           {stageAppointments.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            <div className="flex items-center justify-center py-8 text-[11px] text-muted-foreground">
               No deals in this stage
             </div>
           ) : (
@@ -201,17 +196,17 @@ export function MobilePipelineView({
         </div>
       </ScrollArea>
 
-      {/* Quick stage navigation dots */}
-      <div className="flex justify-center gap-1.5 pt-2 pb-1">
+      {/* Quick stage navigation dots - smaller */}
+      <div className="flex justify-center gap-1 pt-1.5 pb-0.5">
         {orderedStages.map((stage, index) => (
           <button
             key={stage.id}
             onClick={() => setSelectedStageIndex(index)}
             className={cn(
-              "w-2 h-2 rounded-full transition-all",
+              "w-1.5 h-1.5 rounded-full transition-all",
               index === selectedStageIndex
-                ? "bg-primary w-4"
-                : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                ? "bg-primary w-3"
+                : "bg-muted-foreground/25 hover:bg-muted-foreground/40"
             )}
             aria-label={`Go to ${stage.stage_label}`}
           />
