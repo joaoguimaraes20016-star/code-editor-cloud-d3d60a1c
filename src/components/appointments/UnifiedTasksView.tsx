@@ -733,12 +733,13 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
 
     return (
       <Card key={task.id} className={cn("bg-card card-hover", taskColor)}>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <p className="font-semibold">{displayName}</p>
-              {displayEmail && <p className="text-sm text-muted-foreground">{displayEmail}</p>}
-              <div className="flex items-center gap-2 flex-wrap">
+        <CardContent className="p-3 sm:p-4 space-y-3">
+          {/* Mobile: Stack vertically, Desktop: side-by-side */}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="space-y-1 min-w-0 flex-1">
+              <p className="font-semibold truncate">{displayName}</p>
+              {displayEmail && <p className="text-sm text-muted-foreground truncate">{displayEmail}</p>}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 {apt?.event_type_name && (
                   <Badge variant="outline" className="text-xs">
                     {apt.event_type_name}
@@ -798,13 +799,13 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               {/* Rebooking warning message - BRIGHT and prominent with View Original link */}
               {task.rebooking_type && (
                 <div className={cn(
-                  "text-sm p-3 rounded-lg border-l-4 mt-2",
+                  "text-xs sm:text-sm p-2 sm:p-3 rounded-lg border-l-4 mt-2",
                   task.rebooking_type === 'returning_client' && "bg-emerald-500/10 border-emerald-400 dark:bg-emerald-500/15",
                   task.rebooking_type === 'win_back' && "bg-blue-500/10 border-blue-400 dark:bg-blue-500/15",
                   task.rebooking_type === 'rebooking' && "bg-purple-500/10 border-purple-400 dark:bg-purple-500/15",
                   task.rebooking_type === 'reschedule' && "bg-amber-500/10 border-amber-400 dark:bg-amber-500/15",
                 )}>
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span>
                       {task.rebooking_type === 'returning_client' && (
                         <><strong className="text-emerald-700 dark:text-emerald-300">RETURNING CLIENT</strong><span className="text-foreground/70"> — Previously closed{task.original_booking_date ? ` on ${format(new Date(task.original_booking_date), 'MMM d')}` : ''}. Find out why they are booking again!</span></>
@@ -823,7 +824,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-xs h-7 bg-white/50 hover:bg-white border-current shrink-0"
+                        className="text-xs h-7 bg-white/50 hover:bg-white border-current shrink-0 w-full sm:w-auto"
                         onClick={(e) => {
                           e.stopPropagation();
                           viewOriginalAppointment(task.original_appointment_id!);
@@ -838,8 +839,8 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               )}
               {/* Warning for ORIGINAL appointments where lead DOUBLE BOOKED */}
               {task.rescheduled_to_appointment_id && !task.rebooking_type && (
-                <div className="text-sm p-3 rounded-lg border-l-4 mt-2 bg-amber-500/10 border-amber-400 dark:bg-amber-500/15">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="text-xs sm:text-sm p-2 sm:p-3 rounded-lg border-l-4 mt-2 bg-amber-500/10 border-amber-400 dark:bg-amber-500/15">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span>
                       <strong className="text-amber-700 dark:text-amber-300">DOUBLE BOOK</strong>
                       <span className="text-foreground/70"> — This lead also booked a NEW appointment. Confirm which date is correct!</span>
@@ -847,7 +848,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-xs h-7 bg-white/50 hover:bg-white border-amber-500 text-amber-700 shrink-0"
+                      className="text-xs h-7 bg-white/50 hover:bg-white border-amber-500 text-amber-700 shrink-0 w-full sm:w-auto"
                       onClick={(e) => {
                         e.stopPropagation();
                         viewNewAppointment(task.rescheduled_to_appointment_id!);
@@ -861,7 +862,7 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
               )}
               {/* Show follow_up_reason warning (from webhook override) */}
               {task.followUpReason && task.followUpReason.includes('DOUBLE BOOK') && !task.rebooking_type && (
-                <div className="text-sm p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm bg-amber-100 border-amber-500 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
+                <div className="text-xs sm:text-sm p-2 sm:p-3 rounded-lg border-l-4 mt-2 font-semibold shadow-sm bg-amber-100 border-amber-500 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
                   {task.followUpReason}
                 </div>
               )}
@@ -871,18 +872,21 @@ export function UnifiedTasksView({ teamId }: UnifiedTasksViewProps) {
                 </p>
               )}
             </div>
-            <div className="flex flex-col items-end gap-1">
-              <div className="flex items-center gap-2">
-                {getTaskTypeBadge(task, isMRRTask)}
-                <Clock className="h-5 w-5" />
-                <span className={isUpcoming ? "text-lg font-bold text-orange-600 dark:text-orange-400" : "text-lg font-bold"}>
+            {/* Time info - full width on mobile, right-aligned on desktop */}
+            <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 sm:gap-1 text-sm sm:text-base border-t sm:border-t-0 pt-2 sm:pt-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className={cn(
+                  "font-bold text-sm sm:text-lg",
+                  isUpcoming && "text-orange-600 dark:text-orange-400"
+                )}>
                   Due {formatDateTimeWithTimezone(task.dueDate, 'MMM d, h:mm a')}
                 </span>
               </div>
               {task.appointmentDate && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  <span className="text-base font-bold">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="font-bold text-sm sm:text-base">
                     Appt: {formatDateTimeWithTimezone(task.appointmentDate, 'MMM d, h:mm a')}
                   </span>
                 </div>

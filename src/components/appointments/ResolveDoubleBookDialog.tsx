@@ -184,104 +184,104 @@ export function ResolveDoubleBookDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-warning" />
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-warning" />
             Resolve Double Book
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             This lead has two appointments scheduled. Confirm which one they actually want to keep.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          {/* Side by side comparison */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid gap-3 sm:gap-4 py-3 sm:py-4">
+          {/* Side by side comparison - stacks on mobile */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {/* Original Appointment */}
-            <Card className="p-4 border-2 border-muted">
-              <div className="flex items-center gap-2 mb-3">
-                <Badge variant="secondary">Original</Badge>
-                {loadingOriginal && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Card className="p-3 sm:p-4 border-2 border-muted">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                <Badge variant="secondary" className="text-xs">Original</Badge>
+                {loadingOriginal && <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />}
               </div>
               {displayOriginal ? (
-                <div className="space-y-2">
-                  <p className="font-semibold">{displayOriginal.lead_name}</p>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
+                <div className="space-y-1.5 sm:space-y-2">
+                  <p className="font-semibold text-sm sm:text-base">{displayOriginal.lead_name}</p>
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>{formatDateTimeWithTimezone(displayOriginal.start_at_utc, "MMM d, yyyy")}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>{formatDateTimeWithTimezone(displayOriginal.start_at_utc, "h:mm a")}</span>
                   </div>
                   {displayOriginal.setter_name && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <User className="h-4 w-4 text-info" />
+                    <div className="flex items-center gap-2 text-xs sm:text-sm">
+                      <User className="h-3 w-3 sm:h-4 sm:w-4 text-info" />
                       <span>Setter: {displayOriginal.setter_name}</span>
                     </div>
                   )}
                   {displayOriginal.closer_name && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <User className="h-4 w-4 text-primary" />
+                    <div className="flex items-center gap-2 text-xs sm:text-sm">
+                      <User className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                       <span>Closer: {displayOriginal.closer_name}</span>
                     </div>
                   )}
                   <Button
-                    className="w-full mt-3"
+                    className="w-full mt-2 sm:mt-3 text-xs sm:text-sm h-8 sm:h-9"
                     variant="outline"
                     onClick={handleKeepOriginal}
                     disabled={loading}
                   >
                     {loading ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
                     ) : (
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     )}
                     Keep Original
                   </Button>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Loading original appointment...</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Loading original appointment...</p>
               )}
             </Card>
 
             {/* New Appointment */}
-            <Card className="p-4 border-2 border-warning">
-              <div className="flex items-center gap-2 mb-3">
-                <Badge className="bg-warning text-warning-foreground">New Booking</Badge>
+            <Card className="p-3 sm:p-4 border-2 border-warning">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                <Badge className="bg-warning text-warning-foreground text-xs">New Booking</Badge>
               </div>
-              <div className="space-y-2">
-                <p className="font-semibold">{newAppointment.lead_name}</p>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
+              <div className="space-y-1.5 sm:space-y-2">
+                <p className="font-semibold text-sm sm:text-base">{newAppointment.lead_name}</p>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>{formatDateTimeWithTimezone(newAppointment.start_at_utc, "MMM d, yyyy")}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4" />
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>{formatDateTimeWithTimezone(newAppointment.start_at_utc, "h:mm a")}</span>
                 </div>
                 {newAppointment.setter_name && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-info" />
+                  <div className="flex items-center gap-2 text-xs sm:text-sm">
+                    <User className="h-3 w-3 sm:h-4 sm:w-4 text-info" />
                     <span>Setter: {newAppointment.setter_name}</span>
                   </div>
                 )}
                 {newAppointment.closer_name && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-primary" />
+                  <div className="flex items-center gap-2 text-xs sm:text-sm">
+                    <User className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                     <span>Closer: {newAppointment.closer_name}</span>
                   </div>
                 )}
                 <Button
-                  className="w-full mt-3"
+                  className="w-full mt-2 sm:mt-3 text-xs sm:text-sm h-8 sm:h-9"
                   onClick={handleKeepNew}
                   disabled={loading}
                 >
                   {loading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
                   ) : (
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   )}
                   Keep New Booking
                 </Button>
@@ -290,21 +290,27 @@ export function ResolveDoubleBookDialog({
           </div>
 
           {/* Optional Note */}
-          <div className="space-y-2">
-            <Label htmlFor="resolve-note">Resolution Note (optional)</Label>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="resolve-note" className="text-xs sm:text-sm">Resolution Note (optional)</Label>
             <Textarea
               id="resolve-note"
               placeholder="Add any notes about this resolution..."
               value={resolveNote}
               onChange={(e) => setResolveNote(e.target.value)}
               rows={2}
+              className="text-xs sm:text-sm"
             />
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            <X className="h-4 w-4 mr-2" />
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)} 
+            disabled={loading}
+            className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+          >
+            <X className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             Cancel
           </Button>
         </DialogFooter>
