@@ -236,12 +236,10 @@ export function AppointmentsHub({
                 Today
               </TabsTrigger>
               <TabsTrigger value="mine" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">My Appointments</span>
-                <span className="sm:hidden">Mine</span>
+                My Appointments
               </TabsTrigger>
               <TabsTrigger value="unassigned" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">Unassigned</span>
-                <span className="sm:hidden">Unasg</span>
+                Unassigned
                 {counts.unassigned > 0 && (
                   <Badge variant="destructive" className="ml-1 sm:ml-2 text-[8px] sm:text-xs h-4 sm:h-5 px-1 sm:px-1.5">
                     {counts.unassigned}
@@ -249,23 +247,20 @@ export function AppointmentsHub({
                 )}
               </TabsTrigger>
               <TabsTrigger value="all" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">Assigned</span>
-                <span className="sm:hidden">Asgd</span>
+                Assigned
               </TabsTrigger>
               <TabsTrigger value="pipeline" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">Team Pipeline</span>
-                <span className="sm:hidden">Pipe</span>
+                Team Pipeline
               </TabsTrigger>
               <TabsTrigger value="stats" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">My Stats</span>
-                <span className="sm:hidden">Stats</span>
+                My Stats
               </TabsTrigger>
               <TabsTrigger value="mrr" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
                 MRR {counts.mrrDue > 0 && <Badge className="ml-1 sm:ml-2 text-[8px] sm:text-xs h-4 sm:h-5 px-1" variant="secondary">{counts.mrrDue}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="tasks" className="text-[10px] sm:text-base whitespace-nowrap flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
                 <CheckSquare className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Tasks</span>
+                Tasks
                 {counts.totalPendingTasks > 0 && (
                   <Badge variant={counts.overdue > 0 ? "destructive" : "secondary"} className="ml-0.5 sm:ml-1 text-[8px] sm:text-xs h-4 sm:h-5 px-1">
                     {counts.totalPendingTasks}
@@ -273,8 +268,7 @@ export function AppointmentsHub({
                 )}
               </TabsTrigger>
               <TabsTrigger value="my-assets" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">My Assets</span>
-                <span className="sm:hidden">Assets</span>
+                My Assets
               </TabsTrigger>
             </TabsList>
           </div>
@@ -414,20 +408,16 @@ export function AppointmentsHub({
                 Today
               </TabsTrigger>
               <TabsTrigger value="mine" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">My Deals</span>
-                <span className="sm:hidden">Mine</span>
+                My Deals
               </TabsTrigger>
               <TabsTrigger value="pipeline" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">My Pipeline</span>
-                <span className="sm:hidden">Pipe</span>
+                My Pipeline
               </TabsTrigger>
               <TabsTrigger value="all" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">Team Pipeline</span>
-                <span className="sm:hidden">Team</span>
+                Team Pipeline
               </TabsTrigger>
               <TabsTrigger value="stats" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">My Stats</span>
-                <span className="sm:hidden">Stats</span>
+                My Stats
               </TabsTrigger>
               <TabsTrigger value="mrr" className="text-[10px] sm:text-base whitespace-nowrap relative px-2 sm:px-3">
                 MRR
@@ -441,8 +431,7 @@ export function AppointmentsHub({
                 )}
               </TabsTrigger>
               <TabsTrigger value="stages" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-                <span className="hidden sm:inline">Stage Views</span>
-                <span className="sm:hidden">Stages</span>
+                Stage Views
               </TabsTrigger>
             </TabsList>
           </div>
@@ -592,27 +581,22 @@ export function AppointmentsHub({
               Today
             </TabsTrigger>
             <TabsTrigger value="overview" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-              <span className="hidden sm:inline">Overview</span>
-              <span className="sm:hidden">Over</span>
+              Overview
             </TabsTrigger>
             <TabsTrigger value="pipeline" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-              <span className="hidden sm:inline">Team Pipeline</span>
-              <span className="sm:hidden">Pipe</span>
+              Team Pipeline
             </TabsTrigger>
             <TabsTrigger value="setters" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-              <span className="hidden sm:inline">Setters View</span>
-              <span className="sm:hidden">Set</span>
+              Setters View
             </TabsTrigger>
             <TabsTrigger value="closers" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-              <span className="hidden sm:inline">Closers View</span>
-              <span className="sm:hidden">Close</span>
+              Closers View
             </TabsTrigger>
             <TabsTrigger value="mrr" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
               MRR {counts.mrrDue > 0 && <Badge className="ml-1 sm:ml-2 text-[8px] sm:text-xs h-4 sm:h-5 px-1" variant="secondary">{counts.mrrDue}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="tasks" className="text-[10px] sm:text-base whitespace-nowrap px-2 sm:px-3">
-              <span className="hidden sm:inline">Tasks</span>
-              <span className="sm:hidden">Task</span>
+              Tasks
               {counts.totalPendingTasks > 0 && (
                 <Badge 
                   variant={counts.overdue > 0 ? "destructive" : "secondary"}

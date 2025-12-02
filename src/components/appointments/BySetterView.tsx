@@ -167,28 +167,28 @@ export function BySetterView({ teamId }: BySetterViewProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-br from-primary/10 via-accent/10 to-primary/5 rounded-xl p-6 border border-primary/30">
-        <h3 className="text-xl font-bold">By Setter View</h3>
-        <p className="text-sm text-muted-foreground mt-1">See all appointments grouped by setter</p>
+    <div className="space-y-4 md:space-y-6">
+      <div className="bg-gradient-to-br from-primary/10 via-accent/10 to-primary/5 rounded-lg md:rounded-xl p-3 md:p-6 border border-primary/30">
+        <h3 className="text-base md:text-xl font-bold">By Setter View</h3>
+        <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1">See all appointments grouped by setter</p>
       </div>
 
       <Tabs value={selectedSetter || undefined} onValueChange={setSelectedSetter}>
         <div className="w-full overflow-x-auto">
-          <TabsList className="w-max min-w-full h-auto p-2 flex-wrap gap-2">
+          <TabsList className="w-max min-w-full h-auto p-1 md:p-2 flex-wrap gap-1 md:gap-2">
             {setterGroups.map(group => (
               <TabsTrigger 
                 key={group.setterId} 
                 value={group.setterId}
-                className="flex items-center gap-2 data-[state=active]:bg-primary"
+                className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm data-[state=active]:bg-primary"
               >
-                <Avatar className="h-6 w-6">
-                  <AvatarFallback className="text-xs bg-accent/10">
+                <Avatar className="h-4 w-4 md:h-6 md:w-6">
+                  <AvatarFallback className="text-[10px] md:text-xs bg-accent/10">
                     {group.setterName.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span>{group.setterName}</span>
-                <Badge variant="secondary" className="ml-1">
+                <span className="max-w-[60px] md:max-w-none truncate">{group.setterName}</span>
+                <Badge variant="secondary" className="ml-0.5 md:ml-1 text-[10px] md:text-xs px-1 md:px-1.5 py-0">
                   {group.stats.total}
                 </Badge>
               </TabsTrigger>
@@ -197,10 +197,10 @@ export function BySetterView({ teamId }: BySetterViewProps) {
         </div>
 
         {setterGroups.map(group => (
-          <TabsContent key={group.setterId} value={group.setterId} className="mt-6">
+          <TabsContent key={group.setterId} value={group.setterId} className="mt-4 md:mt-6">
             {/* Today's Tasks for this Setter */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-4">Today's Tasks - {group.setterName}</h3>
+            <div className="mb-4 md:mb-8">
+              <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">Today's Tasks - {group.setterName}</h3>
               <TodaysDashboard 
                 teamId={teamId} 
                 userRole="setter"
@@ -209,32 +209,32 @@ export function BySetterView({ teamId }: BySetterViewProps) {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{group.stats.total}</p>
+            <div className="grid grid-cols-5 gap-1.5 md:gap-4 mb-4 md:mb-6">
+              <Card className="p-2 md:p-4">
+                <p className="text-[10px] md:text-sm text-muted-foreground">Total</p>
+                <p className="text-sm md:text-2xl font-bold">{group.stats.total}</p>
               </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Confirmed</p>
-                <p className="text-2xl font-bold">{group.stats.confirmed}</p>
+              <Card className="p-2 md:p-4">
+                <p className="text-[10px] md:text-sm text-muted-foreground">Confirmed</p>
+                <p className="text-sm md:text-2xl font-bold">{group.stats.confirmed}</p>
               </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Showed</p>
-                <p className="text-2xl font-bold text-green-600">{group.stats.showed}</p>
+              <Card className="p-2 md:p-4">
+                <p className="text-[10px] md:text-sm text-muted-foreground">Showed</p>
+                <p className="text-sm md:text-2xl font-bold text-green-600">{group.stats.showed}</p>
               </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">No-Show</p>
-                <p className="text-2xl font-bold text-red-600">{group.stats.noShow}</p>
+              <Card className="p-2 md:p-4">
+                <p className="text-[10px] md:text-sm text-muted-foreground">No-Show</p>
+                <p className="text-sm md:text-2xl font-bold text-red-600">{group.stats.noShow}</p>
               </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Show Rate</p>
-                <p className="text-2xl font-bold">{group.stats.showRate}%</p>
+              <Card className="p-2 md:p-4">
+                <p className="text-[10px] md:text-sm text-muted-foreground">Show Rate</p>
+                <p className="text-sm md:text-2xl font-bold">{group.stats.showRate}%</p>
               </Card>
             </div>
 
             {/* All Appointments List */}
-            <h3 className="text-lg font-semibold mb-4">All Appointments</h3>
-            <div className="space-y-3">
+            <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">All Appointments</h3>
+            <div className="space-y-2 md:space-y-3">
               {group.appointments.map(appointment => (
                 <AppointmentCard
                   key={appointment.id}
