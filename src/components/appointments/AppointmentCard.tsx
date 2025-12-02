@@ -124,7 +124,7 @@ export function AppointmentCard({
             >
               <AlertTriangle className="h-3 w-3" />
               Double Book
-              <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs font-medium">
+              <span className="ml-1 px-2 py-0.5 bg-white text-amber-600 rounded font-semibold text-xs shadow-sm">
                 View
               </span>
             </Badge>
@@ -139,7 +139,7 @@ export function AppointmentCard({
             >
               <RefreshCw className="h-3 w-3" />
               Rebook
-              <span className="ml-1 px-1.5 py-0.5 bg-purple-400/30 rounded text-xs font-medium hover:bg-purple-400/40">
+              <span className="ml-1 px-2 py-0.5 bg-purple-500 text-white rounded font-semibold text-xs shadow-sm">
                 View
               </span>
             </Badge>
@@ -159,7 +159,7 @@ export function AppointmentCard({
                   {appointment.reschedule_count}x
                 </span>
               )}
-              <span className="ml-1 px-1.5 py-0.5 bg-purple-400/30 rounded text-xs font-medium hover:bg-purple-400/40">
+              <span className="ml-1 px-2 py-0.5 bg-purple-500 text-white rounded font-semibold text-xs shadow-sm">
                 View
               </span>
             </Badge>
@@ -173,7 +173,7 @@ export function AppointmentCard({
             >
               <AlertTriangle className="h-3 w-3" />
               Double Book
-              <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs font-medium">
+              <span className="ml-1 px-2 py-0.5 bg-white text-amber-600 rounded font-semibold text-xs shadow-sm">
                 View
               </span>
             </Badge>
