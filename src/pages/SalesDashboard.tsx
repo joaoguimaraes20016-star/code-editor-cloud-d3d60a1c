@@ -646,20 +646,20 @@ const Index = () => {
   
   const totalMRR = closedAppointmentsWithoutSales.reduce((sum, apt) => sum + (Number(apt.mrr_amount) || 0), 0);
   
-  // Calculate commissions from deduplicated appointments and manual sales
-  const commissionsFromAppointments = closedAppointmentsWithoutSales.reduce((sum, apt) => {
+  // Calculate CLOSER commissions only from deduplicated appointments and manual sales
+  // Setter commissions are tracked separately and shown in the Commission Breakdown
+  const closerCommissionsFromAppointments = closedAppointmentsWithoutSales.reduce((sum, apt) => {
     const cc = Number(apt.cc_collected) || 0;
     const closerMember = teamMembers.find(m => m.id === apt.closer_id);
     const closerComm = (closerMember?.role !== 'offer_owner') ? cc * (closerCommissionPct / 100) : 0;
-    const setterComm = apt.setter_id ? cc * (setterCommissionPct / 100) : 0;
-    return sum + closerComm + setterComm;
+    return sum + closerComm;
   }, 0);
   
-  const commissionsFromManualSales = filteredSalesFromTable
+  const closerCommissionsFromManualSales = filteredSalesFromTable
     .filter(s => s.status === 'closed')
-    .reduce((sum, sale) => sum + sale.commission + sale.setterCommission, 0);
+    .reduce((sum, sale) => sum + sale.commission, 0);
   
-  const totalCommissions = commissionsFromAppointments + commissionsFromManualSales;
+  const totalCommissions = closerCommissionsFromAppointments + closerCommissionsFromManualSales;
   
   // Calculate appointment-based metrics
   const showedAppointments = filteredAppointments.filter(apt => apt.status === 'SHOWED' || apt.status === 'CLOSED');
