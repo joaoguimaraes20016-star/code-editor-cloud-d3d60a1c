@@ -1469,6 +1469,7 @@ export type Database = {
       }
       teams: {
         Row: {
+          action_pipeline_mappings: Json | null
           allow_setter_pipeline_updates: boolean
           auto_create_tasks: boolean | null
           calendly_access_token: string | null
@@ -1500,6 +1501,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          action_pipeline_mappings?: Json | null
           allow_setter_pipeline_updates?: boolean
           auto_create_tasks?: boolean | null
           calendly_access_token?: string | null
@@ -1531,6 +1533,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          action_pipeline_mappings?: Json | null
           allow_setter_pipeline_updates?: boolean
           auto_create_tasks?: boolean | null
           calendly_access_token?: string | null

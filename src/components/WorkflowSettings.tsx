@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserFriendlyError } from "@/lib/errorUtils";
-import { Loader2, Phone, RefreshCw, Settings as SettingsIcon } from "lucide-react";
+import { Loader2, Phone, RefreshCw, Settings as SettingsIcon, GitBranch } from "lucide-react";
 import { TaskFlowBuilder } from "./TaskFlowBuilder";
 import { FollowUpSettings } from "./FollowUpSettings";
+import { ActionPipelineMappings } from "./ActionPipelineMappings";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface WorkflowSettingsProps {
@@ -205,6 +206,19 @@ export function WorkflowSettings({ teamId }: WorkflowSettingsProps) {
           </AlertDescription>
         </Alert>
         <FollowUpSettings teamId={teamId} />
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <GitBranch className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Action Pipeline Mappings</h2>
+        </div>
+        <Alert>
+          <AlertDescription>
+            Configure which pipeline stage leads automatically move to when certain actions occur (rebook, double book, no-show, etc.)
+          </AlertDescription>
+        </Alert>
+        <ActionPipelineMappings teamId={teamId} />
       </div>
     </div>
   );
