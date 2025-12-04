@@ -627,7 +627,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
           <CardContent className="p-2 sm:p-4">
             <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-1 sm:gap-0">
               <div className="text-center sm:text-left">
-                <p className="text-[9px] sm:text-sm text-muted-foreground">Conf</p>
+                <p className="text-[9px] sm:text-sm text-muted-foreground">Confirmed</p>
                 <p className="text-lg sm:text-3xl font-bold text-green-600">{stats.confirmed}</p>
               </div>
               <TrendingUp className="h-4 w-4 sm:h-8 sm:w-8 text-green-500/50 hidden sm:block" />
@@ -645,7 +645,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
           <CardContent className="p-2 sm:p-4">
             <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-1 sm:gap-0">
               <div className="text-center sm:text-left">
-                <p className="text-[9px] sm:text-sm text-muted-foreground">Pend</p>
+                <p className="text-[9px] sm:text-sm text-muted-foreground">Pending</p>
                 <p className="text-lg sm:text-3xl font-bold text-amber-600">{stats.pending}</p>
               </div>
               <AlertCircle className="h-4 w-4 sm:h-8 sm:w-8 text-amber-500/50 hidden sm:block" />
@@ -663,7 +663,7 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
           <CardContent className="p-2 sm:p-4">
             <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-1 sm:gap-0">
               <div className="text-center sm:text-left">
-                <p className="text-[9px] sm:text-sm text-muted-foreground">Over</p>
+                <p className="text-[9px] sm:text-sm text-muted-foreground">Overdue</p>
                 <p className="text-lg sm:text-3xl font-bold text-red-600">{stats.overdue}</p>
               </div>
               <AlertTriangle className="h-4 w-4 sm:h-8 sm:w-8 text-red-500/50 hidden sm:block" />
