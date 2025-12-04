@@ -644,7 +644,8 @@ const Index = () => {
     .reduce((sum, sale) => sum + sale.revenue, 0);
   const totalCCRevenue = ccFromAppointments + ccFromManualSales;
   
-  const totalMRR = closedAppointmentsWithoutSales.reduce((sum, apt) => sum + (Number(apt.mrr_amount) || 0), 0);
+  // MRR comes from ALL closed appointments (not deduplicated) since MRR is separate from CC
+  const totalMRR = closedAppointments.reduce((sum, apt) => sum + (Number(apt.mrr_amount) || 0), 0);
   
   // Calculate CLOSER commissions only from deduplicated appointments and manual sales
   // Setter commissions are tracked separately and shown in the Commission Breakdown
