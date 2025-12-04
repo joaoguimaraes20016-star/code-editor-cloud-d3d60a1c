@@ -617,58 +617,63 @@ const Index = () => {
   const filteredSales = [...depositsAsSales, ...filteredSalesFromTable]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // Calculate metrics from CLOSED appointments AND deposit stage deals (actual money collected)
-  // Include both status='CLOSED' OR pipeline_stage='deposit' or similar stages with deposits
+  // SIMPLIFIED METRICS CALCULATION
+  // Sales table is source of truth for CC Revenue and Commissions (created by close_deal_transaction)
+  // Appointments are source of truth for MRR
+  
+  // For MRR: Filter closed appointments by updated_at (when deal was closed), not start_at_utc
+  const closedAppointmentsForMRR = appointments.filter(apt => {
+    if (apt.status !== 'CLOSED') return false;
+    
+    // Filter by updated_at (when deal was closed) instead of start_at_utc
+    if (!dateRange.from && !dateRange.to) return true;
+    
+    const closedDate = apt.updated_at ? new Date(apt.updated_at) : new Date(apt.start_at_utc);
+    closedDate.setHours(0, 0, 0, 0);
+    
+    const fromDate = dateRange.from ? new Date(dateRange.from) : null;
+    if (fromDate) fromDate.setHours(0, 0, 0, 0);
+    
+    const toDate = dateRange.to ? new Date(dateRange.to) : null;
+    if (toDate) toDate.setHours(0, 0, 0, 0);
+    
+    if (fromDate && toDate) {
+      return closedDate >= fromDate && closedDate <= toDate;
+    } else if (fromDate) {
+      return closedDate >= fromDate;
+    } else if (toDate) {
+      return closedDate <= toDate;
+    }
+    return true;
+  });
+  
+  // Total CC Revenue: From sales table only (accurate via close_deal_transaction)
+  const totalCCRevenue = filteredSalesFromTable
+    .filter(s => s.status === 'closed')
+    .reduce((sum, sale) => sum + sale.revenue, 0);
+  
+  // Total MRR: From closed appointments
+  const totalMRR = closedAppointmentsForMRR.reduce((sum, apt) => sum + (Number(apt.mrr_amount) || 0), 0);
+  
+  // Total Commissions (Closer only): From sales table only
+  const totalCommissions = filteredSalesFromTable
+    .filter(s => s.status === 'closed')
+    .reduce((sum, sale) => sum + sale.commission, 0);
+  
+  // Keep closedAppointments for other metrics (show rate, close rate, etc.)
   const closedAppointments = filteredAppointments.filter(apt => {
     const isClosedStatus = apt.status === 'CLOSED';
     const hasDeposit = apt.pipeline_stage?.toLowerCase().includes('deposit') && Number(apt.cc_collected || 0) > 0;
     return isClosedStatus || hasDeposit;
   });
   
-  // DEDUPLICATION: Filter out appointments that already have manual sales
-  // Check by customer name and closer name match
-  const closedAppointmentsWithoutSales = closedAppointments.filter(apt => {
-    const hasSaleRecord = filteredSalesFromTable.some(sale => {
-      if (!apt.closer_name || !sale.salesRep || !apt.lead_name) return false;
-      return sale.customerName.toLowerCase().trim() === apt.lead_name.toLowerCase().trim() && 
-             sale.salesRep.toLowerCase().trim() === apt.closer_name.toLowerCase().trim() &&
-             sale.status === 'closed';
-    });
-    return !hasSaleRecord; // Only include if NO matching sale exists
-  });
-  
-  // Count CC from appointments WITHOUT manual sales + manual sales
-  const ccFromAppointments = closedAppointmentsWithoutSales.reduce((sum, apt) => sum + (Number(apt.cc_collected) || 0), 0);
-  const ccFromManualSales = filteredSalesFromTable
-    .filter(s => s.status === 'closed')
-    .reduce((sum, sale) => sum + sale.revenue, 0);
-  const totalCCRevenue = ccFromAppointments + ccFromManualSales;
-  
-  // MRR comes from ALL closed appointments (not deduplicated) since MRR is separate from CC
-  const totalMRR = closedAppointments.reduce((sum, apt) => sum + (Number(apt.mrr_amount) || 0), 0);
-  
-  // Calculate CLOSER commissions only from deduplicated appointments and manual sales
-  // Setter commissions are tracked separately and shown in the Commission Breakdown
-  const closerCommissionsFromAppointments = closedAppointmentsWithoutSales.reduce((sum, apt) => {
-    const cc = Number(apt.cc_collected) || 0;
-    const closerMember = teamMembers.find(m => m.id === apt.closer_id);
-    const closerComm = (closerMember?.role !== 'offer_owner') ? cc * (closerCommissionPct / 100) : 0;
-    return sum + closerComm;
-  }, 0);
-  
-  const closerCommissionsFromManualSales = filteredSalesFromTable
-    .filter(s => s.status === 'closed')
-    .reduce((sum, sale) => sum + sale.commission, 0);
-  
-  const totalCommissions = closerCommissionsFromAppointments + closerCommissionsFromManualSales;
-  
   // Calculate appointment-based metrics
   const showedAppointments = filteredAppointments.filter(apt => apt.status === 'SHOWED' || apt.status === 'CLOSED');
   const noShowAppointments = filteredAppointments.filter(apt => apt.status === 'NO_SHOW');
   const totalScheduledAppointments = filteredAppointments.length;
   
-  // Count UNIQUE closed deals: deduplicated appointments + manual sales
-  const totalClosedDeals = closedAppointmentsWithoutSales.length + filteredSalesFromTable.filter(s => s.status === 'closed').length;
+  // Count closed deals from sales table (source of truth)
+  const totalClosedDeals = filteredSalesFromTable.filter(s => s.status === 'closed').length;
   
   // Close Rate: Closed deals / Showed appointments (appointments that actually happened)
   const closeRate = showedAppointments.length > 0 
