@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sale } from "./SalesTable";
-import { User, UserCheck, Calendar, DollarSign } from "lucide-react";
+import { User, UserCheck, Calendar, DollarSign, Trophy, Medal } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface CommissionBreakdownProps {
   sales: Sale[];
@@ -50,7 +51,7 @@ export function CommissionBreakdown({ sales, teamId }: CommissionBreakdownProps)
 
   // Calculate closer CC commission totals (from cash collected only)
   const closerCommissions = sales
-    .filter(s => s.status === 'closed' && s.commission > 0 && s.salesRep !== s.offerOwner)
+    .filter(s => s.status === 'closed' && s.commission > 0)
     .reduce((acc, sale) => {
       if (!acc[sale.salesRep]) {
         acc[sale.salesRep] = {
@@ -67,7 +68,7 @@ export function CommissionBreakdown({ sales, teamId }: CommissionBreakdownProps)
 
   // Calculate setter CC commission totals (from cash collected only)
   const setterCommissions = sales
-    .filter(s => s.status === 'closed' && s.setterCommission > 0 && s.setter && s.setter.trim() !== '' && s.setter !== s.offerOwner)
+    .filter(s => s.status === 'closed' && s.setterCommission > 0 && s.setter && s.setter.trim() !== '')
     .reduce((acc, sale) => {
       if (!acc[sale.setter]) {
         acc[sale.setter] = {
@@ -112,13 +113,39 @@ export function CommissionBreakdown({ sales, teamId }: CommissionBreakdownProps)
 
   const totalUpcomingMRR = sortedUpcomingMRR.reduce((sum, p) => sum + p.totalUpcoming, 0);
 
-  const renderCommissionList = (
+  const getRankStyles = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return {
+          bg: "bg-gradient-to-r from-yellow-500/20 to-amber-500/10 border-yellow-500/30",
+          icon: <Trophy className="h-5 w-5 text-yellow-500" />,
+          badge: "bg-yellow-500 text-yellow-950",
+        };
+      case 2:
+        return {
+          bg: "bg-gradient-to-r from-slate-400/20 to-slate-300/10 border-slate-400/30",
+          icon: <Medal className="h-5 w-5 text-slate-400" />,
+          badge: "bg-slate-400 text-slate-950",
+        };
+      case 3:
+        return {
+          bg: "bg-gradient-to-r from-amber-700/20 to-orange-600/10 border-amber-700/30",
+          icon: <Medal className="h-5 w-5 text-amber-700" />,
+          badge: "bg-amber-700 text-amber-50",
+        };
+      default:
+        return {
+          bg: "bg-secondary/50 border-transparent",
+          icon: null,
+          badge: "bg-muted text-muted-foreground",
+        };
+    }
+  };
+
+  const renderLeaderboard = (
     data: [string, { totalCommission: number; totalRevenue: number; salesCount: number }][],
-    icon: typeof User,
     emptyMessage: string
   ) => {
-    const Icon = icon;
-    
     if (data.length === 0) {
       return (
         <p className="text-muted-foreground text-center py-8">
@@ -128,33 +155,44 @@ export function CommissionBreakdown({ sales, teamId }: CommissionBreakdownProps)
     }
 
     return (
-      <div className="space-y-4">
-        {data.map(([name, stats]) => (
-          <div 
-            key={name} 
-            className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Icon className="h-5 w-5 text-primary" />
+      <div className="space-y-2">
+        {data.map(([name, stats], index) => {
+          const rank = index + 1;
+          const styles = getRankStyles(rank);
+          
+          return (
+            <div 
+              key={name} 
+              className={cn(
+                "flex items-center justify-between p-3 rounded-lg border transition-all hover:scale-[1.01]",
+                styles.bg
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold",
+                  styles.badge
+                )}>
+                  {rank <= 3 ? styles.icon : rank}
+                </div>
+                <div>
+                  <p className="font-semibold">{name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.salesCount} {stats.salesCount === 1 ? 'deal' : 'deals'} • ${stats.totalRevenue.toLocaleString()} CC
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold">{name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {stats.salesCount} closed {stats.salesCount === 1 ? 'deal' : 'deals'}
+              <div className="text-right">
+                <p className={cn(
+                  "text-lg font-bold",
+                  rank === 1 ? "text-yellow-500" : "text-accent"
+                )}>
+                  ${stats.totalCommission.toLocaleString()}
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xl font-bold text-accent">
-                ${stats.totalCommission.toLocaleString()}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                from ${stats.totalRevenue.toLocaleString()} CC
-              </p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -173,92 +211,88 @@ export function CommissionBreakdown({ sales, teamId }: CommissionBreakdownProps)
     }
 
     return (
-      <div className="space-y-4">
-        <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+      <div className="space-y-3">
+        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              <span className="font-medium">Total Upcoming MRR Commissions</span>
+              <Calendar className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Total Upcoming</span>
             </div>
-            <span className="text-xl font-bold text-primary">
+            <span className="text-lg font-bold text-primary">
               ${totalUpcomingMRR.toLocaleString()}
             </span>
           </div>
         </div>
         
-        {sortedUpcomingMRR.map((person) => (
-          <div 
-            key={`${person.name}-${person.role}`} 
-            className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                {person.role === 'closer' ? (
-                  <UserCheck className="h-5 w-5 text-primary" />
-                ) : (
-                  <User className="h-5 w-5 text-primary" />
-                )}
+        {sortedUpcomingMRR.map((person, index) => {
+          const rank = index + 1;
+          const styles = getRankStyles(rank);
+          
+          return (
+            <div 
+              key={`${person.name}-${person.role}`} 
+              className={cn(
+                "flex items-center justify-between p-3 rounded-lg border transition-all hover:scale-[1.01]",
+                styles.bg
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold",
+                  styles.badge
+                )}>
+                  {rank <= 3 ? styles.icon : rank}
+                </div>
+                <div>
+                  <p className="font-semibold">{person.name}</p>
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {person.role} • {person.monthsCount} {person.monthsCount === 1 ? 'month' : 'months'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold">{person.name}</p>
-                <p className="text-sm text-muted-foreground capitalize">
-                  {person.role} • {person.monthsCount} {person.monthsCount === 1 ? 'month' : 'months'}
+              <div className="text-right">
+                <p className={cn(
+                  "text-lg font-bold",
+                  rank === 1 ? "text-yellow-500" : "text-primary"
+                )}>
+                  ${person.totalUpcoming.toLocaleString()}
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xl font-bold text-primary">
-                ${person.totalUpcoming.toLocaleString()}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                upcoming
-              </p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <DollarSign className="h-5 w-5" />
-          Commission Breakdown
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Trophy className="h-5 w-5 text-yellow-500" />
+          Commission Leaderboard
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="closers" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="closers">Closers (CC)</TabsTrigger>
-            <TabsTrigger value="setters">Setters (CC)</TabsTrigger>
-            <TabsTrigger value="mrr">Upcoming MRR</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 h-9">
+            <TabsTrigger value="closers" className="text-xs">Closers</TabsTrigger>
+            <TabsTrigger value="setters" className="text-xs">Setters</TabsTrigger>
+            <TabsTrigger value="mrr" className="text-xs">Upcoming MRR</TabsTrigger>
           </TabsList>
-          <TabsContent value="closers" className="mt-4">
-            <p className="text-xs text-muted-foreground mb-3">
-              Commissions from cash collected only
-            </p>
-            {renderCommissionList(
+          <TabsContent value="closers" className="mt-3">
+            {renderLeaderboard(
               sortedClosers,
-              UserCheck,
-              "No closed deals with commissions yet"
+              "No closed deals yet"
             )}
           </TabsContent>
-          <TabsContent value="setters" className="mt-4">
-            <p className="text-xs text-muted-foreground mb-3">
-              Commissions from cash collected only
-            </p>
-            {renderCommissionList(
+          <TabsContent value="setters" className="mt-3">
+            {renderLeaderboard(
               sortedSetters,
-              User,
-              "No closed deals with commissions yet"
+              "No setter commissions yet"
             )}
           </TabsContent>
-          <TabsContent value="mrr" className="mt-4">
-            <p className="text-xs text-muted-foreground mb-3">
-              Future MRR commissions (paid when confirmed)
-            </p>
+          <TabsContent value="mrr" className="mt-3">
             {renderUpcomingMRR()}
           </TabsContent>
         </Tabs>
