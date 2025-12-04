@@ -849,17 +849,25 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
 
     // Calculate stats for each closer
     const closerData: CloserGroup[] = Array.from(groups.entries()).map(([closerId, apts]) => {
-      // In pipeline: active appointments not yet closed (NEW, SHOWED, CONFIRMED, or pipeline stages before won)
-      const terminalStatuses = ['CLOSED', 'CANCELLED', 'NO_SHOW', 'RESCHEDULED'];
-      const terminalStages = ['won', 'closed', 'cancelled', 'no_show', 'disqualified', 'lost'];
+      // Define what counts as "lost" leads that shouldn't be in stats
+      const lostStatuses = ['CANCELLED', 'NO_SHOW', 'RESCHEDULED'];
+      const lostStages = ['cancelled', 'no_show', 'disqualified', 'lost', 'rescheduled'];
       
-      const inPipeline = apts.filter(a => 
-        !terminalStatuses.includes(a.status) && 
-        !terminalStages.includes(a.pipeline_stage?.toLowerCase())
+      // Filter out lost/inactive leads for stats
+      const activeOrClosedApts = apts.filter(a => 
+        !lostStatuses.includes(a.status) && 
+        !lostStages.includes(a.pipeline_stage?.toLowerCase())
+      );
+      
+      // In pipeline: active appointments not yet closed
+      const inPipeline = activeOrClosedApts.filter(a => 
+        a.status !== 'CLOSED' && 
+        a.pipeline_stage !== 'won' &&
+        !(a.cc_collected && a.cc_collected > 0)
       ).length;
       
-      // Closed: appointments with CLOSED status or won stage
-      const closed = apts.filter(a => 
+      // Closed: appointments with CLOSED status or won stage or has revenue
+      const closed = activeOrClosedApts.filter(a => 
         a.status === 'CLOSED' || 
         a.pipeline_stage === 'won' ||
         (a.cc_collected && a.cc_collected > 0)
@@ -872,7 +880,7 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
         closerName: apts[0].closer_name || 'Unknown',
         appointments: apts,
         stats: {
-          total: apts.length,
+          total: inPipeline + closed, // Only count active + closed, not lost leads
           inPipeline,
           closed,
           revenue,
