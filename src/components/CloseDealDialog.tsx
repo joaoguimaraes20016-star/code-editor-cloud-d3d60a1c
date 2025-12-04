@@ -31,6 +31,8 @@ interface Appointment {
   lead_email: string;
   setter_id: string | null;
   setter_name: string | null;
+  closer_id?: string | null;
+  closer_name?: string | null;
 }
 
 interface CloseDealDialogProps {
@@ -137,16 +139,20 @@ export function CloseDealDialog({
 
     setClosing(true);
     try {
+      // Use the appointment's closer name if assigned, otherwise use the admin who's closing
+      const effectiveCloserName = appointment.closer_name || userProfile.full_name;
+      const effectiveCloserId = appointment.closer_id || user.id;
+      
       // Use transaction function for guaranteed atomicity
       const { data, error } = await supabase.rpc('close_deal_transaction', {
         p_appointment_id: appointment.id,
-        p_closer_id: user.id,
+        p_closer_id: effectiveCloserId,
         p_cc_amount: cc,
         p_mrr_amount: mrr,
         p_mrr_months: months,
         p_product_name: productName || null,
         p_notes: null,
-        p_closer_name: userProfile.full_name,
+        p_closer_name: effectiveCloserName,
         p_closer_commission_pct: closerCommissionPct,
         p_setter_commission_pct: setterCommissionPct,
       });
