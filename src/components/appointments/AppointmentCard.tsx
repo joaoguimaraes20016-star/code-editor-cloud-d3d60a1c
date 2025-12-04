@@ -4,9 +4,12 @@ import { Card } from "@/components/ui/card";
 import { formatDateTimeWithTimezone } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Mail, User, Clock, MessageSquare, History, ArrowRight, AlertTriangle, RefreshCw } from "lucide-react";
+import { Calendar, Mail, User, Clock, MessageSquare, History, ArrowRight, AlertTriangle, RefreshCw, PenLine, Send, X } from "lucide-react";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import { RescheduleHistory } from "./RescheduleHistory";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +44,7 @@ interface AppointmentCardProps {
   onViewDetails?: (appointment: any) => void;
   onAssign?: () => void;
   onUpdate?: () => void;
+  showAddUpdate?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -61,9 +65,13 @@ export function AppointmentCard({
   onViewDetails,
   onAssign,
   onUpdate,
+  showAddUpdate = false,
 }: AppointmentCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showRescheduleHistory, setShowRescheduleHistory] = useState(false);
+  const [showUpdateInput, setShowUpdateInput] = useState(false);
+  const [updateNote, setUpdateNote] = useState("");
+  const [savingUpdate, setSavingUpdate] = useState(false);
   const formattedDate = formatDateTimeWithTimezone(appointment.start_at_utc);
 
   // Check if this is a rescheduled appointment
@@ -72,6 +80,38 @@ export function AppointmentCard({
   // Use stored original_closer_name from appointment record
   const originalCloserName = (appointment as any).original_closer_name;
   const hasCloserReassignment = originalCloserName && appointment.closer_name && originalCloserName !== appointment.closer_name;
+
+  const handleSaveUpdate = async () => {
+    if (!updateNote.trim()) return;
+    
+    try {
+      setSavingUpdate(true);
+      
+      // Append new note to existing notes with timestamp
+      const timestamp = format(new Date(), "MMM d, h:mm a");
+      const existingNotes = appointment.setter_notes || "";
+      const newNotes = existingNotes 
+        ? `${existingNotes}\n\n[${timestamp}] ${updateNote.trim()}`
+        : `[${timestamp}] ${updateNote.trim()}`;
+      
+      const { error } = await supabase
+        .from("appointments")
+        .update({ setter_notes: newNotes })
+        .eq("id", appointment.id);
+      
+      if (error) throw error;
+      
+      toast.success("Update added");
+      setUpdateNote("");
+      setShowUpdateInput(false);
+      onUpdate?.();
+    } catch (error) {
+      console.error("Error saving update:", error);
+      toast.error("Failed to save update");
+    } finally {
+      setSavingUpdate(false);
+    }
+  };
 
   return (
     <Card className="p-5 card-hover group relative overflow-hidden">
@@ -254,8 +294,56 @@ export function AppointmentCard({
           <div className="p-3 bg-chart-2/10 border border-chart-2/30 rounded-md">
             <div className="flex items-start gap-2">
               <MessageSquare className="w-4 h-4 text-chart-2 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-foreground">{appointment.setter_notes}</p>
+              <p className="text-sm text-foreground whitespace-pre-line">{appointment.setter_notes}</p>
             </div>
+          </div>
+        )}
+
+        {/* Add Update Section */}
+        {showAddUpdate && (
+          <div className="space-y-2">
+            {showUpdateInput ? (
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="Add an update..."
+                  value={updateNote}
+                  onChange={(e) => setUpdateNote(e.target.value)}
+                  className="min-h-[60px] text-sm"
+                  autoFocus
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveUpdate}
+                    disabled={!updateNote.trim() || savingUpdate}
+                  >
+                    <Send className="w-3 h-3 mr-1" />
+                    {savingUpdate ? "Saving..." : "Save"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowUpdateInput(false);
+                      setUpdateNote("");
+                    }}
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowUpdateInput(true)}
+                className="w-full"
+              >
+                <PenLine className="w-3 h-3 mr-1" />
+                Add Update
+              </Button>
+            )}
           </div>
         )}
 

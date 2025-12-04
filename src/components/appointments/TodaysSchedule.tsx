@@ -174,7 +174,10 @@ export function TodaysSchedule({ teamId, currentUserId, onCloseDeal }: TodaysSch
             <AppointmentCard
               key={appointment.id}
               appointment={appointment}
+              teamId={teamId}
               onCloseDeal={onCloseDeal}
+              onUpdate={loadAppointments}
+              showAddUpdate={true}
             />
           ))}
         </div>
