@@ -43,6 +43,7 @@ export interface Sale {
   commission: number;
   status: 'closed' | 'pending' | 'no-show';
   isAppointment?: boolean; // Flag to distinguish appointments from manual sales
+  productName?: string;
 }
 
 interface SalesTableProps {
@@ -281,7 +282,7 @@ export function SalesTable({ sales, userRole, currentUserName, onSaleDeleted, te
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
-              <TableHead>Offer Owner</TableHead>
+              <TableHead>Product</TableHead>
               <TableHead>Setter</TableHead>
               <TableHead>Closer</TableHead>
               <TableHead>Date</TableHead>
@@ -298,7 +299,7 @@ export function SalesTable({ sales, userRole, currentUserName, onSaleDeleted, te
             {sales.map((sale) => (
               <TableRow key={sale.id}>
                 <TableCell className="font-medium">{sale.customerName}</TableCell>
-                <TableCell>{sale.offerOwner}</TableCell>
+                <TableCell className="text-muted-foreground">{sale.productName || '-'}</TableCell>
                 <TableCell>
                   {canEdit && editingSetter === sale.id ? (
                     <Select

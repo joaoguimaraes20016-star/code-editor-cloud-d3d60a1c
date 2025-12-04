@@ -260,6 +260,7 @@ const Index = () => {
         setterCommission: Number(sale.setter_commission),
         commission: Number(sale.commission),
         status: sale.status,
+        productName: sale.product_name || '',
       }));
 
       console.log(`Loaded ${formattedSales.length} sales, ${formattedSales.filter(s => s.status === 'closed').length} closed`);
@@ -574,6 +575,7 @@ const Index = () => {
       })(),
       status: apt.pipeline_stage?.toLowerCase().includes('deposit') ? 'pending' as const : 'closed' as const,
       isAppointment: true, // Flag this as an appointment
+      productName: apt.product_name || '',
     }));
 
   // Filter sales by selected rep and date range
