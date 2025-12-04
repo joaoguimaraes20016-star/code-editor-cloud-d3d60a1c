@@ -50,8 +50,9 @@ export function CommissionBreakdown({ sales, teamId }: CommissionBreakdownProps)
   }, [teamId]);
 
   // Calculate closer CC commission totals (from cash collected only)
+  // Exclude offer owner's own deals - they're the business owner, not a rep
   const closerCommissions = sales
-    .filter(s => s.status === 'closed' && s.commission > 0)
+    .filter(s => s.status === 'closed' && s.commission > 0 && s.salesRep !== s.offerOwner)
     .reduce((acc, sale) => {
       if (!acc[sale.salesRep]) {
         acc[sale.salesRep] = {
