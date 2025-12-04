@@ -1477,6 +1477,7 @@ export type Database = {
           calendly_refresh_token: string | null
           calendly_token_expires_at: string | null
           calendly_webhook_id: string | null
+          calendly_webhook_signing_key: string | null
           closer_commission_percentage: number | null
           confirmation_flow_config: Json | null
           confirmation_schedule: Json | null
@@ -1506,6 +1507,7 @@ export type Database = {
           calendly_refresh_token?: string | null
           calendly_token_expires_at?: string | null
           calendly_webhook_id?: string | null
+          calendly_webhook_signing_key?: string | null
           closer_commission_percentage?: number | null
           confirmation_flow_config?: Json | null
           confirmation_schedule?: Json | null
@@ -1535,6 +1537,7 @@ export type Database = {
           calendly_refresh_token?: string | null
           calendly_token_expires_at?: string | null
           calendly_webhook_id?: string | null
+          calendly_webhook_signing_key?: string | null
           closer_commission_percentage?: number | null
           confirmation_flow_config?: Json | null
           confirmation_schedule?: Json | null

@@ -1,0 +1,1 @@
+ALTER TABLE public.teams ADD COLUMN calendly_webhook_signing_key TEXT;
