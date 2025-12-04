@@ -17,9 +17,66 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    console.log('Received request body:', JSON.stringify(body));
+    console.log('Received request body:', JSON.stringify({ ...body, password: '[REDACTED]' }));
 
-    const { email, password, fullName, clientAssetId, teamName } = body;
+    const { email, password, fullName, clientAssetId, teamName, accessToken } = body;
+
+    // Validate required fields
+    if (!clientAssetId) {
+      return new Response(
+        JSON.stringify({ error: 'Client asset ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!accessToken) {
+      return new Response(
+        JSON.stringify({ error: 'Access token is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate the access token matches the client asset and is not expired
+    const { data: assetValidation, error: validationError } = await supabase
+      .from('client_assets')
+      .select('id, access_token, token_expires_at, status')
+      .eq('id', clientAssetId)
+      .single();
+
+    if (validationError || !assetValidation) {
+      console.error('Asset validation error:', validationError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid client asset' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify the access token matches
+    if (assetValidation.access_token !== accessToken) {
+      console.error('Access token mismatch for asset:', clientAssetId);
+      return new Response(
+        JSON.stringify({ error: 'Invalid access token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if token is expired
+    if (new Date(assetValidation.token_expires_at) < new Date()) {
+      console.error('Token expired for asset:', clientAssetId);
+      return new Response(
+        JSON.stringify({ error: 'Access token has expired. Please contact the team for a new link.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if already completed
+    if (assetValidation.status === 'complete') {
+      console.log('Asset already completed:', clientAssetId);
+      return new Response(
+        JSON.stringify({ error: 'This onboarding has already been completed' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('Creating client account for:', email);
     console.log('Team name:', teamName);

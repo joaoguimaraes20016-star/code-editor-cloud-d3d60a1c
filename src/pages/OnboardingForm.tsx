@@ -309,7 +309,7 @@ export default function OnboardingForm() {
   }
 
   if (submitted) {
-    return <AccountCreation assetId={asset?.id || ''} clientName={asset?.client_name || ''} clientEmail={asset?.client_email || ''} />;
+    return <AccountCreation assetId={asset?.id || ''} clientName={asset?.client_name || ''} clientEmail={asset?.client_email || ''} accessToken={token || ''} />;
   }
 
   const groupedFields = fields.reduce((acc, field) => {

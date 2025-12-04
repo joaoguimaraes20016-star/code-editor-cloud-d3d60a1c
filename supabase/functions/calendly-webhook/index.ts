@@ -118,10 +118,10 @@ serve(async (req) => {
       });
     }
 
-    // Fetch team's Calendly configuration - only need tokens, not signing key
+    // Fetch team's Calendly configuration including signing key for verification
     const { data: team, error: teamError } = await supabase
       .from('teams')
-      .select('id, calendly_access_token, calendly_refresh_token, calendly_token_expires_at, calendly_event_types')
+      .select('id, calendly_access_token, calendly_refresh_token, calendly_token_expires_at, calendly_event_types, calendly_webhook_signing_key')
       .eq('id', teamIdParam)
       .not('calendly_access_token', 'is', null)
       .maybeSingle();
@@ -177,8 +177,36 @@ serve(async (req) => {
     const teamId = team.id;
     const allowedEventTypes = team.calendly_event_types || [];
     
-    // Skip signature verification for now - Calendly webhooks will be accepted
-    console.log('⚠ Webhook signature verification disabled - accepting all Calendly webhooks');
+    // Verify webhook signature if signing key is available
+    const signature = req.headers.get('calendly-webhook-signature');
+    const signingKey = team.calendly_webhook_signing_key;
+    
+    if (signingKey) {
+      // Extract the signature value (format: "t=timestamp,v1=signature")
+      let signatureValue = signature;
+      if (signature?.includes('v1=')) {
+        const match = signature.match(/v1=([a-f0-9]+)/);
+        signatureValue = match ? match[1] : null;
+      }
+      
+      const isValid = await verifyWebhookSignature(rawBody, signatureValue, signingKey);
+      if (!isValid) {
+        console.error('Invalid webhook signature - rejecting request');
+        await logWebhookEvent(supabase, teamId, 'signature_verification_failed', 'error', {
+          message: 'Webhook signature verification failed',
+          hasSignature: !!signature,
+          hasSigningKey: !!signingKey
+        });
+        return new Response(
+          JSON.stringify({ error: 'Invalid webhook signature' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log('✓ Webhook signature verified successfully');
+    } else {
+      // Log warning but allow for backwards compatibility with existing setups
+      console.warn('⚠ No webhook signing key configured - consider adding one for security');
+    }
     
     const rawPayload = JSON.parse(rawBody);
     console.log('Received valid Calendly webhook for team:', teamId);

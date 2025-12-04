@@ -12,9 +12,10 @@ interface AccountCreationProps {
   assetId: string;
   clientName: string;
   clientEmail: string;
+  accessToken: string;
 }
 
-export function AccountCreation({ assetId, clientName, clientEmail }: AccountCreationProps) {
+export function AccountCreation({ assetId, clientName, clientEmail, accessToken }: AccountCreationProps) {
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
@@ -55,6 +56,7 @@ export function AccountCreation({ assetId, clientName, clientEmail }: AccountCre
           fullName: clientName,
           clientAssetId: assetId,
           teamName: teamName.trim(),
+          accessToken: accessToken,
         },
       });
 
