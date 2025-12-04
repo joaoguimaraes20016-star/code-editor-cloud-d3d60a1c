@@ -14,11 +14,12 @@ import { RescheduleDialog } from "./RescheduleDialog";
 import { RescheduleWithLinkDialog } from "./RescheduleWithLinkDialog";
 import { FollowUpDialog } from "./FollowUpDialog";
 import { DepositCollectedDialog } from "./DepositCollectedDialog";
+import { DateRangeFilter, DateRangePreset } from "@/components/DateRangeFilter";
 import { useUndoAction } from "@/hooks/useUndoAction";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 import { BulkAssignCloser } from "./BulkAssignCloser";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DndContext,
@@ -757,9 +758,10 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
 
 export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
   const [loading, setLoading] = useState(true);
-  const [closerGroups, setCloserGroups] = useState<CloserGroup[]>([]);
+  const [allAppointments, setAllAppointments] = useState<any[]>([]);
   const [selectedCloser, setSelectedCloser] = useState<string | null>(null);
   const [stages, setStages] = useState<PipelineStage[]>([]);
+  const [dateFilter, setDateFilter] = useState<{ from: Date | null; to: Date | null; preset: DateRangePreset }>({ from: null, to: null, preset: "alltime" });
 
   useEffect(() => {
     loadData();
@@ -805,51 +807,75 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
         .order('start_at_utc', { ascending: true });
 
       if (error) throw error;
-
-      // Group by closer - ONLY use closer_id (UUID), skip if missing
-      const groups = new Map<string, any[]>();
-      
-      appointments?.forEach(apt => {
-        if (!apt.closer_id) return; // Skip appointments without a valid closer_id
-        const closerId = apt.closer_id;
-        if (!groups.has(closerId)) {
-          groups.set(closerId, []);
-        }
-        groups.get(closerId)!.push(apt);
-      });
-
-      // Calculate stats for each closer
-      const closerData: CloserGroup[] = Array.from(groups.entries()).map(([closerId, apts]) => {
-        const inPipeline = apts.filter(a => a.status === 'showed' && (!a.cc_collected || a.cc_collected === 0)).length;
-        const closed = apts.filter(a => a.cc_collected && a.cc_collected > 0).length;
-        const revenue = apts.reduce((sum, a) => sum + (Number(a.cc_collected) || 0), 0);
-
-        return {
-          closerId,
-          closerName: apts[0].closer_name || 'Unknown',
-          appointments: apts,
-          stats: {
-            total: apts.length,
-            inPipeline,
-            closed,
-            revenue,
-          },
-        };
-      });
-
-      // Sort by total appointments descending
-      closerData.sort((a, b) => b.stats.total - a.stats.total);
-
-      setCloserGroups(closerData);
-      if (closerData.length > 0 && !selectedCloser) {
-        setSelectedCloser(closerData[0].closerId);
-      }
+      setAllAppointments(appointments || []);
     } catch (error) {
       console.error('Error loading closer groups:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Filter and group appointments by closer with date filter
+  const closerGroups = useMemo(() => {
+    // Apply date filter
+    let filtered = allAppointments;
+    if (dateFilter.from || dateFilter.to) {
+      filtered = allAppointments.filter(apt => {
+        const appointmentDate = parseISO(apt.start_at_utc);
+        if (dateFilter.from && dateFilter.to) {
+          return isWithinInterval(appointmentDate, {
+            start: startOfDay(dateFilter.from),
+            end: endOfDay(dateFilter.to),
+          });
+        } else if (dateFilter.from) {
+          return appointmentDate >= startOfDay(dateFilter.from);
+        } else if (dateFilter.to) {
+          return appointmentDate <= endOfDay(dateFilter.to);
+        }
+        return true;
+      });
+    }
+
+    // Group by closer
+    const groups = new Map<string, any[]>();
+    filtered.forEach(apt => {
+      if (!apt.closer_id) return;
+      const closerId = apt.closer_id;
+      if (!groups.has(closerId)) {
+        groups.set(closerId, []);
+      }
+      groups.get(closerId)!.push(apt);
+    });
+
+    // Calculate stats for each closer
+    const closerData: CloserGroup[] = Array.from(groups.entries()).map(([closerId, apts]) => {
+      const inPipeline = apts.filter(a => a.status === 'showed' && (!a.cc_collected || a.cc_collected === 0)).length;
+      const closed = apts.filter(a => a.cc_collected && a.cc_collected > 0).length;
+      const revenue = apts.reduce((sum, a) => sum + (Number(a.cc_collected) || 0), 0);
+
+      return {
+        closerId,
+        closerName: apts[0].closer_name || 'Unknown',
+        appointments: apts,
+        stats: {
+          total: apts.length,
+          inPipeline,
+          closed,
+          revenue,
+        },
+      };
+    });
+
+    // Sort by total appointments descending
+    closerData.sort((a, b) => b.stats.total - a.stats.total);
+
+    // Set selected closer if not set
+    if (closerData.length > 0 && !selectedCloser) {
+      setSelectedCloser(closerData[0].closerId);
+    }
+
+    return closerData;
+  }, [allAppointments, dateFilter, selectedCloser]);
 
   if (loading) {
     return (
@@ -871,19 +897,25 @@ export function ByCloserView({ teamId, onCloseDeal }: ByCloserViewProps) {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="bg-gradient-to-br from-accent/10 via-primary/10 to-accent/5 rounded-lg md:rounded-xl p-3 md:p-6 border border-accent/30">
-        <div className="flex justify-between items-center gap-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h3 className="text-base md:text-xl font-bold">By Closer View</h3>
             <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1">See each closer's pipeline and deals</p>
           </div>
-          {selectedCloser && (
-            <BulkAssignCloser
-              teamId={teamId}
-              closerId={selectedCloser}
-              closerName={closerGroups.find(g => g.closerId === selectedCloser)?.closerName || ""}
-              onComplete={() => loadData()}
-            />
-          )}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Calendar className="h-4 w-4 text-muted-foreground hidden sm:block" />
+              <DateRangeFilter onRangeChange={setDateFilter} />
+            </div>
+            {selectedCloser && (
+              <BulkAssignCloser
+                teamId={teamId}
+                closerId={selectedCloser}
+                closerName={closerGroups.find(g => g.closerId === selectedCloser)?.closerName || ""}
+                onComplete={() => loadData()}
+              />
+            )}
+          </div>
         </div>
       </div>
 

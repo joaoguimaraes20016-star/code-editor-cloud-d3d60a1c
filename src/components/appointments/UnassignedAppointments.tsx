@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { InfoIcon } from "lucide-react";
+import { isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
+import { DateRangePreset } from "@/components/DateRangeFilter";
 
 interface Appointment {
   id: string;
@@ -29,9 +31,10 @@ interface Appointment {
 interface UnassignedAppointmentsProps {
   teamId: string;
   onUpdate: () => void;
+  dateFilter?: { from: Date | null; to: Date | null; preset: DateRangePreset };
 }
 
-export function UnassignedAppointments({ teamId, onUpdate }: UnassignedAppointmentsProps) {
+export function UnassignedAppointments({ teamId, onUpdate, dateFilter }: UnassignedAppointmentsProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
