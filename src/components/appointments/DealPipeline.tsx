@@ -40,6 +40,7 @@ import { RescheduleWithLinkDialog } from "./RescheduleWithLinkDialog";
 import { FollowUpDialog } from "./FollowUpDialog";
 import { ChangeStatusDialog } from "./ChangeStatusDialog";
 import { DepositCollectedDialog } from "./DepositCollectedDialog";
+import { PipelineMoveDialog } from "./PipelineMoveDialog";
 import { format, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 import { getUserFriendlyError } from "@/lib/errorUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -70,6 +71,8 @@ interface Appointment {
   rescheduled_to_appointment_id: string | null;
   reschedule_count: number;
   rebooking_type?: string | null;
+  setter_notes?: string | null;
+  closer_notes?: string | null;
 }
 
 interface DealPipelineProps {
@@ -112,6 +115,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
   const [followUpDialog, setFollowUpDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; stage: "cancelled" | "no_show" } | null>(null);
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; appointmentId: string; dealName: string; currentStatus: string | null } | null>(null);
   const [depositDialog, setDepositDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string } | null>(null);
+  const [pipelineMoveDialog, setPipelineMoveDialog] = useState<{ open: boolean; appointmentId: string; stageId: string; dealName: string; fromStage: string; toStage: string } | null>(null);
   const [confirmationTasks, setConfirmationTasks] = useState<Map<string, any>>(new Map());
   const [allowSetterPipelineUpdates, setAllowSetterPipelineUpdates] = useState(false);
   
@@ -546,6 +550,31 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
       return;
     }
 
+    // For all other stage moves, show the pipeline move dialog for closer notes
+    const fromStageData = stages.find(s => s.stage_id === appointment.pipeline_stage);
+    const toStageData = stages.find(s => s.stage_id === newStage);
+    
+    setPipelineMoveDialog({
+      open: true,
+      appointmentId,
+      stageId: newStage,
+      dealName: appointment.lead_name,
+      fromStage: fromStageData?.stage_label || appointment.pipeline_stage || 'Unknown',
+      toStage: toStageData?.stage_label || newStage
+    });
+  };
+
+  const handlePipelineMoveConfirm = async (closerNotes: string) => {
+    if (!pipelineMoveDialog) return;
+    
+    const appointment = appointments.find((a) => a.id === pipelineMoveDialog.appointmentId);
+    if (!appointment) return;
+    
+    const { appointmentId, stageId: newStage } = pipelineMoveDialog;
+    
+    // Close dialog first
+    setPipelineMoveDialog(null);
+
     // Optimistically update UI
     setAppointments((prev) =>
       prev.map((app) =>
@@ -565,14 +594,27 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           mrr_amount: appointment.mrr_amount,
           mrr_months: appointment.mrr_months,
           product_name: appointment.product_name,
+          closer_notes: appointment.closer_notes,
         },
         description: `Moved ${appointment.lead_name} to ${newStage}`,
       });
 
-      // Update only the pipeline_stage - don't change status or visibility
+      // Build update data
+      const updateData: any = { pipeline_stage: newStage };
+      
+      // Append closer notes if provided
+      if (closerNotes.trim()) {
+        const timestamp = format(new Date(), "MMM d, h:mm a");
+        const existingNotes = appointment.closer_notes || "";
+        updateData.closer_notes = existingNotes 
+          ? `${existingNotes}\n\n[${timestamp}] ${closerNotes.trim()}`
+          : `[${timestamp}] ${closerNotes.trim()}`;
+      }
+
+      // Update the appointment
       const { error } = await supabase
         .from("appointments")
-        .update({ pipeline_stage: newStage })
+        .update(updateData)
         .eq("id", appointmentId);
 
       if (error) throw error;
@@ -591,7 +633,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
         actor_id: user?.id,
         actor_name: profile?.full_name || 'Unknown',
         action_type: 'Stage Changed',
-        note: `Moved from ${appointment.pipeline_stage || 'unknown'} to ${newStage}`
+        note: `Moved from ${appointment.pipeline_stage || 'unknown'} to ${newStage}${closerNotes.trim() ? ' - Note: ' + closerNotes.trim() : ''}`
       });
 
       showUndoToast(`Moved ${appointment.lead_name} to ${newStage}`);
@@ -1632,6 +1674,17 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           onOpenChange={(open) => !open && setDepositDialog(null)}
           onConfirm={handleDepositConfirm}
           dealName={depositDialog.dealName}
+        />
+      )}
+
+      {pipelineMoveDialog && (
+        <PipelineMoveDialog
+          open={pipelineMoveDialog.open}
+          onOpenChange={(open) => !open && setPipelineMoveDialog(null)}
+          leadName={pipelineMoveDialog.dealName}
+          fromStage={pipelineMoveDialog.fromStage}
+          toStage={pipelineMoveDialog.toStage}
+          onConfirm={handlePipelineMoveConfirm}
         />
       )}
     </div>

@@ -4,9 +4,10 @@ import { Card } from "@/components/ui/card";
 import { formatDateTimeWithTimezone } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Mail, User, Clock, MessageSquare, History, ArrowRight, AlertTriangle, RefreshCw, PenLine, Send, X } from "lucide-react";
+import { Calendar, Mail, User, Clock, History, ArrowRight, AlertTriangle, RefreshCw, PenLine, Send, X } from "lucide-react";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import { RescheduleHistory } from "./RescheduleHistory";
+import { CollapsibleNotes } from "./CollapsibleNotes";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -37,6 +38,7 @@ interface AppointmentCardProps {
     reschedule_count?: number;
     pipeline_stage?: string | null;
     retarget_date?: string | null;
+    closer_notes?: string | null;
   };
   teamId?: string;
   onUpdateStatus?: (id: string, status: string) => void;
@@ -290,14 +292,17 @@ export function AppointmentCard({
           )}
         </div>
 
-        {appointment.setter_notes && (
-          <div className="p-3 bg-chart-2/10 border border-chart-2/30 rounded-md">
-            <div className="flex items-start gap-2">
-              <MessageSquare className="w-4 h-4 text-chart-2 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-foreground whitespace-pre-line">{appointment.setter_notes}</p>
-            </div>
-          </div>
-        )}
+        {/* Setter & Closer Notes - Collapsible */}
+        <CollapsibleNotes 
+          title="Setter Notes" 
+          notes={appointment.setter_notes} 
+          variant="setter" 
+        />
+        <CollapsibleNotes 
+          title="Closer Notes" 
+          notes={appointment.closer_notes} 
+          variant="closer" 
+        />
 
         {/* Add Update Section */}
         {showAddUpdate && (

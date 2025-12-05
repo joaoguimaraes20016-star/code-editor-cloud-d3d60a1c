@@ -12,7 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, MoreVertical, Calendar, MessageSquare, Undo2, History, ArrowRight, AlertTriangle, RefreshCw, StickyNote } from "lucide-react";
+import { GripVertical, MoreVertical, Calendar, MessageSquare, Undo2, History, ArrowRight, AlertTriangle, RefreshCw } from "lucide-react";
+import { CollapsibleNotes } from "./CollapsibleNotes";
 import { differenceInDays, format, parseISO } from "date-fns";
 import { formatDateTimeWithTimezone } from "@/lib/utils";
 import { DealAvatar } from "./DealAvatar";
@@ -40,6 +41,7 @@ interface DealCardProps {
     retarget_date?: string | null;
     closer_id?: string | null;
     setter_notes?: string | null;
+    closer_notes?: string | null;
   };
   confirmationTask?: {
     completed_confirmations: number;
@@ -421,21 +423,17 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
             )}
           </div>
 
-          {/* Setter Notes - Prominent Display */}
-          {appointment.setter_notes && (
-            <div className="p-2 sm:p-3 rounded-md sm:rounded-lg bg-gradient-to-r from-chart-4/20 via-chart-4/10 to-transparent border border-chart-4/30 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-1 h-full bg-chart-4" />
-              <div className="flex items-start gap-1.5 sm:gap-2">
-                <StickyNote className="h-3 w-3 sm:h-4 sm:w-4 text-chart-4 flex-shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <span className="text-[8px] sm:text-[10px] text-chart-4 font-bold uppercase tracking-wider block mb-0.5">Setter Notes</span>
-                  <p className="text-[10px] sm:text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
-                    {appointment.setter_notes}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Setter & Closer Notes - Collapsible */}
+          <CollapsibleNotes 
+            title="Setter Notes" 
+            notes={appointment.setter_notes} 
+            variant="setter" 
+          />
+          <CollapsibleNotes 
+            title="Closer Notes" 
+            notes={appointment.closer_notes} 
+            variant="closer" 
+          />
 
           {/* Double Book Warning (reschedule type) */}
           {appointment.rebooking_type === 'reschedule' && appointment.original_appointment_id && (
