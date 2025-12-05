@@ -83,14 +83,15 @@ export function EODReportsHub({ teamId }: EODReportsHubProps) {
 
       if (!profiles) return;
 
-      // Load overdue tasks only (tasks where due_at is in the past)
+      // Load overdue tasks - only count if appointment hasn't passed yet
       const now = new Date();
       const { data: overdueTasks } = await supabase
         .from('confirmation_tasks')
         .select('*, appointment:appointments(*)')
         .eq('team_id', teamId)
         .eq('status', 'pending')
-        .lt('due_at', now.toISOString());
+        .lt('due_at', now.toISOString())
+        .gte('appointment.start_at_utc', now.toISOString()); // Only future appointments
 
       // Build stats for each member
       const stats: TeamMemberStats[] = profiles.map((profile) => {

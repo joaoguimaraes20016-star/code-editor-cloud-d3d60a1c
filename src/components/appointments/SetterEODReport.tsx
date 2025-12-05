@@ -108,13 +108,14 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
           .lte('completed_at', endDate.toISOString())
           .order('completed_at', { ascending: false }),
         
-        // Load overdue tasks (where due_at is in the past)
+        // Load overdue tasks (where due_at is in the past BUT appointment is still upcoming)
         supabase
           .from('confirmation_tasks')
           .select('*, appointment:appointments(*)')
           .eq('assigned_to', userId)
           .eq('status', 'pending')
-          .lt('due_at', new Date().toISOString()),
+          .lt('due_at', new Date().toISOString())
+          .gte('appointment.start_at_utc', new Date().toISOString()),
         
         // Load last activity
         supabase
@@ -398,6 +399,51 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
             </CardContent>
           </Card>
         </div>
+
+        {/* Overdue Tasks Details */}
+        {overdueTasks.length > 0 && (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                Overdue Tasks - Action Required
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {overdueTasks.slice(0, 10).map((task) => {
+                  const dueAt = task.due_at ? new Date(task.due_at) : null;
+                  const aptTime = task.appointment?.start_at_utc ? new Date(task.appointment.start_at_utc) : null;
+                  const hoursOverdue = dueAt ? Math.round((Date.now() - dueAt.getTime()) / (1000 * 60 * 60)) : 0;
+                  
+                  return (
+                    <div key={task.id} className="flex items-start gap-3 p-2 rounded-lg bg-background/50 border border-destructive/20">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{task.appointment?.lead_name || 'Unknown Lead'}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Badge variant="outline" className="text-destructive border-destructive/30">
+                            {hoursOverdue}h overdue
+                          </Badge>
+                          <span>Due: {dueAt ? format(dueAt, 'MMM d, h:mm a') : 'N/A'}</span>
+                        </div>
+                        {aptTime && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Appointment: {format(aptTime, 'MMM d, h:mm a')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {overdueTasks.length > 10 && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    + {overdueTasks.length - 10} more overdue tasks
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Activity Timeline */}
         <Card>

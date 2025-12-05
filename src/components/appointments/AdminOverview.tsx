@@ -103,12 +103,13 @@ export function AdminOverview({ teamId }: AdminOverviewProps) {
     const sevenDaysFromNow = new Date(today);
     sevenDaysFromNow.setDate(today.getDate() + 7);
 
-    // Load confirmation tasks with assigned user's role
+    // Load confirmation tasks with assigned user's role - include appointment data to filter stale tasks
     const { data: tasks } = await supabase
       .from('confirmation_tasks')
-      .select('*, assigned_to, due_at')
+      .select('*, assigned_to, due_at, appointment:appointments(start_at_utc)')
       .eq('team_id', teamId)
-      .eq('status', 'pending');
+      .eq('status', 'pending')
+      .gte('appointment.start_at_utc', now.toISOString()); // Only for upcoming appointments
 
     // Get team members with roles to determine if assignee is setter or closer
     const { data: teamMembers } = await supabase

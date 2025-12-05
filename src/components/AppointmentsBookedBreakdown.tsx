@@ -164,7 +164,7 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
       .select('*')
       .eq('team_id', teamId);
 
-    // Load pending tasks - use due_at for overdue calculation
+    // Load pending tasks - only for upcoming appointments, use due_at for overdue calculation
     const { data: tasks } = await supabase
       .from('confirmation_tasks')
       .select(`
@@ -174,6 +174,7 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
       .eq('team_id', teamId)
       .eq('status', 'pending')
       .not('assigned_to', 'is', null)
+      .gte('appointments.start_at_utc', now.toISOString()) // Only for upcoming appointments
       .order('due_at', { ascending: true });
 
     // Load all appointments for accountability metrics
