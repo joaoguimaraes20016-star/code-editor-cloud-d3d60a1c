@@ -577,6 +577,23 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
       if (error) throw error;
 
+      // Log activity for pipeline stage change
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id || '')
+        .maybeSingle();
+      
+      await supabase.from('activity_logs').insert({
+        team_id: teamId,
+        appointment_id: appointmentId,
+        actor_id: user?.id,
+        actor_name: profile?.full_name || 'Unknown',
+        action_type: 'Stage Changed',
+        note: `Moved from ${appointment.pipeline_stage || 'unknown'} to ${newStage}`
+      });
+
       showUndoToast(`Moved ${appointment.lead_name} to ${newStage}`);
     } catch (error) {
       console.error("Error updating deal stage:", error);
@@ -624,6 +641,23 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
         throw error;
       }
       console.log('[STAGE-MOVE] ✓ Appointment updated successfully');
+
+      // Log activity for pipeline stage change
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id || '')
+        .maybeSingle();
+      
+      await supabase.from('activity_logs').insert({
+        team_id: appointment.team_id,
+        appointment_id: appointmentId,
+        actor_id: user?.id,
+        actor_name: profile?.full_name || 'Unknown',
+        action_type: 'Stage Changed',
+        note: `Moved from ${appointment.pipeline_stage || 'unknown'} to ${newStageId}`
+      });
 
       // Create follow-up or reschedule task if needed
       if (additionalData?.rescheduleDate) {

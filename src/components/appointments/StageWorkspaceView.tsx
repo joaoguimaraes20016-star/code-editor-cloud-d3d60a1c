@@ -83,6 +83,7 @@ export function StageWorkspaceView({
   };
 
   const handleConfirm = async (id: string) => {
+    const appointment = appointments.find(apt => apt.id === id);
     try {
       const { error } = await supabase
         .from('appointments')
@@ -90,6 +91,24 @@ export function StageWorkspaceView({
         .eq('id', id);
 
       if (error) throw error;
+      
+      // Log activity
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id || '')
+        .maybeSingle();
+      
+      await supabase.from('activity_logs').insert({
+        team_id: teamId,
+        appointment_id: id,
+        actor_id: user?.id,
+        actor_name: profile?.full_name || 'Unknown',
+        action_type: 'Stage Changed',
+        note: `Confirmed - moved from ${appointment?.pipeline_stage || stageName} to booked`
+      });
+
       toast.success('Appointment confirmed');
       loadStageAppointments();
     } catch (error) {
@@ -135,6 +154,7 @@ export function StageWorkspaceView({
   };
 
   const handleDisqualify = async (id: string) => {
+    const appointment = appointments.find(apt => apt.id === id);
     try {
       const { error } = await supabase
         .from('appointments')
@@ -142,6 +162,23 @@ export function StageWorkspaceView({
         .eq('id', id);
 
       if (error) throw error;
+
+      // Log activity
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id || '')
+        .maybeSingle();
+      
+      await supabase.from('activity_logs').insert({
+        team_id: teamId,
+        appointment_id: id,
+        actor_id: user?.id,
+        actor_name: profile?.full_name || 'Unknown',
+        action_type: 'Stage Changed',
+        note: `Disqualified - moved from ${appointment?.pipeline_stage || stageName} to disqualified`
+      });
 
       // Cleanup confirmation tasks
       await supabase.rpc('cleanup_confirmation_tasks', {

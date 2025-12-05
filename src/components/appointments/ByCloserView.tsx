@@ -265,6 +265,23 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
 
       if (error) throw error;
 
+      // Log activity for pipeline stage change
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id || '')
+        .maybeSingle();
+      
+      await supabase.from('activity_logs').insert({
+        team_id: teamId,
+        appointment_id: appointmentId,
+        actor_id: user?.id,
+        actor_name: profile?.full_name || 'Unknown',
+        action_type: 'Stage Changed',
+        note: `Moved from ${appointment.pipeline_stage || 'unknown'} to ${targetStage?.stage_label || targetStageId}`
+      });
+
       const stageName = targetStage?.stage_label || targetStageId;
       showUndoToast(`Moved ${appointment.lead_name} to ${stageName}`);
       
@@ -301,6 +318,23 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
         .eq("id", appointmentId);
 
       if (error) throw error;
+
+      // Log activity for pipeline stage change
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id || '')
+        .maybeSingle();
+      
+      await supabase.from('activity_logs').insert({
+        team_id: teamId,
+        appointment_id: appointmentId,
+        actor_id: user?.id,
+        actor_name: profile?.full_name || 'Unknown',
+        action_type: 'Stage Changed',
+        note: `Moved from ${appointment.pipeline_stage || 'unknown'} to ${newStageId}`
+      });
 
       // Cleanup confirmation tasks for terminal stages
       const terminalStages = ['rescheduled', 'cancelled', 'no_show', 'won', 'closed', 'lost', 'disqualified'];
