@@ -63,6 +63,7 @@ interface Appointment {
   team_id: string;
   event_type_name: string | null;
   updated_at: string;
+  created_at: string | null;
   pipeline_stage: string | null;
   status: string | null;
   reschedule_url: string | null;
@@ -1426,14 +1427,43 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
             </div>
           </div>
         </div>
-        <Button 
-          onClick={() => setManagerOpen(true)} 
-          variant="outline" 
-          className="whitespace-nowrap border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
-        >
-          <Settings className="h-4 w-4 mr-2" />
-          Manage Pipeline
-        </Button>
+      <div className="flex items-center gap-3">
+          {/* Calls Booked Metric */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
+            <Calendar className="h-4 w-4 text-primary" />
+            <div className="text-sm">
+              <span className="text-muted-foreground">Booked: </span>
+              <span className="font-semibold text-primary">
+                {(() => {
+                  const now = new Date();
+                  const todayStart = startOfDay(now);
+                  const todayEnd = endOfDay(now);
+                  
+                  // If date filter is set, use that; otherwise use today
+                  const filterStart = dateFilter.from ? startOfDay(dateFilter.from) : todayStart;
+                  const filterEnd = dateFilter.to ? endOfDay(dateFilter.to) : (dateFilter.from ? endOfDay(dateFilter.from) : todayEnd);
+                  
+                  return appointments.filter(apt => {
+                    if (!apt.created_at) return false;
+                    const createdAt = new Date(apt.created_at);
+                    return isWithinInterval(createdAt, { start: filterStart, end: filterEnd });
+                  }).length;
+                })()}
+              </span>
+              <span className="text-xs text-muted-foreground ml-1">
+                ({dateFilter.from ? format(dateFilter.from, 'MMM d') : 'Today'}{dateFilter.to && dateFilter.to.getTime() !== dateFilter.from?.getTime() ? ` - ${format(dateFilter.to, 'MMM d')}` : ''})
+              </span>
+            </div>
+          </div>
+          <Button 
+            onClick={() => setManagerOpen(true)} 
+            variant="outline" 
+            className="whitespace-nowrap border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Manage Pipeline
+          </Button>
+        </div>
       </div>
 
       {/* Mobile View */}
