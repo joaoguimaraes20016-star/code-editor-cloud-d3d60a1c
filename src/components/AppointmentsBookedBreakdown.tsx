@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, UserCheck, Calendar, CalendarDays, CalendarClock, PhoneCall, CheckCircle2, TrendingUp, DollarSign, Activity, ListTodo, Clock, AlertCircle, FileText, AlertTriangle, ChevronDown, UserCog } from "lucide-react";
+import { User, UserCheck, Calendar, CalendarDays, CalendarClock, PhoneCall, CheckCircle2, TrendingUp, DollarSign, Activity, ListTodo, Clock, AlertCircle, FileText, AlertTriangle, ChevronDown, UserCog, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { startOfMonth, startOfWeek, startOfDay, endOfDay, format, subHours } from "date-fns";
+import { startOfMonth, startOfWeek, startOfDay, endOfDay, format, subHours, formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -77,6 +77,7 @@ interface Task {
   due_at?: string;
   follow_up_date?: string;
   reschedule_date?: string;
+  follow_up_reason?: string;
   appointments?: {
     lead_name: string;
     start_at_utc: string;
@@ -131,6 +132,21 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
 
   useEffect(() => {
     loadAppointmentStats();
+
+    // Real-time subscription for appointment changes
+    const channel = supabase
+      .channel(`appointments-breakdown-${teamId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `team_id=eq.${teamId}` }, () => {
+        loadAppointmentStats();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'confirmation_tasks', filter: `team_id=eq.${teamId}` }, () => {
+        loadAppointmentStats();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [teamId]);
 
   // Helper function to load activity and task data for team members
@@ -706,6 +722,61 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
     setReassignDialogOpen(true);
   };
 
+  // Admin functions for managing overdue tasks
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('confirmation_tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+      toast.success('Task deleted');
+      loadAppointmentStats();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error('Failed to delete task');
+    }
+  };
+
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('confirmation_tasks')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      toast.success('Task marked as completed');
+      loadAppointmentStats();
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast.error('Failed to complete task');
+    }
+  };
+
+  const handleCancelTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('confirmation_tasks')
+        .update({
+          status: 'cancelled',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      toast.success('Task cancelled');
+      loadAppointmentStats();
+    } catch (error) {
+      console.error('Error cancelling task:', error);
+      toast.error('Failed to cancel task');
+    }
+  };
+
   const renderSetterCard = (member: TeamMemberSetterStats) => {
     const isExpanded = expandedMembers.has(member.id);
     const timeFilter = memberTimeFilters[member.id] || 'today';
@@ -855,32 +926,95 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-2">
                     <div className="space-y-2">
-                      {member.accountability.overdueTasks.map(task => (
-                        <div key={task.id} className="p-3 rounded-lg bg-destructive/5 border border-destructive/10">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="destructive" className="text-xs">{task.task_type.replace('_', ' ')}</Badge>
-                              <div className="flex items-center gap-1 text-xs text-destructive">
-                                <Clock className="h-3 w-3" />
-                                {task.follow_up_date && format(new Date(task.follow_up_date), 'MMM d')}
-                                {task.reschedule_date && format(new Date(task.reschedule_date), 'MMM d')}
+                      {member.accountability.overdueTasks.map(task => {
+                        const hoursOverdue = task.due_at 
+                          ? Math.floor((Date.now() - new Date(task.due_at).getTime()) / (1000 * 60 * 60))
+                          : 0;
+                        const appointmentDate = task.appointments?.start_at_utc 
+                          ? new Date(task.appointments.start_at_utc)
+                          : null;
+                        
+                        return (
+                          <div key={task.id} className="p-3 rounded-lg bg-destructive/5 border border-destructive/10">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="destructive" className="text-xs">{task.task_type.replace('_', ' ')}</Badge>
+                                <Badge variant="outline" className="text-xs text-destructive border-destructive/30">
+                                  {hoursOverdue}h overdue
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-100"
+                                  title="Mark Complete"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCompleteTask(task.id);
+                                  }}
+                                >
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-100"
+                                  title="Cancel Task"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCancelTask(task.id);
+                                  }}
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  title="Delete Task"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteTask(task.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0"
+                                  title="Reassign"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReassign(task.appointments);
+                                  }}
+                                >
+                                  <UserCog className="h-3.5 w-3.5" />
+                                </Button>
                               </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReassign(task.appointments);
-                              }}
-                            >
-                              <UserCog className="h-3.5 w-3.5" />
-                            </Button>
+                            <p className="font-medium">{task.appointments?.lead_name || 'Unknown Lead'}</p>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                              {task.due_at && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Due: {format(new Date(task.due_at), 'MMM d, h:mm a')}
+                                </span>
+                              )}
+                              {appointmentDate && (
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  Appt: {format(appointmentDate, 'MMM d, h:mm a')}
+                                </span>
+                              )}
+                            </div>
+                            {task.follow_up_reason && (
+                              <p className="text-xs text-muted-foreground mt-1">Reason: {task.follow_up_reason}</p>
+                            )}
                           </div>
-                          <p className="font-medium">{task.appointments?.lead_name || 'Unknown Lead'}</p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
