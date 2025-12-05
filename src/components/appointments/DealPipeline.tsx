@@ -1424,21 +1424,6 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                   </SelectContent>
                 </Select>
               </div>
-              {/* Calls Booked Metric - inline with filters */}
-              <span className="text-sm text-muted-foreground whitespace-nowrap hidden sm:inline">
-                <span className="font-semibold text-primary">
-                  {(() => {
-                    const now = new Date();
-                    const todayStart = startOfDay(now);
-                    const todayEnd = endOfDay(now);
-                    return appointments.filter(apt => {
-                      if (!apt.created_at) return false;
-                      const createdAt = new Date(apt.created_at);
-                      return isWithinInterval(createdAt, { start: todayStart, end: todayEnd });
-                    }).length;
-                  })()}
-                </span> booked today
-              </span>
             </div>
           </div>
         </div>
@@ -1485,7 +1470,23 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                     className="p-4 border-b bg-primary/10 border-b-primary"
                   >
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold">Appointments Booked</h3>
+                      <div>
+                        <h3 className="font-semibold">Appointments Booked</h3>
+                        <span className="text-xs text-muted-foreground">
+                          <span className="text-primary font-medium">
+                            {(() => {
+                              const now = new Date();
+                              const todayStart = startOfDay(now);
+                              const todayEnd = endOfDay(now);
+                              return appointments.filter(apt => {
+                                if (!apt.created_at) return false;
+                                const createdAt = new Date(apt.created_at);
+                                return isWithinInterval(createdAt, { start: todayStart, end: todayEnd });
+                              }).length;
+                            })()}
+                          </span> booked today
+                        </span>
+                      </div>
                       <Badge variant="secondary">
                         {dealsByStage['appointments_booked']?.length || 0}
                       </Badge>
