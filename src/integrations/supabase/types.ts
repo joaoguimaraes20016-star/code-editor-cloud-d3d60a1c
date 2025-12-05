@@ -56,6 +56,7 @@ export type Database = {
           cc_collected: number | null
           closer_id: string | null
           closer_name: string | null
+          closer_notes: string | null
           created_at: string | null
           event_type_name: string | null
           event_type_uri: string | null
@@ -96,6 +97,7 @@ export type Database = {
           cc_collected?: number | null
           closer_id?: string | null
           closer_name?: string | null
+          closer_notes?: string | null
           created_at?: string | null
           event_type_name?: string | null
           event_type_uri?: string | null
@@ -136,6 +138,7 @@ export type Database = {
           cc_collected?: number | null
           closer_id?: string | null
           closer_name?: string | null
+          closer_notes?: string | null
           created_at?: string | null
           event_type_name?: string | null
           event_type_uri?: string | null
@@ -1720,6 +1723,7 @@ export type Database = {
           cc_collected: number | null
           closer_id: string | null
           closer_name: string | null
+          closer_notes: string | null
           created_at: string | null
           event_type_name: string | null
           event_type_uri: string | null
