@@ -129,6 +129,20 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
   const [memberTimeFilters, setMemberTimeFilters] = useState<Record<string, 'today' | 'week' | 'month' | 'total'>>({});
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<{
+    dateBoundaries: { now: string; monthStart: string; weekStart: string; todayStart: string; todayEnd: string } | null;
+    bookingCodeMap: Record<string, string>;
+    setterBookingMatches: Array<{ setterName: string; setterId: string; aptBookingCode: string | null; memberBookingCode: string | null; hasCalendlyUri: boolean; matches: boolean; leadName: string; createdAt: string }>;
+    totalAppointments: number;
+  }>({
+    dateBoundaries: null,
+    bookingCodeMap: {},
+    setterBookingMatches: [],
+    totalAppointments: 0
+  });
+  const [staleTasks, setStaleTasks] = useState<Array<{ id: string; leadName: string; appointmentDate: string; taskType: string }>>([]);
+  const [cleaningUp, setCleaningUp] = useState(false);
 
   useEffect(() => {
     loadAppointmentStats();
@@ -314,6 +328,15 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
       const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), weekStartDay, 0, 0, 0, 0));
       const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
       const todayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+      
+      // Store date boundaries for debug panel
+      const dateBoundaries = {
+        now: now.toISOString(),
+        monthStart: monthStart.toISOString(),
+        weekStart: weekStart.toISOString(),
+        todayStart: todayStart.toISOString(),
+        todayEnd: todayEnd.toISOString()
+      };
 
       // Fetch all appointments for this team
       const { data: appointments, error } = await supabase
@@ -336,6 +359,51 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
           bookingCodeMap.set(tm.user_id, tm.booking_code);
         }
       });
+      
+      // Build debug info for booking code matches
+      const setterBookingMatches: Array<{ setterName: string; setterId: string; aptBookingCode: string | null; memberBookingCode: string | null; hasCalendlyUri: boolean; matches: boolean; leadName: string; createdAt: string }> = [];
+      appointments?.filter(apt => apt.setter_id && apt.created_at >= weekStart.toISOString()).forEach(apt => {
+        const memberBookingCode = bookingCodeMap.get(apt.setter_id) || null;
+        const matches = !!memberBookingCode && apt.booking_code === memberBookingCode && apt.calendly_invitee_uri != null;
+        setterBookingMatches.push({
+          setterName: apt.setter_name || 'Unknown',
+          setterId: apt.setter_id,
+          aptBookingCode: apt.booking_code,
+          memberBookingCode,
+          hasCalendlyUri: !!apt.calendly_invitee_uri,
+          matches,
+          leadName: apt.lead_name,
+          createdAt: apt.created_at
+        });
+      });
+      
+      // Update debug info state
+      setDebugInfo({
+        dateBoundaries,
+        bookingCodeMap: Object.fromEntries(bookingCodeMap),
+        setterBookingMatches,
+        totalAppointments: appointments?.length || 0
+      });
+      
+      // Load stale tasks (pending tasks for past appointments)
+      const { data: staleTasksData } = await supabase
+        .from('confirmation_tasks')
+        .select(`
+          id,
+          task_type,
+          appointments!inner(lead_name, start_at_utc, team_id)
+        `)
+        .eq('team_id', teamId)
+        .eq('status', 'pending')
+        .lt('appointments.start_at_utc', now.toISOString())
+        .eq('appointments.team_id', teamId);
+      
+      setStaleTasks(staleTasksData?.map(t => ({
+        id: t.id,
+        leadName: (t.appointments as any)?.lead_name || 'Unknown',
+        appointmentDate: (t.appointments as any)?.start_at_utc || '',
+        taskType: t.task_type
+      })) || []);
 
       // Fetch all completed confirmation tasks to track confirmed appointments
       const { data: confirmedTasks, error: tasksError } = await supabase
@@ -777,6 +845,35 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
     } catch (error) {
       console.error('Error cancelling task:', error);
       toast.error('Failed to cancel task');
+    }
+  };
+
+  // Bulk cleanup function for stale tasks
+  const handleBulkCleanupStaleTasks = async () => {
+    if (staleTasks.length === 0) {
+      toast.info('No stale tasks to clean up');
+      return;
+    }
+    
+    setCleaningUp(true);
+    try {
+      const taskIds = staleTasks.map(t => t.id);
+      const { error } = await supabase
+        .from('confirmation_tasks')
+        .update({
+          status: 'cancelled',
+          completed_at: new Date().toISOString()
+        })
+        .in('id', taskIds);
+
+      if (error) throw error;
+      toast.success(`Cleaned up ${staleTasks.length} stale tasks`);
+      loadAppointmentStats();
+    } catch (error) {
+      console.error('Error cleaning up stale tasks:', error);
+      toast.error('Failed to clean up stale tasks');
+    } finally {
+      setCleaningUp(false);
     }
   };
 
@@ -1459,9 +1556,103 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Team Performance Metrics</CardTitle>
+        <div className="flex items-center gap-2">
+          {staleTasks.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkCleanupStaleTasks}
+              disabled={cleaningUp}
+              className="text-amber-600 border-amber-600/50 hover:bg-amber-600/10"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              {cleaningUp ? 'Cleaning...' : `Clean ${staleTasks.length} Stale Tasks`}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDebugPanel(!showDebugPanel)}
+          >
+            {showDebugPanel ? 'Hide Debug' : 'Debug'}
+          </Button>
+        </div>
       </CardHeader>
+      
+      {/* Debug Panel */}
+      {showDebugPanel && (
+        <CardContent className="border-t bg-muted/30">
+          <div className="space-y-4 text-xs font-mono">
+            <div>
+              <h4 className="font-semibold text-sm mb-2">Date Boundaries (UTC)</h4>
+              <div className="grid grid-cols-2 gap-2 bg-background p-2 rounded">
+                <div>Now: {debugInfo.dateBoundaries?.now}</div>
+                <div>Week Start: {debugInfo.dateBoundaries?.weekStart}</div>
+                <div>Month Start: {debugInfo.dateBoundaries?.monthStart}</div>
+                <div>Today Start: {debugInfo.dateBoundaries?.todayStart}</div>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold text-sm mb-2">Booking Code Map ({Object.keys(debugInfo.bookingCodeMap).length} members)</h4>
+              <div className="bg-background p-2 rounded max-h-32 overflow-auto">
+                {Object.entries(debugInfo.bookingCodeMap).map(([userId, code]) => (
+                  <div key={userId} className="flex justify-between">
+                    <span className="text-muted-foreground">{userId.slice(0, 8)}...</span>
+                    <span className="text-primary">{code}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold text-sm mb-2">Setter Booking Matches This Week ({debugInfo.setterBookingMatches.length})</h4>
+              <div className="bg-background p-2 rounded max-h-48 overflow-auto space-y-1">
+                {debugInfo.setterBookingMatches.map((match, i) => (
+                  <div key={i} className={`p-1 rounded ${match.matches ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                    <div className="flex justify-between">
+                      <span>{match.setterName} - {match.leadName}</span>
+                      <Badge variant={match.matches ? 'default' : 'destructive'} className="text-xs">
+                        {match.matches ? 'MATCH' : 'NO MATCH'}
+                      </Badge>
+                    </div>
+                    <div className="text-muted-foreground">
+                      apt_code: {match.aptBookingCode || 'null'} | 
+                      member_code: {match.memberBookingCode || 'null'} | 
+                      has_uri: {match.hasCalendlyUri ? 'yes' : 'no'} | 
+                      created: {match.createdAt?.slice(0, 10)}
+                    </div>
+                  </div>
+                ))}
+                {debugInfo.setterBookingMatches.length === 0 && (
+                  <div className="text-muted-foreground">No appointments with setters this week</div>
+                )}
+              </div>
+            </div>
+            
+            {staleTasks.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Stale Tasks (Past Appointments) - {staleTasks.length}</h4>
+                <div className="bg-background p-2 rounded max-h-32 overflow-auto space-y-1">
+                  {staleTasks.map(task => (
+                    <div key={task.id} className="flex justify-between items-center p-1 bg-amber-500/10 rounded">
+                      <span>{task.leadName} - {task.taskType}</span>
+                      <span className="text-muted-foreground">{format(new Date(task.appointmentDate), 'MMM d, h:mm a')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="text-muted-foreground">
+              Total appointments: {debugInfo.totalAppointments}
+            </div>
+          </div>
+        </CardContent>
+      )}
+      
       <CardContent>
         <Tabs defaultValue="closers" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
