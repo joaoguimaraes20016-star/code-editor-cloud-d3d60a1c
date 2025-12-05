@@ -1429,32 +1429,66 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
         </div>
       <div className="flex items-center gap-3">
           {/* Calls Booked Metric */}
-          <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
-            <Calendar className="h-4 w-4 text-primary" />
-            <div className="text-sm">
-              <span className="text-muted-foreground">Booked: </span>
-              <span className="font-semibold text-primary">
-                {(() => {
-                  const now = new Date();
-                  const todayStart = startOfDay(now);
-                  const todayEnd = endOfDay(now);
-                  
-                  // If date filter is set, use that; otherwise use today
-                  const filterStart = dateFilter.from ? startOfDay(dateFilter.from) : todayStart;
-                  const filterEnd = dateFilter.to ? endOfDay(dateFilter.to) : (dateFilter.from ? endOfDay(dateFilter.from) : todayEnd);
-                  
-                  return appointments.filter(apt => {
-                    if (!apt.created_at) return false;
-                    const createdAt = new Date(apt.created_at);
-                    return isWithinInterval(createdAt, { start: filterStart, end: filterEnd });
-                  }).length;
-                })()}
-              </span>
-              <span className="text-xs text-muted-foreground ml-1">
-                ({dateFilter.from ? format(dateFilter.from, 'MMM d') : 'Today'}{dateFilter.to && dateFilter.to.getTime() !== dateFilter.from?.getTime() ? ` - ${format(dateFilter.to, 'MMM d')}` : ''})
-              </span>
-            </div>
-          </div>
+          {(() => {
+            const now = new Date();
+            const todayStart = startOfDay(now);
+            const todayEnd = endOfDay(now);
+            
+            // Count today's bookings
+            const todayCount = appointments.filter(apt => {
+              if (!apt.created_at) return false;
+              const createdAt = new Date(apt.created_at);
+              return isWithinInterval(createdAt, { start: todayStart, end: todayEnd });
+            }).length;
+            
+            // If date filter is set, calculate that range too
+            const hasCustomRange = dateFilter.from && (
+              startOfDay(dateFilter.from).getTime() !== todayStart.getTime() ||
+              (dateFilter.to && endOfDay(dateFilter.to).getTime() !== todayEnd.getTime())
+            );
+            
+            const rangeCount = hasCustomRange ? appointments.filter(apt => {
+              if (!apt.created_at) return false;
+              const createdAt = new Date(apt.created_at);
+              const filterStart = startOfDay(dateFilter.from!);
+              const filterEnd = dateFilter.to ? endOfDay(dateFilter.to) : endOfDay(dateFilter.from!);
+              return isWithinInterval(createdAt, { start: filterStart, end: filterEnd });
+            }).length : null;
+            
+            return (
+              <div className="flex items-center gap-2">
+                {/* Today's Count - Always Visible */}
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500/15 to-emerald-600/10 border border-emerald-500/30 rounded-xl shadow-sm">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/20">
+                    <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground font-medium">Today</span>
+                    <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400 leading-none">
+                      {todayCount}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Selected Range Count - Only if different from today */}
+                {hasCustomRange && rangeCount !== null && (
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500/15 to-blue-600/10 border border-blue-500/30 rounded-xl shadow-sm">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/20">
+                      <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {format(dateFilter.from!, 'MMM d')}{dateFilter.to && dateFilter.to.getTime() !== dateFilter.from?.getTime() ? ` - ${format(dateFilter.to, 'MMM d')}` : ''}
+                      </span>
+                      <span className="text-xl font-bold text-blue-600 dark:text-blue-400 leading-none">
+                        {rangeCount}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           <Button 
             onClick={() => setManagerOpen(true)} 
             variant="outline" 
