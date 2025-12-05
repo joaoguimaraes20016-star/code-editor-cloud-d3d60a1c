@@ -108,13 +108,13 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
           .lte('completed_at', endDate.toISOString())
           .order('completed_at', { ascending: false }),
         
-        // Load overdue tasks
+        // Load overdue tasks (where due_at is in the past)
         supabase
           .from('confirmation_tasks')
           .select('*, appointment:appointments(*)')
           .eq('assigned_to', userId)
           .eq('status', 'pending')
-          .lt('appointment.start_at_utc', new Date().toISOString()),
+          .lt('due_at', new Date().toISOString()),
         
         // Load last activity
         supabase
