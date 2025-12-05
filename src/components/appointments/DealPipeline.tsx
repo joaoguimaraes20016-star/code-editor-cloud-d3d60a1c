@@ -1457,34 +1457,18 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
             
             return (
               <div className="flex items-center gap-2">
-                {/* Today's Count - Always Visible */}
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500/15 to-emerald-600/10 border border-emerald-500/30 rounded-xl shadow-sm">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/20">
-                    <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground font-medium">Today</span>
-                    <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400 leading-none">
-                      {todayCount}
-                    </span>
-                  </div>
-                </div>
+                <Badge variant="secondary" className="px-3 py-1.5 text-sm bg-secondary border border-border">
+                  <span className="text-muted-foreground mr-1.5">Booked Today:</span>
+                  <span className="font-bold text-primary">{todayCount}</span>
+                </Badge>
                 
-                {/* Selected Range Count - Only if different from today */}
                 {hasCustomRange && rangeCount !== null && (
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500/15 to-blue-600/10 border border-blue-500/30 rounded-xl shadow-sm">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/20">
-                      <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground font-medium">
-                        {format(dateFilter.from!, 'MMM d')}{dateFilter.to && dateFilter.to.getTime() !== dateFilter.from?.getTime() ? ` - ${format(dateFilter.to, 'MMM d')}` : ''}
-                      </span>
-                      <span className="text-xl font-bold text-blue-600 dark:text-blue-400 leading-none">
-                        {rangeCount}
-                      </span>
-                    </div>
-                  </div>
+                  <Badge variant="outline" className="px-3 py-1.5 text-sm border-primary/30">
+                    <span className="text-muted-foreground mr-1.5">
+                      {format(dateFilter.from!, 'MMM d')}{dateFilter.to && dateFilter.to.getTime() !== dateFilter.from?.getTime() ? `-${format(dateFilter.to, 'MMM d')}` : ''}:
+                    </span>
+                    <span className="font-bold text-foreground">{rangeCount}</span>
+                  </Badge>
                 )}
               </div>
             );
