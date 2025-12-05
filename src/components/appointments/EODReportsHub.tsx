@@ -87,11 +87,12 @@ export function EODReportsHub({ teamId }: EODReportsHubProps) {
       const now = new Date();
       const { data: overdueTasks } = await supabase
         .from('confirmation_tasks')
-        .select('*, appointment:appointments(*)')
+        .select('*, appointment:appointments!inner(*)')
         .eq('team_id', teamId)
         .eq('status', 'pending')
         .lt('due_at', now.toISOString())
-        .gte('appointment.start_at_utc', now.toISOString()); // Only future appointments
+        .gte('appointment.start_at_utc', now.toISOString())
+        .eq('appointment.team_id', teamId); // Ensure appointment is also from this team
 
       // Build stats for each member
       const stats: TeamMemberStats[] = profiles.map((profile) => {

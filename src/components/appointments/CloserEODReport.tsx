@@ -109,15 +109,17 @@ export function CloserEODReport({ teamId, userId, userName, date }: CloserEODRep
           .lte('created_at', endDate.toISOString())
           .order('created_at', { ascending: false }),
         
-        // Load overdue follow-ups (only for upcoming appointments)
+        // Load overdue follow-ups (only for upcoming appointments) - filtered by team
         supabase
           .from('confirmation_tasks')
-          .select('*, appointment:appointments(*)')
+          .select('*, appointment:appointments!inner(*)')
+          .eq('team_id', teamId)
           .eq('assigned_to', userId)
           .eq('status', 'pending')
           .eq('task_type', 'follow_up')
           .lt('due_at', today.toISOString())
-          .gte('appointment.start_at_utc', new Date().toISOString()),
+          .gte('appointment.start_at_utc', new Date().toISOString())
+          .eq('appointment.team_id', teamId),
         
         // Load MRR follow-up tasks completed in period
         supabase

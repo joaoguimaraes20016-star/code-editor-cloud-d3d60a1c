@@ -106,10 +106,11 @@ export function AdminOverview({ teamId }: AdminOverviewProps) {
     // Load confirmation tasks with assigned user's role - include appointment data to filter stale tasks
     const { data: tasks } = await supabase
       .from('confirmation_tasks')
-      .select('*, assigned_to, due_at, appointment:appointments(start_at_utc)')
+      .select('*, assigned_to, due_at, appointment:appointments!inner(start_at_utc, team_id)')
       .eq('team_id', teamId)
       .eq('status', 'pending')
-      .gte('appointment.start_at_utc', now.toISOString()); // Only for upcoming appointments
+      .gte('appointment.start_at_utc', now.toISOString())
+      .eq('appointment.team_id', teamId); // Ensure appointment is also from this team
 
     // Get team members with roles to determine if assignee is setter or closer
     const { data: teamMembers } = await supabase

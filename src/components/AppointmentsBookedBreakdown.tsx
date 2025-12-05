@@ -169,12 +169,13 @@ export function AppointmentsBookedBreakdown({ teamId }: AppointmentsBookedBreakd
       .from('confirmation_tasks')
       .select(`
         *,
-        appointments!inner(lead_name, start_at_utc)
+        appointments!inner(lead_name, start_at_utc, team_id)
       `)
       .eq('team_id', teamId)
       .eq('status', 'pending')
       .not('assigned_to', 'is', null)
-      .gte('appointments.start_at_utc', now.toISOString()) // Only for upcoming appointments
+      .gte('appointments.start_at_utc', now.toISOString())
+      .eq('appointments.team_id', teamId) // Ensure appointment is also from this team
       .order('due_at', { ascending: true });
 
     // Load all appointments for accountability metrics

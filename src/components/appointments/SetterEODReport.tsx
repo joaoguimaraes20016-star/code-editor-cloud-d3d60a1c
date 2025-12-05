@@ -108,14 +108,16 @@ export function SetterEODReport({ teamId, userId, userName, date }: SetterEODRep
           .lte('completed_at', endDate.toISOString())
           .order('completed_at', { ascending: false }),
         
-        // Load overdue tasks (where due_at is in the past BUT appointment is still upcoming)
+        // Load overdue tasks (where due_at is in the past BUT appointment is still upcoming) - filtered by team
         supabase
           .from('confirmation_tasks')
-          .select('*, appointment:appointments(*)')
+          .select('*, appointment:appointments!inner(*)')
+          .eq('team_id', teamId)
           .eq('assigned_to', userId)
           .eq('status', 'pending')
           .lt('due_at', new Date().toISOString())
-          .gte('appointment.start_at_utc', new Date().toISOString()),
+          .gte('appointment.start_at_utc', new Date().toISOString())
+          .eq('appointment.team_id', teamId),
         
         // Load last activity
         supabase
