@@ -128,14 +128,35 @@ export function CalendlyConfig({
     return () => window.removeEventListener('message', handleMessage);
   }, [toast, onUpdate]);
 
+  // Load cached event types from localStorage first, then fetch from API only if cache is stale
   useEffect(() => {
     if (isConnected && currentAccessToken && currentOrgUri && !tokenValidationFailed && !tokenRefreshInProgress && !loadingEventTypes) {
+      const cacheKey = `calendly_event_types_${teamId}`;
+      const cached = localStorage.getItem(cacheKey);
+      
+      if (cached) {
+        try {
+          const { data, timestamp } = JSON.parse(cached);
+          const cacheAge = Date.now() - timestamp;
+          const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+          
+          if (cacheAge < CACHE_TTL && data.length > 0) {
+            console.log('Loading event types from cache');
+            setAvailableEventTypes(data);
+            return; // Don't fetch from API if cache is fresh
+          }
+        } catch (e) {
+          console.warn('Failed to parse cached event types');
+        }
+      }
+      
+      // Only fetch from API if no valid cache
       const timer = setTimeout(() => {
         fetchEventTypes();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [isConnected, currentAccessToken, currentOrgUri]);
+  }, [isConnected, currentAccessToken, currentOrgUri, teamId]);
 
   // Auto-migrate old URLs on mount
   useEffect(() => {
@@ -332,6 +353,13 @@ export function CalendlyConfig({
       const eventTypes = Array.from(allEventTypesMap.values());
       console.log(`Total unique event types found: ${eventTypes.length}`);
       console.log(`Round Robin events: ${eventTypes.filter(et => et.pooling_type).length}`);
+      
+      // Cache the event types in localStorage
+      const cacheKey = `calendly_event_types_${teamId}`;
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data: eventTypes,
+        timestamp: Date.now()
+      }));
       
       setAvailableEventTypes(eventTypes);
       setTokenValidationFailed(false);
