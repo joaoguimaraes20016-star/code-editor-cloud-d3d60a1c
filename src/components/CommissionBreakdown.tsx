@@ -393,9 +393,6 @@ export function CommissionBreakdown({ sales, teamId }: CommissionBreakdownProps)
                   </div>
                   <div>
                     <p className="font-semibold">{setter.setter_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      via {setter.booking_code}
-                    </p>
                   </div>
                 </div>
                 <div className="text-right">
