@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, MoreVertical, Calendar, MessageSquare, Undo2, History, ArrowRight, AlertTriangle, RefreshCw } from "lucide-react";
+import { GripVertical, MoreVertical, Calendar, MessageSquare, Undo2, History, ArrowRight, AlertTriangle, RefreshCw, Video, ExternalLink } from "lucide-react";
 import { CollapsibleNotes } from "./CollapsibleNotes";
 import { differenceInDays, format, parseISO } from "date-fns";
 import { formatDateTimeWithTimezone } from "@/lib/utils";
@@ -42,6 +42,7 @@ interface DealCardProps {
     closer_id?: string | null;
     setter_notes?: string | null;
     closer_notes?: string | null;
+    meeting_link?: string | null;
   };
   confirmationTask?: {
     completed_confirmations: number;
@@ -472,6 +473,24 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
               <Calendar className="h-2 w-2 sm:h-3 sm:w-3" />
               <span className="font-medium">{formatDateTimeWithTimezone(appointment.start_at_utc, "MMM d 'at' h:mm a")}</span>
             </div>
+            {/* Meeting Link */}
+            {(appointment as any).meeting_link && (
+              <a 
+                href={(appointment as any).meeting_link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-primary hover:text-primary/80 hover:underline transition-colors"
+              >
+                <Video className="h-2 w-2 sm:h-3 sm:w-3" />
+                <span className="font-medium">
+                  {(appointment as any).meeting_link.includes('zoom') ? 'Zoom' : 
+                   (appointment as any).meeting_link.includes('meet.google') ? 'Google Meet' : 
+                   (appointment as any).meeting_link.includes('teams') ? 'Teams' : 'Join Meeting'}
+                </span>
+                <ExternalLink className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+              </a>
+            )}
             <div className={`flex items-center gap-1 font-bold ${getDaysColor(daysInStage)}`}>
               <div className="h-1 w-1 sm:h-2 sm:w-2 rounded-full bg-current animate-pulse" />
               {daysInStage}d in stage

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTeamRole } from '@/hooks/useTeamRole';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import AssetUploadDialog from './AssetUploadDialog';
 import EditAssetDialog from './EditAssetDialog';
+import { SortableAssetList } from './SortableAssetList';
 
 interface TeamAsset {
   id: string;
@@ -20,6 +21,7 @@ interface TeamAsset {
   loom_url: string | null;
   external_url: string | null;
   created_at: string;
+  order_index?: number;
 }
 
 interface TeamAssetsProps {
@@ -154,6 +156,30 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
       window.open(asset.external_url, '_blank');
     }
   };
+
+  const handleReorder = useCallback(async (category: string, reorderedAssets: TeamAsset[]) => {
+    // Update local state immediately for responsiveness
+    setAssets(prev => {
+      const otherAssets = prev.filter(a => a.category !== category);
+      return [...otherAssets, ...reorderedAssets];
+    });
+
+    // Update order_index in database
+    try {
+      const updates = reorderedAssets.map((asset, index) => 
+        supabase
+          .from('team_assets')
+          .update({ order_index: index })
+          .eq('id', asset.id)
+      );
+      
+      await Promise.all(updates);
+    } catch (error) {
+      console.error('Error saving order:', error);
+      toast.error('Failed to save order');
+      loadAssets(); // Reload to restore original order
+    }
+  }, []);
 
   const handleStartEdit = () => {
     setEditedName(teamName);
@@ -315,60 +341,19 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                   Complete Offer
                 </h3>
               </div>
-              <div className="space-y-4">
-                {offerAssets.map((asset) => (
-                  <button
-                    key={asset.id}
-                    onClick={() => handleAssetClick(asset)}
-                    className="group w-full text-left px-4 py-4 sm:px-5 sm:py-5 md:px-6 md:py-5 lg:px-8 lg:py-6 rounded-xl bg-card/50 hover:bg-card border border-border/50 hover:border-primary/30 transition-all flex items-center justify-between hover:scale-[1.02] hover:shadow-lg"
-                  >
-                    <div className="flex items-center gap-6">
-                      <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                        {asset.loom_url ? (
-                          <Video className="h-7 w-7 text-primary" />
-                        ) : asset.external_url ? (
-                          <LinkIcon className="h-7 w-7 text-primary" />
-                        ) : (
-                          <FileText className="h-7 w-7 text-primary" />
-                        )}
-                      </div>
-                      <span className="text-base sm:text-lg md:text-xl font-medium text-primary group-hover:underline">
-                        {asset.title}
-                      </span>
-                    </div>
-                    {canManageAssets && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="hover:bg-primary/10 hover:text-primary h-10 w-10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingAsset(asset);
-                            setEditDialogOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-5 w-5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="hover:bg-destructive/10 hover:text-destructive h-10 w-10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(asset.id, asset.file_path);
-                          }}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    )}
-                  </button>
-                ))}
-                {offerAssets.length === 0 && canManageAssets && (
-                  <p className="text-base text-muted-foreground px-4">No assets yet. Click "Add Asset" above.</p>
-                )}
-              </div>
+              <SortableAssetList
+                assets={offerAssets}
+                canManage={canManageAssets}
+                colorClass="text-primary"
+                onReorder={(reordered) => handleReorder('offer', reordered)}
+                onEdit={(asset) => {
+                  setEditingAsset(asset);
+                  setEditDialogOpen(true);
+                }}
+                onDelete={handleDelete}
+                onClick={handleAssetClick}
+                emptyMessage="No assets yet. Click 'Add Asset' above."
+              />
             </div>
           </div>
         </div>
@@ -387,58 +372,19 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                 Scripts
               </h3>
             </div>
-            <div className="space-y-3">
-              {scriptAssets.map((asset) => (
-                <button
-                  key={asset.id}
-                  onClick={() => handleAssetClick(asset)}
-                  className="group w-full text-left px-4 py-3 sm:px-5 sm:py-4 md:px-6 md:py-4 rounded-xl hover:bg-muted/50 transition-all flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    {asset.loom_url ? (
-                      <Video className="h-6 w-6 text-blue-500" />
-                    ) : asset.external_url ? (
-                      <LinkIcon className="h-6 w-6 text-blue-500" />
-                    ) : (
-                      <FileText className="h-6 w-6 text-blue-500" />
-                    )}
-                    <span className="text-sm sm:text-base md:text-lg font-medium group-hover:text-primary group-hover:underline transition-colors">
-                      {asset.title}
-                    </span>
-                  </div>
-                  {canManageAssets && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 hover:bg-primary/10 hover:text-primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingAsset(asset);
-                          setEditDialogOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(asset.id, asset.file_path);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </button>
-              ))}
-              {scriptAssets.length === 0 && canManageAssets && (
-                <p className="text-base text-muted-foreground px-4">No scripts yet.</p>
-              )}
-            </div>
+            <SortableAssetList
+              assets={scriptAssets}
+              canManage={canManageAssets}
+              colorClass="text-blue-500"
+              onReorder={(reordered) => handleReorder('scripts', reordered)}
+              onEdit={(asset) => {
+                setEditingAsset(asset);
+                setEditDialogOpen(true);
+              }}
+              onDelete={handleDelete}
+              onClick={handleAssetClick}
+              emptyMessage="No scripts yet."
+            />
           </div>
         )}
 
@@ -453,58 +399,19 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                 Onboarding
               </h3>
             </div>
-            <div className="space-y-3">
-              {onboardingAssets.map((asset) => (
-                <button
-                  key={asset.id}
-                  onClick={() => handleAssetClick(asset)}
-                  className="group w-full text-left px-4 py-3 sm:px-5 sm:py-4 md:px-6 md:py-4 rounded-xl hover:bg-muted/50 transition-all flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    {asset.loom_url ? (
-                      <Video className="h-6 w-6 text-green-500" />
-                    ) : asset.external_url ? (
-                      <LinkIcon className="h-6 w-6 text-green-500" />
-                    ) : (
-                      <FileText className="h-6 w-6 text-green-500" />
-                    )}
-                    <span className="text-sm sm:text-base md:text-lg font-medium group-hover:text-primary group-hover:underline transition-colors">
-                      {asset.title}
-                    </span>
-                  </div>
-                  {canManageAssets && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 hover:bg-primary/10 hover:text-primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingAsset(asset);
-                          setEditDialogOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(asset.id, asset.file_path);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </button>
-              ))}
-              {onboardingAssets.length === 0 && canManageAssets && (
-                <p className="text-base text-muted-foreground px-4">No onboarding materials yet.</p>
-              )}
-            </div>
+            <SortableAssetList
+              assets={onboardingAssets}
+              canManage={canManageAssets}
+              colorClass="text-green-500"
+              onReorder={(reordered) => handleReorder('onboarding', reordered)}
+              onEdit={(asset) => {
+                setEditingAsset(asset);
+                setEditDialogOpen(true);
+              }}
+              onDelete={handleDelete}
+              onClick={handleAssetClick}
+              emptyMessage="No onboarding materials yet."
+            />
           </div>
         )}
 
@@ -519,58 +426,19 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                 Tracking Sheets
               </h3>
             </div>
-            <div className="space-y-3">
-              {trackingAssets.map((asset) => (
-                <button
-                  key={asset.id}
-                  onClick={() => handleAssetClick(asset)}
-                  className="group w-full text-left px-4 py-3 sm:px-5 sm:py-4 md:px-6 md:py-4 rounded-xl hover:bg-muted/50 transition-all flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    {asset.loom_url ? (
-                      <Video className="h-6 w-6 text-purple-500" />
-                    ) : asset.external_url ? (
-                      <LinkIcon className="h-6 w-6 text-purple-500" />
-                    ) : (
-                      <FileText className="h-6 w-6 text-purple-500" />
-                    )}
-                    <span className="text-sm sm:text-base md:text-lg font-medium group-hover:text-primary group-hover:underline transition-colors">
-                      {asset.title}
-                    </span>
-                  </div>
-                  {canManageAssets && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 hover:bg-primary/10 hover:text-primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingAsset(asset);
-                          setEditDialogOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(asset.id, asset.file_path);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </button>
-              ))}
-              {trackingAssets.length === 0 && canManageAssets && (
-                <p className="text-base text-muted-foreground px-4">No tracking sheets yet.</p>
-              )}
-            </div>
+            <SortableAssetList
+              assets={trackingAssets}
+              canManage={canManageAssets}
+              colorClass="text-purple-500"
+              onReorder={(reordered) => handleReorder('tracking', reordered)}
+              onEdit={(asset) => {
+                setEditingAsset(asset);
+                setEditDialogOpen(true);
+              }}
+              onDelete={handleDelete}
+              onClick={handleAssetClick}
+              emptyMessage="No tracking sheets yet."
+            />
           </div>
         )}
 
@@ -585,58 +453,19 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                 Training
               </h3>
             </div>
-            <div className="space-y-3">
-              {trainingAssets.map((asset) => (
-                <button
-                  key={asset.id}
-                  onClick={() => handleAssetClick(asset)}
-                  className="group w-full text-left px-4 py-3 sm:px-5 sm:py-4 md:px-6 md:py-4 rounded-xl hover:bg-muted/50 transition-all flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    {asset.loom_url ? (
-                      <Video className="h-6 w-6 text-orange-500" />
-                    ) : asset.external_url ? (
-                      <LinkIcon className="h-6 w-6 text-orange-500" />
-                    ) : (
-                      <FileText className="h-6 w-6 text-orange-500" />
-                    )}
-                    <span className="text-sm sm:text-base md:text-lg font-medium group-hover:text-primary group-hover:underline transition-colors">
-                      {asset.title}
-                    </span>
-                  </div>
-                  {canManageAssets && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 hover:bg-primary/10 hover:text-primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingAsset(asset);
-                          setEditDialogOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(asset.id, asset.file_path);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </button>
-              ))}
-              {trainingAssets.length === 0 && canManageAssets && (
-                <p className="text-base text-muted-foreground px-4">No training materials yet.</p>
-              )}
-            </div>
+            <SortableAssetList
+              assets={trainingAssets}
+              canManage={canManageAssets}
+              colorClass="text-orange-500"
+              onReorder={(reordered) => handleReorder('training', reordered)}
+              onEdit={(asset) => {
+                setEditingAsset(asset);
+                setEditDialogOpen(true);
+              }}
+              onDelete={handleDelete}
+              onClick={handleAssetClick}
+              emptyMessage="No training materials yet."
+            />
           </div>
         )}
       </div>

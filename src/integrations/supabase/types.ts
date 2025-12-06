@@ -64,6 +64,7 @@ export type Database = {
           lead_email: string
           lead_name: string
           lead_phone: string | null
+          meeting_link: string | null
           mrr_amount: number | null
           mrr_months: number | null
           original_appointment_id: string | null
@@ -105,6 +106,7 @@ export type Database = {
           lead_email: string
           lead_name: string
           lead_phone?: string | null
+          meeting_link?: string | null
           mrr_amount?: number | null
           mrr_months?: number | null
           original_appointment_id?: string | null
@@ -146,6 +148,7 @@ export type Database = {
           lead_email?: string
           lead_name?: string
           lead_phone?: string | null
+          meeting_link?: string | null
           mrr_amount?: number | null
           mrr_months?: number | null
           original_appointment_id?: string | null
@@ -1731,6 +1734,7 @@ export type Database = {
           lead_email: string
           lead_name: string
           lead_phone: string | null
+          meeting_link: string | null
           mrr_amount: number | null
           mrr_months: number | null
           original_appointment_id: string | null

@@ -495,6 +495,7 @@ serve(async (req) => {
       let rescheduleUrl = null;
       let cancelUrl = null;
       let calendlyInviteeUri = null;
+      let meetingLink = null;
       
       try {
         console.log('Attempting to fetch invitee details for auto-assignment and URLs');
@@ -524,6 +525,45 @@ serve(async (req) => {
             calendlyInviteeUri = resource?.uri || null;
             
             console.log('Extracted Calendly URLs:', { rescheduleUrl, cancelUrl, calendlyInviteeUri });
+            
+            // Also fetch the event details to get the meeting location/join URL
+            const eventDetailsResponse = await fetch(eventUri!, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (eventDetailsResponse.ok) {
+              const eventDetails = await eventDetailsResponse.json();
+              const location = eventDetails.resource?.location;
+              
+              console.log('Event location data:', JSON.stringify(location, null, 2));
+              
+              // Extract meeting link from various location types
+              if (location) {
+                if (location.join_url) {
+                  meetingLink = location.join_url;
+                  console.log('Found meeting join_url:', meetingLink);
+                } else if (location.type === 'zoom' && location.data?.join_url) {
+                  meetingLink = location.data.join_url;
+                  console.log('Found Zoom meeting link:', meetingLink);
+                } else if (location.type === 'google_meet' && location.join_url) {
+                  meetingLink = location.join_url;
+                  console.log('Found Google Meet link:', meetingLink);
+                } else if (location.type === 'microsoft_teams' && location.join_url) {
+                  meetingLink = location.join_url;
+                  console.log('Found Teams meeting link:', meetingLink);
+                } else if (location.type === 'custom' && location.location) {
+                  // Check if the custom location is a URL
+                  const urlPattern = /^https?:\/\//i;
+                  if (urlPattern.test(location.location)) {
+                    meetingLink = location.location;
+                    console.log('Found custom meeting link:', meetingLink);
+                  }
+                }
+              }
+            }
             
             const utmSource = resource?.tracking?.utm_source;
             console.log('UTM tracking data:', { utm_source: utmSource });
@@ -777,6 +817,7 @@ serve(async (req) => {
         reschedule_url: rescheduleUrl,
         cancel_url: cancelUrl,
         calendly_invitee_uri: calendlyInviteeUri,
+        meeting_link: meetingLink,
         assignment_source: appointmentData.setter_id ? 'booking_link' : null,
         // Rebooking context fields
         original_appointment_id: (appointmentData as any).original_appointment_id || null,
