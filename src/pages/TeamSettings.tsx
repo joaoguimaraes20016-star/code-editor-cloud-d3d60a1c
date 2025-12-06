@@ -174,6 +174,26 @@ export default function TeamSettings() {
   };
 
   const fetchEventTypeDetails = async (accessToken: string, orgUri: string) => {
+    // Check localStorage cache first
+    const cacheKey = `calendly_event_types_${teamId}`;
+    const cached = localStorage.getItem(cacheKey);
+    
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached);
+        const cacheAge = Date.now() - timestamp;
+        const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+        
+        if (cacheAge < CACHE_TTL && data.length > 0) {
+          console.log('Loading event types from cache (TeamSettings)');
+          setAvailableEventTypes(data);
+          return; // Don't fetch from API if cache is fresh
+        }
+      } catch (e) {
+        console.warn('Failed to parse cached event types');
+      }
+    }
+    
     try {
       console.log('Fetching organization members for event types...');
       const membersResponse = await fetch(
@@ -261,7 +281,15 @@ export default function TeamSettings() {
         console.error('Error fetching org-level event types:', error);
       }
 
-      setAvailableEventTypes(Array.from(allEventTypesMap.values()));
+      const eventTypes = Array.from(allEventTypesMap.values());
+      
+      // Cache the event types
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data: eventTypes,
+        timestamp: Date.now()
+      }));
+      
+      setAvailableEventTypes(eventTypes);
     } catch (error) {
       console.error('Error fetching event type details:', error);
     }
