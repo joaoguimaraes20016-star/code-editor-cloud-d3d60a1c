@@ -105,7 +105,7 @@ function MeetingLinkDropdown({ meetingLink }: { meetingLink: string }) {
       <DropdownMenuContent align="start" className="z-50 bg-popover border shadow-lg">
         <DropdownMenuItem onClick={handleJoin} className="cursor-pointer">
           <Video className="h-4 w-4 mr-2" />
-          Join {getMeetingType()}
+          Join Meeting
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleCopy} className="cursor-pointer">
           {copied ? (
