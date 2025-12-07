@@ -39,6 +39,7 @@ import { SetterRotationSettings } from '@/components/SetterRotationSettings';
 import { ClearTeamData } from '@/components/ClearTeamData';
 import { CleanupDuplicateSales } from '@/components/CleanupDuplicateSales';
 import { BackfillRescheduleUrls } from '@/components/BackfillRescheduleUrls';
+import { BackfillMeetingLinks } from '@/components/BackfillMeetingLinks';
 import { WorkflowSettings } from '@/components/WorkflowSettings';
 import { FollowUpSettings } from '@/components/FollowUpSettings';
 import { SystemMonitoring } from '@/components/SystemMonitoring';
@@ -680,6 +681,7 @@ export default function TeamSettings() {
                           </Card>
                           
                           <BackfillRescheduleUrls teamId={teamId!} />
+                          <BackfillMeetingLinks teamId={teamId!} />
                         </>
                       )}
 
