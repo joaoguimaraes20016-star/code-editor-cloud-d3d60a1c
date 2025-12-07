@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, MoreVertical, Calendar, MessageSquare, Undo2, History, ArrowRight, AlertTriangle, RefreshCw, Video, ExternalLink } from "lucide-react";
+import { GripVertical, MoreVertical, Calendar, MessageSquare, Undo2, History, ArrowRight, AlertTriangle, RefreshCw, Video, ExternalLink, Copy, Check } from "lucide-react";
 import { CollapsibleNotes } from "./CollapsibleNotes";
 import { differenceInDays, format, parseISO } from "date-fns";
 import { formatDateTimeWithTimezone } from "@/lib/utils";
@@ -57,6 +57,65 @@ interface DealCardProps {
   onClearDealData?: (id: string) => void;
   userRole?: string;
   allowSetterPipelineUpdates?: boolean;
+}
+
+// Meeting Link Dropdown Component
+function MeetingLinkDropdown({ meetingLink }: { meetingLink: string }) {
+  const [copied, setCopied] = useState(false);
+  
+  const getMeetingType = () => {
+    if (meetingLink.includes('zoom')) return 'Zoom';
+    if (meetingLink.includes('meet.google')) return 'Google Meet';
+    if (meetingLink.includes('teams')) return 'Teams';
+    return 'Meeting';
+  };
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(meetingLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleJoin = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.open(meetingLink, '_blank');
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <button className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors cursor-pointer">
+          <Video className="h-2 w-2 sm:h-3 sm:w-3" />
+          <span className="font-medium">{getMeetingType()}</span>
+          <ExternalLink className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="z-50 bg-popover border shadow-lg">
+        <DropdownMenuItem onClick={handleJoin} className="cursor-pointer">
+          <Video className="h-4 w-4 mr-2" />
+          Join {getMeetingType()}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleCopy} className="cursor-pointer">
+          {copied ? (
+            <>
+              <Check className="h-4 w-4 mr-2 text-green-500" />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Copy className="h-4 w-4 mr-2" />
+              Copy Link
+            </>
+          )}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDeal, onMoveTo, onDelete, onUndo, onChangeStatus, onClearDealData, userRole, allowSetterPipelineUpdates }: DealCardProps) {
@@ -473,23 +532,9 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
               <Calendar className="h-2 w-2 sm:h-3 sm:w-3" />
               <span className="font-medium">{formatDateTimeWithTimezone(appointment.start_at_utc, "MMM d 'at' h:mm a")}</span>
             </div>
-            {/* Meeting Link */}
-            {(appointment as any).meeting_link && (
-              <a 
-                href={(appointment as any).meeting_link} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 text-primary hover:text-primary/80 hover:underline transition-colors"
-              >
-                <Video className="h-2 w-2 sm:h-3 sm:w-3" />
-                <span className="font-medium">
-                  {(appointment as any).meeting_link.includes('zoom') ? 'Zoom' : 
-                   (appointment as any).meeting_link.includes('meet.google') ? 'Google Meet' : 
-                   (appointment as any).meeting_link.includes('teams') ? 'Teams' : 'Join Meeting'}
-                </span>
-                <ExternalLink className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
-              </a>
+            {/* Meeting Link Dropdown */}
+            {appointment.meeting_link && (
+              <MeetingLinkDropdown meetingLink={appointment.meeting_link} />
             )}
             <div className={`flex items-center gap-1 font-bold ${getDaysColor(daysInStage)}`}>
               <div className="h-1 w-1 sm:h-2 sm:w-2 rounded-full bg-current animate-pulse" />
