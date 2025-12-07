@@ -2,7 +2,7 @@ import { format, isToday, parseISO, isBefore, startOfDay } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle, Edit, CalendarClock, Wallet, AlertCircle, Wrench, Target, RefreshCw, AlertTriangle, History, ArrowRight } from "lucide-react";
+import { Calendar, Mail, User, Phone, Clock, MessageSquare, DollarSign, UserPlus, Users, CheckCircle, Edit, CalendarClock, Wallet, AlertCircle, Wrench, Target, RefreshCw, AlertTriangle, History, ArrowRight, Video } from "lucide-react";
 import { useState } from "react";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import { ConfirmationProgressTracker } from "./ConfirmationProgressTracker";
@@ -26,6 +26,7 @@ interface HorizontalAppointmentCardProps {
     cc_collected: number | null;
     mrr_amount: number | null;
     reschedule_url: string | null;
+    meeting_link?: string | null;
     reschedule_count?: number;
     pipeline_stage?: string | null;
     retarget_date?: string | null;
@@ -328,6 +329,24 @@ export function HorizontalAppointmentCard({
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <span className="text-muted-foreground">{appointment.event_type_name}</span>
             </div>
+          )}
+
+          {/* Meeting Link */}
+          {appointment.meeting_link && (
+            <a 
+              href={appointment.meeting_link} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 hover:underline transition-colors"
+            >
+              <Video className="w-4 h-4" />
+              <span className="font-medium">
+                {appointment.meeting_link.includes('zoom') ? 'Join Zoom Meeting' : 
+                 appointment.meeting_link.includes('meet.google') ? 'Join Google Meet' : 
+                 appointment.meeting_link.includes('teams') ? 'Join Teams Meeting' : 'Join Meeting'}
+              </span>
+            </a>
           )}
 
           <div className="flex flex-wrap gap-2">
