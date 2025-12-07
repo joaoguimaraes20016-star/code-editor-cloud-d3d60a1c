@@ -133,30 +133,6 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  const offerAssets = assets.filter((a) => a.category === 'offer');
-  const scriptAssets = assets.filter((a) => a.category === 'scripts');
-  const onboardingAssets = assets.filter((a) => a.category === 'onboarding');
-  const trackingAssets = assets.filter((a) => a.category === 'tracking');
-  const trainingAssets = assets.filter((a) => a.category === 'training');
-
-  const handleAssetClick = (asset: TeamAsset) => {
-    if (asset.file_path) {
-      handleDownload(asset.file_path, asset.title);
-    } else if (asset.loom_url) {
-      window.open(asset.loom_url, '_blank');
-    } else if (asset.external_url) {
-      window.open(asset.external_url, '_blank');
-    }
-  };
-
   const handleReorder = useCallback(async (category: string, reorderedAssets: TeamAsset[]) => {
     // Update local state immediately for responsiveness
     setAssets(prev => {
@@ -180,6 +156,30 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
       loadAssets(); // Reload to restore original order
     }
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const offerAssets = assets.filter((a) => a.category === 'offer');
+  const scriptAssets = assets.filter((a) => a.category === 'scripts');
+  const onboardingAssets = assets.filter((a) => a.category === 'onboarding');
+  const trackingAssets = assets.filter((a) => a.category === 'tracking');
+  const trainingAssets = assets.filter((a) => a.category === 'training');
+
+  const handleAssetClick = (asset: TeamAsset) => {
+    if (asset.file_path) {
+      handleDownload(asset.file_path, asset.title);
+    } else if (asset.loom_url) {
+      window.open(asset.loom_url, '_blank');
+    } else if (asset.external_url) {
+      window.open(asset.external_url, '_blank');
+    }
+  };
 
   const handleStartEdit = () => {
     setEditedName(teamName);
