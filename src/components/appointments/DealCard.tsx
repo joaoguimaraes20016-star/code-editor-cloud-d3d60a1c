@@ -65,9 +65,16 @@ function MeetingLinkDropdown({ meetingLink }: { meetingLink: string }) {
   
   const getMeetingType = () => {
     if (meetingLink.includes('zoom')) return 'Zoom';
-    if (meetingLink.includes('meet.google')) return 'Google Meet';
+    if (meetingLink.includes('meet.google')) return 'Meet';
     if (meetingLink.includes('teams')) return 'Teams';
-    return 'Meeting';
+    return 'Join';
+  };
+
+  const getMeetingColor = () => {
+    if (meetingLink.includes('zoom')) return 'from-blue-500 to-blue-600';
+    if (meetingLink.includes('meet.google')) return 'from-green-500 to-green-600';
+    if (meetingLink.includes('teams')) return 'from-purple-500 to-purple-600';
+    return 'from-primary to-primary/80';
   };
 
   const handleCopy = async (e: React.MouseEvent) => {
@@ -89,10 +96,10 @@ function MeetingLinkDropdown({ meetingLink }: { meetingLink: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <button className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors cursor-pointer">
-          <Video className="h-2 w-2 sm:h-3 sm:w-3" />
-          <span className="font-medium">{getMeetingType()}</span>
-          <ExternalLink className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+        <button className={`flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-gradient-to-r ${getMeetingColor()} text-white text-[10px] sm:text-xs font-semibold shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200`}>
+          <Video className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          <span>{getMeetingType()}</span>
+          <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-75" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="z-50 bg-popover border shadow-lg">
