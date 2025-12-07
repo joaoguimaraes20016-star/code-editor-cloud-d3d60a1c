@@ -49,22 +49,25 @@ export function SortableAssetItem({
   };
 
   return (
-    <button
+    <div
       ref={setNodeRef}
       style={style}
+      className="group w-full text-left px-4 py-3 sm:px-5 sm:py-4 md:px-6 md:py-4 rounded-xl hover:bg-muted/50 transition-all flex items-center justify-between cursor-pointer"
       onClick={() => onClick(asset)}
-      className="group w-full text-left px-4 py-3 sm:px-5 sm:py-4 md:px-6 md:py-4 rounded-xl hover:bg-muted/50 transition-all flex items-center justify-between"
+      role="button"
+      tabIndex={0}
     >
       <div className="flex items-center gap-4">
         {canManage && (
-          <div 
+          <button 
+            type="button"
             {...attributes} 
             {...listeners}
-            className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
+            className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity touch-none"
             onClick={(e) => e.stopPropagation()}
           >
             <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
+          </button>
         )}
         {asset.loom_url ? (
           <Video className={`h-6 w-6 ${colorClass}`} />
@@ -103,6 +106,6 @@ export function SortableAssetItem({
           </Button>
         </div>
       )}
-    </button>
+    </div>
   );
 }
