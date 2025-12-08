@@ -74,13 +74,18 @@ export function PageSettingsDialog({
     onOpenChange(false);
   };
 
+  // Early return if step is not available
+  if (!step) {
+    return null;
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Page Settings</DialogTitle>
           <DialogDescription>
-            Configure settings for "{step.content.headline || 'this page'}"
+            Configure settings for "{step.content?.headline || 'this page'}"
           </DialogDescription>
         </DialogHeader>
 
