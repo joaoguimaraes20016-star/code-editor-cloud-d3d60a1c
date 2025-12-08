@@ -2,6 +2,7 @@ import { FunnelStep, FunnelSettings } from '@/pages/FunnelEditor';
 import { cn } from '@/lib/utils';
 import { ElementActionMenu } from './ElementActionMenu';
 import { InlineTextEditor } from './InlineTextEditor';
+import { ImagePicker } from './ImagePicker';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useMemo, useState, useCallback } from 'react';
@@ -13,7 +14,8 @@ import {
   Square, 
   Minus, 
   Video, 
-  AlignLeft 
+  AlignLeft,
+  Upload
 } from 'lucide-react';
 
 interface StepDesign {
@@ -174,6 +176,7 @@ export function StepPreview({
   const content = step.content;
   const [showAddElement, setShowAddElement] = useState(false);
   const [editingElement, setEditingElement] = useState<string | null>(null);
+  const [imagePickerOpen, setImagePickerOpen] = useState<string | null>(null);
   
   // Use external dynamic content if provided, otherwise use local state
   const dynamicContent = externalDynamicContent || {};
@@ -365,21 +368,35 @@ export function StepPreview({
       return (
         <div className="w-full max-w-[200px] mx-auto">
           {imageUrl ? (
-            <img src={imageUrl} alt="" className="w-full h-auto rounded-lg" />
-          ) : (
-            <div className="w-full aspect-video bg-white/10 flex flex-col items-center justify-center gap-2 rounded-lg p-4">
-              <Image className="w-8 h-8 opacity-50" style={{ color: textColor }} />
-              <input
-                type="text"
-                placeholder="Paste image URL"
-                className="w-full bg-white/10 border border-white/20 px-3 py-2 text-xs text-center rounded"
-                style={{ color: textColor }}
-                value={imageUrl}
-                onChange={(e) => handleDynamicContentChange(elementId, { image_url: e.target.value })}
-                onClick={(e) => e.stopPropagation()}
-              />
+            <div className="relative group">
+              <img src={imageUrl} alt="" className="w-full h-auto rounded-lg" />
+              <Button
+                variant="secondary"
+                size="sm"
+                className="absolute inset-0 m-auto w-fit h-fit opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => { e.stopPropagation(); setImagePickerOpen(elementId); }}
+              >
+                Change
+              </Button>
             </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full aspect-video flex flex-col items-center justify-center gap-2"
+              onClick={(e) => { e.stopPropagation(); setImagePickerOpen(elementId); }}
+            >
+              <Upload className="w-6 h-6 opacity-60" />
+              <span className="text-xs">Upload Image</span>
+            </Button>
           )}
+          <ImagePicker
+            open={imagePickerOpen === elementId}
+            onOpenChange={(open) => setImagePickerOpen(open ? elementId : null)}
+            onSelect={(url) => {
+              handleDynamicContentChange(elementId, { image_url: url });
+              setImagePickerOpen(null);
+            }}
+          />
         </div>
       );
     }
