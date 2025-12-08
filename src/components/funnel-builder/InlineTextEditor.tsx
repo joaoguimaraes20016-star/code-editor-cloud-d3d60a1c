@@ -82,8 +82,22 @@ export function InlineTextEditor({
   const [toolbarPosition, setToolbarPosition] = useState<{ top: number; left: number } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isEditingRef = useRef(false); // Track editing state for preventing DOM resets
 
-  // Only show toolbar when there's an actual text selection
+  // Keep isEditingRef in sync
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+  }, [isEditing]);
+
+  // Only update DOM from value prop when NOT editing
+  useEffect(() => {
+    if (!isEditingRef.current && editorRef.current) {
+      editorRef.current.innerHTML = value || placeholder;
+    }
+  }, [value, placeholder]);
+
+  // Only show toolbar when there is an actual text selection
   const checkTextSelection = useCallback(() => {
     const sel = window.getSelection();
     if (sel && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
@@ -143,10 +157,24 @@ export function InlineTextEditor({
     }
   }, [onChange, onHtmlChange]);
 
-  // Save content on input with debounce
+  // Debounced save on input - prevents cursor jumping and reduces state updates
   const handleInput = useCallback(() => {
-    saveContent();
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      saveContent();
+    }, 300);
   }, [saveContent]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -422,6 +450,13 @@ export function InlineTextEditor({
     document.body
   );
 
+  // Set initial content when component mounts or when not editing
+  useEffect(() => {
+    if (editorRef.current && !isEditingRef.current) {
+      editorRef.current.innerHTML = value || placeholder;
+    }
+  }, []);
+
   return (
     <>
       <div
@@ -439,7 +474,6 @@ export function InlineTextEditor({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         onInput={handleInput}
-        dangerouslySetInnerHTML={{ __html: value || (isEditing ? '' : placeholder) }}
       />
       {toolbarContent}
     </>
