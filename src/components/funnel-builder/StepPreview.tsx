@@ -5,23 +5,7 @@ import { InlineTextEditor } from './InlineTextEditor';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useMemo, useState, useCallback } from 'react';
-import { 
-  DndContext, 
-  closestCenter, 
-  KeyboardSensor, 
-  PointerSensor, 
-  useSensor, 
-  useSensors,
-  DragEndEvent 
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { arrayMove } from '@dnd-kit/sortable';
 import { 
   Plus, 
   Type, 
@@ -44,6 +28,13 @@ interface StepDesign {
   imageUrl?: string;
   imageSize?: 'S' | 'M' | 'L' | 'XL';
   imagePosition?: 'top' | 'bottom' | 'background';
+  useGradient?: boolean;
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientDirection?: string;
+  imageOverlay?: boolean;
+  imageOverlayColor?: string;
+  imageOverlayOpacity?: number;
 }
 
 interface StepPreviewProps {
@@ -93,40 +84,25 @@ const ADD_ELEMENT_OPTIONS = [
 function getVideoEmbedUrl(url?: string): string | null {
   if (!url) return null;
   
-  // YouTube
   const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  if (youtubeMatch) {
-    return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
-  }
+  if (youtubeMatch) return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
   
-  // Vimeo
   const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vimeoMatch) {
-    return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-  }
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
   
-  // Loom
   const loomMatch = url.match(/loom\.com\/share\/([a-zA-Z0-9]+)/);
-  if (loomMatch) {
-    return `https://www.loom.com/embed/${loomMatch[1]}`;
-  }
+  if (loomMatch) return `https://www.loom.com/embed/${loomMatch[1]}`;
   
-  // Wistia
   const wistiaMatch = url.match(/wistia\.com\/medias\/([a-zA-Z0-9]+)/);
-  if (wistiaMatch) {
-    return `https://fast.wistia.net/embed/iframe/${wistiaMatch[1]}`;
-  }
+  if (wistiaMatch) return `https://fast.wistia.net/embed/iframe/${wistiaMatch[1]}`;
   
-  // If already an embed URL, return as-is
-  if (url.includes('/embed/') || url.includes('player.vimeo.com')) {
-    return url;
-  }
+  if (url.includes('/embed/') || url.includes('player.vimeo.com')) return url;
   
   return null;
 }
 
-// Sortable Element Wrapper
-function SortableElement({ 
+// Simple element wrapper with click-to-select action menu
+function ElementWrapper({ 
   id, 
   children, 
   isSelected,
@@ -149,44 +125,17 @@ function SortableElement({
   canMoveUp: boolean;
   canMoveDown: boolean;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ 
-    id,
-    transition: {
-      duration: 200,
-      easing: 'ease',
-    },
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: isDragging ? undefined : 'transform 250ms ease',
-    opacity: isDragging ? 0.85 : 1,
-    zIndex: isDragging ? 100 : 'auto',
-  };
-
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
       className={cn(
-        "relative transition-all group py-1 w-full cursor-pointer",
+        "relative transition-all w-full",
         isSelected 
-          ? "ring-2 ring-primary rounded bg-primary/5" 
-          : "hover:ring-2 hover:ring-primary/40 rounded hover:bg-primary/5",
-        isDragging && "shadow-2xl cursor-grabbing"
+          ? "ring-2 ring-primary rounded-md" 
+          : "hover:ring-1 hover:ring-primary/40 rounded-md"
       )}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
     >
-      <div className="px-2">
+      <div className="px-2 py-1">
         {children}
       </div>
       
@@ -218,8 +167,6 @@ export function StepPreview({
 }: StepPreviewProps) {
   const content = step.content;
   const [showAddElement, setShowAddElement] = useState(false);
-  
-  // Store dynamically added content
   const [dynamicContent, setDynamicContent] = useState<Record<string, any>>({});
 
   const textColor = design?.textColor || '#ffffff';
@@ -229,16 +176,15 @@ export function StepPreview({
   const fontSize = design?.fontSize || 'medium';
   const borderRadius = design?.borderRadius ?? 12;
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  // Compute background style
+  const backgroundStyle = useMemo(() => {
+    if (design?.useGradient && design.gradientFrom && design.gradientTo) {
+      return {
+        background: `linear-gradient(${design.gradientDirection || 'to bottom'}, ${design.gradientFrom}, ${design.gradientTo})`
+      };
+    }
+    return { backgroundColor: design?.backgroundColor || settings.background_color };
+  }, [design, settings.background_color]);
 
   const currentOrder = useMemo(() => {
     if (elementOrder && elementOrder.length > 0) {
@@ -247,28 +193,20 @@ export function StepPreview({
     return DEFAULT_ELEMENT_ORDERS[step.step_type] || ['headline', 'subtext', 'button'];
   }, [elementOrder, step.step_type]);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = currentOrder.indexOf(active.id as string);
-      const newIndex = currentOrder.indexOf(over.id as string);
-      const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
-      onReorderElements?.(newOrder);
-    }
-  }, [currentOrder, onReorderElements]);
-
   const handleAddElement = useCallback((elementType: string) => {
     const newElementId = `${elementType}_${Date.now()}`;
     const newOrder = [...currentOrder, newElementId];
     
-    // Initialize default content for the new element
     if (elementType === 'video') {
       setDynamicContent(prev => ({ ...prev, [newElementId]: { video_url: '' } }));
     } else if (elementType === 'image') {
       setDynamicContent(prev => ({ ...prev, [newElementId]: { image_url: '' } }));
     } else if (elementType === 'text') {
       setDynamicContent(prev => ({ ...prev, [newElementId]: { text: 'New text block' } }));
+    } else if (elementType === 'headline') {
+      setDynamicContent(prev => ({ ...prev, [newElementId]: { text: 'New Headline' } }));
+    } else if (elementType === 'button') {
+      setDynamicContent(prev => ({ ...prev, [newElementId]: { text: 'Click me' } }));
     }
     
     onReorderElements?.(newOrder);
@@ -298,7 +236,6 @@ export function StepPreview({
     const newOrder = [...currentOrder];
     newOrder.splice(index + 1, 0, newElementId);
     
-    // Copy dynamic content if exists
     if (dynamicContent[elementId]) {
       setDynamicContent(prev => ({ ...prev, [newElementId]: { ...prev[elementId] } }));
     }
@@ -338,16 +275,14 @@ export function StepPreview({
           src={design.imageUrl} 
           alt="" 
           className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
       </div>
     );
   };
 
   const renderElementContent = (elementId: string) => {
-    // Handle dynamically added text blocks
+    // Dynamic text blocks
     if (elementId.startsWith('text_')) {
       const textValue = dynamicContent[elementId]?.text || 'New text block';
       return (
@@ -362,7 +297,7 @@ export function StepPreview({
       );
     }
 
-    // Handle dynamically added dividers - shows a visible line
+    // Dynamic dividers - visible line
     if (elementId.startsWith('divider_')) {
       return (
         <div className="w-full max-w-xs mx-auto py-3">
@@ -374,7 +309,7 @@ export function StepPreview({
       );
     }
 
-    // Handle dynamically added videos
+    // Dynamic videos
     if (elementId.startsWith('video_') && elementId !== 'video') {
       const videoUrl = dynamicContent[elementId]?.video_url || '';
       const embedUrl = getVideoEmbedUrl(videoUrl);
@@ -397,7 +332,7 @@ export function StepPreview({
               <Video className="w-8 h-8 opacity-50" style={{ color: textColor }} />
               <input
                 type="text"
-                placeholder="Paste video URL (YouTube, Vimeo, Loom)"
+                placeholder="Paste video URL"
                 className="w-full bg-white/10 border border-white/20 px-3 py-2 text-xs text-center rounded"
                 style={{ color: textColor }}
                 value={videoUrl}
@@ -410,21 +345,14 @@ export function StepPreview({
       );
     }
 
-    // Handle dynamically added images
+    // Dynamic images
     if (elementId.startsWith('image_') && !['image_top', 'image_bottom'].includes(elementId)) {
       const imageUrl = dynamicContent[elementId]?.image_url || '';
       
       return (
         <div className="w-full max-w-[200px] mx-auto">
           {imageUrl ? (
-            <img 
-              src={imageUrl} 
-              alt="" 
-              className="w-full h-auto rounded-lg"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect fill="%23333" width="200" height="150"/><text fill="%23999" x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="sans-serif" font-size="12">Image not found</text></svg>';
-              }}
-            />
+            <img src={imageUrl} alt="" className="w-full h-auto rounded-lg" />
           ) : (
             <div className="w-full aspect-video bg-white/10 flex flex-col items-center justify-center gap-2 rounded-lg p-4">
               <Image className="w-8 h-8 opacity-50" style={{ color: textColor }} />
@@ -443,17 +371,13 @@ export function StepPreview({
       );
     }
 
-    // Handle dynamically added buttons
+    // Dynamic buttons
     if (elementId.startsWith('button_') && elementId !== 'button') {
       const buttonText = dynamicContent[elementId]?.text || 'Click me';
       return (
         <button
           className="px-6 py-3 text-sm font-semibold transition-all w-full max-w-xs"
-          style={{ 
-            backgroundColor: buttonColor, 
-            color: buttonTextColor,
-            borderRadius: `${borderRadius}px`
-          }}
+          style={{ backgroundColor: buttonColor, color: buttonTextColor, borderRadius: `${borderRadius}px` }}
         >
           <InlineTextEditor
             value={buttonText}
@@ -467,7 +391,7 @@ export function StepPreview({
       );
     }
 
-    // Handle dynamically added headlines
+    // Dynamic headlines
     if (elementId.startsWith('headline_') && elementId !== 'headline') {
       const headlineText = dynamicContent[elementId]?.text || 'New Headline';
       return (
@@ -482,6 +406,7 @@ export function StepPreview({
       );
     }
 
+    // Standard elements
     switch (elementId) {
       case 'image_top':
         if (!design?.imageUrl || design?.imagePosition !== 'top') return null;
@@ -521,11 +446,7 @@ export function StepPreview({
         return (
           <button
             className="px-6 py-3 text-sm font-semibold transition-all w-full max-w-xs"
-            style={{ 
-              backgroundColor: buttonColor, 
-              color: buttonTextColor,
-              borderRadius: `${borderRadius}px`
-            }}
+            style={{ backgroundColor: buttonColor, color: buttonTextColor, borderRadius: `${borderRadius}px` }}
           >
             <InlineTextEditor
               value={content.button_text || settings.button_text || 'Get Started'}
@@ -550,10 +471,7 @@ export function StepPreview({
               type={inputType}
               placeholder={placeholder}
               className="w-full bg-white/10 border border-white/20 px-4 py-3 text-center"
-              style={{ 
-                color: textColor, 
-                borderRadius: `${borderRadius}px`
-              }}
+              style={{ color: textColor, borderRadius: `${borderRadius}px` }}
               readOnly
             />
           </div>
@@ -567,11 +485,7 @@ export function StepPreview({
               <button
                 key={index}
                 className="w-full px-4 py-3 hover:opacity-80 transition-colors text-sm font-medium"
-                style={{ 
-                  backgroundColor: buttonColor,
-                  color: buttonTextColor,
-                  borderRadius: `${borderRadius}px`
-                }}
+                style={{ backgroundColor: buttonColor, color: buttonTextColor, borderRadius: `${borderRadius}px` }}
               >
                 {option}
               </button>
@@ -600,7 +514,7 @@ export function StepPreview({
               <div className="w-full h-full bg-white/10 flex flex-col items-center justify-center gap-2 p-4">
                 <Video className="w-8 h-8 opacity-50" style={{ color: textColor }} />
                 <span className="text-xs opacity-50" style={{ color: textColor }}>
-                  Add video URL in the sidebar
+                  Add video URL in sidebar
                 </span>
               </div>
             )}
@@ -622,13 +536,9 @@ export function StepPreview({
   // Get all elements that should be rendered
   const visibleElements = useMemo(() => {
     return currentOrder.filter(id => {
-      // Dynamic elements are always visible
-      if (id.includes('_') && /^\w+_\d+/.test(id)) {
-        return true;
-      }
-      // For standard elements, check if they render
-      const content = renderElementContent(id);
-      return content !== null;
+      if (id.includes('_') && /^\w+_\d+/.test(id)) return true;
+      const el = renderElementContent(id);
+      return el !== null;
     });
   }, [currentOrder, content, design, step.step_type]);
 
@@ -636,59 +546,57 @@ export function StepPreview({
     <div 
       className="w-full h-full relative" 
       onClick={() => onSelectElement(null)}
-      style={{ fontFamily }}
+      style={{ ...backgroundStyle, fontFamily }}
     >
-      {/* Background image overlay */}
+      {/* Background image with optional overlay */}
       {design?.imagePosition === 'background' && design?.imageUrl && (
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-30"
-          style={{ backgroundImage: `url(${design.imageUrl})` }}
-        />
+        <>
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${design.imageUrl})` }}
+          />
+          {design.imageOverlay && (
+            <div 
+              className="absolute inset-0"
+              style={{ 
+                backgroundColor: design.imageOverlayColor || '#000000',
+                opacity: design.imageOverlayOpacity || 0.5
+              }}
+            />
+          )}
+        </>
       )}
 
       {/* Logo */}
       {settings.logo_url && (
         <div className="absolute top-14 left-4 z-10">
-          <img
-            src={settings.logo_url}
-            alt="Logo"
-            className="h-5 w-auto object-contain"
-          />
+          <img src={settings.logo_url} alt="Logo" className="h-5 w-auto object-contain" />
         </div>
       )}
 
-      {/* Drag and Drop Column Layout */}
+      {/* Elements Column Layout - constrained to center */}
       <div className="flex flex-col items-center p-6 gap-3 relative z-10 min-h-[400px]">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={visibleElements} strategy={verticalListSortingStrategy}>
-            {visibleElements.map((elementId, index) => {
-              const elementContent = renderElementContent(elementId);
-              
-              if (!elementContent) return null;
+        {visibleElements.map((elementId, index) => {
+          const elementContent = renderElementContent(elementId);
+          if (!elementContent) return null;
 
-              return (
-                <SortableElement
-                  key={elementId}
-                  id={elementId}
-                  isSelected={selectedElement === elementId}
-                  onSelect={() => onSelectElement(elementId)}
-                  onMoveUp={() => handleMoveUp(elementId)}
-                  onMoveDown={() => handleMoveDown(elementId)}
-                  onDuplicate={() => handleDuplicate(elementId)}
-                  onDelete={() => handleDelete(elementId)}
-                  canMoveUp={index > 0}
-                  canMoveDown={index < visibleElements.length - 1}
-                >
-                  {elementContent}
-                </SortableElement>
-              );
-            })}
-          </SortableContext>
-        </DndContext>
+          return (
+            <ElementWrapper
+              key={elementId}
+              id={elementId}
+              isSelected={selectedElement === elementId}
+              onSelect={() => onSelectElement(elementId)}
+              onMoveUp={() => handleMoveUp(elementId)}
+              onMoveDown={() => handleMoveDown(elementId)}
+              onDuplicate={() => handleDuplicate(elementId)}
+              onDelete={() => handleDelete(elementId)}
+              canMoveUp={index > 0}
+              canMoveDown={index < visibleElements.length - 1}
+            >
+              {elementContent}
+            </ElementWrapper>
+          );
+        })}
 
         {/* Add Element Button */}
         <Popover open={showAddElement} onOpenChange={setShowAddElement}>

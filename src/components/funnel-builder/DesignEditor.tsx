@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FunnelStep } from '@/pages/FunnelEditor';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,15 @@ interface StepDesign {
   imageUrl?: string;
   imageSize?: 'S' | 'M' | 'L' | 'XL';
   imagePosition?: 'top' | 'bottom' | 'background';
+  // New gradient options
+  useGradient?: boolean;
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientDirection?: string;
+  // Image overlay options
+  imageOverlay?: boolean;
+  imageOverlayColor?: string;
+  imageOverlayOpacity?: number;
 }
 
 interface DesignEditorProps {
@@ -52,9 +61,41 @@ const COLOR_PRESETS = [
   '#ef4444', '#dc2626', '#b91c1c',
 ];
 
+const GRADIENT_DIRECTIONS = [
+  { value: 'to bottom', label: 'Top to Bottom' },
+  { value: 'to top', label: 'Bottom to Top' },
+  { value: 'to right', label: 'Left to Right' },
+  { value: 'to left', label: 'Right to Left' },
+  { value: 'to bottom right', label: 'Diagonal ↘' },
+  { value: 'to bottom left', label: 'Diagonal ↙' },
+  { value: 'to top right', label: 'Diagonal ↗' },
+  { value: 'to top left', label: 'Diagonal ↖' },
+];
+
+const GRADIENT_PRESETS = [
+  { from: '#667eea', to: '#764ba2', label: 'Purple Dream' },
+  { from: '#f093fb', to: '#f5576c', label: 'Pink Sunset' },
+  { from: '#4facfe', to: '#00f2fe', label: 'Ocean Blue' },
+  { from: '#43e97b', to: '#38f9d7', label: 'Fresh Mint' },
+  { from: '#fa709a', to: '#fee140', label: 'Warm Glow' },
+  { from: '#a8edea', to: '#fed6e3', label: 'Soft Pastel' },
+  { from: '#ff0844', to: '#ffb199', label: 'Coral Fire' },
+  { from: '#0f0c29', to: '#302b63', label: 'Dark Night' },
+];
+
 export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }: DesignEditorProps) {
   const updateField = (field: keyof StepDesign, value: any) => {
     onUpdateDesign({ ...design, [field]: value });
+  };
+
+  const applyGradientPreset = (from: string, to: string) => {
+    onUpdateDesign({ 
+      ...design, 
+      useGradient: true, 
+      gradientFrom: from, 
+      gradientTo: to,
+      gradientDirection: design.gradientDirection || 'to bottom'
+    });
   };
 
   return (
@@ -68,29 +109,115 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }
         </p>
       </div>
 
-      {/* Background Color */}
+      {/* Background Type Toggle */}
       <div className="space-y-3">
-        <Label className="text-xs">Background Color</Label>
-        <div className="flex flex-wrap gap-2">
-          {COLOR_PRESETS.slice(0, 6).map((color) => (
-            <button
-              key={color}
-              className={cn(
-                "w-8 h-8 rounded-lg border-2 transition-all",
-                design.backgroundColor === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
-              )}
-              style={{ backgroundColor: color }}
-              onClick={() => updateField('backgroundColor', color)}
-            />
-          ))}
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Use Gradient Background</Label>
+          <Switch
+            checked={design.useGradient || false}
+            onCheckedChange={(checked) => updateField('useGradient', checked)}
+          />
         </div>
-        <Input
-          type="color"
-          value={design.backgroundColor || '#0a0a0a'}
-          onChange={(e) => updateField('backgroundColor', e.target.value)}
-          className="h-8 w-full"
-        />
       </div>
+
+      {/* Solid Background Color */}
+      {!design.useGradient && (
+        <div className="space-y-3">
+          <Label className="text-xs">Background Color</Label>
+          <div className="flex flex-wrap gap-2">
+            {COLOR_PRESETS.slice(0, 6).map((color) => (
+              <button
+                key={color}
+                className={cn(
+                  "w-8 h-8 rounded-lg border-2 transition-all",
+                  design.backgroundColor === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                )}
+                style={{ backgroundColor: color }}
+                onClick={() => updateField('backgroundColor', color)}
+              />
+            ))}
+          </div>
+          <Input
+            type="color"
+            value={design.backgroundColor || '#0a0a0a'}
+            onChange={(e) => updateField('backgroundColor', e.target.value)}
+            className="h-8 w-full"
+          />
+        </div>
+      )}
+
+      {/* Gradient Controls */}
+      {design.useGradient && (
+        <div className="space-y-4 p-3 bg-secondary/50 rounded-lg">
+          <Label className="text-xs font-medium">Gradient Presets</Label>
+          <div className="grid grid-cols-4 gap-2">
+            {GRADIENT_PRESETS.map((preset, idx) => (
+              <button
+                key={idx}
+                className={cn(
+                  "w-full h-8 rounded-md border-2 transition-all",
+                  design.gradientFrom === preset.from && design.gradientTo === preset.to
+                    ? "ring-2 ring-primary ring-offset-1"
+                    : "border-border"
+                )}
+                style={{ 
+                  background: `linear-gradient(to right, ${preset.from}, ${preset.to})` 
+                }}
+                onClick={() => applyGradientPreset(preset.from, preset.to)}
+                title={preset.label}
+              />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs">From</Label>
+              <Input
+                type="color"
+                value={design.gradientFrom || '#667eea'}
+                onChange={(e) => updateField('gradientFrom', e.target.value)}
+                className="h-8 w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">To</Label>
+              <Input
+                type="color"
+                value={design.gradientTo || '#764ba2'}
+                onChange={(e) => updateField('gradientTo', e.target.value)}
+                className="h-8 w-full"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs">Direction</Label>
+            <Select
+              value={design.gradientDirection || 'to bottom'}
+              onValueChange={(value) => updateField('gradientDirection', value)}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {GRADIENT_DIRECTIONS.map((dir) => (
+                  <SelectItem key={dir.value} value={dir.value}>
+                    {dir.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Gradient Preview */}
+          <div 
+            className="h-16 rounded-lg border border-border"
+            style={{
+              background: `linear-gradient(${design.gradientDirection || 'to bottom'}, ${design.gradientFrom || '#667eea'}, ${design.gradientTo || '#764ba2'})`
+            }}
+          />
+        </div>
+      )}
 
       {/* Text Color */}
       <div className="space-y-3">
@@ -244,6 +371,48 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }
                 </Button>
               ))}
             </div>
+
+            {/* Image Overlay */}
+            {design.imagePosition === 'background' && (
+              <div className="space-y-3 p-3 bg-secondary/50 rounded-lg mt-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Image Overlay</Label>
+                  <Switch
+                    checked={design.imageOverlay || false}
+                    onCheckedChange={(checked) => updateField('imageOverlay', checked)}
+                  />
+                </div>
+                
+                {design.imageOverlay && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Overlay Color</Label>
+                      <Input
+                        type="color"
+                        value={design.imageOverlayColor || '#000000'}
+                        onChange={(e) => updateField('imageOverlayColor', e.target.value)}
+                        className="h-8 w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Opacity</Label>
+                        <span className="text-xs text-muted-foreground">
+                          {Math.round((design.imageOverlayOpacity || 0.5) * 100)}%
+                        </span>
+                      </div>
+                      <Slider
+                        value={[(design.imageOverlayOpacity || 0.5) * 100]}
+                        onValueChange={([value]) => updateField('imageOverlayOpacity', value / 100)}
+                        min={0}
+                        max={100}
+                        step={5}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
