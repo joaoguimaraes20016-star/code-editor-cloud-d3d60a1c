@@ -146,9 +146,20 @@ export function PagesList({
 
   return (
     <div className="flex flex-col h-full">
-      <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
-        Pages
-      </h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+          Pages
+        </h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 gap-1"
+          onClick={onAddStep}
+        >
+          <Plus className="h-4 w-4" />
+          Add
+        </Button>
+      </div>
       
       <div className="flex-1 overflow-y-auto space-y-1">
         <SortableContext items={regularSteps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
@@ -197,16 +208,6 @@ export function PagesList({
           </div>
         )}
       </div>
-
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full mt-4 gap-2"
-        onClick={onAddStep}
-      >
-        <Plus className="h-4 w-4" />
-        Add page
-      </Button>
     </div>
   );
 }
