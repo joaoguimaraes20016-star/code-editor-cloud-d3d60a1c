@@ -27,7 +27,9 @@ interface StepSettings {
   autoAdvanceDelay?: number;
   skipEnabled?: boolean;
   progressBar?: boolean;
-  animation?: 'fade' | 'slide' | 'none';
+  animation?: 'fade' | 'slide' | 'scale' | 'none';
+  animationDuration?: number;
+  animationEasing?: 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'linear';
 }
 
 interface EditorSidebarProps {

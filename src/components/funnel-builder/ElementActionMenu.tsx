@@ -31,7 +31,8 @@ export function ElementActionMenu({
   return (
     <div 
       className={cn(
-        "absolute top-1/2 -translate-y-1/2 -right-12 z-50 flex flex-col gap-0.5 p-1 bg-popover border border-border rounded-lg shadow-lg animate-in fade-in-0 slide-in-from-left-2",
+        // Changed: now positioned at top-right corner INSIDE the element, not outside
+        "absolute -top-1 -right-1 z-50 flex flex-row gap-0.5 p-0.5 bg-popover/95 backdrop-blur-sm border border-border rounded-md shadow-lg animate-in fade-in-0 zoom-in-95",
         className
       )}
       onClick={(e) => e.stopPropagation()}
@@ -39,36 +40,34 @@ export function ElementActionMenu({
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-7 rounded-sm"
+        className="h-6 w-6 rounded-sm"
         onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
         disabled={!canMoveUp}
         title="Move up"
       >
-        <ChevronUp className="h-4 w-4" />
+        <ChevronUp className="h-3.5 w-3.5" />
       </Button>
       
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-7 rounded-sm"
+        className="h-6 w-6 rounded-sm"
         onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
         disabled={!canMoveDown}
         title="Move down"
       >
-        <ChevronDown className="h-4 w-4" />
+        <ChevronDown className="h-3.5 w-3.5" />
       </Button>
-      
-      <div className="w-full h-px bg-border my-0.5" />
       
       {onDuplicate && (
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 rounded-sm"
+          className="h-6 w-6 rounded-sm"
           onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
           title="Duplicate"
         >
-          <Copy className="h-4 w-4" />
+          <Copy className="h-3.5 w-3.5" />
         </Button>
       )}
       
@@ -76,11 +75,11 @@ export function ElementActionMenu({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+          className="h-6 w-6 rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10"
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           title="Delete"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </Button>
       )}
     </div>

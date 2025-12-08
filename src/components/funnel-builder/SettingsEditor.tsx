@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FunnelStep } from '@/pages/FunnelEditor';
 
@@ -10,7 +10,9 @@ interface StepSettings {
   autoAdvanceDelay?: number;
   skipEnabled?: boolean;
   progressBar?: boolean;
-  animation?: 'fade' | 'slide' | 'none';
+  animation?: 'fade' | 'slide' | 'scale' | 'none';
+  animationDuration?: number;
+  animationEasing?: 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'linear';
 }
 
 interface SettingsEditorProps {
@@ -84,7 +86,7 @@ export function SettingsEditor({ step, settings, onUpdateSettings }: SettingsEdi
         />
       </div>
 
-      {/* Animation */}
+      {/* Animation Type */}
       <div className="space-y-2">
         <Label className="text-xs">Page Transition</Label>
         <Select
@@ -96,11 +98,51 @@ export function SettingsEditor({ step, settings, onUpdateSettings }: SettingsEdi
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="fade">Fade</SelectItem>
-            <SelectItem value="slide">Slide</SelectItem>
-            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="slide">Slide Up</SelectItem>
+            <SelectItem value="scale">Scale</SelectItem>
+            <SelectItem value="none">None (Instant)</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {/* Animation Duration */}
+      {settings.animation !== 'none' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Duration</Label>
+            <span className="text-xs text-muted-foreground">{settings.animationDuration ?? 300}ms</span>
+          </div>
+          <Slider
+            value={[settings.animationDuration ?? 300]}
+            onValueChange={([value]) => updateField('animationDuration', value)}
+            min={100}
+            max={800}
+            step={50}
+          />
+        </div>
+      )}
+
+      {/* Animation Easing */}
+      {settings.animation !== 'none' && (
+        <div className="space-y-2">
+          <Label className="text-xs">Easing</Label>
+          <Select
+            value={settings.animationEasing ?? 'ease-out'}
+            onValueChange={(value) => updateField('animationEasing', value)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ease">Ease</SelectItem>
+              <SelectItem value="ease-in">Ease In</SelectItem>
+              <SelectItem value="ease-out">Ease Out</SelectItem>
+              <SelectItem value="ease-in-out">Ease In Out</SelectItem>
+              <SelectItem value="linear">Linear</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Step Type Info */}
       <div className="pt-4 border-t">

@@ -6,7 +6,7 @@ import { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Settings, Eye, Save, Globe, PanelLeft, PanelRight, Play, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Settings, Eye, Save, Globe, Play, Maximize2, Minimize2, ChevronLeft, ChevronRight, Undo2, Redo2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { PagesList } from '@/components/funnel-builder/PagesList';
 import { EditorSidebar } from '@/components/funnel-builder/EditorSidebar';
@@ -21,7 +21,9 @@ import { PageSettingsDialog } from '@/components/funnel-builder/PageSettingsDial
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useFunnelHistory } from '@/hooks/useFunnelHistory';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type DeviceType = 'mobile' | 'tablet' | 'desktop';
 
@@ -83,7 +85,18 @@ interface StepSettings {
   autoAdvanceDelay?: number;
   skipEnabled?: boolean;
   progressBar?: boolean;
-  animation?: 'fade' | 'slide' | 'none';
+  animation?: 'fade' | 'slide' | 'scale' | 'none';
+  animationDuration?: number;
+  animationEasing?: 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'linear';
+}
+
+// Unified state for undo/redo history
+interface FunnelState {
+  name: string;
+  steps: FunnelStep[];
+  stepDesigns: Record<string, StepDesign>;
+  stepSettings: Record<string, StepSettings>;
+  elementOrders: Record<string, string[]>;
 }
 
 export default function FunnelEditor() {
@@ -92,8 +105,23 @@ export default function FunnelEditor() {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
 
-  const [name, setName] = useState('');
-  const [steps, setSteps] = useState<FunnelStep[]>([]);
+  // Use the history hook for undo/redo
+  const {
+    state: funnelState,
+    set: setFunnelState,
+    undo,
+    redo,
+    reset: resetHistory,
+    canUndo,
+    canRedo,
+  } = useFunnelHistory<FunnelState>({
+    name: '',
+    steps: [],
+    stepDesigns: {},
+    stepSettings: {},
+    elementOrders: {},
+  });
+
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -108,16 +136,47 @@ export default function FunnelEditor() {
   const [pageSettingsStepId, setPageSettingsStepId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
   const [devicePreview, setDevicePreview] = useState<DeviceType>('mobile');
-
-  // Per-step design, settings, blocks, and element order state
-  const [stepDesigns, setStepDesigns] = useState<Record<string, StepDesign>>({});
-  const [stepSettings, setStepSettings] = useState<Record<string, StepSettings>>({});
   const [stepBlocks, setStepBlocks] = useState<Record<string, ContentBlock[]>>({});
-  const [pageSettings, setPageSettings] = useState<Record<string, any>>({});
-  const [elementOrders, setElementOrders] = useState<Record<string, string[]>>({});
+  const [pageSettings, setPageSettingsState] = useState<Record<string, any>>({});
   
   // Auto-save timer ref
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Destructure for convenience
+  const { name, steps, stepDesigns, stepSettings, elementOrders } = funnelState;
+
+  // Helper functions to update state through the history-tracked funnel state
+  const setName = useCallback((newName: string) => {
+    setFunnelState(prev => ({ ...prev, name: newName }));
+  }, [setFunnelState]);
+
+  const setSteps = useCallback((newSteps: FunnelStep[] | ((prev: FunnelStep[]) => FunnelStep[])) => {
+    setFunnelState(prev => ({
+      ...prev,
+      steps: typeof newSteps === 'function' ? newSteps(prev.steps) : newSteps
+    }));
+  }, [setFunnelState]);
+
+  const setStepDesigns = useCallback((newDesigns: Record<string, StepDesign> | ((prev: Record<string, StepDesign>) => Record<string, StepDesign>)) => {
+    setFunnelState(prev => ({
+      ...prev,
+      stepDesigns: typeof newDesigns === 'function' ? newDesigns(prev.stepDesigns) : newDesigns
+    }));
+  }, [setFunnelState]);
+
+  const setStepSettingsState = useCallback((newSettings: Record<string, StepSettings> | ((prev: Record<string, StepSettings>) => Record<string, StepSettings>)) => {
+    setFunnelState(prev => ({
+      ...prev,
+      stepSettings: typeof newSettings === 'function' ? newSettings(prev.stepSettings) : newSettings
+    }));
+  }, [setFunnelState]);
+
+  const setElementOrders = useCallback((newOrders: Record<string, string[]> | ((prev: Record<string, string[]>) => Record<string, string[]>)) => {
+    setFunnelState(prev => ({
+      ...prev,
+      elementOrders: typeof newOrders === 'function' ? newOrders(prev.elementOrders) : newOrders
+    }));
+  }, [setFunnelState]);
 
   const { data: funnel, isLoading: funnelLoading } = useQuery({
     queryKey: ['funnel', funnelId],
@@ -149,19 +208,9 @@ export default function FunnelEditor() {
     enabled: !!funnelId,
   });
 
+  // Initialize the history state when data loads
   useEffect(() => {
-    if (funnel) {
-      setName(funnel.name);
-    }
-  }, [funnel]);
-
-  useEffect(() => {
-    if (initialSteps) {
-      setSteps(initialSteps);
-      if (initialSteps.length > 0 && !selectedStepId) {
-        setSelectedStepId(initialSteps[0].id);
-      }
-      
+    if (funnel && initialSteps) {
       // Load persisted designs and element orders from step content
       const loadedDesigns: Record<string, StepDesign> = {};
       const loadedOrders: Record<string, string[]> = {};
@@ -175,14 +224,20 @@ export default function FunnelEditor() {
         }
       });
       
-      if (Object.keys(loadedDesigns).length > 0) {
-        setStepDesigns(prev => ({ ...prev, ...loadedDesigns }));
-      }
-      if (Object.keys(loadedOrders).length > 0) {
-        setElementOrders(prev => ({ ...prev, ...loadedOrders }));
+      // Reset the history with the loaded state
+      resetHistory({
+        name: funnel.name,
+        steps: initialSteps,
+        stepDesigns: loadedDesigns,
+        stepSettings: {},
+        elementOrders: loadedOrders,
+      });
+      
+      if (initialSteps.length > 0 && !selectedStepId) {
+        setSelectedStepId(initialSteps[0].id);
       }
     }
-  }, [initialSteps]);
+  }, [funnel, initialSteps, resetHistory]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -334,7 +389,7 @@ export default function FunnelEditor() {
   };
 
   const handleUpdateSettings = (stepId: string, settings: StepSettings) => {
-    setStepSettings((prev) => ({ ...prev, [stepId]: settings }));
+    setStepSettingsState((prev) => ({ ...prev, [stepId]: settings }));
     setHasUnsavedChanges(true);
   };
 
@@ -482,6 +537,43 @@ export default function FunnelEditor() {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
+            {/* Undo/Redo Buttons */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={undo}
+                    disabled={!canUndo}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={redo}
+                    disabled={!canRedo}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Redo2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Redo (Ctrl+Shift+Z)</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <div className="w-px h-4 bg-border mx-1 hidden sm:block" />
+
             {/* Focus mode toggle */}
             <Button
               variant={focusMode ? 'secondary' : 'ghost'}
@@ -728,7 +820,7 @@ export default function FunnelEditor() {
           allSteps={steps}
           settings={pageSettings[pageSettingsStepId] || {}}
           onSave={(settings) => {
-            setPageSettings(prev => ({ ...prev, [pageSettingsStepId]: settings }));
+            setPageSettingsState(prev => ({ ...prev, [pageSettingsStepId]: settings }));
             setHasUnsavedChanges(true);
           }}
         />
