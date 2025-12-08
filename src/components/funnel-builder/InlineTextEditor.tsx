@@ -135,13 +135,18 @@ export function InlineTextEditor({
     }, 100);
   };
 
-  const saveContent = () => {
+  const saveContent = useCallback(() => {
     if (editorRef.current) {
       const text = editorRef.current.innerText;
       onChange(text);
       onHtmlChange?.(editorRef.current.innerHTML);
     }
-  };
+  }, [onChange, onHtmlChange]);
+
+  // Save content on input with debounce
+  const handleInput = useCallback(() => {
+    saveContent();
+  }, [saveContent]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -151,6 +156,7 @@ export function InlineTextEditor({
     }
     
     if (e.key === 'Escape') {
+      saveContent();
       setIsEditing(false);
       onEditingChange?.(false);
       setHasTextSelection(false);
@@ -432,6 +438,7 @@ export function InlineTextEditor({
         onClick={handleClick}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
+        onInput={handleInput}
         dangerouslySetInnerHTML={{ __html: value || (isEditing ? '' : placeholder) }}
       />
       {toolbarContent}
