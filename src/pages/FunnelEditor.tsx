@@ -5,16 +5,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Settings, Eye, Save, Globe } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { ArrowLeft, Settings, Eye, Save, Globe, Menu, PanelLeft, PanelRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { PagesList } from '@/components/funnel-builder/PagesList';
-import { StepContentEditor } from '@/components/funnel-builder/StepContentEditor';
+import { EditorSidebar } from '@/components/funnel-builder/EditorSidebar';
 import { FunnelSettingsDialog } from '@/components/funnel-builder/FunnelSettingsDialog';
 import { PhoneMockup } from '@/components/funnel-builder/PhoneMockup';
 import { StepPreview } from '@/components/funnel-builder/StepPreview';
+import { PreviewNavigation } from '@/components/funnel-builder/PreviewNavigation';
 import { AddStepDialog } from '@/components/funnel-builder/AddStepDialog';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 export interface FunnelStep {
   id: string;
@@ -50,10 +54,33 @@ export interface Funnel {
   settings: FunnelSettings;
 }
 
+interface StepDesign {
+  backgroundColor?: string;
+  textColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+  fontSize?: 'small' | 'medium' | 'large';
+  fontFamily?: string;
+  borderRadius?: number;
+  padding?: number;
+  imageUrl?: string;
+  imageSize?: 'S' | 'M' | 'L' | 'XL';
+  imagePosition?: 'top' | 'bottom' | 'background';
+}
+
+interface StepSettings {
+  autoAdvance?: boolean;
+  autoAdvanceDelay?: number;
+  skipEnabled?: boolean;
+  progressBar?: boolean;
+  animation?: 'fade' | 'slide' | 'none';
+}
+
 export default function FunnelEditor() {
   const { teamId, funnelId } = useParams<{ teamId: string; funnelId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
 
   const [name, setName] = useState('');
   const [steps, setSteps] = useState<FunnelStep[]>([]);
@@ -62,6 +89,12 @@ export default function FunnelEditor() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAddStep, setShowAddStep] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showLeftPanel, setShowLeftPanel] = useState(!isMobile);
+  const [showRightPanel, setShowRightPanel] = useState(!isMobile);
+
+  // Per-step design and settings state
+  const [stepDesigns, setStepDesigns] = useState<Record<string, StepDesign>>({});
+  const [stepSettings, setStepSettings] = useState<Record<string, StepSettings>>({});
 
   const { data: funnel, isLoading: funnelLoading } = useQuery({
     queryKey: ['funnel', funnelId],
@@ -217,6 +250,31 @@ export default function FunnelEditor() {
     setHasUnsavedChanges(true);
   };
 
+  const handleUpdateDesign = (stepId: string, design: StepDesign) => {
+    setStepDesigns((prev) => ({ ...prev, [stepId]: design }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleUpdateSettings = (stepId: string, settings: StepSettings) => {
+    setStepSettings((prev) => ({ ...prev, [stepId]: settings }));
+    setHasUnsavedChanges(true);
+  };
+
+  // Navigation between steps
+  const currentStepIndex = steps.findIndex((s) => s.id === selectedStepId);
+  const handleNavigatePrevious = () => {
+    if (currentStepIndex > 0) {
+      setSelectedStepId(steps[currentStepIndex - 1].id);
+      setSelectedElement(null);
+    }
+  };
+  const handleNavigateNext = () => {
+    if (currentStepIndex < steps.length - 1) {
+      setSelectedStepId(steps[currentStepIndex + 1].id);
+      setSelectedElement(null);
+    }
+  };
+
   const selectedStep = steps.find((s) => s.id === selectedStepId);
 
   if (funnelLoading || stepsLoading) {
@@ -238,16 +296,17 @@ export default function FunnelEditor() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Bar */}
-      <div className="border-b bg-card px-4 py-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div className="border-b bg-card px-2 sm:px-4 py-2 sm:py-3 flex-shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate(`/team/${teamId}/funnels`)}
+              className="shrink-0"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Back</span>
             </Button>
 
             <Input
@@ -256,34 +315,60 @@ export default function FunnelEditor() {
                 setName(e.target.value);
                 setHasUnsavedChanges(true);
               }}
-              className="w-64 font-semibold"
+              className="w-32 sm:w-64 font-semibold text-sm sm:text-base"
             />
 
-            <Badge variant={funnel.status === 'published' ? 'default' : 'secondary'}>
+            <Badge 
+              variant={funnel.status === 'published' ? 'default' : 'secondary'}
+              className="hidden sm:inline-flex"
+            >
               {funnel.status}
             </Badge>
 
             {hasUnsavedChanges && (
-              <Badge variant="outline" className="text-orange-500 border-orange-500">
-                Unsaved changes
+              <Badge variant="outline" className="text-orange-500 border-orange-500 hidden sm:inline-flex">
+                Unsaved
               </Badge>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowSettings(true)}>
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Mobile panel toggles */}
+            {isMobile && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowLeftPanel(!showLeftPanel)}
+                  className="lg:hidden"
+                >
+                  <PanelLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowRightPanel(!showRightPanel)}
+                  className="lg:hidden"
+                >
+                  <PanelRight className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+
+            <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} className="hidden sm:flex">
+              <Settings className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Settings</span>
             </Button>
 
             {funnel.status === 'published' && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => window.open(`/f/${funnel.slug}`, '_blank')}
+                className="hidden sm:flex"
               >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
+                <Eye className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Preview</span>
               </Button>
             )}
 
@@ -293,8 +378,8 @@ export default function FunnelEditor() {
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
             >
-              <Save className="h-4 w-4 mr-2" />
-              Save
+              <Save className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Save</span>
             </Button>
 
             <Button
@@ -302,17 +387,35 @@ export default function FunnelEditor() {
               onClick={() => publishMutation.mutate()}
               disabled={publishMutation.isPending}
             >
-              <Globe className="h-4 w-4 mr-2" />
-              {funnel.status === 'published' ? 'Update' : 'Publish'}
+              <Globe className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{funnel.status === 'published' ? 'Update' : 'Publish'}</span>
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Main Editor Area - 3 Column Layout */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main Editor Area - Responsive 3 Column Layout */}
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar - Pages List */}
-        <div className="w-56 border-r bg-card p-4 overflow-y-auto flex-shrink-0">
+        <div className={cn(
+          "border-r bg-card p-3 sm:p-4 overflow-y-auto flex-shrink-0 transition-all duration-300",
+          isMobile 
+            ? cn(
+                "absolute inset-y-0 left-0 z-20 w-64",
+                showLeftPanel ? "translate-x-0" : "-translate-x-full"
+              )
+            : "w-48 lg:w-56"
+        )}>
+          {isMobile && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="absolute top-2 right-2"
+              onClick={() => setShowLeftPanel(false)}
+            >
+              ×
+            </Button>
+          )}
           <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <PagesList
               steps={steps}
@@ -320,6 +423,7 @@ export default function FunnelEditor() {
               onSelectStep={(id) => {
                 setSelectedStepId(id);
                 setSelectedElement(null);
+                if (isMobile) setShowLeftPanel(false);
               }}
               onDeleteStep={handleDeleteStep}
               onAddStep={() => setShowAddStep(true)}
@@ -328,29 +432,63 @@ export default function FunnelEditor() {
         </div>
 
         {/* Center - Phone Mockup Preview */}
-        <div className="flex-1 flex items-center justify-center bg-zinc-900/50 overflow-hidden">
+        <div className="flex-1 flex flex-col items-center justify-center bg-zinc-900/50 overflow-hidden p-4">
           {selectedStep && (
-            <PhoneMockup 
-              backgroundColor={funnel.settings.background_color}
-              className="scale-90 lg:scale-100"
-            >
-              <StepPreview
-                step={selectedStep}
-                settings={funnel.settings}
-                selectedElement={selectedElement}
-                onSelectElement={setSelectedElement}
+            <>
+              <PhoneMockup 
+                backgroundColor={stepDesigns[selectedStep.id]?.backgroundColor || funnel.settings.background_color}
+                className="scale-[0.65] sm:scale-75 lg:scale-90 xl:scale-100"
+              >
+                <StepPreview
+                  step={selectedStep}
+                  settings={funnel.settings}
+                  selectedElement={selectedElement}
+                  onSelectElement={setSelectedElement}
+                  design={stepDesigns[selectedStep.id]}
+                />
+              </PhoneMockup>
+
+              {/* Navigation Arrows */}
+              <PreviewNavigation
+                currentIndex={currentStepIndex}
+                totalSteps={steps.length}
+                onPrevious={handleNavigatePrevious}
+                onNext={handleNavigateNext}
+                className="mt-4"
               />
-            </PhoneMockup>
+            </>
           )}
         </div>
 
-        {/* Right Sidebar - Content Editor */}
-        <div className="w-80 border-l bg-card p-4 overflow-y-auto flex-shrink-0">
+        {/* Right Sidebar - Editor Panel */}
+        <div className={cn(
+          "border-l bg-card p-3 sm:p-4 overflow-y-auto flex-shrink-0 transition-all duration-300",
+          isMobile 
+            ? cn(
+                "absolute inset-y-0 right-0 z-20 w-72",
+                showRightPanel ? "translate-x-0" : "translate-x-full"
+              )
+            : "w-72 lg:w-80"
+        )}>
+          {isMobile && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="absolute top-2 right-2"
+              onClick={() => setShowRightPanel(false)}
+            >
+              ×
+            </Button>
+          )}
           {selectedStep ? (
-            <StepContentEditor
+            <EditorSidebar
               step={selectedStep}
-              onUpdate={(content) => handleUpdateStep(selectedStep.id, content)}
               selectedElement={selectedElement}
+              onUpdateContent={(content) => handleUpdateStep(selectedStep.id, content)}
+              onUpdateDesign={(design) => handleUpdateDesign(selectedStep.id, design)}
+              onUpdateSettings={(settings) => handleUpdateSettings(selectedStep.id, settings)}
+              design={stepDesigns[selectedStep.id] || {}}
+              settings={stepSettings[selectedStep.id] || {}}
             />
           ) : (
             <div className="text-muted-foreground text-center py-8">
@@ -358,6 +496,17 @@ export default function FunnelEditor() {
             </div>
           )}
         </div>
+
+        {/* Mobile overlay */}
+        {isMobile && (showLeftPanel || showRightPanel) && (
+          <div 
+            className="absolute inset-0 bg-black/50 z-10"
+            onClick={() => {
+              setShowLeftPanel(false);
+              setShowRightPanel(false);
+            }}
+          />
+        )}
       </div>
 
       <FunnelSettingsDialog
