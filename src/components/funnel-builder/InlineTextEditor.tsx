@@ -83,17 +83,22 @@ export function InlineTextEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isEditingRef = useRef(false); // Track editing state for preventing DOM resets
+  const isEditingRef = useRef(false);
+  const lastSavedValueRef = useRef(value); // Track what we last saved to prevent revert
 
   // Keep isEditingRef in sync
   useEffect(() => {
     isEditingRef.current = isEditing;
   }, [isEditing]);
 
-  // Only update DOM from value prop when NOT editing
+  // Only update DOM from value prop when NOT editing AND value changed externally
   useEffect(() => {
     if (!isEditingRef.current && editorRef.current) {
-      editorRef.current.innerHTML = value || placeholder;
+      // Only update if the value actually changed from external source
+      if (value !== lastSavedValueRef.current) {
+        editorRef.current.innerHTML = value || placeholder;
+        lastSavedValueRef.current = value;
+      }
     }
   }, [value, placeholder]);
 
@@ -136,7 +141,19 @@ export function InlineTextEditor({
     if (toolbarRef.current?.contains(e.relatedTarget as Node)) return;
     if (activePicker) return;
     
-    saveContent();
+    // Flush any pending debounced save immediately
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    
+    // Save immediately on blur
+    if (editorRef.current) {
+      const text = editorRef.current.innerText;
+      lastSavedValueRef.current = text;
+      onChange(text);
+      onHtmlChange?.(editorRef.current.innerHTML);
+    }
     
     setTimeout(() => {
       if (!toolbarRef.current?.contains(document.activeElement) && !activePicker) {
@@ -152,6 +169,7 @@ export function InlineTextEditor({
   const saveContent = useCallback(() => {
     if (editorRef.current) {
       const text = editorRef.current.innerText;
+      lastSavedValueRef.current = text;
       onChange(text);
       onHtmlChange?.(editorRef.current.innerHTML);
     }
@@ -450,10 +468,11 @@ export function InlineTextEditor({
     document.body
   );
 
-  // Set initial content when component mounts or when not editing
+  // Set initial content when component mounts
   useEffect(() => {
-    if (editorRef.current && !isEditingRef.current) {
+    if (editorRef.current) {
       editorRef.current.innerHTML = value || placeholder;
+      lastSavedValueRef.current = value;
     }
   }, []);
 
