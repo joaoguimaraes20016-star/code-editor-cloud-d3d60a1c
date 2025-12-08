@@ -108,6 +108,7 @@ function ElementWrapper({
   id, 
   children, 
   isSelected,
+  isEditing,
   onSelect,
   onMoveUp,
   onMoveDown,
@@ -119,6 +120,7 @@ function ElementWrapper({
   id: string; 
   children: React.ReactNode;
   isSelected: boolean;
+  isEditing: boolean;
   onSelect: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -141,8 +143,8 @@ function ElementWrapper({
         {children}
       </div>
       
-      {/* Action menu - appears to the right when selected */}
-      {isSelected && (
+      {/* Action menu - appears when selected but NOT when editing */}
+      {isSelected && !isEditing && (
         <ElementActionMenu
           elementId={id}
           onMoveUp={onMoveUp}
@@ -171,6 +173,7 @@ export function StepPreview({
 }: StepPreviewProps) {
   const content = step.content;
   const [showAddElement, setShowAddElement] = useState(false);
+  const [editingElement, setEditingElement] = useState<string | null>(null);
   
   // Use external dynamic content if provided, otherwise use local state
   const dynamicContent = externalDynamicContent || {};
@@ -302,6 +305,7 @@ export function StepPreview({
           style={{ color: textColor }}
           isSelected={selectedElement === elementId}
           onSelect={() => onSelectElement(elementId)}
+          onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
         />
       );
     }
@@ -395,6 +399,7 @@ export function StepPreview({
             style={{ color: buttonTextColor }}
             isSelected={selectedElement === elementId}
             onSelect={() => onSelectElement(elementId)}
+            onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
           />
         </button>
       );
@@ -411,6 +416,7 @@ export function StepPreview({
           style={{ color: textColor }}
           isSelected={selectedElement === elementId}
           onSelect={() => onSelectElement(elementId)}
+          onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
         />
       );
     }
@@ -435,6 +441,7 @@ export function StepPreview({
             style={{ color: textColor }}
             isSelected={selectedElement === elementId}
             onSelect={() => onSelectElement(elementId)}
+            onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
           />
         );
         
@@ -448,6 +455,7 @@ export function StepPreview({
             style={{ color: textColor }}
             isSelected={selectedElement === elementId}
             onSelect={() => onSelectElement(elementId)}
+            onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
           />
         );
         
@@ -464,6 +472,7 @@ export function StepPreview({
               style={{ color: buttonTextColor }}
               isSelected={selectedElement === elementId}
               onSelect={() => onSelectElement(elementId)}
+              onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
             />
           </button>
         );
@@ -594,6 +603,7 @@ export function StepPreview({
               key={elementId}
               id={elementId}
               isSelected={selectedElement === elementId}
+              isEditing={editingElement === elementId}
               onSelect={() => onSelectElement(elementId)}
               onMoveUp={() => handleMoveUp(elementId)}
               onMoveDown={() => handleMoveDown(elementId)}

@@ -26,6 +26,7 @@ interface InlineTextEditorProps {
   isSelected?: boolean;
   onSelect?: () => void;
   onDeselect?: () => void;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
 const PRESET_COLORS = [
@@ -73,6 +74,7 @@ export function InlineTextEditor({
   isSelected,
   onSelect,
   onDeselect,
+  onEditingChange,
 }: InlineTextEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [hasTextSelection, setHasTextSelection] = useState(false);
@@ -110,6 +112,7 @@ export function InlineTextEditor({
     e.stopPropagation();
     if (!isEditing) {
       setIsEditing(true);
+      onEditingChange?.(true);
       onSelect?.();
       setTimeout(() => editorRef.current?.focus(), 0);
     }
@@ -124,6 +127,7 @@ export function InlineTextEditor({
     setTimeout(() => {
       if (!toolbarRef.current?.contains(document.activeElement) && !activePicker) {
         setIsEditing(false);
+        onEditingChange?.(false);
         setHasTextSelection(false);
         setToolbarPosition(null);
         setActivePicker(null);
@@ -148,6 +152,7 @@ export function InlineTextEditor({
     
     if (e.key === 'Escape') {
       setIsEditing(false);
+      onEditingChange?.(false);
       setHasTextSelection(false);
       setToolbarPosition(null);
       setActivePicker(null);
