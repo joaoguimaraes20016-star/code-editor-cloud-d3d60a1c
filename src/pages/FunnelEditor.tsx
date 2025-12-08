@@ -194,6 +194,11 @@ export default function FunnelEditor() {
       return { ...data, settings: data.settings as unknown as FunnelSettings } as Funnel;
     },
     enabled: !!funnelId,
+    // CRITICAL: Disable all refetching to prevent state reset
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime: Infinity,
   });
 
   const { data: initialSteps, isLoading: stepsLoading } = useQuery({
@@ -209,6 +214,11 @@ export default function FunnelEditor() {
       return data as FunnelStep[];
     },
     enabled: !!funnelId,
+    // CRITICAL: Disable all refetching to prevent state reset
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime: Infinity,
   });
 
   // Initialize the history state ONLY on first load - not on refetch
@@ -334,7 +344,7 @@ export default function FunnelEditor() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['funnel', funnelId] });
+      // Don't invalidate queries - it resets local state!
       toast({ title: 'Funnel published' });
     },
     onError: (error: Error) => {
@@ -811,7 +821,8 @@ export default function FunnelEditor() {
         onOpenChange={setShowSettings}
         funnel={funnel}
         onSave={() => {
-          queryClient.invalidateQueries({ queryKey: ['funnel', funnelId] });
+          // Don't invalidate queries - it resets local state!
+          // Settings are saved directly by the dialog
         }}
       />
 
