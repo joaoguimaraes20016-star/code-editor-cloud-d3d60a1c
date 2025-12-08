@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FunnelStep, FunnelSettings } from '@/pages/FunnelEditor';
-import { FunnelRenderer } from '@/components/funnel-public/FunnelRenderer';
+import { DynamicElementRenderer } from '@/components/funnel-public/DynamicElementRenderer';
 
 interface LivePreviewModeProps {
   open: boolean;
@@ -32,6 +32,16 @@ const DEVICE_SIZES: Record<DeviceType, { width: string; height: string; label: s
   mobile: { width: '375px', height: '667px', label: 'Mobile' },
   tablet: { width: '768px', height: '1024px', label: 'Tablet' },
   desktop: { width: '100%', height: '100%', label: 'Desktop' },
+};
+
+const DEFAULT_ELEMENT_ORDERS: Record<string, string[]> = {
+  welcome: ['headline', 'subtext', 'video', 'button'],
+  text_question: ['headline', 'input'],
+  multi_choice: ['headline', 'options'],
+  email_capture: ['headline', 'subtext', 'input'],
+  phone_capture: ['headline', 'subtext', 'input'],
+  video: ['headline', 'video', 'button'],
+  thank_you: ['headline', 'subtext'],
 };
 
 export function LivePreviewMode({ open, onClose, funnel, steps }: LivePreviewModeProps) {
@@ -66,7 +76,24 @@ export function LivePreviewMode({ open, onClose, funnel, steps }: LivePreviewMod
 
   if (!open) return null;
 
-  const DeviceIcon = device === 'mobile' ? Smartphone : device === 'tablet' ? Tablet : Monitor;
+  const currentStep = steps[currentStepIndex];
+  const stepContent = currentStep?.content || {};
+  const stepDesign = (stepContent.design || {}) as Record<string, any>;
+  
+  // Get background style for the step
+  const getBackgroundStyle = () => {
+    if (stepDesign.useGradient && stepDesign.gradientFrom && stepDesign.gradientTo) {
+      return {
+        background: `linear-gradient(${stepDesign.gradientDirection || 'to bottom'}, ${stepDesign.gradientFrom}, ${stepDesign.gradientTo})`
+      };
+    }
+    return { backgroundColor: stepDesign.backgroundColor || funnel.settings.background_color };
+  };
+
+  // Determine element order
+  const elementOrder = stepContent.element_order?.length > 0 
+    ? stepContent.element_order 
+    : DEFAULT_ELEMENT_ORDERS[currentStep?.step_type] || ['headline', 'subtext', 'button'];
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
@@ -153,28 +180,62 @@ export function LivePreviewMode({ open, onClose, funnel, steps }: LivePreviewMod
             maxHeight: device === 'desktop' ? '100%' : '85vh',
           }}
         >
-          <div className="w-full h-full overflow-auto">
-            {/* Render single step based on index */}
-            <div
-              className="min-h-full w-full flex items-center justify-center"
-              style={{ backgroundColor: funnel.settings.background_color }}
-            >
-              {/* Logo */}
-              {funnel.settings.logo_url && (
-                <div className="absolute top-6 left-6 z-10">
-                  <img
-                    src={funnel.settings.logo_url}
-                    alt="Logo"
-                    className="h-8 w-auto object-contain"
-                  />
-                </div>
-              )}
+          <div 
+            className="w-full h-full overflow-auto"
+            style={getBackgroundStyle()}
+          >
+            {/* Logo */}
+            {funnel.settings.logo_url && (
+              <div className="absolute top-6 left-6 z-10">
+                <img
+                  src={funnel.settings.logo_url}
+                  alt="Logo"
+                  className="h-8 w-auto object-contain"
+                />
+              </div>
+            )}
 
-              {/* Current Step Preview */}
-              <div className="w-full max-w-lg mx-auto p-6 text-center">
-                <PreviewStep 
-                  step={steps[currentStepIndex]} 
+            {/* Current Step Preview using DynamicElementRenderer */}
+            <div className="min-h-full w-full flex items-center justify-center py-8 px-4">
+              <div className="w-full max-w-lg mx-auto text-center">
+                <DynamicElementRenderer
+                  elementOrder={elementOrder}
+                  dynamicElements={stepContent.dynamic_elements || {}}
+                  content={stepContent}
                   settings={funnel.settings}
+                  design={stepDesign}
+                  stepType={currentStep?.step_type || 'welcome'}
+                  onButtonClick={() => {
+                    if (currentStepIndex < steps.length - 1) {
+                      setCurrentStepIndex(prev => prev + 1);
+                    }
+                  }}
+                  renderInput={() => (
+                    <input
+                      type="text"
+                      placeholder={stepContent.placeholder || 'Enter your answer...'}
+                      className="w-full max-w-xs mx-auto bg-white/10 border border-white/20 px-4 py-3 rounded-xl text-center"
+                      style={{ color: stepDesign.textColor || '#ffffff' }}
+                      readOnly
+                    />
+                  )}
+                  renderOptions={() => (
+                    <div className="space-y-2 w-full max-w-xs mx-auto">
+                      {(stepContent.options || []).map((option: string, i: number) => (
+                        <button
+                          key={i}
+                          className="w-full px-4 py-3 rounded-xl text-sm font-medium transition-all hover:scale-105"
+                          style={{ 
+                            backgroundColor: stepDesign.buttonColor || funnel.settings.primary_color, 
+                            color: stepDesign.buttonTextColor || '#ffffff',
+                            borderRadius: `${stepDesign.borderRadius ?? 12}px`
+                          }}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 />
               </div>
             </div>
@@ -200,128 +261,4 @@ export function LivePreviewMode({ open, onClose, funnel, steps }: LivePreviewMod
       </div>
     </div>
   );
-}
-
-function PreviewStep({ step, settings }: { step: FunnelStep; settings: FunnelSettings }) {
-  const textColor = step.content.design?.textColor || '#ffffff';
-  const buttonColor = step.content.design?.buttonColor || settings.primary_color;
-  const buttonTextColor = step.content.design?.buttonTextColor || '#ffffff';
-
-  switch (step.step_type) {
-    case 'welcome':
-      return (
-        <div className="space-y-6">
-          {step.content.headline && (
-            <h1 
-              className="text-xl sm:text-2xl font-bold leading-tight" 
-              style={{ color: textColor }}
-              dangerouslySetInnerHTML={{ __html: step.content.headline }}
-            />
-          )}
-          {step.content.subtext && (
-            <p 
-              className="text-sm opacity-70" 
-              style={{ color: textColor }}
-              dangerouslySetInnerHTML={{ __html: step.content.subtext }}
-            />
-          )}
-          <button
-            className="px-6 py-3 text-sm font-semibold rounded-xl"
-            style={{ backgroundColor: buttonColor, color: buttonTextColor }}
-          >
-            {step.content.button_text || settings.button_text || 'Get Started'}
-          </button>
-        </div>
-      );
-    case 'text_question':
-    case 'email_capture':
-    case 'phone_capture':
-      return (
-        <div className="space-y-6">
-          {step.content.headline && (
-            <h1 
-              className="text-xl sm:text-2xl font-bold leading-tight" 
-              style={{ color: textColor }}
-              dangerouslySetInnerHTML={{ __html: step.content.headline }}
-            />
-          )}
-          <input
-            type="text"
-            placeholder={step.content.placeholder}
-            className="w-full max-w-xs mx-auto bg-white/10 border border-white/20 px-4 py-3 rounded-xl text-center"
-            style={{ color: textColor }}
-            readOnly
-          />
-        </div>
-      );
-    case 'multi_choice':
-      return (
-        <div className="space-y-6">
-          {step.content.headline && (
-            <h1 
-              className="text-xl sm:text-2xl font-bold leading-tight" 
-              style={{ color: textColor }}
-              dangerouslySetInnerHTML={{ __html: step.content.headline }}
-            />
-          )}
-          <div className="space-y-2 max-w-xs mx-auto">
-            {(step.content.options || []).map((option: string, i: number) => (
-              <button
-                key={i}
-                className="w-full px-4 py-3 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: buttonColor, color: buttonTextColor }}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
-      );
-    case 'video':
-      return (
-        <div className="space-y-6">
-          {step.content.headline && (
-            <h1 
-              className="text-xl sm:text-2xl font-bold leading-tight" 
-              style={{ color: textColor }}
-              dangerouslySetInnerHTML={{ __html: step.content.headline }}
-            />
-          )}
-          <div 
-            className="w-full aspect-video bg-white/10 rounded-xl flex items-center justify-center"
-          >
-            <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>
-              Video Preview
-            </span>
-          </div>
-          <button
-            className="px-6 py-3 text-sm font-semibold rounded-xl"
-            style={{ backgroundColor: buttonColor, color: buttonTextColor }}
-          >
-            {step.content.button_text || 'Continue'}
-          </button>
-        </div>
-      );
-    case 'thank_you':
-      return (
-        <div className="space-y-4">
-          {step.content.headline && (
-            <h1 
-              className="text-xl sm:text-2xl font-bold leading-tight" 
-              style={{ color: textColor }}
-              dangerouslySetInnerHTML={{ __html: step.content.headline || 'Thank You!' }}
-            />
-          )}
-          {step.content.subtext && (
-            <p 
-              className="text-sm opacity-70" 
-              style={{ color: textColor }}
-              dangerouslySetInnerHTML={{ __html: step.content.subtext }}
-            />
-          )}
-        </div>
-      );
-    default:
-      return null;
-  }
 }
