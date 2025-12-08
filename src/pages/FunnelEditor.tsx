@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { PagesList } from '@/components/funnel-builder/PagesList';
 import { EditorSidebar } from '@/components/funnel-builder/EditorSidebar';
 import { FunnelSettingsDialog } from '@/components/funnel-builder/FunnelSettingsDialog';
-import { PhoneMockup } from '@/components/funnel-builder/PhoneMockup';
+import { MobilePreview } from '@/components/funnel-builder/MobilePreview';
 import { StepPreview } from '@/components/funnel-builder/StepPreview';
 import { PreviewNavigation } from '@/components/funnel-builder/PreviewNavigation';
 import { AddStepDialog } from '@/components/funnel-builder/AddStepDialog';
@@ -21,6 +22,20 @@ import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+
+export interface StepDesign {
+  backgroundColor?: string;
+  textColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+  fontSize?: 'small' | 'medium' | 'large';
+  fontFamily?: string;
+  borderRadius?: number;
+  padding?: number;
+  imageUrl?: string;
+  imageSize?: 'S' | 'M' | 'L' | 'XL';
+  imagePosition?: 'top' | 'bottom' | 'background';
+}
 
 export interface FunnelStep {
   id: string;
@@ -36,6 +51,9 @@ export interface FunnelStep {
     options?: string[];
     is_required?: boolean;
     redirect_url?: string;
+    // Persisted design and layout
+    design?: StepDesign;
+    element_order?: string[];
   };
 }
 
@@ -56,19 +74,7 @@ export interface Funnel {
   settings: FunnelSettings;
 }
 
-interface StepDesign {
-  backgroundColor?: string;
-  textColor?: string;
-  buttonColor?: string;
-  buttonTextColor?: string;
-  fontSize?: 'small' | 'medium' | 'large';
-  fontFamily?: string;
-  borderRadius?: number;
-  padding?: number;
-  imageUrl?: string;
-  imageSize?: 'S' | 'M' | 'L' | 'XL';
-  imagePosition?: 'top' | 'bottom' | 'background';
-}
+// Using StepDesign from the exported interface above
 
 interface StepSettings {
   autoAdvance?: boolean;
@@ -147,6 +153,26 @@ export default function FunnelEditor() {
       if (initialSteps.length > 0 && !selectedStepId) {
         setSelectedStepId(initialSteps[0].id);
       }
+      
+      // Load persisted designs and element orders from step content
+      const loadedDesigns: Record<string, StepDesign> = {};
+      const loadedOrders: Record<string, string[]> = {};
+      
+      initialSteps.forEach(step => {
+        if (step.content.design) {
+          loadedDesigns[step.id] = step.content.design;
+        }
+        if (step.content.element_order) {
+          loadedOrders[step.id] = step.content.element_order;
+        }
+      });
+      
+      if (Object.keys(loadedDesigns).length > 0) {
+        setStepDesigns(prev => ({ ...prev, ...loadedDesigns }));
+      }
+      if (Object.keys(loadedOrders).length > 0) {
+        setElementOrders(prev => ({ ...prev, ...loadedOrders }));
+      }
     }
   }, [initialSteps]);
 
@@ -166,13 +192,22 @@ export default function FunnelEditor() {
 
       if (deleteError) throw deleteError;
 
-      const stepsToInsert = steps.map((step, index) => ({
-        id: step.id,
-        funnel_id: funnelId,
-        order_index: index,
-        step_type: step.step_type,
-        content: step.content,
-      }));
+      const stepsToInsert = steps.map((step, index) => {
+        // Merge current designs and element orders into content for persistence
+        const contentWithDesign = {
+          ...step.content,
+          design: stepDesigns[step.id] || step.content.design || null,
+          element_order: elementOrders[step.id] || step.content.element_order || null,
+        };
+        
+        return {
+          id: step.id,
+          funnel_id: funnelId,
+          order_index: index,
+          step_type: step.step_type,
+          content: JSON.parse(JSON.stringify(contentWithDesign)),
+        };
+      });
 
       const { error: insertError } = await supabase
         .from('funnel_steps')
@@ -517,13 +552,13 @@ export default function FunnelEditor() {
         <div className="flex-1 flex flex-col items-center justify-center bg-zinc-900/50 overflow-x-hidden overflow-y-auto p-2">
           {selectedStep && (
             <>
-              <PhoneMockup 
+              <MobilePreview 
                 backgroundColor={stepDesigns[selectedStep.id]?.backgroundColor || funnel.settings.background_color}
                 className={cn(
                   "transition-transform duration-300",
                   focusMode 
-                    ? "scale-100 sm:scale-110 lg:scale-125 xl:scale-[1.35]" 
-                    : "scale-[0.85] sm:scale-95 lg:scale-110 xl:scale-[1.2]"
+                    ? "scale-100 sm:scale-105 lg:scale-110" 
+                    : "scale-[0.9] sm:scale-95 lg:scale-100"
                 )}
               >
                 <StepPreview
@@ -538,7 +573,7 @@ export default function FunnelEditor() {
                     handleUpdateStep(selectedStep.id, { ...selectedStep.content, [field]: value });
                   }}
                 />
-              </PhoneMockup>
+              </MobilePreview>
 
               {/* Navigation Arrows */}
               <PreviewNavigation
