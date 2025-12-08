@@ -142,23 +142,23 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
   return (
     <div
-      className="min-h-screen w-full relative overflow-hidden"
+      className="min-h-screen w-full relative overflow-x-hidden overflow-y-auto"
       style={{ backgroundColor: funnel.settings.background_color }}
     >
       {/* Logo */}
       {funnel.settings.logo_url && (
-        <div className="absolute top-6 left-6 z-10">
+        <div className="absolute top-4 left-4 md:top-6 md:left-6 z-10">
           <img
             src={funnel.settings.logo_url}
             alt="Logo"
-            className="h-8 w-auto object-contain"
+            className="h-6 md:h-8 w-auto object-contain"
           />
         </div>
       )}
 
       {/* Progress Dots */}
       {!isThankYouStep && (
-        <div className="absolute top-6 right-6 z-10">
+        <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10">
           <ProgressDots
             total={steps.length}
             current={currentStepIndex}
@@ -167,28 +167,28 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         </div>
       )}
 
-      {/* Steps Container - All steps rendered, visibility controlled by CSS */}
-      <div className="relative min-h-screen w-full">
+      {/* Steps Container - scrollable on each step */}
+      <div className="min-h-screen w-full pt-16 md:pt-20 pb-8">
         {steps.map((step, index) => (
           <div
             key={step.id}
             className={cn(
-              'absolute inset-0 flex items-center justify-center p-6 transition-all duration-500 ease-out',
+              'min-h-[calc(100vh-5rem)] w-full flex flex-col items-center justify-start py-4 md:py-8 px-4 md:px-6 transition-all duration-500 ease-out',
               index === currentStepIndex
-                ? 'opacity-100 translate-y-0 pointer-events-auto'
-                : index < currentStepIndex
-                ? 'opacity-0 -translate-y-8 pointer-events-none'
-                : 'opacity-0 translate-y-8 pointer-events-none'
+                ? 'block opacity-100'
+                : 'hidden opacity-0'
             )}
           >
-            {renderStep(step, index === currentStepIndex)}
+            <div className="w-full max-w-2xl mx-auto">
+              {renderStep(step, index === currentStepIndex)}
+            </div>
           </div>
         ))}
       </div>
 
       {/* Loading overlay during submission */}
       {isSubmitting && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
         </div>
       )}

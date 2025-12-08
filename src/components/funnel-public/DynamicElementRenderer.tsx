@@ -109,7 +109,7 @@ export function DynamicElementRenderer({
       if (!textValue) return null;
       return (
         <div 
-          className="text-base md:text-lg text-center px-4"
+          className="text-sm sm:text-base md:text-lg lg:text-xl text-center px-4 [&>*]:leading-relaxed"
           style={{ color: textColor }}
           dangerouslySetInnerHTML={{ __html: textValue }}
         />
@@ -168,7 +168,7 @@ export function DynamicElementRenderer({
       return (
         <button
           onClick={onButtonClick}
-          className="px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-semibold transition-all w-full max-w-xs hover:scale-105"
+          className="px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 text-sm sm:text-base md:text-lg font-semibold transition-all w-full max-w-xs hover:scale-105"
           style={{ backgroundColor: buttonColor, color: buttonTextColor, borderRadius: `${borderRadius}px` }}
           dangerouslySetInnerHTML={{ __html: buttonText }}
         />
@@ -181,7 +181,7 @@ export function DynamicElementRenderer({
       if (!headlineText) return null;
       return (
         <h2 
-          className="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight text-center"
+          className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight text-center [&>*]:leading-tight"
           style={{ color: textColor }}
           dangerouslySetInnerHTML={{ __html: headlineText }}
         />
@@ -202,7 +202,7 @@ export function DynamicElementRenderer({
         if (!content.headline) return null;
         return (
           <h1 
-            className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-center"
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight text-center [&>*]:leading-tight"
             style={{ color: textColor }}
             dangerouslySetInnerHTML={{ __html: content.headline }}
           />
@@ -212,7 +212,7 @@ export function DynamicElementRenderer({
         if (!content.subtext) return null;
         return (
           <p 
-            className="text-base md:text-lg lg:text-xl opacity-70 text-center"
+            className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl opacity-70 text-center [&>*]:leading-relaxed"
             style={{ color: textColor }}
             dangerouslySetInnerHTML={{ __html: content.subtext }}
           />
@@ -222,7 +222,7 @@ export function DynamicElementRenderer({
         return (
           <button
             onClick={onButtonClick}
-            className="px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-semibold transition-all w-full max-w-xs hover:scale-105 hover:shadow-lg"
+            className="px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 text-sm sm:text-base md:text-lg font-semibold transition-all w-full max-w-xs hover:scale-105 hover:shadow-lg"
             style={{ backgroundColor: buttonColor, color: buttonTextColor, borderRadius: `${borderRadius}px` }}
           >
             {content.button_text || settings.button_text || 'Get Started'}
@@ -292,7 +292,7 @@ export function DynamicElementRenderer({
   });
 
   return (
-    <div className="flex flex-col items-center gap-4 md:gap-6 w-full">
+    <div className="flex flex-col items-center gap-3 sm:gap-4 md:gap-6 w-full">
       {visibleElements.map((elementId) => {
         const element = renderElement(elementId);
         if (!element) return null;

@@ -201,4 +201,15 @@ All colors MUST be HSL.
   .glow-effect {
     box-shadow: var(--shadow-glow);
   }
+
+  /* Ensure font tags from contenteditable inherit text color properly */
+  font[color] {
+    color: inherit;
+  }
+  
+  /* Fix for raw font size attributes - normalize display */
+  [contenteditable="true"] font,
+  [dangerouslySetInnerHTML] font {
+    font-family: inherit;
+  }
 }

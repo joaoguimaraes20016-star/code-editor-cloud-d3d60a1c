@@ -166,7 +166,7 @@ export function PagesList({
               onOpenSettings={() => onOpenPageSettings?.(step.id)}
               onMoveUp={() => onMoveStep?.(step.id, 'up')}
               onMoveDown={() => onMoveStep?.(step.id, 'down')}
-              canDelete={step.step_type !== 'welcome'}
+               canDelete={regularSteps.length > 1}
             />
           ))}
         </SortableContext>

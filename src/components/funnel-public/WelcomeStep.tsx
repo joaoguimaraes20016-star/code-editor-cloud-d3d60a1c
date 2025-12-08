@@ -58,14 +58,14 @@ export function WelcomeStep({ content, settings, onNext, isActive }: WelcomeStep
     <div className="w-full max-w-xl text-center px-4">
       {content.headline && (
         <h1 
-          className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 md:mb-6 leading-tight"
+          className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-4 md:mb-6 leading-tight [&>*]:leading-tight"
           dangerouslySetInnerHTML={{ __html: content.headline }}
         />
       )}
 
       {content.subtext && (
         <p 
-          className="text-base md:text-lg lg:text-xl text-white/70 mb-6 md:mb-8"
+          className="text-sm sm:text-base md:text-lg lg:text-xl text-white/70 mb-6 md:mb-8 [&>*]:leading-relaxed"
           dangerouslySetInnerHTML={{ __html: content.subtext }}
         />
       )}
@@ -73,7 +73,7 @@ export function WelcomeStep({ content, settings, onNext, isActive }: WelcomeStep
       <button
         ref={buttonRef}
         onClick={onNext}
-        className="px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-semibold rounded-lg text-white transition-all duration-200 hover:scale-105 hover:shadow-lg"
+        className="px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 text-sm sm:text-base md:text-lg font-semibold rounded-lg text-white transition-all duration-200 hover:scale-105 hover:shadow-lg"
         style={{ backgroundColor: settings.primary_color }}
       >
         {content.button_text || settings.button_text || 'Get Started'}
