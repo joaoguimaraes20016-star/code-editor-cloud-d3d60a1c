@@ -2,9 +2,10 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
-import { GripVertical, Trash2, Play, MessageSquare, List, Mail, Phone, Video, CheckCircle, Plus } from 'lucide-react';
+import { GripVertical, Trash2, Play, MessageSquare, List, Mail, Phone, Video, CheckCircle, Plus, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FunnelStep } from '@/pages/FunnelEditor';
+import { PageContextMenu } from './PageContextMenu';
 
 interface PagesListProps {
   steps: FunnelStep[];
@@ -12,6 +13,10 @@ interface PagesListProps {
   onSelectStep: (stepId: string) => void;
   onDeleteStep: (stepId: string) => void;
   onAddStep: () => void;
+  onDuplicateStep?: (stepId: string) => void;
+  onRenameStep?: (stepId: string, newName: string) => void;
+  onOpenPageSettings?: (stepId: string) => void;
+  onMoveStep?: (stepId: string, direction: 'up' | 'down') => void;
 }
 
 const stepTypeIcons = {
@@ -27,16 +32,28 @@ const stepTypeIcons = {
 function PageItem({
   step,
   index,
+  totalSteps,
   isSelected,
   onSelect,
   onDelete,
+  onDuplicate,
+  onRename,
+  onOpenSettings,
+  onMoveUp,
+  onMoveDown,
   canDelete,
 }: {
   step: FunnelStep;
   index: number;
+  totalSteps: number;
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
+  onRename: (newName: string) => void;
+  onOpenSettings: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   canDelete: boolean;
 }) {
   const {
@@ -84,7 +101,7 @@ function PageItem({
       </span>
 
       <Icon className={cn(
-        "h-4 w-4",
+        "h-4 w-4 shrink-0",
         isSelected ? "text-primary" : "text-muted-foreground"
       )} />
 
@@ -95,19 +112,19 @@ function PageItem({
         {step.content.headline || 'Untitled'}
       </span>
 
-      {canDelete && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
-      )}
+      <PageContextMenu
+        step={step}
+        index={index}
+        onRename={onRename}
+        onDuplicate={onDuplicate}
+        onDelete={onDelete}
+        onOpenSettings={onOpenSettings}
+        canDelete={canDelete}
+        canMoveUp={index > 0}
+        canMoveDown={index < totalSteps - 1}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+      />
     </div>
   );
 }
@@ -118,7 +135,15 @@ export function PagesList({
   onSelectStep,
   onDeleteStep,
   onAddStep,
+  onDuplicateStep,
+  onRenameStep,
+  onOpenPageSettings,
+  onMoveStep,
 }: PagesListProps) {
+  // Separate regular steps and thank you steps
+  const regularSteps = steps.filter(s => s.step_type !== 'thank_you');
+  const thankYouSteps = steps.filter(s => s.step_type === 'thank_you');
+
   return (
     <div className="flex flex-col h-full">
       <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
@@ -126,19 +151,51 @@ export function PagesList({
       </h3>
       
       <div className="flex-1 overflow-y-auto space-y-1">
-        <SortableContext items={steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-          {steps.map((step, index) => (
+        <SortableContext items={regularSteps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          {regularSteps.map((step, index) => (
             <PageItem
               key={step.id}
               step={step}
               index={index}
+              totalSteps={regularSteps.length}
               isSelected={step.id === selectedStepId}
               onSelect={() => onSelectStep(step.id)}
               onDelete={() => onDeleteStep(step.id)}
-              canDelete={step.step_type !== 'welcome' && step.step_type !== 'thank_you'}
+              onDuplicate={() => onDuplicateStep?.(step.id)}
+              onRename={(name) => onRenameStep?.(step.id, name)}
+              onOpenSettings={() => onOpenPageSettings?.(step.id)}
+              onMoveUp={() => onMoveStep?.(step.id, 'up')}
+              onMoveDown={() => onMoveStep?.(step.id, 'down')}
+              canDelete={step.step_type !== 'welcome'}
             />
           ))}
         </SortableContext>
+
+        {/* Results Section */}
+        {thankYouSteps.length > 0 && (
+          <div className="mt-4 pt-4 border-t">
+            <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+              Results
+            </h4>
+            {thankYouSteps.map((step, index) => (
+              <PageItem
+                key={step.id}
+                step={step}
+                index={regularSteps.length + index}
+                totalSteps={steps.length}
+                isSelected={step.id === selectedStepId}
+                onSelect={() => onSelectStep(step.id)}
+                onDelete={() => onDeleteStep(step.id)}
+                onDuplicate={() => onDuplicateStep?.(step.id)}
+                onRename={(name) => onRenameStep?.(step.id, name)}
+                onOpenSettings={() => onOpenPageSettings?.(step.id)}
+                onMoveUp={() => {}}
+                onMoveDown={() => {}}
+                canDelete={thankYouSteps.length > 1}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <Button

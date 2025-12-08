@@ -5,8 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { ArrowLeft, Settings, Eye, Save, Globe, Menu, PanelLeft, PanelRight } from 'lucide-react';
+import { ArrowLeft, Settings, Eye, Save, Globe, PanelLeft, PanelRight, Play } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { PagesList } from '@/components/funnel-builder/PagesList';
 import { EditorSidebar } from '@/components/funnel-builder/EditorSidebar';
@@ -16,6 +15,8 @@ import { StepPreview } from '@/components/funnel-builder/StepPreview';
 import { PreviewNavigation } from '@/components/funnel-builder/PreviewNavigation';
 import { AddStepDialog } from '@/components/funnel-builder/AddStepDialog';
 import { ContentBlock } from '@/components/funnel-builder/ContentBlockEditor';
+import { LivePreviewMode } from '@/components/funnel-builder/LivePreviewMode';
+import { PageSettingsDialog } from '@/components/funnel-builder/PageSettingsDialog';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -92,11 +93,15 @@ export default function FunnelEditor() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showLeftPanel, setShowLeftPanel] = useState(!isMobile);
   const [showRightPanel, setShowRightPanel] = useState(!isMobile);
+  const [showLivePreview, setShowLivePreview] = useState(false);
+  const [showPageSettings, setShowPageSettings] = useState(false);
+  const [pageSettingsStepId, setPageSettingsStepId] = useState<string | null>(null);
 
   // Per-step design, settings, and blocks state
   const [stepDesigns, setStepDesigns] = useState<Record<string, StepDesign>>({});
   const [stepSettings, setStepSettings] = useState<Record<string, StepSettings>>({});
   const [stepBlocks, setStepBlocks] = useState<Record<string, ContentBlock[]>>({});
+  const [pageSettings, setPageSettings] = useState<Record<string, any>>({});
 
   const { data: funnel, isLoading: funnelLoading } = useQuery({
     queryKey: ['funnel', funnelId],
@@ -268,7 +273,54 @@ export default function FunnelEditor() {
   };
 
   const handlePreview = () => {
+    setShowLivePreview(true);
+  };
+
+  const handleOpenInNewTab = () => {
     window.open(`/f/${funnel?.slug}`, '_blank');
+  };
+
+  const handleDuplicateStep = (stepId: string) => {
+    const stepToDuplicate = steps.find(s => s.id === stepId);
+    if (!stepToDuplicate) return;
+    
+    const newStep: FunnelStep = {
+      ...stepToDuplicate,
+      id: crypto.randomUUID(),
+      content: { ...stepToDuplicate.content, headline: `${stepToDuplicate.content.headline || 'Untitled'} (Copy)` },
+    };
+    
+    const stepIndex = steps.findIndex(s => s.id === stepId);
+    const newSteps = [...steps];
+    newSteps.splice(stepIndex + 1, 0, newStep);
+    setSteps(newSteps);
+    setSelectedStepId(newStep.id);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleRenameStep = (stepId: string, newName: string) => {
+    setSteps(steps.map(s => 
+      s.id === stepId 
+        ? { ...s, content: { ...s.content, headline: newName } }
+        : s
+    ));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleOpenPageSettings = (stepId: string) => {
+    setPageSettingsStepId(stepId);
+    setShowPageSettings(true);
+  };
+
+  const handleMoveStep = (stepId: string, direction: 'up' | 'down') => {
+    const index = steps.findIndex(s => s.id === stepId);
+    if (index === -1) return;
+    
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= steps.length) return;
+    
+    setSteps(arrayMove(steps, index, newIndex));
+    setHasUnsavedChanges(true);
   };
 
   // Navigation between steps
@@ -377,8 +429,18 @@ export default function FunnelEditor() {
               onClick={handlePreview}
               className="hidden sm:flex"
             >
-              <Eye className="h-4 w-4 sm:mr-2" />
+              <Play className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Preview</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenInNewTab}
+              className="hidden sm:flex"
+            >
+              <Eye className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Open</span>
             </Button>
 
             <Button
@@ -436,6 +498,10 @@ export default function FunnelEditor() {
               }}
               onDeleteStep={handleDeleteStep}
               onAddStep={() => setShowAddStep(true)}
+              onDuplicateStep={handleDuplicateStep}
+              onRenameStep={handleRenameStep}
+              onOpenPageSettings={handleOpenPageSettings}
+              onMoveStep={handleMoveStep}
             />
           </DndContext>
         </div>
@@ -534,6 +600,27 @@ export default function FunnelEditor() {
         onOpenChange={setShowAddStep}
         onAddStep={handleAddStep}
       />
+
+      <LivePreviewMode
+        open={showLivePreview}
+        onClose={() => setShowLivePreview(false)}
+        funnel={funnel}
+        steps={steps}
+      />
+
+      {pageSettingsStepId && (
+        <PageSettingsDialog
+          open={showPageSettings}
+          onOpenChange={setShowPageSettings}
+          step={steps.find(s => s.id === pageSettingsStepId)!}
+          allSteps={steps}
+          settings={pageSettings[pageSettingsStepId] || {}}
+          onSave={(settings) => {
+            setPageSettings(prev => ({ ...prev, [pageSettingsStepId]: settings }));
+            setHasUnsavedChanges(true);
+          }}
+        />
+      )}
     </div>
   );
 }
