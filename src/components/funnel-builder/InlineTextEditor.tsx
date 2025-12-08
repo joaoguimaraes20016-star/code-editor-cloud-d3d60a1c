@@ -75,32 +75,36 @@ export function InlineTextEditor({
   onDeselect,
 }: InlineTextEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [hasTextSelection, setHasTextSelection] = useState(false);
   const [activePicker, setActivePicker] = useState<string | null>(null);
   const [toolbarPosition, setToolbarPosition] = useState<{ top: number; left: number } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  const updateToolbarPosition = useCallback(() => {
-    if (isEditing && editorRef.current) {
-      const editorRect = editorRef.current.getBoundingClientRect();
+  // Only show toolbar when there's an actual text selection
+  const checkTextSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
+      const range = sel.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
       setToolbarPosition({
-        top: editorRect.top - 50,
-        left: editorRect.left + editorRect.width / 2,
+        top: rect.top - 50,
+        left: rect.left + rect.width / 2,
       });
+      setHasTextSelection(true);
+    } else {
+      setHasTextSelection(false);
+      setToolbarPosition(null);
+      setActivePicker(null);
     }
-  }, [isEditing]);
+  }, []);
 
   useEffect(() => {
     if (isEditing) {
-      updateToolbarPosition();
-      window.addEventListener('scroll', updateToolbarPosition, true);
-      window.addEventListener('resize', updateToolbarPosition);
-      return () => {
-        window.removeEventListener('scroll', updateToolbarPosition, true);
-        window.removeEventListener('resize', updateToolbarPosition);
-      };
+      document.addEventListener('selectionchange', checkTextSelection);
+      return () => document.removeEventListener('selectionchange', checkTextSelection);
     }
-  }, [isEditing, updateToolbarPosition]);
+  }, [isEditing, checkTextSelection]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -112,21 +116,15 @@ export function InlineTextEditor({
   };
 
   const handleBlur = (e: React.FocusEvent) => {
-    // Don't blur if clicking on toolbar
-    if (toolbarRef.current?.contains(e.relatedTarget as Node)) {
-      return;
-    }
-    
-    // Don't blur if picker is open
-    if (activePicker) {
-      return;
-    }
+    if (toolbarRef.current?.contains(e.relatedTarget as Node)) return;
+    if (activePicker) return;
     
     saveContent();
     
     setTimeout(() => {
       if (!toolbarRef.current?.contains(document.activeElement) && !activePicker) {
         setIsEditing(false);
+        setHasTextSelection(false);
         setToolbarPosition(null);
         setActivePicker(null);
       }
@@ -143,20 +141,14 @@ export function InlineTextEditor({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.ctrlKey || e.metaKey) {
-      if (e.key === 'b') {
-        e.preventDefault();
-        execCommand('bold');
-      } else if (e.key === 'i') {
-        e.preventDefault();
-        execCommand('italic');
-      } else if (e.key === 'u') {
-        e.preventDefault();
-        execCommand('underline');
-      }
+      if (e.key === 'b') { e.preventDefault(); execCommand('bold'); }
+      else if (e.key === 'i') { e.preventDefault(); execCommand('italic'); }
+      else if (e.key === 'u') { e.preventDefault(); execCommand('underline'); }
     }
     
     if (e.key === 'Escape') {
       setIsEditing(false);
+      setHasTextSelection(false);
       setToolbarPosition(null);
       setActivePicker(null);
       onDeselect?.();
@@ -172,13 +164,11 @@ export function InlineTextEditor({
   const applyColor = (color: string) => {
     execCommand('foreColor', color);
     setActivePicker(null);
-    editorRef.current?.focus();
   };
 
   const applyFontSize = (size: string) => {
     execCommand('fontSize', size);
     setActivePicker(null);
-    editorRef.current?.focus();
   };
 
   const applyLineHeight = (height: string) => {
@@ -187,7 +177,6 @@ export function InlineTextEditor({
       saveContent();
     }
     setActivePicker(null);
-    editorRef.current?.focus();
   };
 
   const applyLetterSpacing = (spacing: string) => {
@@ -196,14 +185,16 @@ export function InlineTextEditor({
       saveContent();
     }
     setActivePicker(null);
-    editorRef.current?.focus();
   };
 
   const togglePicker = (pickerName: string) => {
     setActivePicker(prev => prev === pickerName ? null : pickerName);
   };
 
-  const toolbarContent = isEditing && toolbarPosition && createPortal(
+  // Only show toolbar when text is selected
+  const showToolbar = hasTextSelection && toolbarPosition;
+
+  const toolbarContent = showToolbar && createPortal(
     <div 
       ref={toolbarRef}
       className="fixed flex items-center gap-0.5 p-1.5 bg-popover border border-border rounded-lg shadow-xl animate-in fade-in-0 zoom-in-95"
@@ -428,7 +419,7 @@ export function InlineTextEditor({
         suppressContentEditableWarning
         className={cn(
           "cursor-text outline-none transition-all min-h-[1.5em] w-full",
-          isEditing && "ring-2 ring-primary/50 rounded px-1",
+          isEditing && "ring-1 ring-primary/30 rounded px-1",
           !value && !isEditing && "text-white/30",
           className
         )}

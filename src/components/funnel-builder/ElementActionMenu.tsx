@@ -4,8 +4,6 @@ import {
   ChevronDown, 
   Copy, 
   Trash2,
-  Plus,
-  Minus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +31,7 @@ export function ElementActionMenu({
   return (
     <div 
       className={cn(
-        "absolute top-1/2 -translate-y-1/2 -right-14 z-50 flex flex-col gap-0.5 p-1 bg-popover border border-border rounded-lg shadow-lg animate-in fade-in-0 slide-in-from-left-2",
+        "absolute top-1/2 -translate-y-1/2 -right-12 z-50 flex flex-col gap-0.5 p-1 bg-popover border border-border rounded-lg shadow-lg animate-in fade-in-0 slide-in-from-left-2",
         className
       )}
       onClick={(e) => e.stopPropagation()}
@@ -42,7 +40,7 @@ export function ElementActionMenu({
         variant="ghost"
         size="icon"
         className="h-7 w-7 rounded-sm"
-        onClick={onMoveUp}
+        onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
         disabled={!canMoveUp}
         title="Move up"
       >
@@ -53,7 +51,7 @@ export function ElementActionMenu({
         variant="ghost"
         size="icon"
         className="h-7 w-7 rounded-sm"
-        onClick={onMoveDown}
+        onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
         disabled={!canMoveDown}
         title="Move down"
       >
@@ -67,7 +65,7 @@ export function ElementActionMenu({
           variant="ghost"
           size="icon"
           className="h-7 w-7 rounded-sm"
-          onClick={onDuplicate}
+          onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
           title="Duplicate"
         >
           <Copy className="h-4 w-4" />
@@ -79,7 +77,7 @@ export function ElementActionMenu({
           variant="ghost"
           size="icon"
           className="h-7 w-7 rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10"
-          onClick={onDelete}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
           title="Delete"
         >
           <Trash2 className="h-4 w-4" />
