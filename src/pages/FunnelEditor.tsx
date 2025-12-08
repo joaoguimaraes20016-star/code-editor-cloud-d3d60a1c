@@ -292,25 +292,15 @@ export default function FunnelEditor() {
       if (insertError) throw insertError;
     },
     onSuccess: () => {
-      // Don't invalidate queries - we already have the latest state locally
-      // This prevents the refetch from resetting our edits
-      setHasUnsavedChanges(false);
-      setIsSaving(false);
+      // Silent background save - no state updates that cause re-renders
       setLastSaved(new Date());
-      // Silent save - no toast spam
     },
     onError: (error: Error) => {
-      setIsSaving(false);
-      toast({ title: 'Failed to save funnel', description: error.message, variant: 'destructive' });
-    },
-    onMutate: () => {
-      setIsSaving(true);
+      toast({ title: 'Failed to save', description: error.message, variant: 'destructive' });
     },
   });
 
-  // Auto-save effect - less aggressive, only save when truly idle
-  const autoSaveTimerRef2 = useRef<NodeJS.Timeout | null>(null);
-  
+  // Immediate save on any change - completely silent
   useEffect(() => {
     if (hasUnsavedChanges && !saveMutation.isPending && steps.length > 0 && isInitialized) {
       // Clear any existing timer
@@ -318,10 +308,11 @@ export default function FunnelEditor() {
         clearTimeout(autoSaveTimerRef.current);
       }
       
-      // Set new timer - longer debounce to avoid constant saves
+      // Save immediately with tiny debounce just to batch rapid changes
       autoSaveTimerRef.current = setTimeout(() => {
+        setHasUnsavedChanges(false); // Reset before save to prevent loops
         saveMutation.mutate();
-      }, 3000); // 3 seconds instead of 2
+      }, 500);
     }
     
     return () => {
@@ -535,21 +526,7 @@ export default function FunnelEditor() {
               {funnel.status}
             </Badge>
 
-            {isSaving && (
-              <Badge variant="outline" className="text-blue-500 border-blue-500 hidden sm:inline-flex animate-pulse">
-                Saving...
-              </Badge>
-            )}
-            {!isSaving && hasUnsavedChanges && (
-              <Badge variant="outline" className="text-orange-500 border-orange-500 hidden sm:inline-flex">
-                Unsaved
-              </Badge>
-            )}
-            {!isSaving && !hasUnsavedChanges && lastSaved && (
-              <Badge variant="outline" className="text-green-500 border-green-500 hidden sm:inline-flex">
-                Saved
-              </Badge>
-            )}
+            {/* Silent auto-save - no visible indicators */}
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
