@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
@@ -12,7 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { PagesList } from '@/components/funnel-builder/PagesList';
 import { EditorSidebar } from '@/components/funnel-builder/EditorSidebar';
 import { FunnelSettingsDialog } from '@/components/funnel-builder/FunnelSettingsDialog';
-import { MobilePreview } from '@/components/funnel-builder/MobilePreview';
+import { DevicePreview } from '@/components/funnel-builder/DevicePreview';
 import { StepPreview } from '@/components/funnel-builder/StepPreview';
 import { PreviewNavigation } from '@/components/funnel-builder/PreviewNavigation';
 import { AddStepDialog } from '@/components/funnel-builder/AddStepDialog';
@@ -23,6 +22,8 @@ import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+
+type DeviceType = 'mobile' | 'tablet' | 'desktop';
 
 export interface StepDesign {
   backgroundColor?: string;
@@ -106,6 +107,7 @@ export default function FunnelEditor() {
   const [showPageSettings, setShowPageSettings] = useState(false);
   const [pageSettingsStepId, setPageSettingsStepId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
+  const [devicePreview, setDevicePreview] = useState<DeviceType>('mobile');
 
   // Per-step design, settings, blocks, and element order state
   const [stepDesigns, setStepDesigns] = useState<Record<string, StepDesign>>({});
@@ -113,6 +115,9 @@ export default function FunnelEditor() {
   const [stepBlocks, setStepBlocks] = useState<Record<string, ContentBlock[]>>({});
   const [pageSettings, setPageSettings] = useState<Record<string, any>>({});
   const [elementOrders, setElementOrders] = useState<Record<string, string[]>>({});
+  
+  // Auto-save timer ref
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: funnel, isLoading: funnelLoading } = useQuery({
     queryKey: ['funnel', funnelId],
@@ -234,18 +239,25 @@ export default function FunnelEditor() {
     },
   });
 
-  // Auto-save with debounce
-  const debouncedSave = useDebouncedCallback(() => {
-    if (hasUnsavedChanges && !saveMutation.isPending && steps.length > 0) {
-      saveMutation.mutate();
-    }
-  }, 2000);
-
-  // Trigger auto-save when changes occur
+  // Auto-save effect - properly debounced
   useEffect(() => {
-    if (hasUnsavedChanges) {
-      debouncedSave();
+    if (hasUnsavedChanges && !saveMutation.isPending && steps.length > 0) {
+      // Clear any existing timer
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+      
+      // Set new timer
+      autoSaveTimerRef.current = setTimeout(() => {
+        saveMutation.mutate();
+      }, 2000);
     }
+    
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
   }, [hasUnsavedChanges, steps, stepDesigns, elementOrders, name]);
 
   const publishMutation = useMutation({
@@ -580,17 +592,21 @@ export default function FunnelEditor() {
           </DndContext>
         </div>
 
-        {/* Center - Phone Mockup Preview - full scrollable area */}
-        <div className="flex-1 flex flex-col items-center bg-zinc-900/50 overflow-x-hidden overflow-y-auto py-6 px-2">
+        {/* Center - Device Preview - full scrollable area */}
+        <div className="flex-1 flex flex-col items-center bg-zinc-900/50 overflow-x-auto overflow-y-auto py-6 px-4">
           {selectedStep && (
             <>
-              <MobilePreview 
+              <DevicePreview 
                 backgroundColor={stepDesigns[selectedStep.id]?.backgroundColor || funnel.settings.background_color}
+                device={devicePreview}
+                onDeviceChange={setDevicePreview}
                 className={cn(
                   "transition-transform duration-300",
                   focusMode 
-                    ? "scale-100 sm:scale-105 lg:scale-110" 
-                    : "scale-[0.9] sm:scale-95 lg:scale-100"
+                    ? "scale-100" 
+                    : devicePreview === 'desktop' ? "scale-[0.7] lg:scale-[0.85]" :
+                      devicePreview === 'tablet' ? "scale-[0.8] lg:scale-90" :
+                      "scale-[0.9] lg:scale-100"
                 )}
               >
                 <StepPreview
@@ -605,7 +621,7 @@ export default function FunnelEditor() {
                     handleUpdateStep(selectedStep.id, { ...selectedStep.content, [field]: value });
                   }}
                 />
-              </MobilePreview>
+              </DevicePreview>
 
               {/* Navigation Arrows */}
               <PreviewNavigation

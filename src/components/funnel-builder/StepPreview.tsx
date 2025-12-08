@@ -4,7 +4,7 @@ import { ElementActionMenu } from './ElementActionMenu';
 import { InlineTextEditor } from './InlineTextEditor';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { 
   DndContext, 
   closestCenter, 
@@ -125,7 +125,7 @@ function getVideoEmbedUrl(url?: string): string | null {
   return null;
 }
 
-// Sortable Element Wrapper - improved for smoother drag
+// Sortable Element Wrapper
 function SortableElement({ 
   id, 
   children, 
@@ -175,8 +175,10 @@ function SortableElement({
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        "relative transition-all group py-1",
+        "relative transition-all group py-1 w-full cursor-pointer",
         isSelected 
           ? "ring-2 ring-primary rounded bg-primary/5" 
           : "hover:ring-2 hover:ring-primary/40 rounded hover:bg-primary/5",
@@ -188,7 +190,7 @@ function SortableElement({
         {children}
       </div>
       
-      {/* Action menu - appears above the element when selected */}
+      {/* Action menu - appears to the right when selected */}
       {isSelected && (
         <ElementActionMenu
           elementId={id}
@@ -216,6 +218,9 @@ export function StepPreview({
 }: StepPreviewProps) {
   const content = step.content;
   const [showAddElement, setShowAddElement] = useState(false);
+  
+  // Store dynamically added content
+  const [dynamicContent, setDynamicContent] = useState<Record<string, any>>({});
 
   const textColor = design?.textColor || '#ffffff';
   const buttonColor = design?.buttonColor || settings.primary_color;
@@ -227,9 +232,7 @@ export function StepPreview({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 25, // Much higher distance to prevent accidental drags
-        delay: 200,   // Longer delay before drag starts
-        tolerance: 8,
+        distance: 10,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -244,7 +247,7 @@ export function StepPreview({
     return DEFAULT_ELEMENT_ORDERS[step.step_type] || ['headline', 'subtext', 'button'];
   }, [elementOrder, step.step_type]);
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
@@ -253,49 +256,73 @@ export function StepPreview({
       const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
       onReorderElements?.(newOrder);
     }
-  };
+  }, [currentOrder, onReorderElements]);
 
-  const handleAddElement = (elementType: string) => {
+  const handleAddElement = useCallback((elementType: string) => {
     const newElementId = `${elementType}_${Date.now()}`;
     const newOrder = [...currentOrder, newElementId];
+    
+    // Initialize default content for the new element
+    if (elementType === 'video') {
+      setDynamicContent(prev => ({ ...prev, [newElementId]: { video_url: '' } }));
+    } else if (elementType === 'image') {
+      setDynamicContent(prev => ({ ...prev, [newElementId]: { image_url: '' } }));
+    } else if (elementType === 'text') {
+      setDynamicContent(prev => ({ ...prev, [newElementId]: { text: 'New text block' } }));
+    }
+    
     onReorderElements?.(newOrder);
     setShowAddElement(false);
-  };
+    onSelectElement(newElementId);
+  }, [currentOrder, onReorderElements, onSelectElement]);
 
-  const handleMoveUp = (elementId: string) => {
+  const handleMoveUp = useCallback((elementId: string) => {
     const index = currentOrder.indexOf(elementId);
     if (index > 0 && onReorderElements) {
       const newOrder = arrayMove(currentOrder, index, index - 1);
       onReorderElements(newOrder);
     }
-  };
+  }, [currentOrder, onReorderElements]);
 
-  const handleMoveDown = (elementId: string) => {
+  const handleMoveDown = useCallback((elementId: string) => {
     const index = currentOrder.indexOf(elementId);
     if (index < currentOrder.length - 1 && onReorderElements) {
       const newOrder = arrayMove(currentOrder, index, index + 1);
       onReorderElements(newOrder);
     }
-  };
+  }, [currentOrder, onReorderElements]);
 
-  const handleDuplicate = (elementId: string) => {
+  const handleDuplicate = useCallback((elementId: string) => {
     const index = currentOrder.indexOf(elementId);
     const newElementId = `${elementId}_copy_${Date.now()}`;
     const newOrder = [...currentOrder];
     newOrder.splice(index + 1, 0, newElementId);
+    
+    // Copy dynamic content if exists
+    if (dynamicContent[elementId]) {
+      setDynamicContent(prev => ({ ...prev, [newElementId]: { ...prev[elementId] } }));
+    }
+    
     onReorderElements?.(newOrder);
-  };
+  }, [currentOrder, onReorderElements, dynamicContent]);
 
-  const handleDelete = (elementId: string) => {
+  const handleDelete = useCallback((elementId: string) => {
     if (onReorderElements) {
       const newOrder = currentOrder.filter(id => id !== elementId);
       onReorderElements(newOrder);
+      if (selectedElement === elementId) {
+        onSelectElement(null);
+      }
     }
-  };
+  }, [currentOrder, onReorderElements, selectedElement, onSelectElement]);
 
-  const handleTextChange = (field: string, value: string) => {
+  const handleTextChange = useCallback((field: string, value: string) => {
     onUpdateContent?.(field, value);
-  };
+  }, [onUpdateContent]);
+
+  const handleDynamicContentChange = useCallback((elementId: string, value: any) => {
+    setDynamicContent(prev => ({ ...prev, [elementId]: { ...prev[elementId], ...value } }));
+  }, []);
 
   const renderImage = () => {
     if (!design?.imageUrl || design?.imagePosition === 'background') return null;
@@ -311,18 +338,22 @@ export function StepPreview({
           src={design.imageUrl} 
           alt="" 
           className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
         />
       </div>
     );
   };
 
   const renderElementContent = (elementId: string) => {
-    // Handle dynamically added elements
+    // Handle dynamically added text blocks
     if (elementId.startsWith('text_')) {
+      const textValue = dynamicContent[elementId]?.text || 'New text block';
       return (
         <InlineTextEditor
-          value="New text block"
-          onChange={(val) => handleTextChange(elementId, val)}
+          value={textValue}
+          onChange={(val) => handleDynamicContentChange(elementId, { text: val })}
           className={cn(FONT_SIZE_MAP[fontSize].subtext, "text-center")}
           style={{ color: textColor }}
           isSelected={selectedElement === elementId}
@@ -331,14 +362,123 @@ export function StepPreview({
       );
     }
 
+    // Handle dynamically added dividers - shows a visible line
     if (elementId.startsWith('divider_')) {
       return (
-        <div 
-          className="w-full max-w-xs mx-auto py-4 cursor-pointer"
-          onClick={(e) => { e.stopPropagation(); onSelectElement(elementId); }}
-        >
-          <div className="h-px bg-white/30" />
+        <div className="w-full max-w-xs mx-auto py-3">
+          <div 
+            className="h-[2px] w-full rounded-full"
+            style={{ backgroundColor: `${textColor}40` }}
+          />
         </div>
+      );
+    }
+
+    // Handle dynamically added videos
+    if (elementId.startsWith('video_') && elementId !== 'video') {
+      const videoUrl = dynamicContent[elementId]?.video_url || '';
+      const embedUrl = getVideoEmbedUrl(videoUrl);
+      
+      return (
+        <div 
+          className="w-full aspect-video overflow-hidden"
+          style={{ borderRadius: `${borderRadius}px` }}
+        >
+          {embedUrl ? (
+            <iframe
+              src={embedUrl}
+              className="w-full h-full"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <div className="w-full h-full bg-white/10 flex flex-col items-center justify-center gap-2 p-4">
+              <Video className="w-8 h-8 opacity-50" style={{ color: textColor }} />
+              <input
+                type="text"
+                placeholder="Paste video URL (YouTube, Vimeo, Loom)"
+                className="w-full bg-white/10 border border-white/20 px-3 py-2 text-xs text-center rounded"
+                style={{ color: textColor }}
+                value={videoUrl}
+                onChange={(e) => handleDynamicContentChange(elementId, { video_url: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Handle dynamically added images
+    if (elementId.startsWith('image_') && !['image_top', 'image_bottom'].includes(elementId)) {
+      const imageUrl = dynamicContent[elementId]?.image_url || '';
+      
+      return (
+        <div className="w-full max-w-[200px] mx-auto">
+          {imageUrl ? (
+            <img 
+              src={imageUrl} 
+              alt="" 
+              className="w-full h-auto rounded-lg"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect fill="%23333" width="200" height="150"/><text fill="%23999" x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="sans-serif" font-size="12">Image not found</text></svg>';
+              }}
+            />
+          ) : (
+            <div className="w-full aspect-video bg-white/10 flex flex-col items-center justify-center gap-2 rounded-lg p-4">
+              <Image className="w-8 h-8 opacity-50" style={{ color: textColor }} />
+              <input
+                type="text"
+                placeholder="Paste image URL"
+                className="w-full bg-white/10 border border-white/20 px-3 py-2 text-xs text-center rounded"
+                style={{ color: textColor }}
+                value={imageUrl}
+                onChange={(e) => handleDynamicContentChange(elementId, { image_url: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Handle dynamically added buttons
+    if (elementId.startsWith('button_') && elementId !== 'button') {
+      const buttonText = dynamicContent[elementId]?.text || 'Click me';
+      return (
+        <button
+          className="px-6 py-3 text-sm font-semibold transition-all w-full max-w-xs"
+          style={{ 
+            backgroundColor: buttonColor, 
+            color: buttonTextColor,
+            borderRadius: `${borderRadius}px`
+          }}
+        >
+          <InlineTextEditor
+            value={buttonText}
+            onChange={(val) => handleDynamicContentChange(elementId, { text: val })}
+            className="text-center"
+            style={{ color: buttonTextColor }}
+            isSelected={selectedElement === elementId}
+            onSelect={() => onSelectElement(elementId)}
+          />
+        </button>
+      );
+    }
+
+    // Handle dynamically added headlines
+    if (elementId.startsWith('headline_') && elementId !== 'headline') {
+      const headlineText = dynamicContent[elementId]?.text || 'New Headline';
+      return (
+        <InlineTextEditor
+          value={headlineText}
+          onChange={(val) => handleDynamicContentChange(elementId, { text: val })}
+          className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold leading-tight text-center")}
+          style={{ color: textColor }}
+          isSelected={selectedElement === elementId}
+          onSelect={() => onSelectElement(elementId)}
+        />
       );
     }
 
@@ -457,12 +597,10 @@ export function StepPreview({
                 allowFullScreen
               />
             ) : (
-              <div 
-                className="w-full h-full bg-white/10 flex items-center justify-center"
-                onClick={(e) => { e.stopPropagation(); onSelectElement('video'); }}
-              >
-                <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>
-                  {videoUrl ? 'Invalid video URL' : 'Click to add video URL'}
+              <div className="w-full h-full bg-white/10 flex flex-col items-center justify-center gap-2 p-4">
+                <Video className="w-8 h-8 opacity-50" style={{ color: textColor }} />
+                <span className="text-xs opacity-50" style={{ color: textColor }}>
+                  Add video URL in the sidebar
                 </span>
               </div>
             )}
@@ -481,11 +619,18 @@ export function StepPreview({
     }
   };
 
-  // Filter out null elements
-  const visibleElements = currentOrder.filter(id => {
-    const content = renderElementContent(id);
-    return content !== null;
-  });
+  // Get all elements that should be rendered
+  const visibleElements = useMemo(() => {
+    return currentOrder.filter(id => {
+      // Dynamic elements are always visible
+      if (id.includes('_') && /^\w+_\d+/.test(id)) {
+        return true;
+      }
+      // For standard elements, check if they render
+      const content = renderElementContent(id);
+      return content !== null;
+    });
+  }, [currentOrder, content, design, step.step_type]);
 
   return (
     <div 
@@ -512,16 +657,15 @@ export function StepPreview({
         </div>
       )}
 
-      {/* Drag and Drop Column Layout - NO height limit */}
-      <div className="flex flex-col items-center p-6 gap-4 relative z-10 min-h-[400px]">
+      {/* Drag and Drop Column Layout */}
+      <div className="flex flex-col items-center p-6 gap-3 relative z-10 min-h-[400px]">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={visibleElements} strategy={verticalListSortingStrategy}>
-            {visibleElements.map((elementId) => {
-              const index = visibleElements.indexOf(elementId);
+            {visibleElements.map((elementId, index) => {
               const elementContent = renderElementContent(elementId);
               
               if (!elementContent) return null;
@@ -552,7 +696,7 @@ export function StepPreview({
             <Button
               variant="outline"
               size="sm"
-              className="mt-2 border-dashed border-white/30 text-white/60 hover:text-white hover:border-white/50 bg-transparent hover:bg-white/10"
+              className="mt-4 border-dashed border-white/30 text-white/60 hover:text-white hover:border-white/50 bg-transparent hover:bg-white/10"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Element

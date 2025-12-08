@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Bold, 
@@ -35,19 +35,13 @@ const PRESET_COLORS = [
 ];
 
 const FONT_SIZES = [
-  { label: '12px', value: '12px' },
-  { label: '14px', value: '14px' },
-  { label: '16px', value: '16px' },
-  { label: '18px', value: '18px' },
-  { label: '20px', value: '20px' },
-  { label: '24px', value: '24px' },
-  { label: '28px', value: '28px' },
-  { label: '32px', value: '32px' },
-  { label: '36px', value: '36px' },
-  { label: '42px', value: '42px' },
-  { label: '48px', value: '48px' },
-  { label: '56px', value: '56px' },
-  { label: '64px', value: '64px' },
+  { label: '12px', value: '1' },
+  { label: '14px', value: '2' },
+  { label: '16px', value: '3' },
+  { label: '18px', value: '4' },
+  { label: '24px', value: '5' },
+  { label: '32px', value: '6' },
+  { label: '48px', value: '7' },
 ];
 
 const LINE_HEIGHTS = [
@@ -81,97 +75,73 @@ export function InlineTextEditor({
   onDeselect,
 }: InlineTextEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showFontSizePicker, setShowFontSizePicker] = useState(false);
-  const [showLineHeightPicker, setShowLineHeightPicker] = useState(false);
-  const [showLetterSpacingPicker, setShowLetterSpacingPicker] = useState(false);
-  const [hasSelection, setHasSelection] = useState(false);
+  const [activePicker, setActivePicker] = useState<string | null>(null);
   const [toolbarPosition, setToolbarPosition] = useState<{ top: number; left: number } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  // Close all pickers
-  const closeAllPickers = () => {
-    setShowColorPicker(false);
-    setShowFontSizePicker(false);
-    setShowLineHeightPicker(false);
-    setShowLetterSpacingPicker(false);
-  };
-
-  // Update toolbar position based on selection
-  useEffect(() => {
-    const updateToolbarPosition = () => {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
-        const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        
-        setToolbarPosition({
-          top: rect.top - 56,
-          left: rect.left + rect.width / 2,
-        });
-        setHasSelection(true);
-      } else if (editorRef.current?.contains(sel?.anchorNode || null)) {
-        if (isEditing && editorRef.current) {
-          const editorRect = editorRef.current.getBoundingClientRect();
-          setToolbarPosition({
-            top: editorRect.top - 56,
-            left: editorRect.left + editorRect.width / 2,
-          });
-        }
-        setHasSelection(false);
-      }
-    };
-
-    document.addEventListener('selectionchange', updateToolbarPosition);
-    return () => document.removeEventListener('selectionchange', updateToolbarPosition);
-  }, [isEditing]);
-
-  useEffect(() => {
+  const updateToolbarPosition = useCallback(() => {
     if (isEditing && editorRef.current) {
       const editorRect = editorRef.current.getBoundingClientRect();
       setToolbarPosition({
-        top: editorRect.top - 56,
+        top: editorRect.top - 50,
         left: editorRect.left + editorRect.width / 2,
       });
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    if (isEditing) {
+      updateToolbarPosition();
+      window.addEventListener('scroll', updateToolbarPosition, true);
+      window.addEventListener('resize', updateToolbarPosition);
+      return () => {
+        window.removeEventListener('scroll', updateToolbarPosition, true);
+        window.removeEventListener('resize', updateToolbarPosition);
+      };
+    }
+  }, [isEditing, updateToolbarPosition]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isEditing) {
       setIsEditing(true);
       onSelect?.();
+      setTimeout(() => editorRef.current?.focus(), 0);
     }
   };
 
   const handleBlur = (e: React.FocusEvent) => {
+    // Don't blur if clicking on toolbar
     if (toolbarRef.current?.contains(e.relatedTarget as Node)) {
       return;
     }
-
-    if (showColorPicker || showFontSizePicker || showLineHeightPicker || showLetterSpacingPicker) {
+    
+    // Don't blur if picker is open
+    if (activePicker) {
       return;
     }
     
+    saveContent();
+    
+    setTimeout(() => {
+      if (!toolbarRef.current?.contains(document.activeElement) && !activePicker) {
+        setIsEditing(false);
+        setToolbarPosition(null);
+        setActivePicker(null);
+      }
+    }, 100);
+  };
+
+  const saveContent = () => {
     if (editorRef.current) {
       const text = editorRef.current.innerText;
       onChange(text);
       onHtmlChange?.(editorRef.current.innerHTML);
     }
-    
-    setTimeout(() => {
-      if (!toolbarRef.current?.contains(document.activeElement) && !showColorPicker && !showFontSizePicker && !showLineHeightPicker && !showLetterSpacingPicker) {
-        setIsEditing(false);
-        setHasSelection(false);
-        setToolbarPosition(null);
-        closeAllPickers();
-      }
-    }, 150);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Keyboard shortcuts
     if (e.ctrlKey || e.metaKey) {
       if (e.key === 'b') {
         e.preventDefault();
@@ -187,71 +157,53 @@ export function InlineTextEditor({
     
     if (e.key === 'Escape') {
       setIsEditing(false);
-      setHasSelection(false);
-      closeAllPickers();
       setToolbarPosition(null);
+      setActivePicker(null);
       onDeselect?.();
-    }
-  };
-
-  const handleInput = () => {
-    if (editorRef.current) {
-      const text = editorRef.current.innerText;
-      onChange(text);
-      onHtmlChange?.(editorRef.current.innerHTML);
     }
   };
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
-    handleInput();
+    saveContent();
   };
 
   const applyColor = (color: string) => {
     execCommand('foreColor', color);
-    setShowColorPicker(false);
+    setActivePicker(null);
     editorRef.current?.focus();
   };
 
   const applyFontSize = (size: string) => {
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const span = document.createElement('span');
-      span.style.fontSize = size;
-      range.surroundContents(span);
-      handleInput();
-    }
-    setShowFontSizePicker(false);
+    execCommand('fontSize', size);
+    setActivePicker(null);
     editorRef.current?.focus();
   };
 
   const applyLineHeight = (height: string) => {
     if (editorRef.current) {
       editorRef.current.style.lineHeight = height;
-      handleInput();
+      saveContent();
     }
-    setShowLineHeightPicker(false);
+    setActivePicker(null);
     editorRef.current?.focus();
   };
 
   const applyLetterSpacing = (spacing: string) => {
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const span = document.createElement('span');
-      span.style.letterSpacing = spacing;
-      range.surroundContents(span);
-      handleInput();
+    if (editorRef.current) {
+      editorRef.current.style.letterSpacing = spacing;
+      saveContent();
     }
-    setShowLetterSpacingPicker(false);
+    setActivePicker(null);
     editorRef.current?.focus();
   };
 
-  const showToolbar = (isEditing || hasSelection) && toolbarPosition;
+  const togglePicker = (pickerName: string) => {
+    setActivePicker(prev => prev === pickerName ? null : pickerName);
+  };
 
-  const toolbarContent = showToolbar && toolbarPosition && createPortal(
+  const toolbarContent = isEditing && toolbarPosition && createPortal(
     <div 
       ref={toolbarRef}
       className="fixed flex items-center gap-0.5 p-1.5 bg-popover border border-border rounded-lg shadow-xl animate-in fade-in-0 zoom-in-95"
@@ -327,37 +279,27 @@ export function InlineTextEditor({
       {/* Color Picker */}
       <div className="relative">
         <Button
-          variant="ghost"
+          variant={activePicker === 'color' ? 'secondary' : 'ghost'}
           size="icon"
           className="h-7 w-7"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeAllPickers();
-            setShowColorPicker(!showColorPicker);
-          }}
+          onMouseDown={(e) => { e.preventDefault(); togglePicker('color'); }}
           title="Text Color"
         >
           <Palette className="h-3.5 w-3.5" />
         </Button>
-        {showColorPicker && (
+        {activePicker === 'color' && (
           <div 
             className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-popover border border-border rounded-lg shadow-xl"
-            style={{ zIndex: 10000, minWidth: '180px' }}
+            style={{ zIndex: 10000, width: '180px' }}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => e.stopPropagation()}
           >
-            <div className="grid grid-cols-5 gap-2" style={{ width: '150px' }}>
+            <div className="grid grid-cols-5 gap-2">
               {PRESET_COLORS.map((color) => (
                 <button
                   key={color}
-                  className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform flex-shrink-0"
+                  className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
                   style={{ backgroundColor: color }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    applyColor(color);
-                  }}
+                  onMouseDown={(e) => { e.preventDefault(); applyColor(color); }}
                 />
               ))}
             </div>
@@ -366,35 +308,28 @@ export function InlineTextEditor({
                 type="color"
                 className="w-full h-8 cursor-pointer rounded"
                 onMouseDown={(e) => e.stopPropagation()}
-                onChange={(e) => {
-                  applyColor(e.target.value);
-                }}
+                onChange={(e) => applyColor(e.target.value)}
               />
             </div>
           </div>
         )}
       </div>
 
-      {/* Font Size Dropdown */}
+      {/* Font Size */}
       <div className="relative">
         <Button
-          variant="ghost"
+          variant={activePicker === 'fontSize' ? 'secondary' : 'ghost'}
           size="icon"
           className="h-7 w-7"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeAllPickers();
-            setShowFontSizePicker(!showFontSizePicker);
-          }}
+          onMouseDown={(e) => { e.preventDefault(); togglePicker('fontSize'); }}
           title="Font Size"
         >
           <Type className="h-3.5 w-3.5" />
         </Button>
-        {showFontSizePicker && (
+        {activePicker === 'fontSize' && (
           <div 
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover border border-border rounded-lg shadow-xl max-h-64 overflow-y-auto"
-            style={{ zIndex: 10000, minWidth: '100px' }}
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover border border-border rounded-lg shadow-xl"
+            style={{ zIndex: 10000, minWidth: '80px' }}
             onMouseDown={(e) => e.preventDefault()}
           >
             <div className="flex flex-col gap-0.5">
@@ -404,11 +339,7 @@ export function InlineTextEditor({
                   variant="ghost"
                   size="sm"
                   className="justify-start h-7 text-xs"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    applyFontSize(size.value);
-                  }}
+                  onMouseDown={(e) => { e.preventDefault(); applyFontSize(size.value); }}
                 >
                   {size.label}
                 </Button>
@@ -421,23 +352,18 @@ export function InlineTextEditor({
       {/* Line Height */}
       <div className="relative">
         <Button
-          variant="ghost"
+          variant={activePicker === 'lineHeight' ? 'secondary' : 'ghost'}
           size="icon"
           className="h-7 w-7"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeAllPickers();
-            setShowLineHeightPicker(!showLineHeightPicker);
-          }}
+          onMouseDown={(e) => { e.preventDefault(); togglePicker('lineHeight'); }}
           title="Line Height"
         >
           <MoveVertical className="h-3.5 w-3.5" />
         </Button>
-        {showLineHeightPicker && (
+        {activePicker === 'lineHeight' && (
           <div 
             className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover border border-border rounded-lg shadow-xl"
-            style={{ zIndex: 10000, minWidth: '80px' }}
+            style={{ zIndex: 10000, minWidth: '70px' }}
             onMouseDown={(e) => e.preventDefault()}
           >
             <div className="flex flex-col gap-0.5">
@@ -447,11 +373,7 @@ export function InlineTextEditor({
                   variant="ghost"
                   size="sm"
                   className="justify-start h-7 text-xs"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    applyLineHeight(lh.value);
-                  }}
+                  onMouseDown={(e) => { e.preventDefault(); applyLineHeight(lh.value); }}
                 >
                   {lh.label}
                 </Button>
@@ -464,23 +386,18 @@ export function InlineTextEditor({
       {/* Letter Spacing */}
       <div className="relative">
         <Button
-          variant="ghost"
+          variant={activePicker === 'letterSpacing' ? 'secondary' : 'ghost'}
           size="icon"
           className="h-7 w-7"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeAllPickers();
-            setShowLetterSpacingPicker(!showLetterSpacingPicker);
-          }}
+          onMouseDown={(e) => { e.preventDefault(); togglePicker('letterSpacing'); }}
           title="Letter Spacing"
         >
           <Space className="h-3.5 w-3.5" />
         </Button>
-        {showLetterSpacingPicker && (
+        {activePicker === 'letterSpacing' && (
           <div 
             className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover border border-border rounded-lg shadow-xl"
-            style={{ zIndex: 10000, minWidth: '100px' }}
+            style={{ zIndex: 10000, minWidth: '90px' }}
             onMouseDown={(e) => e.preventDefault()}
           >
             <div className="flex flex-col gap-0.5">
@@ -490,11 +407,7 @@ export function InlineTextEditor({
                   variant="ghost"
                   size="sm"
                   className="justify-start h-7 text-xs"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    applyLetterSpacing(ls.value);
-                  }}
+                  onMouseDown={(e) => { e.preventDefault(); applyLetterSpacing(ls.value); }}
                 >
                   {ls.label}
                 </Button>
@@ -508,27 +421,24 @@ export function InlineTextEditor({
   );
 
   return (
-    <div className="relative">
-      {toolbarContent}
-
+    <>
       <div
         ref={editorRef}
-        contentEditable
+        contentEditable={isEditing}
         suppressContentEditableWarning
         className={cn(
-          "outline-none min-w-[50px] transition-all cursor-text",
-          isEditing && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded px-1",
-          !isEditing && isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded",
-          !isEditing && !isSelected && "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 rounded",
+          "cursor-text outline-none transition-all min-h-[1.5em] w-full",
+          isEditing && "ring-2 ring-primary/50 rounded px-1",
+          !value && !isEditing && "text-white/30",
           className
         )}
         style={style}
         onClick={handleClick}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        onInput={handleInput}
-        dangerouslySetInnerHTML={{ __html: value || `<span style="opacity:0.5">${placeholder}</span>` }}
+        dangerouslySetInnerHTML={{ __html: value || (isEditing ? '' : placeholder) }}
       />
-    </div>
+      {toolbarContent}
+    </>
   );
 }
