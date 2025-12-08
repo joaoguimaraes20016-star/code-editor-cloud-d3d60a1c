@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTeamRole } from '@/hooks/useTeamRole';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, BarChart3, Settings } from 'lucide-react';
+import { ArrowLeft, BarChart3, Layers, Settings } from 'lucide-react';
 import TeamAssets from '@/components/TeamAssets';
 import TeamChat from '@/components/TeamChat';
 
@@ -76,6 +76,16 @@ export default function TeamHub() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
+              <Button
+                size="sm"
+                variant="outline"
+                className="hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2"
+                onClick={() => navigate(`/team/${teamId}/funnels`)}
+              >
+                <Layers className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Funnels</span>
+                <span className="sm:hidden">Funnels</span>
+              </Button>
               <Button
                 size="sm"
                 className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 text-xs sm:text-sm md:text-base px-3 py-2 sm:px-4 sm:py-2"

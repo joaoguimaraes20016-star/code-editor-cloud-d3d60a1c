@@ -14,6 +14,9 @@ import TeamHub from "./pages/TeamHub";
 import ClientAssets from "./pages/ClientAssets";
 import OnboardingForm from "./pages/OnboardingForm";
 import NotFound from "./pages/NotFound";
+import FunnelList from "./pages/FunnelList";
+import FunnelEditor from "./pages/FunnelEditor";
+import PublicFunnel from "./pages/PublicFunnel";
 
 const queryClient = new QueryClient();
 
@@ -25,8 +28,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Public route - no auth required */}
+            {/* Public routes - no auth required */}
             <Route path="/onboard/:token" element={<OnboardingForm />} />
+            <Route path="/f/:slug" element={<PublicFunnel />} />
             
             {/* Authenticated routes */}
             <Route path="/" element={<Auth />} />
@@ -38,6 +42,8 @@ const App = () => (
             <Route path="/team/:teamId" element={<TeamHub />} />
             <Route path="/team/:teamId/assets" element={<TeamHub />} />
             <Route path="/team/:teamId/chat" element={<TeamHub />} />
+            <Route path="/team/:teamId/funnels" element={<FunnelList />} />
+            <Route path="/team/:teamId/funnels/:funnelId" element={<FunnelEditor />} />
             <Route path="/team/:teamId/sales" element={<SalesDashboard />} />
             <Route path="/team/:teamId/settings" element={<TeamSettings />} />
             
