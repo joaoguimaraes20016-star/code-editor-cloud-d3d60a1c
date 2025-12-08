@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Settings, Eye, Save, Globe, PanelLeft, PanelRight, Play } from 'lucide-react';
+import { ArrowLeft, Settings, Eye, Save, Globe, PanelLeft, PanelRight, Play, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { PagesList } from '@/components/funnel-builder/PagesList';
 import { EditorSidebar } from '@/components/funnel-builder/EditorSidebar';
@@ -91,11 +91,12 @@ export default function FunnelEditor() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAddStep, setShowAddStep] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showLeftPanel, setShowLeftPanel] = useState(!isMobile);
-  const [showRightPanel, setShowRightPanel] = useState(!isMobile);
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const [showLivePreview, setShowLivePreview] = useState(false);
   const [showPageSettings, setShowPageSettings] = useState(false);
   const [pageSettingsStepId, setPageSettingsStepId] = useState<string | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
 
   // Per-step design, settings, blocks, and element order state
   const [stepDesigns, setStepDesigns] = useState<Record<string, StepDesign>>({});
@@ -402,27 +403,15 @@ export default function FunnelEditor() {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            {/* Mobile panel toggles */}
-            {isMobile && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowLeftPanel(!showLeftPanel)}
-                  className="lg:hidden"
-                >
-                  <PanelLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowRightPanel(!showRightPanel)}
-                  className="lg:hidden"
-                >
-                  <PanelRight className="h-4 w-4" />
-                </Button>
-              </>
-            )}
+            {/* Focus mode toggle */}
+            <Button
+              variant={focusMode ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setFocusMode(!focusMode)}
+              title={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
+            >
+              {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
 
             <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} className="hidden sm:flex">
               <Settings className="h-4 w-4 sm:mr-2" />
@@ -473,26 +462,39 @@ export default function FunnelEditor() {
 
       {/* Main Editor Area - Responsive 3 Column Layout */}
       <div className="flex-1 flex overflow-hidden relative">
+        {/* Left Sidebar Toggle Button */}
+        {!focusMode && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "absolute left-0 top-1/2 -translate-y-1/2 z-30 h-8 w-6 rounded-l-none bg-card border border-l-0 hover:bg-accent",
+              showLeftPanel ? "hidden" : "flex"
+            )}
+            onClick={() => setShowLeftPanel(true)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
+
         {/* Left Sidebar - Pages List */}
         <div className={cn(
-          "border-r bg-card p-2 sm:p-3 overflow-y-auto flex-shrink-0 transition-all duration-300",
-          isMobile 
-            ? cn(
-                "absolute inset-y-0 left-0 z-20 w-56",
-                showLeftPanel ? "translate-x-0" : "-translate-x-full"
-              )
-            : "w-40 lg:w-48"
+          "border-r bg-card overflow-y-auto flex-shrink-0 transition-all duration-300 relative",
+          focusMode ? "w-0 p-0 overflow-hidden border-0" :
+          showLeftPanel ? "w-44 lg:w-52 p-2 sm:p-3" : "w-0 p-0 overflow-hidden border-0"
         )}>
-          {isMobile && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="absolute top-2 right-2"
+          {/* Collapse button */}
+          {showLeftPanel && !focusMode && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-1 h-6 w-6 z-10"
               onClick={() => setShowLeftPanel(false)}
             >
-              ×
+              <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
+          
           <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <PagesList
               steps={steps}
@@ -500,7 +502,6 @@ export default function FunnelEditor() {
               onSelectStep={(id) => {
                 setSelectedStepId(id);
                 setSelectedElement(null);
-                if (isMobile) setShowLeftPanel(false);
               }}
               onDeleteStep={handleDeleteStep}
               onAddStep={() => setShowAddStep(true)}
@@ -518,7 +519,12 @@ export default function FunnelEditor() {
             <>
               <PhoneMockup 
                 backgroundColor={stepDesigns[selectedStep.id]?.backgroundColor || funnel.settings.background_color}
-                className="scale-[0.7] sm:scale-[0.85] lg:scale-100 xl:scale-105"
+                className={cn(
+                  "transition-transform duration-300",
+                  focusMode 
+                    ? "scale-[0.9] sm:scale-100 lg:scale-110 xl:scale-125" 
+                    : "scale-[0.7] sm:scale-[0.85] lg:scale-100 xl:scale-105"
+                )}
               >
                 <StepPreview
                   step={selectedStep}
@@ -546,24 +552,36 @@ export default function FunnelEditor() {
           )}
         </div>
 
+        {/* Right Sidebar Toggle Button */}
+        {!focusMode && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "absolute right-0 top-1/2 -translate-y-1/2 z-30 h-8 w-6 rounded-r-none bg-card border border-r-0 hover:bg-accent",
+              showRightPanel ? "hidden" : "flex"
+            )}
+            onClick={() => setShowRightPanel(true)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
+
         {/* Right Sidebar - Editor Panel */}
         <div className={cn(
-          "border-l bg-card p-2 sm:p-3 overflow-y-auto flex-shrink-0 transition-all duration-300",
-          isMobile 
-            ? cn(
-                "absolute inset-y-0 right-0 z-20 w-64",
-                showRightPanel ? "translate-x-0" : "translate-x-full"
-              )
-            : "w-60 lg:w-72"
+          "border-l bg-card overflow-y-auto flex-shrink-0 transition-all duration-300 relative",
+          focusMode ? "w-0 p-0 overflow-hidden border-0" :
+          showRightPanel ? "w-60 lg:w-72 p-2 sm:p-3" : "w-0 p-0 overflow-hidden border-0"
         )}>
-          {isMobile && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="absolute top-2 right-2"
+          {/* Collapse button */}
+          {showRightPanel && !focusMode && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 left-1 h-6 w-6 z-10"
               onClick={() => setShowRightPanel(false)}
             >
-              ×
+              <ChevronRight className="h-4 w-4" />
             </Button>
           )}
           {selectedStep ? (

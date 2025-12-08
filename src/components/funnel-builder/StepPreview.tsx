@@ -89,7 +89,7 @@ const ADD_ELEMENT_OPTIONS = [
   { id: 'video', label: 'Video', icon: Video },
 ];
 
-// Sortable Element Wrapper
+// Sortable Element Wrapper - improved for smoother drag
 function SortableElement({ 
   id, 
   children, 
@@ -120,13 +120,20 @@ function SortableElement({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id });
+  } = useSortable({ 
+    id,
+    transition: {
+      duration: 200,
+      easing: 'ease',
+    },
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : 'auto',
+    transition: transition || 'transform 200ms ease',
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 100 : 'auto',
+    scale: isDragging ? 1.02 : 1,
   };
 
   return (
@@ -134,17 +141,33 @@ function SortableElement({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative cursor-pointer transition-all group",
+        "relative transition-all",
         isSelected 
           ? "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded" 
           : "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 hover:ring-offset-transparent rounded",
-        isDragging && "shadow-lg"
+        isDragging && "shadow-2xl cursor-grabbing"
       )}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
-      {...attributes}
-      {...listeners}
     >
-      {children}
+      {/* Drag Handle - only this area triggers drag */}
+      <div 
+        className={cn(
+          "absolute -left-8 top-1/2 -translate-y-1/2 w-6 h-8 flex items-center justify-center cursor-grab rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-opacity",
+          isSelected && "opacity-100"
+        )}
+        {...attributes}
+        {...listeners}
+      >
+        <div className="flex flex-col gap-0.5">
+          <div className="w-1 h-1 rounded-full bg-white/40" />
+          <div className="w-1 h-1 rounded-full bg-white/40" />
+          <div className="w-1 h-1 rounded-full bg-white/40" />
+        </div>
+      </div>
+      
+      <div className="group">
+        {children}
+      </div>
       
       {isSelected && (
         <ElementActionMenu
@@ -185,7 +208,9 @@ export function StepPreview({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 15, // Increased distance to prevent accidental drags
+        delay: 100,   // Small delay before drag starts
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor, {

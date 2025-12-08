@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
@@ -8,7 +8,6 @@ import {
   AlignLeft, 
   AlignCenter, 
   AlignRight,
-  Link,
   Palette,
   Type
 } from 'lucide-react';
@@ -47,41 +46,40 @@ export function InlineTextEditor({
 }: InlineTextEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
+  const [toolbarPosition, setToolbarPosition] = useState({ top: -48, left: 0 });
   const editorRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  // Track if we have a selection for color changes
-  const [hasSelection, setHasSelection] = useState(false);
-
+  // Update toolbar position based on selection
   useEffect(() => {
-    if (isEditing && editorRef.current) {
-      editorRef.current.focus();
-      // Select all text on edit start
-      const range = document.createRange();
-      range.selectNodeContents(editorRef.current);
+    const updateToolbarPosition = () => {
       const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-    }
-  }, [isEditing]);
-
-  // Check selection on selection change
-  useEffect(() => {
-    const handleSelectionChange = () => {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
-        setHasSelection(!sel.isCollapsed);
+      if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        const editorRect = editorRef.current.getBoundingClientRect();
+        
+        setToolbarPosition({
+          top: rect.top - editorRect.top - 52,
+          left: rect.left + rect.width / 2 - editorRect.left - editorRect.width / 2,
+        });
+        setHasSelection(true);
+      } else if (editorRef.current?.contains(sel?.anchorNode || null)) {
+        setHasSelection(false);
       }
     };
 
-    document.addEventListener('selectionchange', handleSelectionChange);
-    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+    document.addEventListener('selectionchange', updateToolbarPosition);
+    return () => document.removeEventListener('selectionchange', updateToolbarPosition);
   }, []);
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsEditing(true);
-    onSelect?.();
+    if (!isEditing) {
+      setIsEditing(true);
+      onSelect?.();
+    }
   };
 
   const handleBlur = (e: React.FocusEvent) => {
@@ -96,12 +94,20 @@ export function InlineTextEditor({
       onChange(text);
       onHtmlChange?.(editorRef.current.innerHTML);
     }
-    setIsEditing(false);
+    
+    // Small delay before closing to allow for clicks
+    setTimeout(() => {
+      if (!toolbarRef.current?.contains(document.activeElement)) {
+        setIsEditing(false);
+        setHasSelection(false);
+      }
+    }, 100);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setIsEditing(false);
+      setHasSelection(false);
       onDeselect?.();
     }
   };
@@ -125,41 +131,47 @@ export function InlineTextEditor({
     setShowColorPicker(false);
   };
 
-  const isFormatActive = (command: string): boolean => {
-    return document.queryCommandState(command);
-  };
+  const showToolbar = isEditing || hasSelection;
 
   return (
-    <div className="relative group">
-      {/* Rich Text Toolbar */}
-      {isEditing && (
+    <div className="relative">
+      {/* Rich Text Toolbar - appears on selection or editing */}
+      {showToolbar && (
         <div 
           ref={toolbarRef}
-          className="absolute -top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-0.5 p-1.5 bg-background border border-border rounded-lg shadow-xl animate-in fade-in-0 zoom-in-95"
+          className="absolute z-[100] flex items-center gap-0.5 p-1.5 bg-background border border-border rounded-lg shadow-xl animate-in fade-in-0 zoom-in-95"
+          style={{ 
+            top: toolbarPosition.top,
+            left: '50%',
+            transform: 'translateX(-50%)',
+          }}
           onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.preventDefault()} // Prevent blur
+          onMouseDown={(e) => e.preventDefault()}
         >
           <Button
-            variant={isFormatActive('bold') ? 'secondary' : 'ghost'}
+            variant="ghost"
             size="icon"
             className="h-7 w-7"
             onMouseDown={(e) => { e.preventDefault(); execCommand('bold'); }}
+            title="Bold"
           >
             <Bold className="h-3.5 w-3.5" />
           </Button>
           <Button
-            variant={isFormatActive('italic') ? 'secondary' : 'ghost'}
+            variant="ghost"
             size="icon"
             className="h-7 w-7"
             onMouseDown={(e) => { e.preventDefault(); execCommand('italic'); }}
+            title="Italic"
           >
             <Italic className="h-3.5 w-3.5" />
           </Button>
           <Button
-            variant={isFormatActive('underline') ? 'secondary' : 'ghost'}
+            variant="ghost"
             size="icon"
             className="h-7 w-7"
             onMouseDown={(e) => { e.preventDefault(); execCommand('underline'); }}
+            title="Underline"
           >
             <Underline className="h-3.5 w-3.5" />
           </Button>
@@ -171,6 +183,7 @@ export function InlineTextEditor({
             size="icon"
             className="h-7 w-7"
             onMouseDown={(e) => { e.preventDefault(); execCommand('justifyLeft'); }}
+            title="Align Left"
           >
             <AlignLeft className="h-3.5 w-3.5" />
           </Button>
@@ -179,6 +192,7 @@ export function InlineTextEditor({
             size="icon"
             className="h-7 w-7"
             onMouseDown={(e) => { e.preventDefault(); execCommand('justifyCenter'); }}
+            title="Align Center"
           >
             <AlignCenter className="h-3.5 w-3.5" />
           </Button>
@@ -187,6 +201,7 @@ export function InlineTextEditor({
             size="icon"
             className="h-7 w-7"
             onMouseDown={(e) => { e.preventDefault(); execCommand('justifyRight'); }}
+            title="Align Right"
           >
             <AlignRight className="h-3.5 w-3.5" />
           </Button>
@@ -201,12 +216,13 @@ export function InlineTextEditor({
                 size="icon"
                 className="h-7 w-7"
                 onMouseDown={(e) => e.preventDefault()}
+                title="Text Color"
               >
                 <Palette className="h-3.5 w-3.5" />
               </Button>
             </PopoverTrigger>
             <PopoverContent 
-              className="w-auto p-2" 
+              className="w-auto p-2 z-[150]" 
               side="top"
               onMouseDown={(e) => e.preventDefault()}
             >
@@ -242,12 +258,13 @@ export function InlineTextEditor({
                 size="icon"
                 className="h-7 w-7"
                 onMouseDown={(e) => e.preventDefault()}
+                title="Font Size"
               >
                 <Type className="h-3.5 w-3.5" />
               </Button>
             </PopoverTrigger>
             <PopoverContent 
-              className="w-auto p-2" 
+              className="w-auto p-2 z-[150]" 
               side="top"
               onMouseDown={(e) => e.preventDefault()}
             >
@@ -272,40 +289,25 @@ export function InlineTextEditor({
         </div>
       )}
 
-      {/* Editable Content */}
-      {isEditing ? (
-        <div
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          className={cn(
-            "outline-none min-w-[50px] ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded px-1",
-            className
-          )}
-          style={style}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          onInput={handleInput}
-          dangerouslySetInnerHTML={{ __html: value }}
-        />
-      ) : (
-        <div
-          className={cn(
-            "cursor-text transition-all px-1",
-            isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded",
-            !isSelected && "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 rounded",
-            className
-          )}
-          style={style}
-          onDoubleClick={handleDoubleClick}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect?.();
-          }}
-        >
-          {value || <span className="opacity-50">{placeholder}</span>}
-        </div>
-      )}
+      {/* Editable Content - Always contentEditable for click-to-edit */}
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        className={cn(
+          "outline-none min-w-[50px] transition-all cursor-text",
+          isEditing && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded px-1",
+          !isEditing && isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded",
+          !isEditing && !isSelected && "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 rounded",
+          className
+        )}
+        style={style}
+        onClick={handleClick}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        onInput={handleInput}
+        dangerouslySetInnerHTML={{ __html: value || `<span style="opacity:0.5">${placeholder}</span>` }}
+      />
     </div>
   );
 }
