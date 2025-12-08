@@ -514,7 +514,7 @@ export default function FunnelEditor() {
         </div>
 
         {/* Center - Phone Mockup Preview */}
-        <div className="flex-1 flex flex-col items-center justify-center bg-zinc-900/50 overflow-hidden p-2">
+        <div className="flex-1 flex flex-col items-center justify-center bg-zinc-900/50 overflow-x-hidden overflow-y-auto p-2">
           {selectedStep && (
             <>
               <PhoneMockup 

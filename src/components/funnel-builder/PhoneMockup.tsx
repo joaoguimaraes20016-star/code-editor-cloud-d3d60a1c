@@ -26,7 +26,7 @@ export function PhoneMockup({ children, backgroundColor = '#0a0a0a', className }
 
         {/* Screen bezel */}
         <div 
-          className="relative rounded-[2.25rem] overflow-hidden"
+          className="relative rounded-[2.25rem] overflow-visible"
           style={{ width: 280, height: 606 }}
         >
           {/* Dynamic Island */}

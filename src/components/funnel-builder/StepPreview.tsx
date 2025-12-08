@@ -178,7 +178,7 @@ function SortableElement({
           onDelete={onDelete}
           canMoveUp={canMoveUp}
           canMoveDown={canMoveDown}
-          position="right"
+          position="top"
         />
       )}
     </div>

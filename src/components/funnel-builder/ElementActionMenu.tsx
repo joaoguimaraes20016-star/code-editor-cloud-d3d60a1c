@@ -4,7 +4,6 @@ import {
   ChevronDown, 
   Copy, 
   Trash2,
-  GripVertical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,7 +16,7 @@ interface ElementActionMenuProps {
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   className?: string;
-  position?: 'right' | 'left';
+  position?: 'right' | 'left' | 'top';
 }
 
 export function ElementActionMenu({
@@ -29,28 +28,23 @@ export function ElementActionMenu({
   canMoveUp = true,
   canMoveDown = true,
   className,
-  position = 'right',
+  position = 'top',
 }: ElementActionMenuProps) {
   return (
     <div 
       className={cn(
-        "absolute top-1/2 -translate-y-1/2 z-50 flex flex-col gap-0.5 p-1 bg-background border border-border rounded-lg shadow-lg animate-in fade-in-0 slide-in-from-left-2",
-        position === 'right' ? "-right-12" : "-left-12",
+        "absolute z-50 flex items-center gap-0.5 p-1 bg-popover border border-border rounded-lg shadow-lg animate-in fade-in-0 zoom-in-95",
+        position === 'top' && "left-1/2 -translate-x-1/2 -top-10",
+        position === 'right' && "top-1/2 -translate-y-1/2 left-full ml-2",
+        position === 'left' && "top-1/2 -translate-y-1/2 right-full mr-2",
         className
       )}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Drag handle */}
-      <div className="flex items-center justify-center h-6 w-8 cursor-grab text-muted-foreground hover:text-foreground">
-        <GripVertical className="h-3.5 w-3.5" />
-      </div>
-      
-      <div className="w-full h-px bg-border" />
-      
       <Button
         variant="ghost"
         size="icon"
-        className="h-6 w-8 rounded-sm"
+        className="h-6 w-6 rounded-sm"
         onClick={onMoveUp}
         disabled={!canMoveUp}
         title="Move up"
@@ -61,7 +55,7 @@ export function ElementActionMenu({
       <Button
         variant="ghost"
         size="icon"
-        className="h-6 w-8 rounded-sm"
+        className="h-6 w-6 rounded-sm"
         onClick={onMoveDown}
         disabled={!canMoveDown}
         title="Move down"
@@ -69,13 +63,13 @@ export function ElementActionMenu({
         <ChevronDown className="h-3.5 w-3.5" />
       </Button>
       
-      <div className="w-full h-px bg-border" />
+      <div className="w-px h-4 bg-border" />
       
       {onDuplicate && (
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-8 rounded-sm"
+          className="h-6 w-6 rounded-sm"
           onClick={onDuplicate}
           title="Duplicate"
         >
@@ -87,7 +81,7 @@ export function ElementActionMenu({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-8 rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+          className="h-6 w-6 rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10"
           onClick={onDelete}
           title="Delete"
         >
