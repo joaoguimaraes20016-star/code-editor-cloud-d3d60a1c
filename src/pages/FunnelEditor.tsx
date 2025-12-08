@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
@@ -97,6 +98,8 @@ export default function FunnelEditor() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAddStep, setShowAddStep] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [showLivePreview, setShowLivePreview] = useState(false);
@@ -219,12 +222,31 @@ export default function FunnelEditor() {
       queryClient.invalidateQueries({ queryKey: ['funnel', funnelId] });
       queryClient.invalidateQueries({ queryKey: ['funnel-steps', funnelId] });
       setHasUnsavedChanges(false);
-      toast({ title: 'Funnel saved' });
+      setIsSaving(false);
+      setLastSaved(new Date());
     },
     onError: (error: Error) => {
+      setIsSaving(false);
       toast({ title: 'Failed to save funnel', description: error.message, variant: 'destructive' });
     },
+    onMutate: () => {
+      setIsSaving(true);
+    },
   });
+
+  // Auto-save with debounce
+  const debouncedSave = useDebouncedCallback(() => {
+    if (hasUnsavedChanges && !saveMutation.isPending && steps.length > 0) {
+      saveMutation.mutate();
+    }
+  }, 2000);
+
+  // Trigger auto-save when changes occur
+  useEffect(() => {
+    if (hasUnsavedChanges) {
+      debouncedSave();
+    }
+  }, [hasUnsavedChanges, steps, stepDesigns, elementOrders, name]);
 
   const publishMutation = useMutation({
     mutationFn: async () => {
@@ -430,9 +452,19 @@ export default function FunnelEditor() {
               {funnel.status}
             </Badge>
 
-            {hasUnsavedChanges && (
+            {isSaving && (
+              <Badge variant="outline" className="text-blue-500 border-blue-500 hidden sm:inline-flex animate-pulse">
+                Saving...
+              </Badge>
+            )}
+            {!isSaving && hasUnsavedChanges && (
               <Badge variant="outline" className="text-orange-500 border-orange-500 hidden sm:inline-flex">
                 Unsaved
+              </Badge>
+            )}
+            {!isSaving && !hasUnsavedChanges && lastSaved && (
+              <Badge variant="outline" className="text-green-500 border-green-500 hidden sm:inline-flex">
+                Saved
               </Badge>
             )}
           </div>
@@ -548,8 +580,8 @@ export default function FunnelEditor() {
           </DndContext>
         </div>
 
-        {/* Center - Phone Mockup Preview */}
-        <div className="flex-1 flex flex-col items-center justify-center bg-zinc-900/50 overflow-x-hidden overflow-y-auto p-2">
+        {/* Center - Phone Mockup Preview - full scrollable area */}
+        <div className="flex-1 flex flex-col items-center bg-zinc-900/50 overflow-x-hidden overflow-y-auto py-6 px-2">
           {selectedStep && (
             <>
               <MobilePreview 

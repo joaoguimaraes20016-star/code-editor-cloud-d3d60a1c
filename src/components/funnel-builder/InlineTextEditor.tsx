@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Bold, 
   Italic, 
@@ -9,7 +8,9 @@ import {
   AlignCenter, 
   AlignRight,
   Palette,
-  Type
+  Type,
+  MoveVertical,
+  Space
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createPortal } from 'react-dom';
@@ -33,6 +34,40 @@ const PRESET_COLORS = [
   '#f43f5e', '#06b6d4', '#84cc16', '#a855f7', '#6366f1',
 ];
 
+const FONT_SIZES = [
+  { label: '12px', value: '12px' },
+  { label: '14px', value: '14px' },
+  { label: '16px', value: '16px' },
+  { label: '18px', value: '18px' },
+  { label: '20px', value: '20px' },
+  { label: '24px', value: '24px' },
+  { label: '28px', value: '28px' },
+  { label: '32px', value: '32px' },
+  { label: '36px', value: '36px' },
+  { label: '42px', value: '42px' },
+  { label: '48px', value: '48px' },
+  { label: '56px', value: '56px' },
+  { label: '64px', value: '64px' },
+];
+
+const LINE_HEIGHTS = [
+  { label: '1.0', value: '1' },
+  { label: '1.2', value: '1.2' },
+  { label: '1.4', value: '1.4' },
+  { label: '1.5', value: '1.5' },
+  { label: '1.6', value: '1.6' },
+  { label: '1.8', value: '1.8' },
+  { label: '2.0', value: '2' },
+];
+
+const LETTER_SPACINGS = [
+  { label: 'Tight', value: '-0.05em' },
+  { label: 'Normal', value: '0' },
+  { label: 'Wide', value: '0.05em' },
+  { label: 'Wider', value: '0.1em' },
+  { label: 'Widest', value: '0.2em' },
+];
+
 export function InlineTextEditor({
   value,
   onChange,
@@ -48,12 +83,22 @@ export function InlineTextEditor({
   const [isEditing, setIsEditing] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showFontSizePicker, setShowFontSizePicker] = useState(false);
+  const [showLineHeightPicker, setShowLineHeightPicker] = useState(false);
+  const [showLetterSpacingPicker, setShowLetterSpacingPicker] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState<{ top: number; left: number } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  // Update toolbar position based on selection - render in fixed position on screen
+  // Close all pickers
+  const closeAllPickers = () => {
+    setShowColorPicker(false);
+    setShowFontSizePicker(false);
+    setShowLineHeightPicker(false);
+    setShowLetterSpacingPicker(false);
+  };
+
+  // Update toolbar position based on selection
   useEffect(() => {
     const updateToolbarPosition = () => {
       const sel = window.getSelection();
@@ -61,14 +106,12 @@ export function InlineTextEditor({
         const range = sel.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         
-        // Position toolbar above the selection in viewport coordinates
         setToolbarPosition({
           top: rect.top - 56,
           left: rect.left + rect.width / 2,
         });
         setHasSelection(true);
       } else if (editorRef.current?.contains(sel?.anchorNode || null)) {
-        // Keep toolbar visible if editing, use editor position
         if (isEditing && editorRef.current) {
           const editorRect = editorRef.current.getBoundingClientRect();
           setToolbarPosition({
@@ -84,7 +127,6 @@ export function InlineTextEditor({
     return () => document.removeEventListener('selectionchange', updateToolbarPosition);
   }, [isEditing]);
 
-  // Update toolbar position when editing starts
   useEffect(() => {
     if (isEditing && editorRef.current) {
       const editorRect = editorRef.current.getBoundingClientRect();
@@ -104,39 +146,49 @@ export function InlineTextEditor({
   };
 
   const handleBlur = (e: React.FocusEvent) => {
-    // Do not blur if clicking on toolbar or any popover
     if (toolbarRef.current?.contains(e.relatedTarget as Node)) {
       return;
     }
 
-    // Don't close if a popover is open
-    if (showColorPicker || showFontSizePicker) {
+    if (showColorPicker || showFontSizePicker || showLineHeightPicker || showLetterSpacingPicker) {
       return;
     }
     
-    // Save content
     if (editorRef.current) {
       const text = editorRef.current.innerText;
       onChange(text);
       onHtmlChange?.(editorRef.current.innerHTML);
     }
     
-    // Small delay before closing to allow for clicks
     setTimeout(() => {
-      if (!toolbarRef.current?.contains(document.activeElement) && !showColorPicker && !showFontSizePicker) {
+      if (!toolbarRef.current?.contains(document.activeElement) && !showColorPicker && !showFontSizePicker && !showLineHeightPicker && !showLetterSpacingPicker) {
         setIsEditing(false);
         setHasSelection(false);
         setToolbarPosition(null);
+        closeAllPickers();
       }
     }, 150);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'b') {
+        e.preventDefault();
+        execCommand('bold');
+      } else if (e.key === 'i') {
+        e.preventDefault();
+        execCommand('italic');
+      } else if (e.key === 'u') {
+        e.preventDefault();
+        execCommand('underline');
+      }
+    }
+    
     if (e.key === 'Escape') {
       setIsEditing(false);
       setHasSelection(false);
-      setShowColorPicker(false);
-      setShowFontSizePicker(false);
+      closeAllPickers();
       setToolbarPosition(null);
       onDeselect?.();
     }
@@ -163,14 +215,42 @@ export function InlineTextEditor({
   };
 
   const applyFontSize = (size: string) => {
-    execCommand('fontSize', size);
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const span = document.createElement('span');
+      span.style.fontSize = size;
+      range.surroundContents(span);
+      handleInput();
+    }
     setShowFontSizePicker(false);
+    editorRef.current?.focus();
+  };
+
+  const applyLineHeight = (height: string) => {
+    if (editorRef.current) {
+      editorRef.current.style.lineHeight = height;
+      handleInput();
+    }
+    setShowLineHeightPicker(false);
+    editorRef.current?.focus();
+  };
+
+  const applyLetterSpacing = (spacing: string) => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const span = document.createElement('span');
+      span.style.letterSpacing = spacing;
+      range.surroundContents(span);
+      handleInput();
+    }
+    setShowLetterSpacingPicker(false);
     editorRef.current?.focus();
   };
 
   const showToolbar = (isEditing || hasSelection) && toolbarPosition;
 
-  // Render toolbar in a portal so it's not clipped by overflow:hidden containers
   const toolbarContent = showToolbar && toolbarPosition && createPortal(
     <div 
       ref={toolbarRef}
@@ -189,7 +269,7 @@ export function InlineTextEditor({
         size="icon"
         className="h-7 w-7"
         onMouseDown={(e) => { e.preventDefault(); execCommand('bold'); }}
-        title="Bold"
+        title="Bold (Ctrl+B)"
       >
         <Bold className="h-3.5 w-3.5" />
       </Button>
@@ -198,7 +278,7 @@ export function InlineTextEditor({
         size="icon"
         className="h-7 w-7"
         onMouseDown={(e) => { e.preventDefault(); execCommand('italic'); }}
-        title="Italic"
+        title="Italic (Ctrl+I)"
       >
         <Italic className="h-3.5 w-3.5" />
       </Button>
@@ -207,7 +287,7 @@ export function InlineTextEditor({
         size="icon"
         className="h-7 w-7"
         onMouseDown={(e) => { e.preventDefault(); execCommand('underline'); }}
-        title="Underline"
+        title="Underline (Ctrl+U)"
       >
         <Underline className="h-3.5 w-3.5" />
       </Button>
@@ -244,7 +324,7 @@ export function InlineTextEditor({
 
       <div className="w-px h-5 bg-border mx-1" />
       
-      {/* Color Picker - using dropdown instead of popover to avoid portal issues */}
+      {/* Color Picker */}
       <div className="relative">
         <Button
           variant="ghost"
@@ -253,8 +333,8 @@ export function InlineTextEditor({
           onMouseDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            closeAllPickers();
             setShowColorPicker(!showColorPicker);
-            setShowFontSizePicker(false);
           }}
           title="Text Color"
         >
@@ -262,8 +342,8 @@ export function InlineTextEditor({
         </Button>
         {showColorPicker && (
           <div 
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-popover border border-border rounded-lg shadow-xl min-w-[180px]"
-            style={{ zIndex: 10000 }}
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-popover border border-border rounded-lg shadow-xl"
+            style={{ zIndex: 10000, minWidth: '180px' }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={(e) => e.stopPropagation()}
           >
@@ -295,7 +375,7 @@ export function InlineTextEditor({
         )}
       </div>
 
-      {/* Font Size */}
+      {/* Font Size Dropdown */}
       <div className="relative">
         <Button
           variant="ghost"
@@ -304,8 +384,8 @@ export function InlineTextEditor({
           onMouseDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            closeAllPickers();
             setShowFontSizePicker(!showFontSizePicker);
-            setShowColorPicker(false);
           }}
           title="Font Size"
         >
@@ -313,24 +393,110 @@ export function InlineTextEditor({
         </Button>
         {showFontSizePicker && (
           <div 
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover border border-border rounded-lg shadow-xl"
-            style={{ zIndex: 10000 }}
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover border border-border rounded-lg shadow-xl max-h-64 overflow-y-auto"
+            style={{ zIndex: 10000, minWidth: '100px' }}
             onMouseDown={(e) => e.preventDefault()}
           >
-            <div className="flex flex-col gap-1">
-              {[1, 2, 3, 4, 5, 6, 7].map((size) => (
+            <div className="flex flex-col gap-0.5">
+              {FONT_SIZES.map((size) => (
                 <Button
-                  key={size}
+                  key={size.value}
                   variant="ghost"
                   size="sm"
-                  className="justify-start"
+                  className="justify-start h-7 text-xs"
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    applyFontSize(size.toString());
+                    applyFontSize(size.value);
                   }}
                 >
-                  <span style={{ fontSize: `${10 + size * 2}px` }}>Size {size}</span>
+                  {size.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Line Height */}
+      <div className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAllPickers();
+            setShowLineHeightPicker(!showLineHeightPicker);
+          }}
+          title="Line Height"
+        >
+          <MoveVertical className="h-3.5 w-3.5" />
+        </Button>
+        {showLineHeightPicker && (
+          <div 
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover border border-border rounded-lg shadow-xl"
+            style={{ zIndex: 10000, minWidth: '80px' }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <div className="flex flex-col gap-0.5">
+              {LINE_HEIGHTS.map((lh) => (
+                <Button
+                  key={lh.value}
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start h-7 text-xs"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    applyLineHeight(lh.value);
+                  }}
+                >
+                  {lh.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Letter Spacing */}
+      <div className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAllPickers();
+            setShowLetterSpacingPicker(!showLetterSpacingPicker);
+          }}
+          title="Letter Spacing"
+        >
+          <Space className="h-3.5 w-3.5" />
+        </Button>
+        {showLetterSpacingPicker && (
+          <div 
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover border border-border rounded-lg shadow-xl"
+            style={{ zIndex: 10000, minWidth: '100px' }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <div className="flex flex-col gap-0.5">
+              {LETTER_SPACINGS.map((ls) => (
+                <Button
+                  key={ls.value}
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start h-7 text-xs"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    applyLetterSpacing(ls.value);
+                  }}
+                >
+                  {ls.label}
                 </Button>
               ))}
             </div>
@@ -345,7 +511,6 @@ export function InlineTextEditor({
     <div className="relative">
       {toolbarContent}
 
-      {/* Editable Content - Always contentEditable for click-to-edit */}
       <div
         ref={editorRef}
         contentEditable

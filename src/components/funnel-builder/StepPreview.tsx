@@ -512,8 +512,8 @@ export function StepPreview({
         </div>
       )}
 
-      {/* Drag and Drop Column Layout */}
-      <div className="flex flex-col items-center justify-center h-full p-6 gap-4 relative z-10">
+      {/* Drag and Drop Column Layout - NO height limit */}
+      <div className="flex flex-col items-center p-6 gap-4 relative z-10 min-h-[400px]">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
