@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Type, Video, Image, Square, Minus } from 'lucide-react';
 import { FunnelStep } from '@/pages/FunnelEditor';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +12,9 @@ interface StepContentEditorProps {
   step: FunnelStep;
   onUpdate: (content: FunnelStep['content']) => void;
   selectedElement?: string | null;
+  elementOrder?: string[];
+  dynamicContent?: Record<string, any>;
+  onUpdateDynamicContent?: (elementId: string, value: any) => void;
 }
 
 const stepTypeLabels = {
@@ -24,7 +27,34 @@ const stepTypeLabels = {
   thank_you: 'Thank You',
 };
 
-export function StepContentEditor({ step, onUpdate, selectedElement }: StepContentEditorProps) {
+const getElementTypeLabel = (elementId: string) => {
+  if (elementId.startsWith('text_')) return 'Text Block';
+  if (elementId.startsWith('headline_')) return 'Headline';
+  if (elementId.startsWith('video_')) return 'Video';
+  if (elementId.startsWith('image_')) return 'Image';
+  if (elementId.startsWith('button_')) return 'Button';
+  if (elementId.startsWith('divider_')) return 'Divider';
+  return elementId;
+};
+
+const getElementIcon = (elementId: string) => {
+  if (elementId.startsWith('text_')) return Type;
+  if (elementId.startsWith('headline_')) return Type;
+  if (elementId.startsWith('video_')) return Video;
+  if (elementId.startsWith('image_')) return Image;
+  if (elementId.startsWith('button_')) return Square;
+  if (elementId.startsWith('divider_')) return Minus;
+  return Type;
+};
+
+export function StepContentEditor({ 
+  step, 
+  onUpdate, 
+  selectedElement,
+  elementOrder = [],
+  dynamicContent = {},
+  onUpdateDynamicContent
+}: StepContentEditorProps) {
   const content = step.content;
   const headlineRef = useRef<HTMLInputElement>(null);
   const subtextRef = useRef<HTMLTextAreaElement>(null);
@@ -44,6 +74,16 @@ export function StepContentEditor({ step, onUpdate, selectedElement }: StepConte
   };
 
   const isHighlighted = (field: string) => selectedElement === field;
+
+  // Filter dynamic elements from the element order
+  const dynamicElementIds = elementOrder.filter(id => 
+    id.startsWith('text_') || 
+    id.startsWith('headline_') || 
+    id.startsWith('video_') || 
+    id.startsWith('image_') || 
+    id.startsWith('button_') || 
+    id.startsWith('divider_')
+  );
 
   return (
     <div className="space-y-6">
@@ -208,6 +248,71 @@ export function StepContentEditor({ step, onUpdate, selectedElement }: StepConte
           <p className="text-xs text-muted-foreground">
             Redirect to this URL after 3 seconds
           </p>
+        </div>
+      )}
+
+      {/* Dynamic Elements Section */}
+      {dynamicElementIds.length > 0 && (
+        <div className="border-t pt-4 mt-4">
+          <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide mb-3">
+            Added Elements
+          </h4>
+          <div className="space-y-3">
+            {dynamicElementIds.map((elementId) => {
+              const Icon = getElementIcon(elementId);
+              const elementData = dynamicContent[elementId] || {};
+              
+              return (
+                <div 
+                  key={elementId}
+                  className={cn(
+                    "p-3 -mx-3 rounded-lg border border-border/50 transition-colors",
+                    isHighlighted(elementId) && "bg-primary/10 ring-1 ring-primary/30"
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Label className="text-xs font-medium">{getElementTypeLabel(elementId)}</Label>
+                  </div>
+                  
+                  {/* Text/Headline inputs */}
+                  {(elementId.startsWith('text_') || elementId.startsWith('headline_') || elementId.startsWith('button_')) && (
+                    <Input
+                      value={elementData.text || ''}
+                      onChange={(e) => onUpdateDynamicContent?.(elementId, { text: e.target.value })}
+                      placeholder="Enter text..."
+                      className="text-sm"
+                    />
+                  )}
+                  
+                  {/* Video URL input */}
+                  {elementId.startsWith('video_') && (
+                    <Input
+                      value={elementData.video_url || ''}
+                      onChange={(e) => onUpdateDynamicContent?.(elementId, { video_url: e.target.value })}
+                      placeholder="https://youtube.com/..."
+                      className="text-sm"
+                    />
+                  )}
+                  
+                  {/* Image URL input */}
+                  {elementId.startsWith('image_') && (
+                    <Input
+                      value={elementData.image_url || ''}
+                      onChange={(e) => onUpdateDynamicContent?.(elementId, { image_url: e.target.value })}
+                      placeholder="https://example.com/image.jpg"
+                      className="text-sm"
+                    />
+                  )}
+                  
+                  {/* Divider - no input needed */}
+                  {elementId.startsWith('divider_') && (
+                    <p className="text-xs text-muted-foreground">Horizontal divider line</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

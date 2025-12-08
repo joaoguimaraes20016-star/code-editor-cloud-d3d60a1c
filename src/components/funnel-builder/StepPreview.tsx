@@ -46,6 +46,8 @@ interface StepPreviewProps {
   onUpdateContent?: (field: string, value: any) => void;
   elementOrder?: string[];
   onReorderElements?: (newOrder: string[]) => void;
+  dynamicContent?: Record<string, any>;
+  onUpdateDynamicContent?: (elementId: string, value: any) => void;
 }
 
 const IMAGE_ASPECT_RATIOS = {
@@ -163,11 +165,15 @@ export function StepPreview({
   design,
   onUpdateContent,
   elementOrder,
-  onReorderElements
+  onReorderElements,
+  dynamicContent: externalDynamicContent,
+  onUpdateDynamicContent
 }: StepPreviewProps) {
   const content = step.content;
   const [showAddElement, setShowAddElement] = useState(false);
-  const [dynamicContent, setDynamicContent] = useState<Record<string, any>>({});
+  
+  // Use external dynamic content if provided, otherwise use local state
+  const dynamicContent = externalDynamicContent || {};
 
   const textColor = design?.textColor || '#ffffff';
   const buttonColor = design?.buttonColor || settings.primary_color;
@@ -197,22 +203,25 @@ export function StepPreview({
     const newElementId = `${elementType}_${Date.now()}`;
     const newOrder = [...currentOrder, newElementId];
     
+    // Initialize dynamic content for the new element
+    let initialValue: any = {};
     if (elementType === 'video') {
-      setDynamicContent(prev => ({ ...prev, [newElementId]: { video_url: '' } }));
+      initialValue = { video_url: '' };
     } else if (elementType === 'image') {
-      setDynamicContent(prev => ({ ...prev, [newElementId]: { image_url: '' } }));
+      initialValue = { image_url: '' };
     } else if (elementType === 'text') {
-      setDynamicContent(prev => ({ ...prev, [newElementId]: { text: 'New text block' } }));
+      initialValue = { text: 'New text block' };
     } else if (elementType === 'headline') {
-      setDynamicContent(prev => ({ ...prev, [newElementId]: { text: 'New Headline' } }));
+      initialValue = { text: 'New Headline' };
     } else if (elementType === 'button') {
-      setDynamicContent(prev => ({ ...prev, [newElementId]: { text: 'Click me' } }));
+      initialValue = { text: 'Click me' };
     }
     
+    onUpdateDynamicContent?.(newElementId, initialValue);
     onReorderElements?.(newOrder);
     setShowAddElement(false);
     onSelectElement(newElementId);
-  }, [currentOrder, onReorderElements, onSelectElement]);
+  }, [currentOrder, onReorderElements, onSelectElement, onUpdateDynamicContent]);
 
   const handleMoveUp = useCallback((elementId: string) => {
     const index = currentOrder.indexOf(elementId);
@@ -237,11 +246,11 @@ export function StepPreview({
     newOrder.splice(index + 1, 0, newElementId);
     
     if (dynamicContent[elementId]) {
-      setDynamicContent(prev => ({ ...prev, [newElementId]: { ...prev[elementId] } }));
+      onUpdateDynamicContent?.(newElementId, { ...dynamicContent[elementId] });
     }
     
     onReorderElements?.(newOrder);
-  }, [currentOrder, onReorderElements, dynamicContent]);
+  }, [currentOrder, onReorderElements, dynamicContent, onUpdateDynamicContent]);
 
   const handleDelete = useCallback((elementId: string) => {
     if (onReorderElements) {
@@ -258,8 +267,8 @@ export function StepPreview({
   }, [onUpdateContent]);
 
   const handleDynamicContentChange = useCallback((elementId: string, value: any) => {
-    setDynamicContent(prev => ({ ...prev, [elementId]: { ...prev[elementId], ...value } }));
-  }, []);
+    onUpdateDynamicContent?.(elementId, value);
+  }, [onUpdateDynamicContent]);
 
   const renderImage = () => {
     if (!design?.imageUrl || design?.imagePosition === 'background') return null;

@@ -138,6 +138,7 @@ export default function FunnelEditor() {
   const [devicePreview, setDevicePreview] = useState<DeviceType>('mobile');
   const [stepBlocks, setStepBlocks] = useState<Record<string, ContentBlock[]>>({});
   const [pageSettings, setPageSettingsState] = useState<Record<string, any>>({});
+  const [dynamicElements, setDynamicElements] = useState<Record<string, Record<string, any>>>({});
   
   // Auto-save timer ref
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -712,6 +713,17 @@ export default function FunnelEditor() {
                   onUpdateContent={(field, value) => {
                     handleUpdateStep(selectedStep.id, { ...selectedStep.content, [field]: value });
                   }}
+                  dynamicContent={dynamicElements[selectedStep.id] || {}}
+                  onUpdateDynamicContent={(elementId, value) => {
+                    setDynamicElements(prev => ({
+                      ...prev,
+                      [selectedStep.id]: {
+                        ...(prev[selectedStep.id] || {}),
+                        [elementId]: { ...(prev[selectedStep.id]?.[elementId] || {}), ...value }
+                      }
+                    }));
+                    setHasUnsavedChanges(true);
+                  }}
                 />
               </DevicePreview>
 
@@ -770,6 +782,18 @@ export default function FunnelEditor() {
               design={stepDesigns[selectedStep.id] || {}}
               settings={stepSettings[selectedStep.id] || {}}
               blocks={stepBlocks[selectedStep.id] || []}
+              elementOrder={elementOrders[selectedStep.id] || []}
+              dynamicContent={dynamicElements[selectedStep.id] || {}}
+              onUpdateDynamicContent={(elementId, value) => {
+                setDynamicElements(prev => ({
+                  ...prev,
+                  [selectedStep.id]: {
+                    ...(prev[selectedStep.id] || {}),
+                    [elementId]: { ...(prev[selectedStep.id]?.[elementId] || {}), ...value }
+                  }
+                }));
+                setHasUnsavedChanges(true);
+              }}
             />
           ) : (
             <div className="text-muted-foreground text-center py-8">

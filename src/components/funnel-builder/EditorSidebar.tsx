@@ -42,6 +42,9 @@ interface EditorSidebarProps {
   design: StepDesign;
   settings: StepSettings;
   blocks?: ContentBlock[];
+  elementOrder?: string[];
+  dynamicContent?: Record<string, any>;
+  onUpdateDynamicContent?: (elementId: string, value: any) => void;
 }
 
 export function EditorSidebar({
@@ -54,6 +57,9 @@ export function EditorSidebar({
   design,
   settings,
   blocks = [],
+  elementOrder = [],
+  dynamicContent = {},
+  onUpdateDynamicContent,
 }: EditorSidebarProps) {
   const [activeTab, setActiveTab] = useState('content');
   const [showImagePicker, setShowImagePicker] = useState(false);
@@ -86,6 +92,9 @@ export function EditorSidebar({
               step={step}
               onUpdate={onUpdateContent}
               selectedElement={selectedElement}
+              elementOrder={elementOrder}
+              dynamicContent={dynamicContent}
+              onUpdateDynamicContent={onUpdateDynamicContent}
             />
           </TabsContent>
 
