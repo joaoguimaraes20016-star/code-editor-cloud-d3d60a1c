@@ -130,10 +130,9 @@ function SortableElement({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: transition || 'transform 200ms ease',
-    opacity: isDragging ? 0.8 : 1,
+    transition: isDragging ? undefined : 'transform 250ms ease',
+    opacity: isDragging ? 0.85 : 1,
     zIndex: isDragging ? 100 : 'auto',
-    scale: isDragging ? 1.02 : 1,
   };
 
   return (
@@ -208,9 +207,9 @@ export function StepPreview({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 15, // Increased distance to prevent accidental drags
-        delay: 100,   // Small delay before drag starts
-        tolerance: 5,
+        distance: 25, // Much higher distance to prevent accidental drags
+        delay: 200,   // Longer delay before drag starts
+        tolerance: 8,
       },
     }),
     useSensor(KeyboardSensor, {

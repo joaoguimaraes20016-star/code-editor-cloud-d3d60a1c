@@ -522,8 +522,8 @@ export default function FunnelEditor() {
                 className={cn(
                   "transition-transform duration-300",
                   focusMode 
-                    ? "scale-[0.9] sm:scale-100 lg:scale-110 xl:scale-125" 
-                    : "scale-[0.7] sm:scale-[0.85] lg:scale-100 xl:scale-105"
+                    ? "scale-100 sm:scale-110 lg:scale-125 xl:scale-[1.35]" 
+                    : "scale-[0.85] sm:scale-95 lg:scale-110 xl:scale-[1.2]"
                 )}
               >
                 <StepPreview
