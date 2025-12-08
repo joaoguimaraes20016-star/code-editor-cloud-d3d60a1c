@@ -528,6 +528,9 @@ export default function FunnelEditor() {
                   design={stepDesigns[selectedStep.id]}
                   elementOrder={elementOrders[selectedStep.id]}
                   onReorderElements={(order) => handleUpdateElementOrder(selectedStep.id, order)}
+                  onUpdateContent={(field, value) => {
+                    handleUpdateStep(selectedStep.id, { ...selectedStep.content, [field]: value });
+                  }}
                 />
               </PhoneMockup>
 

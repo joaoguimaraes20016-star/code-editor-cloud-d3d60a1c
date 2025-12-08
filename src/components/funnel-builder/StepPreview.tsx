@@ -1,7 +1,36 @@
 import { FunnelStep, FunnelSettings } from '@/pages/FunnelEditor';
 import { cn } from '@/lib/utils';
 import { ElementActionMenu } from './ElementActionMenu';
-import { useState, useMemo } from 'react';
+import { InlineTextEditor } from './InlineTextEditor';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useMemo, useState } from 'react';
+import { 
+  DndContext, 
+  closestCenter, 
+  KeyboardSensor, 
+  PointerSensor, 
+  useSensor, 
+  useSensors,
+  DragEndEvent 
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { 
+  Plus, 
+  Type, 
+  Image, 
+  Square, 
+  Minus, 
+  Video, 
+  AlignLeft 
+} from 'lucide-react';
 
 interface StepDesign {
   backgroundColor?: string;
@@ -15,12 +44,6 @@ interface StepDesign {
   imageUrl?: string;
   imageSize?: 'S' | 'M' | 'L' | 'XL';
   imagePosition?: 'top' | 'bottom' | 'background';
-}
-
-interface ElementConfig {
-  id: string;
-  type: 'headline' | 'subtext' | 'image' | 'button' | 'input' | 'options' | 'video' | 'hint';
-  visible: boolean;
 }
 
 interface StepPreviewProps {
@@ -47,7 +70,6 @@ const FONT_SIZE_MAP = {
   large: { headline: 'text-2xl', subtext: 'text-base' },
 };
 
-// Default element orders by step type
 const DEFAULT_ELEMENT_ORDERS: Record<string, string[]> = {
   welcome: ['image_top', 'headline', 'subtext', 'button', 'hint'],
   text_question: ['image_top', 'headline', 'input', 'hint'],
@@ -57,6 +79,88 @@ const DEFAULT_ELEMENT_ORDERS: Record<string, string[]> = {
   video: ['headline', 'video', 'button'],
   thank_you: ['image_top', 'headline', 'subtext'],
 };
+
+const ADD_ELEMENT_OPTIONS = [
+  { id: 'text', label: 'Text Block', icon: Type },
+  { id: 'headline', label: 'Headline', icon: AlignLeft },
+  { id: 'image', label: 'Image', icon: Image },
+  { id: 'button', label: 'Button', icon: Square },
+  { id: 'divider', label: 'Divider', icon: Minus },
+  { id: 'video', label: 'Video', icon: Video },
+];
+
+// Sortable Element Wrapper
+function SortableElement({ 
+  id, 
+  children, 
+  isSelected,
+  onSelect,
+  onMoveUp,
+  onMoveDown,
+  onDuplicate,
+  onDelete,
+  canMoveUp,
+  canMoveDown,
+}: { 
+  id: string; 
+  children: React.ReactNode;
+  isSelected: boolean;
+  onSelect: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 'auto',
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "relative cursor-pointer transition-all group",
+        isSelected 
+          ? "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded" 
+          : "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 hover:ring-offset-transparent rounded",
+        isDragging && "shadow-lg"
+      )}
+      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      {...attributes}
+      {...listeners}
+    >
+      {children}
+      
+      {isSelected && (
+        <ElementActionMenu
+          elementId={id}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+          canMoveUp={canMoveUp}
+          canMoveDown={canMoveDown}
+          position="right"
+        />
+      )}
+    </div>
+  );
+}
 
 export function StepPreview({ 
   step, 
@@ -69,6 +173,7 @@ export function StepPreview({
   onReorderElements
 }: StepPreviewProps) {
   const content = step.content;
+  const [showAddElement, setShowAddElement] = useState(false);
 
   const textColor = design?.textColor || '#ffffff';
   const buttonColor = design?.buttonColor || settings.primary_color;
@@ -77,7 +182,17 @@ export function StepPreview({
   const fontSize = design?.fontSize || 'medium';
   const borderRadius = design?.borderRadius ?? 12;
 
-  // Get the element order for this step
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const currentOrder = useMemo(() => {
     if (elementOrder && elementOrder.length > 0) {
       return elementOrder;
@@ -85,11 +200,28 @@ export function StepPreview({
     return DEFAULT_ELEMENT_ORDERS[step.step_type] || ['headline', 'subtext', 'button'];
   }, [elementOrder, step.step_type]);
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = currentOrder.indexOf(active.id as string);
+      const newIndex = currentOrder.indexOf(over.id as string);
+      const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
+      onReorderElements?.(newOrder);
+    }
+  };
+
+  const handleAddElement = (elementType: string) => {
+    const newElementId = `${elementType}_${Date.now()}`;
+    const newOrder = [...currentOrder, newElementId];
+    onReorderElements?.(newOrder);
+    setShowAddElement(false);
+  };
+
   const handleMoveUp = (elementId: string) => {
     const index = currentOrder.indexOf(elementId);
     if (index > 0 && onReorderElements) {
-      const newOrder = [...currentOrder];
-      [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+      const newOrder = arrayMove(currentOrder, index, index - 1);
       onReorderElements(newOrder);
     }
   };
@@ -97,15 +229,17 @@ export function StepPreview({
   const handleMoveDown = (elementId: string) => {
     const index = currentOrder.indexOf(elementId);
     if (index < currentOrder.length - 1 && onReorderElements) {
-      const newOrder = [...currentOrder];
-      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+      const newOrder = arrayMove(currentOrder, index, index + 1);
       onReorderElements(newOrder);
     }
   };
 
   const handleDuplicate = (elementId: string) => {
-    // For now, just log - could be extended to actually duplicate elements
-    console.log('Duplicate element:', elementId);
+    const index = currentOrder.indexOf(elementId);
+    const newElementId = `${elementId}_copy_${Date.now()}`;
+    const newOrder = [...currentOrder];
+    newOrder.splice(index + 1, 0, newElementId);
+    onReorderElements?.(newOrder);
   };
 
   const handleDelete = (elementId: string) => {
@@ -115,39 +249,8 @@ export function StepPreview({
     }
   };
 
-  const getEditableClass = (elementId: string) => cn(
-    "cursor-pointer transition-all relative group",
-    selectedElement === elementId 
-      ? "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded" 
-      : "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 hover:ring-offset-transparent rounded"
-  );
-
-  const renderElementWrapper = (elementId: string, children: React.ReactNode) => {
-    const index = currentOrder.indexOf(elementId);
-    const isSelected = selectedElement === elementId;
-    
-    return (
-      <div 
-        key={elementId}
-        className={cn("relative", getEditableClass(elementId))}
-        onClick={(e) => { e.stopPropagation(); onSelectElement(elementId); }}
-      >
-        {children}
-        
-        {isSelected && (
-          <ElementActionMenu
-            elementId={elementId}
-            onMoveUp={() => handleMoveUp(elementId)}
-            onMoveDown={() => handleMoveDown(elementId)}
-            onDuplicate={() => handleDuplicate(elementId)}
-            onDelete={() => handleDelete(elementId)}
-            canMoveUp={index > 0}
-            canMoveDown={index < currentOrder.length - 1}
-            position="right"
-          />
-        )}
-      </div>
-    );
+  const handleTextChange = (field: string, value: string) => {
+    onUpdateContent?.(field, value);
   };
 
   const renderImage = () => {
@@ -169,41 +272,66 @@ export function StepPreview({
     );
   };
 
-  // Element renderers
-  const renderElement = (elementId: string) => {
+  const renderElementContent = (elementId: string) => {
+    // Handle dynamically added elements
+    if (elementId.startsWith('text_')) {
+      return (
+        <InlineTextEditor
+          value="New text block"
+          onChange={(val) => handleTextChange(elementId, val)}
+          className={cn(FONT_SIZE_MAP[fontSize].subtext, "text-center")}
+          style={{ color: textColor }}
+          isSelected={selectedElement === elementId}
+          onSelect={() => onSelectElement(elementId)}
+        />
+      );
+    }
+
+    if (elementId.startsWith('divider_')) {
+      return (
+        <div className="w-full max-w-xs mx-auto py-2">
+          <div className="h-px bg-white/20" />
+        </div>
+      );
+    }
+
     switch (elementId) {
       case 'image_top':
         if (!design?.imageUrl || design?.imagePosition !== 'top') return null;
-        return renderElementWrapper('image_top', renderImage());
+        return renderImage();
         
       case 'image_bottom':
         if (!design?.imageUrl || design?.imagePosition !== 'bottom') return null;
-        return renderElementWrapper('image_bottom', renderImage());
+        return renderImage();
         
       case 'headline':
-        if (!content.headline) return null;
-        return renderElementWrapper('headline', (
-          <h1 
+        return (
+          <InlineTextEditor
+            value={content.headline || ''}
+            onChange={(val) => handleTextChange('headline', val)}
+            placeholder="Add headline..."
             className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold leading-tight text-center")}
             style={{ color: textColor }}
-          >
-            {content.headline}
-          </h1>
-        ));
+            isSelected={selectedElement === elementId}
+            onSelect={() => onSelectElement(elementId)}
+          />
+        );
         
       case 'subtext':
-        if (!content.subtext) return null;
-        return renderElementWrapper('subtext', (
-          <p 
+        return (
+          <InlineTextEditor
+            value={content.subtext || ''}
+            onChange={(val) => handleTextChange('subtext', val)}
+            placeholder="Add subtext..."
             className={cn(FONT_SIZE_MAP[fontSize].subtext, "opacity-70 text-center")}
             style={{ color: textColor }}
-          >
-            {content.subtext}
-          </p>
-        ));
+            isSelected={selectedElement === elementId}
+            onSelect={() => onSelectElement(elementId)}
+          />
+        );
         
       case 'button':
-        return renderElementWrapper('button', (
+        return (
           <button
             className="px-6 py-3 text-sm font-semibold transition-all w-full max-w-xs"
             style={{ 
@@ -212,9 +340,16 @@ export function StepPreview({
               borderRadius: `${borderRadius}px`
             }}
           >
-            {content.button_text || settings.button_text || 'Get Started'}
+            <InlineTextEditor
+              value={content.button_text || settings.button_text || 'Get Started'}
+              onChange={(val) => handleTextChange('button_text', val)}
+              className="text-center"
+              style={{ color: buttonTextColor }}
+              isSelected={selectedElement === elementId}
+              onSelect={() => onSelectElement(elementId)}
+            />
           </button>
-        ));
+        );
         
       case 'input':
         const inputType = step.step_type === 'email_capture' ? 'email' : 
@@ -222,7 +357,7 @@ export function StepPreview({
         const placeholder = content.placeholder || 
                            (step.step_type === 'email_capture' ? 'email@example.com' : 
                             step.step_type === 'phone_capture' ? '(555) 123-4567' : 'Type here...');
-        return renderElementWrapper('input', (
+        return (
           <div className="w-full max-w-xs">
             <input
               type={inputType}
@@ -235,11 +370,11 @@ export function StepPreview({
               readOnly
             />
           </div>
-        ));
+        );
         
       case 'options':
         if (!content.options?.length) return null;
-        return renderElementWrapper('options', (
+        return (
           <div className="w-full max-w-xs space-y-2">
             {content.options.map((option: string, index: number) => (
               <button
@@ -255,10 +390,10 @@ export function StepPreview({
               </button>
             ))}
           </div>
-        ));
+        );
         
       case 'video':
-        return renderElementWrapper('video', (
+        return (
           <div 
             className="w-full aspect-video bg-white/10 flex items-center justify-center"
             style={{ borderRadius: `${borderRadius}px` }}
@@ -269,11 +404,11 @@ export function StepPreview({
               <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>No video URL</span>
             )}
           </div>
-        ));
+        );
         
       case 'hint':
         return (
-          <p key="hint" className="text-xs text-center" style={{ color: textColor, opacity: 0.4 }}>
+          <p className="text-xs text-center" style={{ color: textColor, opacity: 0.4 }}>
             Press Enter ↵
           </p>
         );
@@ -282,6 +417,12 @@ export function StepPreview({
         return null;
     }
   };
+
+  // Filter out null elements
+  const visibleElements = currentOrder.filter(id => {
+    const content = renderElementContent(id);
+    return content !== null;
+  });
 
   return (
     <div 
@@ -308,9 +449,69 @@ export function StepPreview({
         </div>
       )}
 
-      {/* Column-based layout - elements render in order */}
+      {/* Drag and Drop Column Layout */}
       <div className="flex flex-col items-center justify-center h-full p-6 gap-4 relative z-10">
-        {currentOrder.map(elementId => renderElement(elementId))}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={visibleElements} strategy={verticalListSortingStrategy}>
+            {visibleElements.map((elementId) => {
+              const index = visibleElements.indexOf(elementId);
+              const elementContent = renderElementContent(elementId);
+              
+              if (!elementContent) return null;
+
+              return (
+                <SortableElement
+                  key={elementId}
+                  id={elementId}
+                  isSelected={selectedElement === elementId}
+                  onSelect={() => onSelectElement(elementId)}
+                  onMoveUp={() => handleMoveUp(elementId)}
+                  onMoveDown={() => handleMoveDown(elementId)}
+                  onDuplicate={() => handleDuplicate(elementId)}
+                  onDelete={() => handleDelete(elementId)}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < visibleElements.length - 1}
+                >
+                  {elementContent}
+                </SortableElement>
+              );
+            })}
+          </SortableContext>
+        </DndContext>
+
+        {/* Add Element Button */}
+        <Popover open={showAddElement} onOpenChange={setShowAddElement}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 border-dashed border-white/30 text-white/60 hover:text-white hover:border-white/50 bg-transparent hover:bg-white/10"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Element
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-2" side="top">
+            <div className="grid gap-1">
+              {ADD_ELEMENT_OPTIONS.map((option) => (
+                <Button
+                  key={option.id}
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start"
+                  onClick={() => handleAddElement(option.id)}
+                >
+                  <option.icon className="h-4 w-4 mr-2" />
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Bold, 
@@ -10,6 +9,7 @@ import {
   AlignCenter, 
   AlignRight,
   Link,
+  Palette,
   Type
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,109 +17,149 @@ import { cn } from '@/lib/utils';
 interface InlineTextEditorProps {
   value: string;
   onChange: (value: string) => void;
+  onHtmlChange?: (html: string) => void;
   placeholder?: string;
   className?: string;
   style?: React.CSSProperties;
   variant?: 'headline' | 'subtext' | 'button';
   isSelected?: boolean;
   onSelect?: () => void;
+  onDeselect?: () => void;
 }
+
+const PRESET_COLORS = [
+  '#ffffff', '#000000', '#ef4444', '#f97316', '#eab308', 
+  '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899',
+  '#f43f5e', '#06b6d4', '#84cc16', '#a855f7', '#6366f1',
+];
 
 export function InlineTextEditor({
   value,
   onChange,
+  onHtmlChange,
   placeholder = 'Click to edit...',
   className,
   style,
   variant = 'headline',
   isSelected,
   onSelect,
+  onDeselect,
 }: InlineTextEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [showToolbar, setShowToolbar] = useState(false);
-  const [textStyle, setTextStyle] = useState({
-    bold: false,
-    italic: false,
-    underline: false,
-    align: 'center' as 'left' | 'center' | 'right',
-  });
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  // Track if we have a selection for color changes
+  const [hasSelection, setHasSelection] = useState(false);
 
   useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+    if (isEditing && editorRef.current) {
+      editorRef.current.focus();
+      // Select all text on edit start
+      const range = document.createRange();
+      range.selectNodeContents(editorRef.current);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
     }
   }, [isEditing]);
+
+  // Check selection on selection change
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+        setHasSelection(!sel.isCollapsed);
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, []);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditing(true);
-    setShowToolbar(true);
     onSelect?.();
   };
 
-  const handleBlur = () => {
+  const handleBlur = (e: React.FocusEvent) => {
+    // Do not blur if clicking on toolbar
+    if (toolbarRef.current?.contains(e.relatedTarget as Node)) {
+      return;
+    }
+    
+    // Save content
+    if (editorRef.current) {
+      const text = editorRef.current.innerText;
+      onChange(text);
+      onHtmlChange?.(editorRef.current.innerHTML);
+    }
     setIsEditing(false);
-    // Keep toolbar visible while selected
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      setIsEditing(false);
-    }
     if (e.key === 'Escape') {
       setIsEditing(false);
-      setShowToolbar(false);
+      onDeselect?.();
     }
   };
 
-  const toggleStyle = (key: keyof typeof textStyle) => {
-    if (key === 'align') return;
-    setTextStyle(prev => ({ ...prev, [key]: !prev[key] }));
+  const handleInput = () => {
+    if (editorRef.current) {
+      const text = editorRef.current.innerText;
+      onChange(text);
+      onHtmlChange?.(editorRef.current.innerHTML);
+    }
   };
 
-  const setAlign = (align: 'left' | 'center' | 'right') => {
-    setTextStyle(prev => ({ ...prev, align }));
+  const execCommand = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+    handleInput();
   };
 
-  const getTextStyles = (): React.CSSProperties => ({
-    fontWeight: textStyle.bold ? 'bold' : undefined,
-    fontStyle: textStyle.italic ? 'italic' : undefined,
-    textDecoration: textStyle.underline ? 'underline' : undefined,
-    textAlign: textStyle.align,
-  });
+  const applyColor = (color: string) => {
+    execCommand('foreColor', color);
+    setShowColorPicker(false);
+  };
+
+  const isFormatActive = (command: string): boolean => {
+    return document.queryCommandState(command);
+  };
 
   return (
-    <div ref={containerRef} className="relative group">
-      {/* Floating Toolbar */}
-      {(isSelected || showToolbar) && (
+    <div className="relative group">
+      {/* Rich Text Toolbar */}
+      {isEditing && (
         <div 
-          className="absolute -top-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 p-1 bg-popover border rounded-lg shadow-lg animate-in fade-in-0 zoom-in-95"
+          ref={toolbarRef}
+          className="absolute -top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-0.5 p-1.5 bg-background border border-border rounded-lg shadow-xl animate-in fade-in-0 zoom-in-95"
           onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.preventDefault()} // Prevent blur
         >
           <Button
-            variant={textStyle.bold ? 'default' : 'ghost'}
+            variant={isFormatActive('bold') ? 'secondary' : 'ghost'}
             size="icon"
             className="h-7 w-7"
-            onClick={() => toggleStyle('bold')}
+            onMouseDown={(e) => { e.preventDefault(); execCommand('bold'); }}
           >
             <Bold className="h-3.5 w-3.5" />
           </Button>
           <Button
-            variant={textStyle.italic ? 'default' : 'ghost'}
+            variant={isFormatActive('italic') ? 'secondary' : 'ghost'}
             size="icon"
             className="h-7 w-7"
-            onClick={() => toggleStyle('italic')}
+            onMouseDown={(e) => { e.preventDefault(); execCommand('italic'); }}
           >
             <Italic className="h-3.5 w-3.5" />
           </Button>
           <Button
-            variant={textStyle.underline ? 'default' : 'ghost'}
+            variant={isFormatActive('underline') ? 'secondary' : 'ghost'}
             size="icon"
             className="h-7 w-7"
-            onClick={() => toggleStyle('underline')}
+            onMouseDown={(e) => { e.preventDefault(); execCommand('underline'); }}
           >
             <Underline className="h-3.5 w-3.5" />
           </Button>
@@ -127,57 +167,136 @@ export function InlineTextEditor({
           <div className="w-px h-5 bg-border mx-1" />
           
           <Button
-            variant={textStyle.align === 'left' ? 'default' : 'ghost'}
+            variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => setAlign('left')}
+            onMouseDown={(e) => { e.preventDefault(); execCommand('justifyLeft'); }}
           >
             <AlignLeft className="h-3.5 w-3.5" />
           </Button>
           <Button
-            variant={textStyle.align === 'center' ? 'default' : 'ghost'}
+            variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => setAlign('center')}
+            onMouseDown={(e) => { e.preventDefault(); execCommand('justifyCenter'); }}
           >
             <AlignCenter className="h-3.5 w-3.5" />
           </Button>
           <Button
-            variant={textStyle.align === 'right' ? 'default' : 'ghost'}
+            variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => setAlign('right')}
+            onMouseDown={(e) => { e.preventDefault(); execCommand('justifyRight'); }}
           >
             <AlignRight className="h-3.5 w-3.5" />
           </Button>
+
+          <div className="w-px h-5 bg-border mx-1" />
+          
+          {/* Color Picker */}
+          <Popover open={showColorPicker} onOpenChange={setShowColorPicker}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <Palette className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent 
+              className="w-auto p-2" 
+              side="top"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <div className="grid grid-cols-5 gap-1">
+                {PRESET_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
+                    style={{ backgroundColor: color }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      applyColor(color);
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="mt-2 pt-2 border-t">
+                <input
+                  type="color"
+                  className="w-full h-8 cursor-pointer rounded"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onChange={(e) => applyColor(e.target.value)}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Font Size */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <Type className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent 
+              className="w-auto p-2" 
+              side="top"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <div className="flex flex-col gap-1">
+                {[1, 2, 3, 4, 5, 6, 7].map((size) => (
+                  <Button
+                    key={size}
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execCommand('fontSize', size.toString());
+                    }}
+                  >
+                    <span style={{ fontSize: `${10 + size * 2}px` }}>Size {size}</span>
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       )}
 
       {/* Editable Content */}
       {isEditing ? (
-        <input
-          ref={inputRef}
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
           className={cn(
-            "bg-transparent border-none outline-none w-full",
+            "outline-none min-w-[50px] ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded px-1",
             className
           )}
-          style={{ ...style, ...getTextStyles() }}
-          placeholder={placeholder}
+          style={style}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          onInput={handleInput}
+          dangerouslySetInnerHTML={{ __html: value }}
         />
       ) : (
         <div
           className={cn(
-            "cursor-text transition-all",
+            "cursor-text transition-all px-1",
             isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded",
             !isSelected && "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 rounded",
             className
           )}
-          style={{ ...style, ...getTextStyles() }}
+          style={style}
           onDoubleClick={handleDoubleClick}
           onClick={(e) => {
             e.stopPropagation();
