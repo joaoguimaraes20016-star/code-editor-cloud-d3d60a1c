@@ -475,13 +475,13 @@ export default function FunnelEditor() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar - Pages List */}
         <div className={cn(
-          "border-r bg-card p-3 sm:p-4 overflow-y-auto flex-shrink-0 transition-all duration-300",
+          "border-r bg-card p-2 sm:p-3 overflow-y-auto flex-shrink-0 transition-all duration-300",
           isMobile 
             ? cn(
-                "absolute inset-y-0 left-0 z-20 w-64",
+                "absolute inset-y-0 left-0 z-20 w-56",
                 showLeftPanel ? "translate-x-0" : "-translate-x-full"
               )
-            : "w-48 lg:w-56"
+            : "w-40 lg:w-48"
         )}>
           {isMobile && (
             <Button 
@@ -513,12 +513,12 @@ export default function FunnelEditor() {
         </div>
 
         {/* Center - Phone Mockup Preview */}
-        <div className="flex-1 flex flex-col items-center justify-center bg-zinc-900/50 overflow-hidden p-4">
+        <div className="flex-1 flex flex-col items-center justify-center bg-zinc-900/50 overflow-hidden p-2">
           {selectedStep && (
             <>
               <PhoneMockup 
                 backgroundColor={stepDesigns[selectedStep.id]?.backgroundColor || funnel.settings.background_color}
-                className="scale-[0.65] sm:scale-75 lg:scale-90 xl:scale-100"
+                className="scale-[0.7] sm:scale-[0.85] lg:scale-100 xl:scale-105"
               >
                 <StepPreview
                   step={selectedStep}
@@ -548,13 +548,13 @@ export default function FunnelEditor() {
 
         {/* Right Sidebar - Editor Panel */}
         <div className={cn(
-          "border-l bg-card p-3 sm:p-4 overflow-y-auto flex-shrink-0 transition-all duration-300",
+          "border-l bg-card p-2 sm:p-3 overflow-y-auto flex-shrink-0 transition-all duration-300",
           isMobile 
             ? cn(
-                "absolute inset-y-0 right-0 z-20 w-72",
+                "absolute inset-y-0 right-0 z-20 w-64",
                 showRightPanel ? "translate-x-0" : "translate-x-full"
               )
-            : "w-72 lg:w-80"
+            : "w-60 lg:w-72"
         )}>
           {isMobile && (
             <Button 

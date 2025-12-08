@@ -9,7 +9,7 @@ interface PhoneMockupProps {
 
 export function PhoneMockup({ children, backgroundColor = '#0a0a0a', className }: PhoneMockupProps) {
   return (
-    <div className={cn("flex items-center justify-center p-8", className)}>
+    <div className={cn("flex items-center justify-center p-4", className)}>
       {/* iPhone Frame */}
       <div 
         className="relative rounded-[3rem] p-3 shadow-2xl"
