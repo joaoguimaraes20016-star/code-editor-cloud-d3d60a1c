@@ -89,6 +89,42 @@ const ADD_ELEMENT_OPTIONS = [
   { id: 'video', label: 'Video', icon: Video },
 ];
 
+// Helper to convert video URLs to embed URLs
+function getVideoEmbedUrl(url?: string): string | null {
+  if (!url) return null;
+  
+  // YouTube
+  const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (youtubeMatch) {
+    return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+  }
+  
+  // Vimeo
+  const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vimeoMatch) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  }
+  
+  // Loom
+  const loomMatch = url.match(/loom\.com\/share\/([a-zA-Z0-9]+)/);
+  if (loomMatch) {
+    return `https://www.loom.com/embed/${loomMatch[1]}`;
+  }
+  
+  // Wistia
+  const wistiaMatch = url.match(/wistia\.com\/medias\/([a-zA-Z0-9]+)/);
+  if (wistiaMatch) {
+    return `https://fast.wistia.net/embed/iframe/${wistiaMatch[1]}`;
+  }
+  
+  // If already an embed URL, return as-is
+  if (url.includes('/embed/') || url.includes('player.vimeo.com')) {
+    return url;
+  }
+  
+  return null;
+}
+
 // Sortable Element Wrapper - improved for smoother drag
 function SortableElement({ 
   id, 
@@ -140,15 +176,17 @@ function SortableElement({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative transition-all group px-2 py-1",
+        "relative transition-all group py-1",
         isSelected 
-          ? "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded bg-white/5" 
-          : "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 hover:ring-offset-transparent rounded hover:bg-white/5",
+          ? "ring-2 ring-primary rounded bg-primary/5" 
+          : "hover:ring-2 hover:ring-primary/40 rounded hover:bg-primary/5",
         isDragging && "shadow-2xl cursor-grabbing"
       )}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
     >
-      {children}
+      <div className="px-2">
+        {children}
+      </div>
       
       {/* Action menu - appears above the element when selected */}
       {isSelected && (
@@ -160,7 +198,6 @@ function SortableElement({
           onDelete={onDelete}
           canMoveUp={canMoveUp}
           canMoveDown={canMoveDown}
-          position="top"
         />
       )}
     </div>
@@ -403,15 +440,31 @@ export function StepPreview({
         );
         
       case 'video':
+        const videoUrl = content.video_url;
+        const embedUrl = getVideoEmbedUrl(videoUrl);
+        
         return (
           <div 
-            className="w-full aspect-video bg-white/10 flex items-center justify-center"
+            className="w-full aspect-video overflow-hidden"
             style={{ borderRadius: `${borderRadius}px` }}
           >
-            {content.video_url ? (
-              <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>Video Preview</span>
+            {embedUrl ? (
+              <iframe
+                src={embedUrl}
+                className="w-full h-full"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
             ) : (
-              <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>No video URL</span>
+              <div 
+                className="w-full h-full bg-white/10 flex items-center justify-center"
+                onClick={(e) => { e.stopPropagation(); onSelectElement('video'); }}
+              >
+                <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>
+                  {videoUrl ? 'Invalid video URL' : 'Click to add video URL'}
+                </span>
+              </div>
             )}
           </div>
         );
