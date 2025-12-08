@@ -20,7 +20,7 @@ interface StepDesign {
   imageUrl?: string;
   imageSize?: 'S' | 'M' | 'L' | 'XL';
   imagePosition?: 'top' | 'bottom' | 'background';
-  // New gradient options
+  // Background gradient options
   useGradient?: boolean;
   gradientFrom?: string;
   gradientTo?: string;
@@ -29,6 +29,14 @@ interface StepDesign {
   imageOverlay?: boolean;
   imageOverlayColor?: string;
   imageOverlayOpacity?: number;
+  // Button gradient options
+  useButtonGradient?: boolean;
+  buttonGradientFrom?: string;
+  buttonGradientTo?: string;
+  buttonGradientDirection?: string;
+  // Button animation options
+  buttonAnimation?: 'none' | 'fade' | 'slide-up' | 'bounce' | 'scale';
+  buttonAnimationDuration?: number;
 }
 
 interface DesignEditorProps {
@@ -81,6 +89,14 @@ const GRADIENT_PRESETS = [
   { from: '#a8edea', to: '#fed6e3', label: 'Soft Pastel' },
   { from: '#ff0844', to: '#ffb199', label: 'Coral Fire' },
   { from: '#0f0c29', to: '#302b63', label: 'Dark Night' },
+];
+
+const BUTTON_ANIMATION_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'fade', label: 'Fade In' },
+  { value: 'slide-up', label: 'Slide Up' },
+  { value: 'bounce', label: 'Bounce' },
+  { value: 'scale', label: 'Scale' },
 ];
 
 export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }: DesignEditorProps) {
@@ -237,22 +253,182 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }
         </div>
       </div>
 
-      {/* Button Color */}
-      <div className="space-y-3">
-        <Label className="text-xs">Button Color</Label>
-        <div className="flex flex-wrap gap-2">
-          {COLOR_PRESETS.slice(6).map((color) => (
-            <button
-              key={color}
-              className={cn(
-                "w-8 h-8 rounded-lg border-2 transition-all",
-                design.buttonColor === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
-              )}
-              style={{ backgroundColor: color }}
-              onClick={() => updateField('buttonColor', color)}
-            />
-          ))}
+      {/* Button Styling Section */}
+      <div className="space-y-4 border-t pt-4">
+        <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
+          Button Styling
+        </h4>
+        
+        {/* Button Gradient Toggle */}
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Use Button Gradient</Label>
+          <Switch
+            checked={design.useButtonGradient || false}
+            onCheckedChange={(checked) => updateField('useButtonGradient', checked)}
+          />
         </div>
+
+        {/* Solid Button Color */}
+        {!design.useButtonGradient && (
+          <div className="space-y-3">
+            <Label className="text-xs">Button Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_PRESETS.slice(6).map((color) => (
+                <button
+                  key={color}
+                  className={cn(
+                    "w-8 h-8 rounded-lg border-2 transition-all",
+                    design.buttonColor === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                  )}
+                  style={{ backgroundColor: color }}
+                  onClick={() => updateField('buttonColor', color)}
+                />
+              ))}
+            </div>
+            <Input
+              type="color"
+              value={design.buttonColor || '#3b82f6'}
+              onChange={(e) => updateField('buttonColor', e.target.value)}
+              className="h-8 w-full"
+            />
+          </div>
+        )}
+
+        {/* Button Gradient Controls */}
+        {design.useButtonGradient && (
+          <div className="space-y-4 p-3 bg-secondary/50 rounded-lg">
+            <Label className="text-xs font-medium">Button Gradient Presets</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {GRADIENT_PRESETS.map((preset, idx) => (
+                <button
+                  key={idx}
+                  className={cn(
+                    "w-full h-8 rounded-md border-2 transition-all",
+                    design.buttonGradientFrom === preset.from && design.buttonGradientTo === preset.to
+                      ? "ring-2 ring-primary ring-offset-1"
+                      : "border-border"
+                  )}
+                  style={{ 
+                    background: `linear-gradient(to right, ${preset.from}, ${preset.to})` 
+                  }}
+                  onClick={() => onUpdateDesign({ 
+                    ...design, 
+                    useButtonGradient: true,
+                    buttonGradientFrom: preset.from, 
+                    buttonGradientTo: preset.to,
+                    buttonGradientDirection: design.buttonGradientDirection || '135deg'
+                  })}
+                  title={preset.label}
+                />
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-xs">From</Label>
+                <Input
+                  type="color"
+                  value={design.buttonGradientFrom || '#3b82f6'}
+                  onChange={(e) => updateField('buttonGradientFrom', e.target.value)}
+                  className="h-8 w-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">To</Label>
+                <Input
+                  type="color"
+                  value={design.buttonGradientTo || '#1d4ed8'}
+                  onChange={(e) => updateField('buttonGradientTo', e.target.value)}
+                  className="h-8 w-full"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Direction</Label>
+              <Select
+                value={design.buttonGradientDirection || '135deg'}
+                onValueChange={(value) => updateField('buttonGradientDirection', value)}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="90deg">Horizontal →</SelectItem>
+                  <SelectItem value="180deg">Vertical ↓</SelectItem>
+                  <SelectItem value="135deg">Diagonal ↘</SelectItem>
+                  <SelectItem value="45deg">Diagonal ↗</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Button Gradient Preview */}
+            <div 
+              className="h-10 rounded-lg flex items-center justify-center text-sm font-medium text-white"
+              style={{
+                background: `linear-gradient(${design.buttonGradientDirection || '135deg'}, ${design.buttonGradientFrom || '#3b82f6'}, ${design.buttonGradientTo || '#1d4ed8'})`
+              }}
+            >
+              Button Preview
+            </div>
+          </div>
+        )}
+
+        {/* Button Text Color */}
+        <div className="space-y-2">
+          <Label className="text-xs">Button Text Color</Label>
+          <div className="flex gap-2">
+            {['#ffffff', '#000000', '#f5f5f5', '#0a0a0a'].map((color) => (
+              <button
+                key={color}
+                className={cn(
+                  "w-8 h-8 rounded-lg border-2 transition-all",
+                  design.buttonTextColor === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                )}
+                style={{ backgroundColor: color }}
+                onClick={() => updateField('buttonTextColor', color)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Button Animation */}
+        <div className="space-y-2">
+          <Label className="text-xs">Button Appear Animation</Label>
+          <div className="flex flex-wrap gap-1">
+            {BUTTON_ANIMATION_OPTIONS.map((anim) => (
+              <Button
+                key={anim.value}
+                variant={design.buttonAnimation === anim.value || (!design.buttonAnimation && anim.value === 'none') ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => updateField('buttonAnimation', anim.value)}
+              >
+                {anim.label}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            How the Next Question button appears after selection
+          </p>
+        </div>
+
+        {/* Animation Duration */}
+        {design.buttonAnimation && design.buttonAnimation !== 'none' && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Animation Duration</Label>
+              <span className="text-xs text-muted-foreground">{design.buttonAnimationDuration || 300}ms</span>
+            </div>
+            <Slider
+              value={[design.buttonAnimationDuration || 300]}
+              onValueChange={([value]) => updateField('buttonAnimationDuration', value)}
+              min={100}
+              max={800}
+              step={50}
+            />
+          </div>
+        )}
       </div>
 
       {/* Font Size */}

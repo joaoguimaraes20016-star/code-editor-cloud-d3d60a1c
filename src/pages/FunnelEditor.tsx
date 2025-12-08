@@ -39,6 +39,23 @@ export interface StepDesign {
   imageUrl?: string;
   imageSize?: 'S' | 'M' | 'L' | 'XL';
   imagePosition?: 'top' | 'bottom' | 'background';
+  // Background gradient
+  useGradient?: boolean;
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientDirection?: string;
+  // Image overlay
+  imageOverlay?: boolean;
+  imageOverlayColor?: string;
+  imageOverlayOpacity?: number;
+  // Button gradient
+  useButtonGradient?: boolean;
+  buttonGradientFrom?: string;
+  buttonGradientTo?: string;
+  buttonGradientDirection?: string;
+  // Button animation
+  buttonAnimation?: 'none' | 'fade' | 'slide-up' | 'bounce' | 'scale';
+  buttonAnimationDuration?: number;
 }
 
 export interface FunnelStep {

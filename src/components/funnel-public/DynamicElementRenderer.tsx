@@ -233,23 +233,35 @@ export function DynamicElementRenderer({
         
       case 'headline':
         if (!content.headline) return null;
-        const headlineHasColor = content.headline.includes('color=') || content.headline.includes('color:');
+        // Clean HTML - remove font tags and excessive inline styles
+        const cleanedHeadline = content.headline
+          .replace(/<font[^>]*>/gi, '')
+          .replace(/<\/font>/gi, '')
+          .replace(/style="[^"]*font-family[^"]*"/gi, '')
+          .replace(/class="[^"]*fun-font[^"]*"/gi, '');
+        const headlineHasColor = cleanedHeadline.includes('color=') || cleanedHeadline.includes('color:');
         return (
           <h1 
             className={cn(sizes.headline, "font-bold leading-tight text-center [&>*]:leading-tight")}
             style={{ ...fontStyle, ...(headlineHasColor ? {} : { color: textColor }) }}
-            dangerouslySetInnerHTML={{ __html: content.headline }}
+            dangerouslySetInnerHTML={{ __html: cleanedHeadline }}
           />
         );
         
       case 'subtext':
         if (!content.subtext) return null;
-        const subtextHasColor = content.subtext.includes('color=') || content.subtext.includes('color:');
+        // Clean HTML - remove font tags and excessive inline styles
+        const cleanedSubtext = content.subtext
+          .replace(/<font[^>]*>/gi, '')
+          .replace(/<\/font>/gi, '')
+          .replace(/style="[^"]*font-family[^"]*"/gi, '')
+          .replace(/class="[^"]*fun-font[^"]*"/gi, '');
+        const subtextHasColor = cleanedSubtext.includes('color=') || cleanedSubtext.includes('color:');
         return (
           <p 
             className={cn(sizes.subtext, "opacity-70 text-center [&>*]:leading-relaxed")}
             style={{ ...fontStyle, ...(subtextHasColor ? {} : { color: textColor }) }}
-            dangerouslySetInnerHTML={{ __html: content.subtext }}
+            dangerouslySetInnerHTML={{ __html: cleanedSubtext }}
           />
         );
         

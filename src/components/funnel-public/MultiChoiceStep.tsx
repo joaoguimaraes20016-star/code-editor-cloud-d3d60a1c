@@ -1,6 +1,21 @@
 import { useEffect, useState } from 'react';
 import { DynamicElementRenderer } from './DynamicElementRenderer';
 
+// Helper to strip HTML tags and get plain text
+function stripHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return doc.body.textContent || '';
+}
+
+// Animation class mapping
+const ANIMATION_CLASSES: Record<string, string> = {
+  'none': '',
+  'fade': 'animate-fade-in',
+  'slide-up': 'animate-slide-up',
+  'bounce': 'animate-bounce-in',
+  'scale': 'animate-scale-in',
+};
+
 interface MultiChoiceStepProps {
   content: {
     headline?: string;
@@ -8,7 +23,17 @@ interface MultiChoiceStepProps {
     is_required?: boolean;
     element_order?: string[];
     dynamic_elements?: Record<string, any>;
-    design?: any;
+    design?: {
+      buttonColor?: string;
+      buttonTextColor?: string;
+      useButtonGradient?: boolean;
+      buttonGradientFrom?: string;
+      buttonGradientTo?: string;
+      buttonGradientDirection?: string;
+      buttonAnimation?: 'none' | 'fade' | 'slide-up' | 'bounce' | 'scale';
+      buttonAnimationDuration?: number;
+      borderRadius?: number;
+    };
     next_button_text?: string;
     show_next_button?: boolean;
   };
@@ -35,6 +60,26 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
 
   const showNextButton = content.show_next_button !== false;
   const nextButtonText = content.next_button_text || 'Next Question';
+  const design = content.design || {};
+  
+  // Button styling
+  const getButtonStyle = () => {
+    if (design.useButtonGradient && design.buttonGradientFrom && design.buttonGradientTo) {
+      return {
+        background: `linear-gradient(${design.buttonGradientDirection || '135deg'}, ${design.buttonGradientFrom}, ${design.buttonGradientTo})`,
+        color: design.buttonTextColor || '#ffffff',
+        borderRadius: `${design.borderRadius ?? 12}px`,
+      };
+    }
+    return {
+      background: `linear-gradient(135deg, ${design.buttonColor || settings.primary_color}, ${design.buttonColor || settings.primary_color}dd)`,
+      color: design.buttonTextColor || '#ffffff',
+      borderRadius: `${design.borderRadius ?? 12}px`,
+    };
+  };
+
+  const animationClass = ANIMATION_CLASSES[design.buttonAnimation || 'fade'] || ANIMATION_CLASSES.fade;
+  const animationDuration = design.buttonAnimationDuration || 300;
 
   useEffect(() => {
     if (isActive) {
@@ -116,22 +161,15 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
         </button>
       ))}
       
-      {/* Next Question Button - shows after selection */}
-      {showNextButton && (
+      {/* Next Question Button - shows after selection with animation */}
+      {showNextButton && selectedOption && (
         <button
           onClick={handleNextClick}
-          disabled={!selectedOption}
-          className={`
-            w-full p-4 mt-4 rounded-xl font-semibold text-white text-base
-            transition-all duration-300
-            ${selectedOption 
-              ? 'opacity-100 translate-y-0' 
-              : 'opacity-0 translate-y-2 pointer-events-none'
-            }
-          `}
+          className={`w-full p-4 mt-4 font-semibold text-base transition-all hover:scale-[1.02] hover:shadow-lg ${animationClass}`}
           style={{ 
-            background: `linear-gradient(135deg, ${settings.primary_color}, ${settings.primary_color}dd)`,
-            boxShadow: selectedOption ? `0 4px 20px ${settings.primary_color}40` : 'none'
+            ...getButtonStyle(),
+            animationDuration: `${animationDuration}ms`,
+            boxShadow: `0 4px 20px ${design.buttonGradientFrom || design.buttonColor || settings.primary_color}40`
           }}
         >
           {nextButtonText}
@@ -152,6 +190,16 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
       );
     }
     return null;
+  };
+
+  // Clean headline - strip excessive HTML styling but keep basic formatting
+  const cleanHeadline = (html: string) => {
+    // Remove font tags and excessive inline styles but keep basic tags
+    return html
+      .replace(/<font[^>]*>/gi, '')
+      .replace(/<\/font>/gi, '')
+      .replace(/style="[^"]*font-family[^"]*"/gi, '')
+      .replace(/class="[^"]*"/gi, '');
   };
 
   if (hasElementOrder) {
@@ -179,7 +227,7 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
       {content.headline && (
         <h2 
           className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-8"
-          dangerouslySetInnerHTML={{ __html: content.headline }}
+          dangerouslySetInnerHTML={{ __html: cleanHeadline(content.headline) }}
         />
       )}
 
