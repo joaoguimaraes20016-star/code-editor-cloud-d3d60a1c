@@ -1,15 +1,50 @@
 import { FunnelStep, FunnelSettings } from '@/pages/FunnelEditor';
 import { cn } from '@/lib/utils';
 
+interface StepDesign {
+  backgroundColor?: string;
+  textColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+  fontSize?: 'small' | 'medium' | 'large';
+  fontFamily?: string;
+  borderRadius?: number;
+  padding?: number;
+  imageUrl?: string;
+  imageSize?: 'S' | 'M' | 'L' | 'XL';
+  imagePosition?: 'top' | 'bottom' | 'background';
+}
+
 interface StepPreviewProps {
   step: FunnelStep;
   settings: FunnelSettings;
   selectedElement: string | null;
   onSelectElement: (element: string | null) => void;
+  design?: StepDesign;
 }
 
-export function StepPreview({ step, settings, selectedElement, onSelectElement }: StepPreviewProps) {
+const IMAGE_ASPECT_RATIOS = {
+  S: '16/9',
+  M: '4/3',
+  L: '5/4',
+  XL: '1/1',
+};
+
+const FONT_SIZE_MAP = {
+  small: { headline: 'text-lg', subtext: 'text-xs' },
+  medium: { headline: 'text-xl', subtext: 'text-sm' },
+  large: { headline: 'text-2xl', subtext: 'text-base' },
+};
+
+export function StepPreview({ step, settings, selectedElement, onSelectElement, design }: StepPreviewProps) {
   const content = step.content;
+
+  const textColor = design?.textColor || '#ffffff';
+  const buttonColor = design?.buttonColor || settings.primary_color;
+  const buttonTextColor = design?.buttonTextColor || '#ffffff';
+  const fontFamily = design?.fontFamily || 'system-ui';
+  const fontSize = design?.fontSize || 'medium';
+  const borderRadius = design?.borderRadius ?? 12;
 
   const getEditableClass = (elementId: string) => cn(
     "cursor-pointer transition-all relative",
@@ -18,46 +53,93 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
       : "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 hover:ring-offset-transparent rounded"
   );
 
-  const renderWelcome = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-      {content.headline && (
-        <h1 
-          className={cn("text-2xl font-bold text-white mb-4 leading-tight", getEditableClass('headline'))}
-          onClick={(e) => { e.stopPropagation(); onSelectElement('headline'); }}
-        >
-          {content.headline}
-        </h1>
-      )}
-
-      {content.subtext && (
-        <p 
-          className={cn("text-sm text-white/70 mb-6", getEditableClass('subtext'))}
-          onClick={(e) => { e.stopPropagation(); onSelectElement('subtext'); }}
-        >
-          {content.subtext}
-        </p>
-      )}
-
-      <button
-        className={cn(
-          "px-6 py-3 text-sm font-semibold rounded-lg text-white transition-all",
-          getEditableClass('button_text')
-        )}
-        style={{ backgroundColor: settings.primary_color }}
-        onClick={(e) => { e.stopPropagation(); onSelectElement('button_text'); }}
+  const renderImage = () => {
+    if (!design?.imageUrl || design?.imagePosition === 'background') return null;
+    
+    const aspectRatio = IMAGE_ASPECT_RATIOS[design.imageSize || 'M'];
+    
+    return (
+      <div 
+        className="w-full max-w-[200px] mx-auto mb-4 rounded-lg overflow-hidden"
+        style={{ aspectRatio }}
       >
-        {content.button_text || settings.button_text || 'Get Started'}
-      </button>
+        <img 
+          src={design.imageUrl} 
+          alt="" 
+          className="w-full h-full object-cover"
+        />
+      </div>
+    );
+  };
 
-      <p className="mt-3 text-white/40 text-xs">Press Enter ↵</p>
+  const renderWelcome = () => (
+    <div 
+      className="flex flex-col items-center justify-center h-full p-6 text-center relative"
+      style={{ fontFamily }}
+    >
+      {design?.imagePosition === 'background' && design?.imageUrl && (
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-30"
+          style={{ backgroundImage: `url(${design.imageUrl})` }}
+        />
+      )}
+      
+      <div className="relative z-10">
+        {design?.imagePosition === 'top' && renderImage()}
+        
+        {content.headline && (
+          <h1 
+            className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold mb-4 leading-tight", getEditableClass('headline'))}
+            style={{ color: textColor }}
+            onClick={(e) => { e.stopPropagation(); onSelectElement('headline'); }}
+          >
+            {content.headline}
+          </h1>
+        )}
+
+        {content.subtext && (
+          <p 
+            className={cn(FONT_SIZE_MAP[fontSize].subtext, "mb-6 opacity-70", getEditableClass('subtext'))}
+            style={{ color: textColor }}
+            onClick={(e) => { e.stopPropagation(); onSelectElement('subtext'); }}
+          >
+            {content.subtext}
+          </p>
+        )}
+
+        {design?.imagePosition === 'bottom' && renderImage()}
+
+        <button
+          className={cn(
+            "px-6 py-3 text-sm font-semibold transition-all",
+            getEditableClass('button_text')
+          )}
+          style={{ 
+            backgroundColor: buttonColor, 
+            color: buttonTextColor,
+            borderRadius: `${borderRadius}px`
+          }}
+          onClick={(e) => { e.stopPropagation(); onSelectElement('button_text'); }}
+        >
+          {content.button_text || settings.button_text || 'Get Started'}
+        </button>
+
+        <p className="mt-3 text-xs" style={{ color: textColor, opacity: 0.4 }}>Press Enter ↵</p>
+      </div>
     </div>
   );
 
   const renderTextQuestion = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+    <div 
+      className="flex flex-col items-center justify-center h-full p-6 text-center"
+      style={{ fontFamily }}
+    >
+      {design?.imagePosition === 'top' && renderImage()}
+      
       {content.headline && (
         <h1 
-          className={cn("text-xl font-bold text-white mb-6 leading-tight", getEditableClass('headline'))}
+          className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold mb-6 leading-tight", getEditableClass('headline'))}
+          style={{ color: textColor }}
           onClick={(e) => { e.stopPropagation(); onSelectElement('headline'); }}
         >
           {content.headline}
@@ -71,20 +153,33 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
         <input
           type="text"
           placeholder={content.placeholder || 'Type here...'}
-          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder:text-white/40 text-center"
+          className="w-full bg-white/10 border border-white/20 px-4 py-3 text-center"
+          style={{ 
+            color: textColor, 
+            borderRadius: `${borderRadius}px`,
+            '--tw-placeholder-opacity': '0.4'
+          } as React.CSSProperties}
           readOnly
         />
       </div>
 
-      <p className="mt-3 text-white/40 text-xs">Press Enter ↵</p>
+      {design?.imagePosition === 'bottom' && renderImage()}
+
+      <p className="mt-3 text-xs" style={{ color: textColor, opacity: 0.4 }}>Press Enter ↵</p>
     </div>
   );
 
   const renderMultiChoice = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+    <div 
+      className="flex flex-col items-center justify-center h-full p-6 text-center"
+      style={{ fontFamily }}
+    >
+      {design?.imagePosition === 'top' && renderImage()}
+      
       {content.headline && (
         <h1 
-          className={cn("text-xl font-bold text-white mb-6 leading-tight", getEditableClass('headline'))}
+          className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold mb-6 leading-tight", getEditableClass('headline'))}
+          style={{ color: textColor }}
           onClick={(e) => { e.stopPropagation(); onSelectElement('headline'); }}
         >
           {content.headline}
@@ -98,20 +193,33 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
         {(content.options || []).map((option, index) => (
           <button
             key={index}
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white hover:bg-white/20 transition-colors text-sm"
+            className="w-full px-4 py-3 hover:opacity-80 transition-colors text-sm font-medium"
+            style={{ 
+              backgroundColor: buttonColor,
+              color: buttonTextColor,
+              borderRadius: `${borderRadius}px`
+            }}
           >
             {option}
           </button>
         ))}
       </div>
+
+      {design?.imagePosition === 'bottom' && renderImage()}
     </div>
   );
 
   const renderEmailCapture = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+    <div 
+      className="flex flex-col items-center justify-center h-full p-6 text-center"
+      style={{ fontFamily }}
+    >
+      {design?.imagePosition === 'top' && renderImage()}
+      
       {content.headline && (
         <h1 
-          className={cn("text-xl font-bold text-white mb-4 leading-tight", getEditableClass('headline'))}
+          className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold mb-4 leading-tight", getEditableClass('headline'))}
+          style={{ color: textColor }}
           onClick={(e) => { e.stopPropagation(); onSelectElement('headline'); }}
         >
           {content.headline}
@@ -120,7 +228,8 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
 
       {content.subtext && (
         <p 
-          className={cn("text-sm text-white/70 mb-6", getEditableClass('subtext'))}
+          className={cn(FONT_SIZE_MAP[fontSize].subtext, "mb-6 opacity-70", getEditableClass('subtext'))}
+          style={{ color: textColor }}
           onClick={(e) => { e.stopPropagation(); onSelectElement('subtext'); }}
         >
           {content.subtext}
@@ -134,20 +243,32 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
         <input
           type="email"
           placeholder={content.placeholder || 'email@example.com'}
-          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder:text-white/40 text-center"
+          className="w-full bg-white/10 border border-white/20 px-4 py-3 text-center"
+          style={{ 
+            color: textColor, 
+            borderRadius: `${borderRadius}px`
+          }}
           readOnly
         />
       </div>
 
-      <p className="mt-3 text-white/40 text-xs">Press Enter ↵</p>
+      {design?.imagePosition === 'bottom' && renderImage()}
+
+      <p className="mt-3 text-xs" style={{ color: textColor, opacity: 0.4 }}>Press Enter ↵</p>
     </div>
   );
 
   const renderPhoneCapture = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+    <div 
+      className="flex flex-col items-center justify-center h-full p-6 text-center"
+      style={{ fontFamily }}
+    >
+      {design?.imagePosition === 'top' && renderImage()}
+      
       {content.headline && (
         <h1 
-          className={cn("text-xl font-bold text-white mb-4 leading-tight", getEditableClass('headline'))}
+          className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold mb-4 leading-tight", getEditableClass('headline'))}
+          style={{ color: textColor }}
           onClick={(e) => { e.stopPropagation(); onSelectElement('headline'); }}
         >
           {content.headline}
@@ -156,7 +277,8 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
 
       {content.subtext && (
         <p 
-          className={cn("text-sm text-white/70 mb-6", getEditableClass('subtext'))}
+          className={cn(FONT_SIZE_MAP[fontSize].subtext, "mb-6 opacity-70", getEditableClass('subtext'))}
+          style={{ color: textColor }}
           onClick={(e) => { e.stopPropagation(); onSelectElement('subtext'); }}
         >
           {content.subtext}
@@ -170,20 +292,30 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
         <input
           type="tel"
           placeholder={content.placeholder || '(555) 123-4567'}
-          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder:text-white/40 text-center"
+          className="w-full bg-white/10 border border-white/20 px-4 py-3 text-center"
+          style={{ 
+            color: textColor, 
+            borderRadius: `${borderRadius}px`
+          }}
           readOnly
         />
       </div>
 
-      <p className="mt-3 text-white/40 text-xs">Press Enter ↵</p>
+      {design?.imagePosition === 'bottom' && renderImage()}
+
+      <p className="mt-3 text-xs" style={{ color: textColor, opacity: 0.4 }}>Press Enter ↵</p>
     </div>
   );
 
   const renderVideo = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+    <div 
+      className="flex flex-col items-center justify-center h-full p-6 text-center"
+      style={{ fontFamily }}
+    >
       {content.headline && (
         <h1 
-          className={cn("text-xl font-bold text-white mb-4 leading-tight", getEditableClass('headline'))}
+          className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold mb-4 leading-tight", getEditableClass('headline'))}
+          style={{ color: textColor }}
           onClick={(e) => { e.stopPropagation(); onSelectElement('headline'); }}
         >
           {content.headline}
@@ -191,22 +323,27 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
       )}
 
       <div 
-        className={cn("w-full aspect-video bg-white/10 rounded-lg flex items-center justify-center mb-4", getEditableClass('video_url'))}
+        className={cn("w-full aspect-video bg-white/10 flex items-center justify-center mb-4", getEditableClass('video_url'))}
+        style={{ borderRadius: `${borderRadius}px` }}
         onClick={(e) => { e.stopPropagation(); onSelectElement('video_url'); }}
       >
         {content.video_url ? (
-          <span className="text-white/50 text-xs">Video Preview</span>
+          <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>Video Preview</span>
         ) : (
-          <span className="text-white/50 text-xs">No video URL</span>
+          <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>No video URL</span>
         )}
       </div>
 
       <button
         className={cn(
-          "px-6 py-3 text-sm font-semibold rounded-lg text-white",
+          "px-6 py-3 text-sm font-semibold",
           getEditableClass('button_text')
         )}
-        style={{ backgroundColor: settings.primary_color }}
+        style={{ 
+          backgroundColor: buttonColor, 
+          color: buttonTextColor,
+          borderRadius: `${borderRadius}px`
+        }}
         onClick={(e) => { e.stopPropagation(); onSelectElement('button_text'); }}
       >
         {content.button_text || 'Continue'}
@@ -215,10 +352,16 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
   );
 
   const renderThankYou = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+    <div 
+      className="flex flex-col items-center justify-center h-full p-6 text-center"
+      style={{ fontFamily }}
+    >
+      {design?.imagePosition === 'top' && renderImage()}
+      
       {content.headline && (
         <h1 
-          className={cn("text-2xl font-bold text-white mb-4 leading-tight", getEditableClass('headline'))}
+          className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold mb-4 leading-tight", getEditableClass('headline'))}
+          style={{ color: textColor }}
           onClick={(e) => { e.stopPropagation(); onSelectElement('headline'); }}
         >
           {content.headline}
@@ -227,12 +370,15 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
 
       {content.subtext && (
         <p 
-          className={cn("text-sm text-white/70", getEditableClass('subtext'))}
+          className={cn(FONT_SIZE_MAP[fontSize].subtext, "opacity-70", getEditableClass('subtext'))}
+          style={{ color: textColor }}
           onClick={(e) => { e.stopPropagation(); onSelectElement('subtext'); }}
         >
           {content.subtext}
         </p>
       )}
+
+      {design?.imagePosition === 'bottom' && renderImage()}
     </div>
   );
 
@@ -253,7 +399,7 @@ export function StepPreview({ step, settings, selectedElement, onSelectElement }
       case 'thank_you':
         return renderThankYou();
       default:
-        return <div className="text-white/50 text-center">Unknown step type</div>;
+        return <div className="text-center" style={{ color: textColor, opacity: 0.5 }}>Unknown step type</div>;
     }
   };
 
