@@ -128,14 +128,21 @@ export function DynamicElementRenderer({
   const renderElement = (elementId: string) => {
     const fontStyle = { fontFamily };
 
-    // Dynamic text blocks
+    // Dynamic text blocks - don't set color on parent to allow <font color> to work
     if (elementId.startsWith('text_')) {
       const textValue = dynamicElements?.[elementId]?.text || '';
       if (!textValue) return null;
+      
+      // Check if the content contains color formatting, if not apply default
+      const hasColorFormatting = textValue.includes('color=') || textValue.includes('color:');
+      
       return (
         <div 
           className={cn(sizes.text, "text-center px-4 [&>*]:leading-relaxed")}
-          style={{ color: textColor, ...fontStyle }}
+          style={{ 
+            ...fontStyle,
+            ...(hasColorFormatting ? {} : { color: textColor })
+          }}
           dangerouslySetInnerHTML={{ __html: textValue }}
         />
       );
@@ -204,10 +211,11 @@ export function DynamicElementRenderer({
     if (elementId.startsWith('headline_') && elementId !== 'headline') {
       const headlineText = dynamicElements?.[elementId]?.text || '';
       if (!headlineText) return null;
+      const hasColorFormatting = headlineText.includes('color=') || headlineText.includes('color:');
       return (
         <h2 
           className={cn(sizes.headline, "font-bold leading-tight text-center [&>*]:leading-tight")}
-          style={{ color: textColor, ...fontStyle }}
+          style={{ ...fontStyle, ...(hasColorFormatting ? {} : { color: textColor }) }}
           dangerouslySetInnerHTML={{ __html: headlineText }}
         />
       );
@@ -225,20 +233,22 @@ export function DynamicElementRenderer({
         
       case 'headline':
         if (!content.headline) return null;
+        const headlineHasColor = content.headline.includes('color=') || content.headline.includes('color:');
         return (
           <h1 
             className={cn(sizes.headline, "font-bold leading-tight text-center [&>*]:leading-tight")}
-            style={{ color: textColor, ...fontStyle }}
+            style={{ ...fontStyle, ...(headlineHasColor ? {} : { color: textColor }) }}
             dangerouslySetInnerHTML={{ __html: content.headline }}
           />
         );
         
       case 'subtext':
         if (!content.subtext) return null;
+        const subtextHasColor = content.subtext.includes('color=') || content.subtext.includes('color:');
         return (
           <p 
             className={cn(sizes.subtext, "opacity-70 text-center [&>*]:leading-relaxed")}
-            style={{ color: textColor, ...fontStyle }}
+            style={{ ...fontStyle, ...(subtextHasColor ? {} : { color: textColor }) }}
             dangerouslySetInnerHTML={{ __html: content.subtext }}
           />
         );

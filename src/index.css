@@ -202,9 +202,4 @@ All colors MUST be HSL.
     box-shadow: var(--shadow-glow);
   }
 
-  /* Fix for raw font size attributes - normalize display but preserve colors */
-  [contenteditable="true"] font,
-  [dangerouslySetInnerHTML] font {
-    font-family: inherit;
-  }
 }
