@@ -140,34 +140,17 @@ function SortableElement({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative transition-all",
+        "relative transition-all group px-2 py-1",
         isSelected 
-          ? "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded" 
-          : "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 hover:ring-offset-transparent rounded",
+          ? "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded bg-white/5" 
+          : "hover:ring-2 hover:ring-primary/40 hover:ring-offset-2 hover:ring-offset-transparent rounded hover:bg-white/5",
         isDragging && "shadow-2xl cursor-grabbing"
       )}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
     >
-      {/* Drag Handle - only this area triggers drag */}
-      <div 
-        className={cn(
-          "absolute -left-8 top-1/2 -translate-y-1/2 w-6 h-8 flex items-center justify-center cursor-grab rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-opacity",
-          isSelected && "opacity-100"
-        )}
-        {...attributes}
-        {...listeners}
-      >
-        <div className="flex flex-col gap-0.5">
-          <div className="w-1 h-1 rounded-full bg-white/40" />
-          <div className="w-1 h-1 rounded-full bg-white/40" />
-          <div className="w-1 h-1 rounded-full bg-white/40" />
-        </div>
-      </div>
+      {children}
       
-      <div className="group">
-        {children}
-      </div>
-      
+      {/* Action menu - appears above the element when selected */}
       {isSelected && (
         <ElementActionMenu
           elementId={id}
@@ -313,8 +296,11 @@ export function StepPreview({
 
     if (elementId.startsWith('divider_')) {
       return (
-        <div className="w-full max-w-xs mx-auto py-2">
-          <div className="h-px bg-white/20" />
+        <div 
+          className="w-full max-w-xs mx-auto py-4 cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); onSelectElement(elementId); }}
+        >
+          <div className="h-px bg-white/30" />
         </div>
       );
     }

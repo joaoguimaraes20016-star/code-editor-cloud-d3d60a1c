@@ -262,15 +262,16 @@ export function InlineTextEditor({
         </Button>
         {showColorPicker && (
           <div 
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover border border-border rounded-lg shadow-xl"
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-popover border border-border rounded-lg shadow-xl min-w-[180px]"
             style={{ zIndex: 10000 }}
             onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="grid grid-cols-5 gap-1">
+            <div className="grid grid-cols-5 gap-2" style={{ width: '150px' }}>
               {PRESET_COLORS.map((color) => (
                 <button
                   key={color}
-                  className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
+                  className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform flex-shrink-0"
                   style={{ backgroundColor: color }}
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -280,7 +281,7 @@ export function InlineTextEditor({
                 />
               ))}
             </div>
-            <div className="mt-2 pt-2 border-t border-border">
+            <div className="mt-3 pt-2 border-t border-border">
               <input
                 type="color"
                 className="w-full h-8 cursor-pointer rounded"
