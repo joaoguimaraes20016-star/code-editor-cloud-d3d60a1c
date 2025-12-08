@@ -47,3 +47,6 @@ verify_jwt = true
 
 [functions.recover-appointments]
 verify_jwt = true
+
+[functions.submit-funnel-lead]
+verify_jwt = false
