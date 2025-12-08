@@ -292,12 +292,12 @@ export default function FunnelEditor() {
       if (insertError) throw insertError;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['funnel', funnelId] });
-      queryClient.invalidateQueries({ queryKey: ['funnel-steps', funnelId] });
+      // Don't invalidate queries - we already have the latest state locally
+      // This prevents the refetch from resetting our edits
       setHasUnsavedChanges(false);
       setIsSaving(false);
       setLastSaved(new Date());
-      toast({ title: 'Funnel saved successfully' });
+      // Silent save - no toast spam
     },
     onError: (error: Error) => {
       setIsSaving(false);
@@ -308,18 +308,20 @@ export default function FunnelEditor() {
     },
   });
 
-  // Auto-save effect - properly debounced
+  // Auto-save effect - less aggressive, only save when truly idle
+  const autoSaveTimerRef2 = useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
-    if (hasUnsavedChanges && !saveMutation.isPending && steps.length > 0) {
+    if (hasUnsavedChanges && !saveMutation.isPending && steps.length > 0 && isInitialized) {
       // Clear any existing timer
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
       }
       
-      // Set new timer
+      // Set new timer - longer debounce to avoid constant saves
       autoSaveTimerRef.current = setTimeout(() => {
         saveMutation.mutate();
-      }, 2000);
+      }, 3000); // 3 seconds instead of 2
     }
     
     return () => {
@@ -327,7 +329,7 @@ export default function FunnelEditor() {
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [hasUnsavedChanges, steps, stepDesigns, elementOrders, name]);
+  }, [hasUnsavedChanges, isInitialized]);
 
   const publishMutation = useMutation({
     mutationFn: async () => {
