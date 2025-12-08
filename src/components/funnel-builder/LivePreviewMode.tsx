@@ -250,37 +250,55 @@ export function LivePreviewMode({
                       readOnly
                     />
                   )}
-                  renderOptions={() => (
-                    <div className="space-y-3 w-full max-w-sm mx-auto">
-                      {(stepContent.options || []).map((option: string | { text: string; emoji?: string }, i: number) => {
-                        const optionText = typeof option === 'string' ? option : option.text;
-                        const optionEmoji = typeof option === 'string' ? undefined : option.emoji;
-                        
-                        return (
-                          <button
-                            key={i}
-                            className="w-full p-4 text-left rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-200 hover:scale-[1.02] flex items-center gap-4"
-                          >
-                            {/* Emoji on left */}
-                            {optionEmoji && (
-                              <span className="text-2xl shrink-0">{optionEmoji}</span>
-                            )}
-                            
-                            {/* Text in middle */}
-                            <span 
-                              className="flex-1 font-medium text-base leading-snug"
-                              style={{ color: stepDesign.textColor || '#ffffff' }}
+                  renderOptions={() => {
+                    const showNextBtn = stepContent.show_next_button !== false;
+                    const nextBtnText = stepContent.next_button_text || 'Next Question';
+                    
+                    return (
+                      <div className="space-y-3 w-full max-w-sm mx-auto">
+                        {(stepContent.options || []).map((option: string | { text: string; emoji?: string }, i: number) => {
+                          const optionText = typeof option === 'string' ? option : option.text;
+                          const optionEmoji = typeof option === 'string' ? undefined : option.emoji;
+                          
+                          return (
+                            <button
+                              key={i}
+                              className="w-full p-4 text-left rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-200 hover:scale-[1.02] flex items-center gap-4"
                             >
-                              {optionText}
-                            </span>
-                            
-                            {/* Radio circle on right */}
-                            <div className="w-6 h-6 rounded-full border-2 border-white/40 shrink-0" />
+                              {/* Emoji on left */}
+                              {optionEmoji && (
+                                <span className="text-2xl shrink-0">{optionEmoji}</span>
+                              )}
+                              
+                              {/* Text in middle */}
+                              <span 
+                                className="flex-1 font-medium text-base leading-snug"
+                                style={{ color: stepDesign.textColor || '#ffffff' }}
+                              >
+                                {optionText}
+                              </span>
+                              
+                              {/* Radio circle on right */}
+                              <div className="w-6 h-6 rounded-full border-2 border-white/40 shrink-0" />
+                            </button>
+                          );
+                        })}
+                        
+                        {/* Next Question Button */}
+                        {showNextBtn && (
+                          <button
+                            className="w-full p-4 mt-2 rounded-xl font-semibold text-base transition-all opacity-50"
+                            style={{ 
+                              background: `linear-gradient(135deg, ${funnel.settings.primary_color}, ${funnel.settings.primary_color}dd)`,
+                              color: stepDesign.buttonTextColor || '#ffffff'
+                            }}
+                          >
+                            {nextBtnText}
                           </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    );
+                  }}
                 />
               </div>
             </div>

@@ -9,6 +9,8 @@ interface MultiChoiceStepProps {
     element_order?: string[];
     dynamic_elements?: Record<string, any>;
     design?: any;
+    next_button_text?: string;
+    show_next_button?: boolean;
   };
   settings: {
     primary_color: string;
@@ -31,6 +33,9 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
     return opt;
   });
 
+  const showNextButton = content.show_next_button !== false;
+  const nextButtonText = content.next_button_text || 'Next Question';
+
   useEffect(() => {
     if (isActive) {
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,19 +43,33 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
         if (num >= 1 && num <= options.length) {
           const option = options[num - 1];
           setSelectedOption(option.text);
-          // Auto-advance after selection
-          setTimeout(() => onNext(option.text), 300);
+          // If no next button, auto-advance
+          if (!showNextButton) {
+            setTimeout(() => onNext(option.text), 300);
+          }
+        }
+        // Enter key to submit when option is selected
+        if (e.key === 'Enter' && selectedOption) {
+          onNext(selectedOption);
         }
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isActive, options, onNext]);
+  }, [isActive, options, onNext, selectedOption, showNextButton]);
 
   const handleOptionClick = (optionText: string) => {
     setSelectedOption(optionText);
-    // Auto-advance after selection with a small delay for visual feedback
-    setTimeout(() => onNext(optionText), 300);
+    // If no next button shown, auto-advance after selection
+    if (!showNextButton) {
+      setTimeout(() => onNext(optionText), 300);
+    }
+  };
+
+  const handleNextClick = () => {
+    if (selectedOption) {
+      onNext(selectedOption);
+    }
   };
 
   // Check if we have dynamic content
@@ -96,6 +115,28 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
           </div>
         </button>
       ))}
+      
+      {/* Next Question Button - shows after selection */}
+      {showNextButton && (
+        <button
+          onClick={handleNextClick}
+          disabled={!selectedOption}
+          className={`
+            w-full p-4 mt-4 rounded-xl font-semibold text-white text-base
+            transition-all duration-300
+            ${selectedOption 
+              ? 'opacity-100 translate-y-0' 
+              : 'opacity-0 translate-y-2 pointer-events-none'
+            }
+          `}
+          style={{ 
+            background: `linear-gradient(135deg, ${settings.primary_color}, ${settings.primary_color}dd)`,
+            boxShadow: selectedOption ? `0 4px 20px ${settings.primary_color}40` : 'none'
+          }}
+        >
+          {nextButtonText}
+        </button>
+      )}
     </div>
   );
 

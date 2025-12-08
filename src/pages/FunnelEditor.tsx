@@ -52,9 +52,12 @@ export interface FunnelStep {
     button_text?: string;
     placeholder?: string;
     video_url?: string;
-    options?: string[];
+    options?: Array<string | { text: string; emoji?: string }>;
     is_required?: boolean;
     redirect_url?: string;
+    // Multi-choice specific
+    next_button_text?: string;
+    show_next_button?: boolean;
     // Persisted design and layout
     design?: StepDesign;
     element_order?: string[];

@@ -524,6 +524,9 @@ export function StepPreview({
         
       case 'options':
         if (!content.options?.length) return null;
+        const showNextBtn = content.show_next_button !== false;
+        const nextBtnText = content.next_button_text || 'Next Question';
+        
         return (
           <div className="w-full max-w-xs space-y-3">
             {content.options.map((option: string | { text: string; emoji?: string }, index: number) => {
@@ -553,6 +556,19 @@ export function StepPreview({
                 </button>
               );
             })}
+            
+            {/* Next Question Button preview */}
+            {showNextBtn && (
+              <button
+                className="w-full p-3 mt-2 rounded-xl font-semibold text-sm transition-all opacity-50"
+                style={{ 
+                  background: `linear-gradient(135deg, ${buttonColor}, ${buttonColor}dd)`,
+                  color: buttonTextColor
+                }}
+              >
+                {nextBtnText}
+              </button>
+            )}
           </div>
         );
         

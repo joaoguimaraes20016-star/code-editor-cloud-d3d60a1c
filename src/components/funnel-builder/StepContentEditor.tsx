@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, X, Type, Video, Image, Square, Minus } from 'lucide-react';
 import { FunnelStep } from '@/pages/FunnelEditor';
 import { cn } from '@/lib/utils';
+import { EmojiPicker } from './EmojiPicker';
 
 interface StepContentEditorProps {
   step: FunnelStep;
@@ -180,48 +181,83 @@ export function StepContentEditor({
       {/* Multi Choice Options */}
       {step.step_type === 'multi_choice' && (
         <div className={cn(
-          "space-y-2 p-3 -mx-3 rounded-lg transition-colors",
+          "space-y-3 p-3 -mx-3 rounded-lg transition-colors",
           isHighlighted('options') && "bg-primary/10 ring-1 ring-primary/30"
         )}>
-          <Label className="text-xs">Options</Label>
+          <Label className="text-xs">Answer Options</Label>
           <div className="space-y-2">
-            {(content.options || []).map((option, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Input
-                  value={option}
-                  onChange={(e) => {
-                    const newOptions = [...(content.options || [])];
-                    newOptions[index] = e.target.value;
-                    updateField('options', newOptions);
-                  }}
-                  placeholder={`Option ${index + 1}`}
-                />
-                {(content.options || []).length > 2 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      const newOptions = (content.options || []).filter((_, i) => i !== index);
+            {(content.options || []).map((option: string | { text: string; emoji?: string }, index: number) => {
+              const optionText = typeof option === 'string' ? option : option.text;
+              const optionEmoji = typeof option === 'string' ? undefined : option.emoji;
+              
+              return (
+                <div key={index} className="flex items-center gap-2">
+                  <EmojiPicker
+                    value={optionEmoji}
+                    onChange={(emoji) => {
+                      const newOptions = [...(content.options || [])];
+                      newOptions[index] = { text: optionText, emoji };
                       updateField('options', newOptions);
                     }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
+                  />
+                  <Input
+                    value={optionText}
+                    onChange={(e) => {
+                      const newOptions = [...(content.options || [])];
+                      newOptions[index] = { text: e.target.value, emoji: optionEmoji };
+                      updateField('options', newOptions);
+                    }}
+                    placeholder={`Option ${index + 1}`}
+                    className="flex-1"
+                  />
+                  {(content.options || []).length > 2 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        const newOptions = (content.options || []).filter((_: any, i: number) => i !== index);
+                        updateField('options', newOptions);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-              const newOptions = [...(content.options || []), `Option ${(content.options || []).length + 1}`];
+              const newOptions = [...(content.options || []), { text: `Option ${(content.options || []).length + 1}`, emoji: undefined }];
               updateField('options', newOptions);
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Option
           </Button>
+          
+          {/* Next Question Button Settings */}
+          <div className="border-t pt-3 mt-3 space-y-2">
+            <Label className="text-xs">Next Button Text</Label>
+            <Input
+              value={content.next_button_text || 'Next Question'}
+              onChange={(e) => updateField('next_button_text', e.target.value)}
+              placeholder="Next Question"
+            />
+            <div className="flex items-center justify-between pt-1">
+              <Label className="text-xs">Show Next Button</Label>
+              <Switch
+                checked={content.show_next_button !== false}
+                onCheckedChange={(checked) => updateField('show_next_button', checked)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Shows after an option is selected
+            </p>
+          </div>
         </div>
       )}
 
