@@ -58,6 +58,7 @@ export interface FunnelStep {
     // Persisted design and layout
     design?: StepDesign;
     element_order?: string[];
+    dynamic_elements?: Record<string, any>;
   };
 }
 
@@ -212,9 +213,10 @@ export default function FunnelEditor() {
   // Initialize the history state when data loads
   useEffect(() => {
     if (funnel && initialSteps) {
-      // Load persisted designs and element orders from step content
+      // Load persisted designs, element orders, and dynamic elements from step content
       const loadedDesigns: Record<string, StepDesign> = {};
       const loadedOrders: Record<string, string[]> = {};
+      const loadedDynamicElements: Record<string, Record<string, any>> = {};
       
       initialSteps.forEach(step => {
         if (step.content.design) {
@@ -223,7 +225,13 @@ export default function FunnelEditor() {
         if (step.content.element_order) {
           loadedOrders[step.id] = step.content.element_order;
         }
+        if (step.content.dynamic_elements) {
+          loadedDynamicElements[step.id] = step.content.dynamic_elements;
+        }
       });
+      
+      // Set dynamic elements state
+      setDynamicElements(loadedDynamicElements);
       
       // Reset the history with the loaded state
       resetHistory({
@@ -257,11 +265,12 @@ export default function FunnelEditor() {
       if (deleteError) throw deleteError;
 
       const stepsToInsert = steps.map((step, index) => {
-        // Merge current designs and element orders into content for persistence
+        // Merge current designs, element orders, and dynamic elements into content for persistence
         const contentWithDesign = {
           ...step.content,
           design: stepDesigns[step.id] || step.content.design || null,
           element_order: elementOrders[step.id] || step.content.element_order || null,
+          dynamic_elements: dynamicElements[step.id] || step.content.dynamic_elements || null,
         };
         
         return {
@@ -285,6 +294,7 @@ export default function FunnelEditor() {
       setHasUnsavedChanges(false);
       setIsSaving(false);
       setLastSaved(new Date());
+      toast({ title: 'Funnel saved successfully' });
     },
     onError: (error: Error) => {
       setIsSaving(false);
