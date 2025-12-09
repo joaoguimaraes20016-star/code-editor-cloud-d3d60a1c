@@ -4,12 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Globe, Plus, Copy, CheckCircle, AlertCircle, 
-  ExternalLink, Trash2, RefreshCw, Link2, Shield, ShieldCheck,
-  Activity, Wifi, WifiOff, Clock, Code, Settings, Zap
+  Globe, Plus, Copy, CheckCircle, ExternalLink, Trash2, Link2, ArrowRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -35,32 +31,13 @@ interface Domain {
   verification_token: string;
   verified_at: string | null;
   ssl_provisioned: boolean;
-  ssl_status?: string;
-  health_status?: string;
-  last_health_check?: string | null;
   created_at: string;
-}
-
-interface DNSCheckResult {
-  verified: boolean;
-  ssl_status: string;
-  dns_results: {
-    aRecordValid: boolean;
-    txtRecordValid: boolean;
-    cnameValid: boolean;
-    aRecordValue: string | null;
-    txtRecordValue: string | null;
-    cnameValue: string | null;
-  };
-  requirements?: {
-    a_record: { required: string; found: string | null; valid: boolean };
-    txt_record: { required: string; found: string | null; valid: boolean };
-  };
 }
 
 interface Funnel {
   id: string;
   name: string;
+  slug: string;
   domain_id: string | null;
 }
 
@@ -71,14 +48,10 @@ interface DomainsSectionProps {
 export function DomainsSection({ teamId }: DomainsSectionProps) {
   const queryClient = useQueryClient();
   const [showConnectDialog, setShowConnectDialog] = useState(false);
-  const [showDNSDialog, setShowDNSDialog] = useState(false);
+  const [showSetupDialog, setShowSetupDialog] = useState(false);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
-  const [showWorkerSetupDialog, setShowWorkerSetupDialog] = useState(false);
-  const [selectedWorkerDomain, setSelectedWorkerDomain] = useState<Domain | null>(null);
+  const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
   const [newDomain, setNewDomain] = useState('');
-  const [addWww, setAddWww] = useState(true);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [currentDomain, setCurrentDomain] = useState<Domain | null>(null);
   const [selectedDomainForLink, setSelectedDomainForLink] = useState<Domain | null>(null);
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
 
@@ -103,7 +76,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('funnels')
-        .select('id, name, domain_id')
+        .select('id, name, slug, domain_id')
         .eq('team_id', teamId);
       
       if (error) throw error;
@@ -111,7 +84,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     },
   });
 
-  // Add domain mutation
+  // Add domain mutation - auto-verify since we're using redirects
   const addDomainMutation = useMutation({
     mutationFn: async (domain: string) => {
       const { data, error } = await supabase
@@ -119,7 +92,9 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
         .insert({
           team_id: teamId,
           domain: domain.toLowerCase().trim(),
-          status: 'pending',
+          status: 'verified', // Auto-verify since we use redirects
+          verified_at: new Date().toISOString(),
+          ssl_provisioned: true, // Cloudflare handles SSL
         })
         .select()
         .single();
@@ -129,10 +104,13 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['funnel-domains', teamId] });
-      setCurrentDomain(data);
       setShowConnectDialog(false);
-      setShowDNSDialog(true);
       setNewDomain('');
+      // Auto-open link dialog
+      setSelectedDomainForLink(data);
+      setSelectedFunnelId('');
+      setShowLinkDialog(true);
+      toast({ title: 'Domain added! Now select a funnel to connect.' });
     },
     onError: (error: Error) => {
       toast({ title: 'Failed to add domain', description: error.message, variant: 'destructive' });
@@ -167,65 +145,16 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['funnels-for-domains', teamId] });
-      queryClient.invalidateQueries({ queryKey: ['funnel'] }); // Refresh funnel editor data
+      queryClient.invalidateQueries({ queryKey: ['funnel'] });
       setShowLinkDialog(false);
+      // Show setup instructions after linking
+      if (selectedDomainForLink) {
+        setSelectedDomain(selectedDomainForLink);
+        setShowSetupDialog(true);
+      }
       setSelectedDomainForLink(null);
       setSelectedFunnelId('');
-      toast({ title: 'Funnel linked to domain', description: 'Your funnel will now be accessible at the custom domain.' });
-    },
-  });
-
-  // Verify domain mutation - calls edge function to check real DNS records
-  const verifyDomainMutation = useMutation({
-    mutationFn: async (domain: Domain): Promise<DNSCheckResult> => {
-      const { data, error } = await supabase.functions.invoke('verify-domain', {
-        body: {
-          domainId: domain.id,
-          domain: domain.domain,
-          verificationToken: domain.verification_token,
-        },
-      });
-      
-      if (error) throw error;
-      return data as DNSCheckResult;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['funnel-domains', teamId] });
-      setIsVerifying(false);
-      
-      if (data.verified) {
-        setShowDNSDialog(false);
-        toast({ 
-          title: 'Domain verified!', 
-          description: `SSL certificate provisioned. Now link a funnel to your domain.` 
-        });
-        // Auto-open the link funnel dialog after verification
-        if (currentDomain) {
-          setSelectedDomainForLink(currentDomain);
-          setSelectedFunnelId('');
-          setShowLinkDialog(true);
-        }
-        setCurrentDomain(null);
-      } else {
-        // Show which records are missing
-        const missing: string[] = [];
-        if (!data.dns_results.aRecordValid) missing.push('A record');
-        if (!data.dns_results.txtRecordValid) missing.push('TXT record');
-        
-        toast({ 
-          title: 'DNS records not configured', 
-          description: `Missing or incorrect: ${missing.join(', ')}. Changes may take up to 48 hours to propagate.`,
-          variant: 'destructive'
-        });
-      }
-    },
-    onError: (error: Error) => {
-      setIsVerifying(false);
-      toast({ 
-        title: 'Verification failed', 
-        description: error.message || 'DNS changes may take up to 48 hours to propagate',
-        variant: 'destructive'
-      });
+      toast({ title: 'Funnel linked! Follow the setup instructions.' });
     },
   });
 
@@ -235,82 +164,33 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
       return;
     }
     
-    // Updated regex to support subdomains (e.g., signup.mydomain.com, promo.site.co.uk)
     const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
     const cleanDomain = newDomain.replace(/^www\./, '').toLowerCase().trim();
     if (!domainRegex.test(cleanDomain)) {
-      toast({ title: 'Please enter a valid domain or subdomain', variant: 'destructive' });
+      toast({ title: 'Please enter a valid domain', variant: 'destructive' });
       return;
     }
 
     addDomainMutation.mutate(cleanDomain);
   };
 
-  // Check domain health
-  const checkHealthMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('check-domain-health', {
-        body: {},
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['funnel-domains', teamId] });
-      toast({ title: 'Health check complete' });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Health check failed', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const handleVerifyRecords = () => {
-    if (!currentDomain) return;
-    setIsVerifying(true);
-    verifyDomainMutation.mutate(currentDomain);
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast({ title: 'Copied to clipboard' });
+    toast({ title: 'Copied!' });
   };
 
   const getFunnelForDomain = (domainId: string) => {
     return funnels.find(f => f.domain_id === domainId);
   };
 
-  const getWorkerScript = (domain: string) => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://inbvluddkutyfhsxfqco.supabase.co';
-    return `// Cloudflare Worker for ${domain}
-// Deploy this to your Cloudflare Workers dashboard
+  // Get the app's base URL for redirects
+  const getAppBaseUrl = () => {
+    return window.location.origin;
+  };
 
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request))
-})
-
-async function handleRequest(request) {
-  const url = new URL(request.url)
-  const domain = url.hostname
-  
-  // Call the serve-funnel edge function
-  const response = await fetch('${supabaseUrl}/functions/v1/serve-funnel', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ domain })
-  })
-  
-  // Get the HTML content
-  const html = await response.text()
-  
-  return new Response(html, {
-    headers: {
-      'Content-Type': 'text/html',
-      'Cache-Control': 'public, max-age=300',
-    }
-  })
-}`;
+  const getRedirectUrl = (funnel: Funnel | undefined) => {
+    if (!funnel) return '';
+    return `${getAppBaseUrl()}/f/${funnel.slug}`;
   };
 
   return (
@@ -320,24 +200,13 @@ async function handleRequest(request) {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Domains</h1>
           <p className="text-muted-foreground mt-1">
-            Connect custom domains and subdomains to your funnels
+            Connect custom domains to your funnels
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => checkHealthMutation.mutate()}
-            disabled={checkHealthMutation.isPending}
-          >
-            <Activity className={cn("h-4 w-4 mr-2", checkHealthMutation.isPending && "animate-pulse")} />
-            {checkHealthMutation.isPending ? 'Checking...' : 'Check Health'}
-          </Button>
-          <Button onClick={() => setShowConnectDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Domain
-          </Button>
-        </div>
+        <Button onClick={() => setShowConnectDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Domain
+        </Button>
       </div>
 
       {/* Domain List */}
@@ -351,80 +220,29 @@ async function handleRequest(request) {
               return (
                 <div key={domain.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "p-2 rounded-lg",
-                      domain.status === 'verified' && domain.health_status === 'healthy' ? "bg-emerald-500/10" : 
-                      domain.status === 'verified' && domain.health_status === 'degraded' ? "bg-amber-500/10" :
-                      domain.status === 'offline' || domain.health_status === 'offline' ? "bg-red-500/10" :
-                      domain.status === 'failed' ? "bg-red-500/10" : "bg-amber-500/10"
-                    )}>
-                      {domain.health_status === 'offline' ? (
-                        <WifiOff className="h-5 w-5 text-red-500" />
-                      ) : domain.health_status === 'healthy' ? (
-                        <Wifi className="h-5 w-5 text-emerald-500" />
-                      ) : (
-                        <Globe className={cn(
-                          "h-5 w-5",
-                          domain.status === 'verified' ? "text-emerald-500" : 
-                          domain.status === 'failed' ? "text-red-500" : "text-amber-500"
-                        )} />
-                      )}
+                    <div className="p-2 rounded-lg bg-emerald-500/10">
+                      <Globe className="h-5 w-5 text-emerald-500" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{domain.domain}</span>
                         <Badge 
                           variant="outline"
-                          className={cn(
-                            "text-xs",
-                            domain.status === 'verified' 
-                              ? "border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10"
-                              : domain.status === 'failed'
-                              ? "border-red-500/50 text-red-600 bg-red-50 dark:bg-red-500/10"
-                              : "border-amber-500/50 text-amber-600 bg-amber-50 dark:bg-amber-500/10"
-                          )}
+                          className="text-xs border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10"
                         >
-                          {domain.status === 'verified' ? (
-                            <><CheckCircle className="h-3 w-3 mr-1" /> Verified</>
-                          ) : domain.status === 'failed' ? (
-                            <><AlertCircle className="h-3 w-3 mr-1" /> Failed</>
-                          ) : (
-                            <><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Pending</>
-                          )}
+                          <CheckCircle className="h-3 w-3 mr-1" /> Ready
                         </Badge>
-                        {/* SSL Status Badge */}
-                        {domain.status === 'verified' && (
-                          <Badge 
-                            variant="outline"
-                            className={cn(
-                              "text-xs",
-                              domain.ssl_provisioned 
-                                ? "border-blue-500/50 text-blue-600 bg-blue-50 dark:bg-blue-500/10"
-                                : "border-orange-500/50 text-orange-600 bg-orange-50 dark:bg-orange-500/10"
-                            )}
-                          >
-                            {domain.ssl_provisioned ? (
-                              <><ShieldCheck className="h-3 w-3 mr-1" /> SSL Active</>
-                            ) : (
-                              <><Shield className="h-3 w-3 mr-1" /> SSL Pending</>
-                            )}
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         {linkedFunnel ? (
                           <p className="text-sm text-muted-foreground">
-                            Connected to <span className="font-medium">{linkedFunnel.name}</span>
+                            <ArrowRight className="h-3 w-3 inline mr-1" />
+                            Redirects to <span className="font-medium">{linkedFunnel.name}</span>
                           </p>
                         ) : (
-                          <p className="text-sm text-muted-foreground">
-                            Not connected to any funnel
+                          <p className="text-sm text-amber-600">
+                            Not linked to any funnel
                           </p>
-                        )}
-                        {domain.verified_at && (
-                          <span className="text-xs text-muted-foreground">
-                            · Verified {new Date(domain.verified_at).toLocaleDateString()}
-                          </span>
                         )}
                       </div>
                     </div>
@@ -442,34 +260,16 @@ async function handleRequest(request) {
                       <Link2 className="h-4 w-4 mr-1.5" />
                       {linkedFunnel ? 'Change' : 'Link Funnel'}
                     </Button>
-                    {domain.status === 'verified' && (
-                      <>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedWorkerDomain(domain);
-                            setShowWorkerSetupDialog(true);
-                          }}
-                        >
-                          <Zap className="h-4 w-4 mr-1.5" />
-                          Setup Proxy
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => window.open(`https://${domain.domain}`, '_blank')}>
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                    {domain.status === 'pending' && (
+                    {linkedFunnel && (
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => {
-                          setCurrentDomain(domain);
-                          setShowDNSDialog(true);
+                          setSelectedDomain(domain);
+                          setShowSetupDialog(true);
                         }}
                       >
-                        View DNS
+                        Setup
                       </Button>
                     )}
                     <Button 
@@ -497,12 +297,12 @@ async function handleRequest(request) {
           </p>
           <Button onClick={() => setShowConnectDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
             <Plus className="h-4 w-4 mr-2" />
-            Connect Domain
+            Add Domain
           </Button>
         </div>
       )}
 
-      {/* Connect Domain Dialog */}
+      {/* Add Domain Dialog */}
       <Dialog open={showConnectDialog} onOpenChange={setShowConnectDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -510,45 +310,23 @@ async function handleRequest(request) {
               <div className="p-2 rounded-lg bg-emerald-500/10">
                 <Globe className="h-5 w-5 text-emerald-500" />
               </div>
-              <DialogTitle>Connect your domain/subdomain</DialogTitle>
+              <DialogTitle>Add your domain</DialogTitle>
             </div>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium">
-                Domain or Subdomain URL <span className="text-red-500">*</span>
-              </label>
+              <label className="text-sm font-medium">Domain URL</label>
               <Input
-                placeholder="signup.yourdomain.com"
+                placeholder="yourdomain.com"
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
                 className="mt-1.5"
               />
-              <p className="text-xs text-muted-foreground mt-1.5">
-                Examples: yourdomain.com, signup.yourdomain.com, promo.yourdomain.com
-              </p>
             </div>
-            
-            {/* Only show www option for root domains */}
-            {newDomain && !newDomain.includes('.') || (newDomain.match(/\./g) || []).length === 1 ? (
-              <div className="flex items-start gap-2">
-                <Checkbox 
-                  id="add-www" 
-                  checked={addWww} 
-                  onCheckedChange={(checked) => setAddWww(checked as boolean)}
-                />
-                <div>
-                  <label htmlFor="add-www" className="text-sm cursor-pointer">
-                    Also add www.{newDomain || 'yourdomain.com'} and redirect traffic
-                  </label>
-                  <p className="text-xs text-emerald-600 mt-0.5">Recommended for root domains</p>
-                </div>
-              </div>
-            ) : null}
           </div>
 
-          <div className="flex items-center justify-end pt-4 border-t">
+          <div className="flex justify-end pt-4 border-t">
             <Button 
               onClick={handleContinue} 
               disabled={addDomainMutation.isPending}
@@ -556,117 +334,6 @@ async function handleRequest(request) {
             >
               {addDomainMutation.isPending ? 'Adding...' : 'Continue'}
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* DNS Records Dialog */}
-      <Dialog open={showDNSDialog} onOpenChange={setShowDNSDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Set up your domain manually by adding the following records</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {/* A Record */}
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Record</p>
-                <div className="px-3 py-2 bg-muted rounded-md font-mono">A</div>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Host</p>
-                <div className="px-3 py-2 bg-muted rounded-md flex items-center justify-between">
-                  <span className="font-mono">@</span>
-                  <button onClick={() => copyToClipboard('@')} className="hover:text-foreground text-muted-foreground">
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Required value</p>
-                <div className="px-3 py-2 bg-muted rounded-md flex items-center justify-between">
-                  <span className="font-mono text-xs">185.158.133.1</span>
-                  <button onClick={() => copyToClipboard('185.158.133.1')} className="hover:text-foreground text-muted-foreground">
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* CNAME Record */}
-            {addWww && (
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div>
-                  <div className="px-3 py-2 bg-muted rounded-md font-mono">CNAME</div>
-                </div>
-                <div>
-                  <div className="px-3 py-2 bg-muted rounded-md flex items-center justify-between">
-                    <span className="font-mono">www</span>
-                    <button onClick={() => copyToClipboard('www')} className="hover:text-foreground text-muted-foreground">
-                      <Copy className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <div className="px-3 py-2 bg-muted rounded-md flex items-center justify-between">
-                    <span className="font-mono text-xs truncate">{currentDomain?.domain || 'yourdomain.com'}</span>
-                    <button onClick={() => copyToClipboard(currentDomain?.domain || '')} className="hover:text-foreground text-muted-foreground">
-                      <Copy className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TXT Record */}
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <div>
-                <div className="px-3 py-2 bg-muted rounded-md font-mono">TXT</div>
-              </div>
-              <div>
-                <div className="px-3 py-2 bg-muted rounded-md flex items-center justify-between">
-                  <span className="font-mono">_lovable</span>
-                  <button onClick={() => copyToClipboard('_lovable')} className="hover:text-foreground text-muted-foreground">
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-              <div>
-                <div className="px-3 py-2 bg-muted rounded-md flex items-center justify-between">
-                  <span className="font-mono text-xs truncate">lovable_verify={currentDomain?.verification_token?.slice(0, 8) || teamId?.slice(0, 8)}</span>
-                  <button onClick={() => copyToClipboard(`lovable_verify=${currentDomain?.verification_token?.slice(0, 8) || teamId?.slice(0, 8)}`)} className="hover:text-foreground text-muted-foreground">
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t">
-            <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-              <ExternalLink className="h-4 w-4" />
-              Watch the help video
-            </button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowDNSDialog(false)}>
-                Close
-              </Button>
-              <Button 
-                onClick={handleVerifyRecords} 
-                disabled={isVerifying}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                {isVerifying ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  'Verify records'
-                )}
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -686,7 +353,7 @@ async function handleRequest(request) {
           <div className="space-y-4 py-4">
             <div>
               <p className="text-sm text-muted-foreground mb-3">
-                Select a funnel to publish on <span className="font-medium text-foreground">{selectedDomainForLink?.domain}</span>
+                Select which funnel to show on <span className="font-medium text-foreground">{selectedDomainForLink?.domain}</span>
               </p>
               <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
                 <SelectTrigger>
@@ -696,9 +363,6 @@ async function handleRequest(request) {
                   {funnels.map((funnel) => (
                     <SelectItem key={funnel.id} value={funnel.id}>
                       {funnel.name}
-                      {funnel.domain_id && funnel.domain_id !== selectedDomainForLink?.id && (
-                        <span className="text-muted-foreground ml-2">(linked to another domain)</span>
-                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -728,144 +392,102 @@ async function handleRequest(request) {
         </DialogContent>
       </Dialog>
 
-      {/* Cloudflare Worker Setup Dialog */}
-      <Dialog open={showWorkerSetupDialog} onOpenChange={setShowWorkerSetupDialog}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      {/* Setup Instructions Dialog - Simple Redirect */}
+      <Dialog open={showSetupDialog} onOpenChange={setShowSetupDialog}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-orange-500/10">
-                <Zap className="h-5 w-5 text-orange-500" />
-              </div>
-              <div>
-                <DialogTitle>Cloudflare Worker Proxy Setup</DialogTitle>
-                <DialogDescription className="text-muted-foreground">
-                  Set up a Cloudflare Worker to serve your funnel on {selectedWorkerDomain?.domain}
-                </DialogDescription>
-              </div>
-            </div>
+            <DialogTitle>Set up your domain redirect</DialogTitle>
+            <DialogDescription>
+              Follow these simple steps in your Cloudflare dashboard
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6 py-4">
-            {/* Why use this */}
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-              <h4 className="font-medium flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Why Cloudflare Worker?
-              </h4>
-              <ul className="text-sm text-muted-foreground space-y-1 ml-6 list-disc">
-                <li>Serves your funnel on your custom domain</li>
-                <li>Automatic SSL via Cloudflare</li>
-                <li>Fast edge delivery worldwide</li>
-                <li>Free tier is generous (100k requests/day)</li>
-              </ul>
+            {/* Step 1 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">1</div>
+                <h4 className="font-medium">Go to Cloudflare</h4>
+              </div>
+              <p className="text-sm text-muted-foreground ml-8">
+                Open <a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">dash.cloudflare.com</a> and select your domain
+              </p>
             </div>
 
-            <Tabs defaultValue="worker" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="worker">1. Worker Script</TabsTrigger>
-                <TabsTrigger value="dns">2. DNS Setup</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="worker" className="space-y-4 mt-4">
+            {/* Step 2 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">2</div>
+                <h4 className="font-medium">Create a redirect rule</h4>
+              </div>
+              <p className="text-sm text-muted-foreground ml-8">
+                Go to <strong>Rules</strong> → <strong>Redirect Rules</strong> → <strong>Create Rule</strong>
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">3</div>
+                <h4 className="font-medium">Configure the redirect</h4>
+              </div>
+              <div className="ml-8 space-y-3">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium">Cloudflare Worker Script</label>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => {
-                        copyToClipboard(getWorkerScript(selectedWorkerDomain?.domain || ''));
-                        toast({ title: 'Worker script copied!' });
-                      }}
-                    >
-                      <Copy className="h-4 w-4 mr-1.5" />
-                      Copy Script
-                    </Button>
+                  <label className="text-xs text-muted-foreground">When incoming requests match:</label>
+                  <div className="mt-1 bg-muted rounded-md p-3 font-mono text-sm flex items-center justify-between">
+                    <span>Hostname equals {selectedDomain?.domain}</span>
+                    <button onClick={() => copyToClipboard(selectedDomain?.domain || '')} className="hover:text-foreground text-muted-foreground">
+                      <Copy className="h-4 w-4" />
+                    </button>
                   </div>
-                  <pre className="bg-zinc-950 text-zinc-100 text-xs rounded-lg p-4 overflow-x-auto max-h-64 overflow-y-auto">
-                    <code>{getWorkerScript(selectedWorkerDomain?.domain || '')}</code>
-                  </pre>
                 </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Then redirect to:</label>
+                  <div className="mt-1 bg-muted rounded-md p-3 font-mono text-sm flex items-center justify-between gap-2">
+                    <span className="truncate">{getRedirectUrl(getFunnelForDomain(selectedDomain?.id || ''))}</span>
+                    <button onClick={() => copyToClipboard(getRedirectUrl(getFunnelForDomain(selectedDomain?.id || '')))} className="hover:text-foreground text-muted-foreground flex-shrink-0">
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Status code:</label>
+                  <div className="mt-1 bg-muted rounded-md p-3 font-mono text-sm">
+                    301 (Permanent Redirect)
+                  </div>
+                </div>
+              </div>
+            </div>
 
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2">How to deploy:</h4>
-                  <ol className="text-sm text-muted-foreground space-y-2 ml-4 list-decimal">
-                    <li>Go to <a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">dash.cloudflare.com</a> and sign in</li>
-                    <li>Navigate to <strong>Workers & Pages</strong> → <strong>Create Application</strong></li>
-                    <li>Choose <strong>Create Worker</strong></li>
-                    <li>Replace the default code with the script above</li>
-                    <li>Click <strong>Save and Deploy</strong></li>
-                    <li>Go to your Worker's <strong>Settings</strong> → <strong>Triggers</strong></li>
-                    <li>Add a <strong>Custom Domain</strong>: <code className="bg-muted px-1.5 py-0.5 rounded">{selectedWorkerDomain?.domain}</code></li>
-                  </ol>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="dns" className="space-y-4 mt-4">
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
-                  <h4 className="font-medium text-amber-600 dark:text-amber-400 mb-2">Important DNS Changes</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    When using Cloudflare Workers, your DNS setup changes:
-                  </p>
-                  <ul className="text-sm text-muted-foreground space-y-2 ml-4 list-disc">
-                    <li>
-                      <strong>Keep Cloudflare Proxy ENABLED</strong> (orange cloud ☁️)
-                    </li>
-                    <li>
-                      The A record can point to any IP (e.g., <code className="bg-muted px-1.5 py-0.5 rounded">192.0.2.1</code>) - the Worker handles routing
-                    </li>
-                    <li>
-                      Remove the A record pointing to <code className="bg-muted px-1.5 py-0.5 rounded">185.158.133.1</code> (no longer needed)
-                    </li>
-                  </ul>
-                </div>
+            {/* Step 4 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">4</div>
+                <h4 className="font-medium">Save and you're done!</h4>
+              </div>
+              <p className="text-sm text-muted-foreground ml-8">
+                Click <strong>Deploy</strong> and your domain will redirect to your funnel instantly.
+              </p>
+            </div>
 
-                <div className="grid grid-cols-3 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Record</p>
-                    <div className="px-3 py-2 bg-muted rounded-md font-mono">A</div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Host</p>
-                    <div className="px-3 py-2 bg-muted rounded-md font-mono">@</div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Value</p>
-                    <div className="px-3 py-2 bg-muted rounded-md flex items-center justify-between">
-                      <span className="font-mono text-xs">192.0.2.1</span>
-                      <button onClick={() => copyToClipboard('192.0.2.1')} className="hover:text-foreground text-muted-foreground">
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                      Proxy Status: ENABLED
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Make sure the orange cloud is ON in Cloudflare DNS settings
-                    </p>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mt-4">
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                <strong>Note:</strong> This method redirects visitors to your funnel. They'll see your funnel URL in their browser. For a seamless custom domain experience, contact support for full domain hosting.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center justify-between pt-4 border-t">
             <a 
-              href="https://developers.cloudflare.com/workers/get-started/guide/" 
+              href="https://developers.cloudflare.com/rules/url-forwarding/" 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
             >
               <ExternalLink className="h-4 w-4" />
-              Cloudflare Workers Docs
+              Cloudflare Docs
             </a>
-            <Button onClick={() => setShowWorkerSetupDialog(false)}>
+            <Button onClick={() => setShowSetupDialog(false)}>
               Done
             </Button>
           </div>
