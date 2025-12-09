@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Play, MessageSquare, List, Mail, Phone, Video, CheckCircle } from 'lucide-react';
+import { Play, MessageSquare, List, Mail, Phone, Video, CheckCircle, UserCheck } from 'lucide-react';
 import { FunnelStep } from '@/pages/FunnelEditor';
 
 interface AddStepDialogProps {
@@ -15,6 +15,7 @@ const stepTypes: { type: FunnelStep['step_type']; label: string; description: st
   { type: 'multi_choice', label: 'Multi Choice', description: 'Multiple choice selection', icon: List },
   { type: 'email_capture', label: 'Email', description: 'Collect email address', icon: Mail },
   { type: 'phone_capture', label: 'Phone', description: 'Collect phone number', icon: Phone },
+  { type: 'opt_in', label: 'Opt-In', description: 'Contact form with consent', icon: UserCheck },
   { type: 'video', label: 'Video', description: 'Embed a video with CTA', icon: Video },
   { type: 'thank_you', label: 'Thank You', description: 'Final confirmation step', icon: CheckCircle },
 ];
