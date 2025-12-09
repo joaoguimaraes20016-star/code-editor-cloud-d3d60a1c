@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Globe, Plus, Copy, CheckCircle, AlertCircle, 
-  ExternalLink, Trash2, RefreshCw, Link2
+  ExternalLink, Trash2, RefreshCw, Link2, Shield, ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -33,6 +33,23 @@ interface Domain {
   verified_at: string | null;
   ssl_provisioned: boolean;
   created_at: string;
+}
+
+interface DNSCheckResult {
+  verified: boolean;
+  ssl_status: string;
+  dns_results: {
+    aRecordValid: boolean;
+    txtRecordValid: boolean;
+    cnameValid: boolean;
+    aRecordValue: string | null;
+    txtRecordValue: string | null;
+    cnameValue: string | null;
+  };
+  requirements?: {
+    a_record: { required: string; found: string | null; valid: boolean };
+    txt_record: { required: string; found: string | null; valid: boolean };
+  };
 }
 
 interface Funnel {
@@ -149,34 +166,51 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     },
   });
 
-  // Verify domain mutation
+  // Verify domain mutation - calls edge function to check real DNS records
   const verifyDomainMutation = useMutation({
-    mutationFn: async (domainId: string) => {
-      // In production, this would check DNS records
-      // For now, simulate verification after a delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const { error } = await supabase
-        .from('funnel_domains')
-        .update({ 
-          status: 'verified',
-          verified_at: new Date().toISOString(),
-          ssl_provisioned: true,
-        })
-        .eq('id', domainId);
+    mutationFn: async (domain: Domain): Promise<DNSCheckResult> => {
+      const { data, error } = await supabase.functions.invoke('verify-domain', {
+        body: {
+          domainId: domain.id,
+          domain: domain.domain,
+          verificationToken: domain.verification_token,
+        },
+      });
       
       if (error) throw error;
+      return data as DNSCheckResult;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['funnel-domains', teamId] });
-      setShowDNSDialog(false);
-      setCurrentDomain(null);
       setIsVerifying(false);
-      toast({ title: 'Domain verified', description: 'Your domain is now active' });
+      
+      if (data.verified) {
+        setShowDNSDialog(false);
+        setCurrentDomain(null);
+        toast({ 
+          title: 'Domain verified!', 
+          description: `SSL certificate provisioned. Your domain is now active.` 
+        });
+      } else {
+        // Show which records are missing
+        const missing: string[] = [];
+        if (!data.dns_results.aRecordValid) missing.push('A record');
+        if (!data.dns_results.txtRecordValid) missing.push('TXT record');
+        
+        toast({ 
+          title: 'DNS records not configured', 
+          description: `Missing or incorrect: ${missing.join(', ')}. Changes may take up to 48 hours to propagate.`,
+          variant: 'destructive'
+        });
+      }
     },
-    onError: () => {
+    onError: (error: Error) => {
       setIsVerifying(false);
-      toast({ title: 'Verification pending', description: 'DNS changes may take up to 48 hours to propagate' });
+      toast({ 
+        title: 'Verification failed', 
+        description: error.message || 'DNS changes may take up to 48 hours to propagate',
+        variant: 'destructive'
+      });
     },
   });
 
@@ -200,7 +234,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
   const handleVerifyRecords = () => {
     if (!currentDomain) return;
     setIsVerifying(true);
-    verifyDomainMutation.mutate(currentDomain.id);
+    verifyDomainMutation.mutate(currentDomain);
   };
 
   const copyToClipboard = (text: string) => {
@@ -272,16 +306,41 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                             <><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Pending</>
                           )}
                         </Badge>
+                        {/* SSL Status Badge */}
+                        {domain.status === 'verified' && (
+                          <Badge 
+                            variant="outline"
+                            className={cn(
+                              "text-xs",
+                              domain.ssl_provisioned 
+                                ? "border-blue-500/50 text-blue-600 bg-blue-50 dark:bg-blue-500/10"
+                                : "border-orange-500/50 text-orange-600 bg-orange-50 dark:bg-orange-500/10"
+                            )}
+                          >
+                            {domain.ssl_provisioned ? (
+                              <><ShieldCheck className="h-3 w-3 mr-1" /> SSL Active</>
+                            ) : (
+                              <><Shield className="h-3 w-3 mr-1" /> SSL Pending</>
+                            )}
+                          </Badge>
+                        )}
                       </div>
-                      {linkedFunnel ? (
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          Connected to <span className="font-medium">{linkedFunnel.name}</span>
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          Not connected to any funnel
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {linkedFunnel ? (
+                          <p className="text-sm text-muted-foreground">
+                            Connected to <span className="font-medium">{linkedFunnel.name}</span>
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Not connected to any funnel
+                          </p>
+                        )}
+                        {domain.verified_at && (
+                          <span className="text-xs text-muted-foreground">
+                            · Verified {new Date(domain.verified_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

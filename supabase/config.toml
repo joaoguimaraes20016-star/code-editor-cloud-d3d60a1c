@@ -50,3 +50,9 @@ verify_jwt = true
 
 [functions.submit-funnel-lead]
 verify_jwt = false
+
+[functions.verify-domain]
+verify_jwt = false
+
+[functions.resolve-domain]
+verify_jwt = false
