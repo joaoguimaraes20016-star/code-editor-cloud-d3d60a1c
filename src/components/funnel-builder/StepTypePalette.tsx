@@ -6,11 +6,12 @@ import {
   Mail, 
   Phone, 
   Video, 
-  CheckCircle 
+  CheckCircle,
+  UserCheck
 } from 'lucide-react';
 
 interface StepTypePaletteProps {
-  onAddStep: (stepType: 'welcome' | 'text_question' | 'multi_choice' | 'email_capture' | 'phone_capture' | 'video' | 'thank_you') => void;
+  onAddStep: (stepType: 'welcome' | 'text_question' | 'multi_choice' | 'email_capture' | 'phone_capture' | 'video' | 'thank_you' | 'opt_in') => void;
 }
 
 const stepTypes = [
@@ -19,6 +20,7 @@ const stepTypes = [
   { type: 'multi_choice' as const, label: 'Multi Choice', icon: List, description: 'Clickable options' },
   { type: 'email_capture' as const, label: 'Email Capture', icon: Mail, description: 'Email input field' },
   { type: 'phone_capture' as const, label: 'Phone Capture', icon: Phone, description: 'Phone input field' },
+  { type: 'opt_in' as const, label: 'Opt-In Form', icon: UserCheck, description: 'Contact form with consent' },
   { type: 'video' as const, label: 'Video', icon: Video, description: 'Embed a video' },
   { type: 'thank_you' as const, label: 'Thank You', icon: CheckCircle, description: 'Confirmation screen' },
 ];

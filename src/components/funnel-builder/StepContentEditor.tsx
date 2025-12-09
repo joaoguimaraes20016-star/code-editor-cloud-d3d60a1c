@@ -33,6 +33,7 @@ const stepTypeLabels = {
   phone_capture: 'Phone Capture',
   video: 'Video',
   thank_you: 'Thank You',
+  opt_in: 'Opt-In Form',
 };
 
 const getElementTypeLabel = (elementId: string) => {
@@ -299,13 +300,111 @@ export function StepContentEditor({
       )}
 
       {/* Required toggle - questions only */}
-      {(step.step_type === 'text_question' || step.step_type === 'multi_choice' || step.step_type === 'email_capture' || step.step_type === 'phone_capture') && (
+      {(step.step_type === 'text_question' || step.step_type === 'multi_choice' || step.step_type === 'email_capture' || step.step_type === 'phone_capture' || step.step_type === 'opt_in') && (
         <div className="flex items-center justify-between p-3 -mx-3 rounded-lg">
           <Label className="text-xs">Required</Label>
           <Switch
             checked={content.is_required !== false}
             onCheckedChange={(checked) => updateField('is_required', checked)}
           />
+        </div>
+      )}
+
+      {/* Opt-In Form Fields */}
+      {step.step_type === 'opt_in' && (
+        <div 
+          id="editor-section-optin"
+          className={cn(
+          "space-y-4 p-3 -mx-3 rounded-lg border-t pt-4",
+          isHighlighted('optin') && "bg-primary/10 ring-1 ring-primary/30"
+        )}>
+          <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
+            Form Fields
+          </h4>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs">Name Icon</Label>
+              <Input
+                value={content.name_icon || '👋'}
+                onChange={(e) => updateField('name_icon', e.target.value)}
+                className="text-center"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Name Placeholder</Label>
+              <Input
+                value={content.name_placeholder || ''}
+                onChange={(e) => updateField('name_placeholder', e.target.value)}
+                placeholder="Your name"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs">Email Icon</Label>
+              <Input
+                value={content.email_icon || '✉️'}
+                onChange={(e) => updateField('email_icon', e.target.value)}
+                className="text-center"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Email Placeholder</Label>
+              <Input
+                value={content.email_placeholder || ''}
+                onChange={(e) => updateField('email_placeholder', e.target.value)}
+                placeholder="Your email address"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs">Phone Icon</Label>
+              <Input
+                value={content.phone_icon || '🇺🇸'}
+                onChange={(e) => updateField('phone_icon', e.target.value)}
+                className="text-center"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Phone Placeholder</Label>
+              <Input
+                value={content.phone_placeholder || ''}
+                onChange={(e) => updateField('phone_placeholder', e.target.value)}
+                placeholder="Your phone number"
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label className="text-xs">Privacy Checkbox Text</Label>
+            <Input
+              value={content.privacy_text || ''}
+              onChange={(e) => updateField('privacy_text', e.target.value)}
+              placeholder="I have read and accept the"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label className="text-xs">Privacy Policy Link (optional)</Label>
+            <Input
+              value={content.privacy_link || ''}
+              onChange={(e) => updateField('privacy_link', e.target.value)}
+              placeholder="https://yoursite.com/privacy"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label className="text-xs">Submit Button Text</Label>
+            <Input
+              value={content.submit_button_text || 'Submit and proceed'}
+              onChange={(e) => updateField('submit_button_text', e.target.value)}
+              placeholder="Submit and proceed"
+            />
+          </div>
         </div>
       )}
 

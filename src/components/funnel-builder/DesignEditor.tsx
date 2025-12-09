@@ -642,8 +642,8 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker, 
         </div>
       )}
 
-      {/* Input Field Styling Section (for text_question) */}
-      {step.step_type === 'text_question' && (
+      {/* Input Field Styling Section (for text_question, email, phone, opt_in) */}
+      {['text_question', 'email_capture', 'phone_capture', 'opt_in'].includes(step.step_type) && (
         <div id="editor-section-input-styling" className={cn("space-y-4 border-t pt-4 p-3 -mx-3 rounded-lg transition-colors", isHighlighted('input') && "bg-primary/10 ring-1 ring-primary/30")}>
           <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
             Input Field Styling

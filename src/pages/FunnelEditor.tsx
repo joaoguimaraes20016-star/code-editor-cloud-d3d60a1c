@@ -18,6 +18,7 @@ import { AddStepDialog } from '@/components/funnel-builder/AddStepDialog';
 import { ContentBlock } from '@/components/funnel-builder/ContentBlockEditor';
 import { LivePreviewMode } from '@/components/funnel-builder/LivePreviewMode';
 import { PageSettingsDialog } from '@/components/funnel-builder/PageSettingsDialog';
+import { KeyboardShortcutsPanel } from '@/components/funnel-builder/KeyboardShortcutsPanel';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -81,7 +82,7 @@ export interface FunnelStep {
   id: string;
   funnel_id: string;
   order_index: number;
-  step_type: 'welcome' | 'text_question' | 'multi_choice' | 'email_capture' | 'phone_capture' | 'video' | 'thank_you';
+  step_type: 'welcome' | 'text_question' | 'multi_choice' | 'email_capture' | 'phone_capture' | 'video' | 'thank_you' | 'opt_in';
   content: {
     headline?: string;
     subtext?: string;
@@ -96,6 +97,15 @@ export interface FunnelStep {
     show_next_button?: boolean;
     // Text/Email/Phone input submit button
     submit_button_text?: string;
+    // Opt-in form specific
+    name_placeholder?: string;
+    email_placeholder?: string;
+    phone_placeholder?: string;
+    name_icon?: string;
+    email_icon?: string;
+    phone_icon?: string;
+    privacy_text?: string;
+    privacy_link?: string;
     // Persisted design and layout
     design?: StepDesign;
     element_order?: string[];
@@ -734,6 +744,8 @@ export default function FunnelEditor() {
               {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
 
+            <KeyboardShortcutsPanel />
+
             <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} className="hidden sm:flex">
               <Settings className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Settings</span>
@@ -1050,6 +1062,19 @@ function getDefaultContent(stepType: FunnelStep['step_type']): FunnelStep['conte
       return {
         headline: 'Thank You!',
         subtext: 'We will be in touch soon.',
+      };
+    case 'opt_in':
+      return {
+        headline: "What's the best way to reach you?",
+        name_placeholder: 'Your name',
+        email_placeholder: 'Your email address',
+        phone_placeholder: 'Your phone number',
+        name_icon: '👋',
+        email_icon: '✉️',
+        phone_icon: '🇺🇸',
+        privacy_text: 'I have read and accept the',
+        submit_button_text: 'Submit and proceed',
+        is_required: true,
       };
     default:
       return {};

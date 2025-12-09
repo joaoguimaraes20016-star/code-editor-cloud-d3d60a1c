@@ -7,6 +7,7 @@ import { EmailCaptureStep } from './EmailCaptureStep';
 import { PhoneCaptureStep } from './PhoneCaptureStep';
 import { VideoStep } from './VideoStep';
 import { ThankYouStep } from './ThankYouStep';
+import { OptInStep } from './OptInStep';
 import { ProgressDots } from './ProgressDots';
 import { cn } from '@/lib/utils';
 
@@ -114,7 +115,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
   // Calculate question number for multi_choice steps (excluding welcome, thank_you, video)
   const questionSteps = steps.filter(s => 
-    ['text_question', 'multi_choice', 'email_capture', 'phone_capture'].includes(s.step_type)
+    ['text_question', 'multi_choice', 'email_capture', 'phone_capture', 'opt_in'].includes(s.step_type)
   );
 
   const renderStep = (step: FunnelStep, isActive: boolean, stepIndex: number) => {
@@ -143,6 +144,8 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         return <EmailCaptureStep {...commonProps} />;
       case 'phone_capture':
         return <PhoneCaptureStep {...commonProps} />;
+      case 'opt_in':
+        return <OptInStep {...commonProps} />;
       case 'video':
         return <VideoStep {...commonProps} />;
       case 'thank_you':
