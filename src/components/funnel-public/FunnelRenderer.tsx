@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { WelcomeStep } from './WelcomeStep';
 import { TextQuestionStep } from './TextQuestionStep';
@@ -11,6 +11,7 @@ import { OptInStep } from './OptInStep';
 import { EmbedStep } from './EmbedStep';
 import { ProgressDots } from './ProgressDots';
 import { cn } from '@/lib/utils';
+import type { CalendlyBookingData } from './DynamicElementRenderer';
 
 interface FunnelStep {
   id: string;
@@ -48,10 +49,52 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const calendlyBookingRef = useRef<CalendlyBookingData | null>(null);
+  const hasSubmittedRef = useRef(false);
 
   const currentStep = steps[currentStepIndex];
   const isLastStep = currentStepIndex === steps.length - 1;
   const isThankYouStep = currentStep?.step_type === 'thank_you';
+
+  // Store Calendly booking data when detected
+  const handleCalendlyBooking = useCallback((bookingData?: CalendlyBookingData) => {
+    if (bookingData) {
+      calendlyBookingRef.current = bookingData;
+      console.log('Stored Calendly booking data:', bookingData);
+    }
+  }, []);
+
+  // Submit lead data to edge function
+  const submitLead = useCallback(async (allAnswers: Record<string, any>) => {
+    if (hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
+    
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.functions.invoke('submit-funnel-lead', {
+        body: {
+          funnel_id: funnel.id,
+          answers: allAnswers,
+          utm_source: utmSource,
+          utm_medium: utmMedium,
+          utm_campaign: utmCampaign,
+          calendly_booking: calendlyBookingRef.current,
+        },
+      });
+
+      if (error) {
+        console.error('Failed to submit lead:', error);
+        hasSubmittedRef.current = false; // Allow retry on error
+      } else {
+        console.log('Lead submitted successfully');
+      }
+    } catch (err) {
+      console.error('Error submitting lead:', err);
+      hasSubmittedRef.current = false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [funnel.id, utmSource, utmMedium, utmCampaign]);
 
   const handleNext = useCallback(async (value?: any) => {
     // Save answer if value provided
@@ -69,41 +112,21 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
     // If this is the step before thank you, submit the form
     const nextStep = steps[currentStepIndex + 1];
     if (nextStep?.step_type === 'thank_you') {
-      setIsSubmitting(true);
-      try {
-        // Collect all answers including current
-        const allAnswers = {
-          ...answers,
-          ...(value !== undefined && currentStep
-            ? {
-                [currentStep.id]: {
-                  value,
-                  step_type: currentStep.step_type,
-                  content: currentStep.content,
-                },
-              }
-            : {}),
-        };
+      // Collect all answers including current
+      const allAnswers = {
+        ...answers,
+        ...(value !== undefined && currentStep
+          ? {
+              [currentStep.id]: {
+                value,
+                step_type: currentStep.step_type,
+                content: currentStep.content,
+              },
+            }
+          : {}),
+      };
 
-        // Submit to edge function
-        const { error } = await supabase.functions.invoke('submit-funnel-lead', {
-          body: {
-            funnel_id: funnel.id,
-            answers: allAnswers,
-            utm_source: utmSource,
-            utm_medium: utmMedium,
-            utm_campaign: utmCampaign,
-          },
-        });
-
-        if (error) {
-          console.error('Failed to submit lead:', error);
-        }
-      } catch (err) {
-        console.error('Error submitting lead:', err);
-      } finally {
-        setIsSubmitting(false);
-      }
+      await submitLead(allAnswers);
     }
 
     // Move to next step
@@ -112,7 +135,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
     } else {
       setIsComplete(true);
     }
-  }, [currentStep, currentStepIndex, steps, answers, funnel.id, utmSource, utmMedium, utmCampaign, isLastStep]);
+  }, [currentStep, currentStepIndex, steps, answers, isLastStep, submitLead]);
 
   // Calculate question number for multi_choice steps (excluding welcome, thank_you, video)
   const questionSteps = steps.filter(s => 
@@ -132,6 +155,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       isActive,
       currentStep: currentQuestionNumber,
       totalSteps: totalQuestions,
+      onCalendlyBooking: handleCalendlyBooking,
     };
 
     switch (step.step_type) {

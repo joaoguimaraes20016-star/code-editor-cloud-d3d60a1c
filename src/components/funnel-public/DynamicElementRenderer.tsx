@@ -1,8 +1,17 @@
 import { cn } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
 
+export interface CalendlyBookingData {
+  event_uri?: string;
+  invitee_uri?: string;
+  event_start_time?: string;
+  event_end_time?: string;
+  invitee_name?: string;
+  invitee_email?: string;
+}
+
 // Component for Calendly embeds with event detection
-function CalendlyEmbed({
+export function CalendlyEmbed({
   embedUrl,
   embedScale,
   iframeHeight,
@@ -17,7 +26,7 @@ function CalendlyEmbed({
   scaledHeight: number;
   borderRadius: number;
   isCalendly: boolean;
-  onScheduled?: () => void;
+  onScheduled?: (bookingData?: CalendlyBookingData) => void;
 }) {
   const hasScheduledRef = useRef(false);
 
@@ -29,9 +38,23 @@ function CalendlyEmbed({
       if (event.origin.includes('calendly.com') && event.data?.event === 'calendly.event_scheduled') {
         if (!hasScheduledRef.current) {
           hasScheduledRef.current = true;
+          
+          // Extract booking data from Calendly event
+          const payload = event.data?.payload || {};
+          const bookingData: CalendlyBookingData = {
+            event_uri: payload.event?.uri,
+            invitee_uri: payload.invitee?.uri,
+            event_start_time: payload.event?.start_time,
+            event_end_time: payload.event?.end_time,
+            invitee_name: payload.invitee?.name,
+            invitee_email: payload.invitee?.email,
+          };
+          
+          console.log('Calendly booking detected:', bookingData);
+          
           // Small delay to let user see confirmation
           setTimeout(() => {
-            onScheduled();
+            onScheduled(bookingData);
           }, 1500);
         }
       }
@@ -108,7 +131,8 @@ interface DynamicElementRendererProps {
     fontFamily?: string;
   };
   stepType: string;
-  onButtonClick?: () => void;
+  onButtonClick?: (bookingData?: CalendlyBookingData) => void;
+  onCalendlyBooking?: (bookingData?: CalendlyBookingData) => void;
   renderInput?: () => React.ReactNode;
   renderOptions?: () => React.ReactNode;
   isPreview?: boolean; // Whether this is the editor preview (smaller sizes)
@@ -173,6 +197,7 @@ export function DynamicElementRenderer({
   design,
   stepType,
   onButtonClick,
+  onCalendlyBooking,
   renderInput,
   renderOptions,
   isPreview = false,
@@ -187,6 +212,11 @@ export function DynamicElementRenderer({
   // Use the appropriate font size map based on context
   const fontSizeMap = isPreview ? PREVIEW_FONT_SIZE_MAP : PUBLIC_FONT_SIZE_MAP;
   const sizes = fontSizeMap[fontSize];
+  
+  // Simple button click handler (no booking data)
+  const handleSimpleButtonClick = () => {
+    if (onButtonClick) onButtonClick();
+  };
 
   // Use element order from content or default
   const currentOrder = elementOrder?.length > 0 
@@ -287,7 +317,7 @@ export function DynamicElementRenderer({
       const buttonText = dynamicElements?.[elementId]?.text || 'Click';
       return (
         <button
-          onClick={onButtonClick}
+          onClick={handleSimpleButtonClick}
           className={cn(sizes.text, "px-5 py-2.5 font-semibold transition-all w-full max-w-xs hover:scale-105")}
           style={{ backgroundColor: buttonColor, color: buttonTextColor, borderRadius: `${borderRadius}px`, ...fontStyle }}
           dangerouslySetInnerHTML={{ __html: buttonText }}
@@ -308,6 +338,17 @@ export function DynamicElementRenderer({
       // Check if this is a Calendly embed for event listening
       const isCalendly = embedUrl.includes('calendly.com');
       
+      const handleCalendlyScheduled = (bookingData?: CalendlyBookingData) => {
+        // Call the calendly booking handler if provided
+        if (onCalendlyBooking) {
+          onCalendlyBooking(bookingData);
+        }
+        // Then advance to next step
+        if (onButtonClick) {
+          onButtonClick(bookingData);
+        }
+      };
+      
       return (
         <CalendlyEmbed
           embedUrl={embedUrl}
@@ -316,7 +357,7 @@ export function DynamicElementRenderer({
           scaledHeight={scaledHeight}
           borderRadius={borderRadius}
           isCalendly={isCalendly}
-          onScheduled={onButtonClick}
+          onScheduled={handleCalendlyScheduled}
         />
       );
     }
@@ -372,7 +413,7 @@ export function DynamicElementRenderer({
       case 'button':
         return (
           <button
-            onClick={onButtonClick}
+            onClick={handleSimpleButtonClick}
             className={cn(sizes.text, "px-5 py-2.5 font-semibold transition-all w-full max-w-xs hover:scale-105 hover:shadow-lg")}
             style={{ backgroundColor: buttonColor, color: buttonTextColor, borderRadius: `${borderRadius}px`, ...fontStyle }}
           >

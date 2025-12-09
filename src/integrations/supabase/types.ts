@@ -623,6 +623,69 @@ export type Database = {
           },
         ]
       }
+      contacts: {
+        Row: {
+          calendly_booked_at: string | null
+          created_at: string
+          custom_fields: Json | null
+          email: string | null
+          funnel_lead_id: string | null
+          id: string
+          name: string | null
+          opt_in: boolean | null
+          phone: string | null
+          source: string | null
+          tags: string[] | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          calendly_booked_at?: string | null
+          created_at?: string
+          custom_fields?: Json | null
+          email?: string | null
+          funnel_lead_id?: string | null
+          id?: string
+          name?: string | null
+          opt_in?: boolean | null
+          phone?: string | null
+          source?: string | null
+          tags?: string[] | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          calendly_booked_at?: string | null
+          created_at?: string
+          custom_fields?: Json | null
+          email?: string | null
+          funnel_lead_id?: string | null
+          id?: string
+          name?: string | null
+          opt_in?: boolean | null
+          phone?: string | null
+          source?: string | null
+          tags?: string[] | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_funnel_lead_id_fkey"
+            columns: ["funnel_lead_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creator_codes: {
         Row: {
           code: string
@@ -751,13 +814,18 @@ export type Database = {
       funnel_leads: {
         Row: {
           answers: Json
+          calendly_booking_data: Json | null
           created_at: string
           email: string | null
           funnel_id: string
           ghl_synced_at: string | null
           id: string
           name: string | null
+          opt_in_status: boolean | null
+          opt_in_timestamp: string | null
           phone: string | null
+          status: string | null
+          tags: string[] | null
           team_id: string
           utm_campaign: string | null
           utm_medium: string | null
@@ -765,13 +833,18 @@ export type Database = {
         }
         Insert: {
           answers?: Json
+          calendly_booking_data?: Json | null
           created_at?: string
           email?: string | null
           funnel_id: string
           ghl_synced_at?: string | null
           id?: string
           name?: string | null
+          opt_in_status?: boolean | null
+          opt_in_timestamp?: string | null
           phone?: string | null
+          status?: string | null
+          tags?: string[] | null
           team_id: string
           utm_campaign?: string | null
           utm_medium?: string | null
@@ -779,13 +852,18 @@ export type Database = {
         }
         Update: {
           answers?: Json
+          calendly_booking_data?: Json | null
           created_at?: string
           email?: string | null
           funnel_id?: string
           ghl_synced_at?: string | null
           id?: string
           name?: string | null
+          opt_in_status?: boolean | null
+          opt_in_timestamp?: string | null
           phone?: string | null
+          status?: string | null
+          tags?: string[] | null
           team_id?: string
           utm_campaign?: string | null
           utm_medium?: string | null
@@ -848,6 +926,7 @@ export type Database = {
       }
       funnels: {
         Row: {
+          auto_create_contact: boolean | null
           created_at: string
           created_by: string
           id: string
@@ -857,8 +936,11 @@ export type Database = {
           status: string
           team_id: string
           updated_at: string
+          webhook_urls: Json | null
+          zapier_webhook_url: string | null
         }
         Insert: {
+          auto_create_contact?: boolean | null
           created_at?: string
           created_by: string
           id?: string
@@ -868,8 +950,11 @@ export type Database = {
           status?: string
           team_id: string
           updated_at?: string
+          webhook_urls?: Json | null
+          zapier_webhook_url?: string | null
         }
         Update: {
+          auto_create_contact?: boolean | null
           created_at?: string
           created_by?: string
           id?: string
@@ -879,6 +964,8 @@ export type Database = {
           status?: string
           team_id?: string
           updated_at?: string
+          webhook_urls?: Json | null
+          zapier_webhook_url?: string | null
         }
         Relationships: [
           {

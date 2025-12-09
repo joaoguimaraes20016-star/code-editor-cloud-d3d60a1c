@@ -5,12 +5,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface CalendlyBookingData {
+  event_uri?: string;
+  invitee_uri?: string;
+  event_start_time?: string;
+  event_end_time?: string;
+  invitee_name?: string;
+  invitee_email?: string;
+}
+
 interface FunnelLeadRequest {
   funnel_id: string
   answers: Record<string, any>
   utm_source?: string
   utm_medium?: string
   utm_campaign?: string
+  calendly_booking?: CalendlyBookingData
 }
 
 Deno.serve(async (req) => {
@@ -26,9 +36,9 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const body: FunnelLeadRequest = await req.json()
-    const { funnel_id, answers, utm_source, utm_medium, utm_campaign } = body
+    const { funnel_id, answers, utm_source, utm_medium, utm_campaign, calendly_booking } = body
 
-    console.log('Received funnel lead submission:', { funnel_id, utm_source })
+    console.log('Received funnel lead submission:', { funnel_id, utm_source, has_calendly: !!calendly_booking })
 
     if (!funnel_id || !answers) {
       return new Response(
@@ -40,7 +50,7 @@ Deno.serve(async (req) => {
     // Fetch the funnel to validate and get settings
     const { data: funnel, error: funnelError } = await supabase
       .from('funnels')
-      .select('id, team_id, status, settings')
+      .select('id, team_id, status, settings, name, auto_create_contact, webhook_urls, zapier_webhook_url')
       .eq('id', funnel_id)
       .single()
 
@@ -59,19 +69,30 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Extract email, phone, name from answers
+    // Extract email, phone, name, opt-in from answers
     let email: string | null = null
     let phone: string | null = null
     let name: string | null = null
+    let optInStatus: boolean | null = null
+    let optInTimestamp: string | null = null
 
     for (const [stepId, answer] of Object.entries(answers)) {
       const value = typeof answer === 'object' && answer !== null ? answer.value : answer
       const stepType = typeof answer === 'object' && answer !== null ? answer.step_type : null
 
-      if (stepType === 'email_capture' || (typeof value === 'string' && value.includes('@'))) {
+      if (stepType === 'email_capture' || (typeof value === 'string' && value.includes('@') && !email)) {
         email = value
       } else if (stepType === 'phone_capture') {
         phone = value
+      } else if (stepType === 'opt_in' && typeof value === 'object') {
+        // Opt-in step returns { name, email, phone, optIn }
+        if (value.email) email = value.email
+        if (value.phone) phone = value.phone
+        if (value.name) name = value.name
+        if (value.optIn !== undefined) {
+          optInStatus = value.optIn
+          optInTimestamp = new Date().toISOString()
+        }
       } else if (stepType === 'text_question' && !name && typeof value === 'string' && value.length > 0) {
         // First text question might be the name
         const content = typeof answer === 'object' ? answer.content : null
@@ -80,6 +101,28 @@ Deno.serve(async (req) => {
         }
       }
     }
+
+    // Build calendly booking data if provided
+    const calendlyBookingData = calendly_booking ? {
+      event_uri: calendly_booking.event_uri,
+      invitee_uri: calendly_booking.invitee_uri,
+      event_start_time: calendly_booking.event_start_time,
+      event_end_time: calendly_booking.event_end_time,
+      invitee_name: calendly_booking.invitee_name,
+      invitee_email: calendly_booking.invitee_email,
+      booked_at: new Date().toISOString(),
+    } : null
+
+    // If we got email from Calendly, use it
+    if (calendly_booking?.invitee_email && !email) {
+      email = calendly_booking.invitee_email
+    }
+    if (calendly_booking?.invitee_name && !name) {
+      name = calendly_booking.invitee_name
+    }
+
+    // Determine lead status based on Calendly booking
+    const leadStatus = calendly_booking ? 'booked' : 'new'
 
     // Insert the lead
     const { data: lead, error: insertError } = await supabase
@@ -94,6 +137,10 @@ Deno.serve(async (req) => {
         utm_source,
         utm_medium,
         utm_campaign,
+        calendly_booking_data: calendlyBookingData,
+        opt_in_status: optInStatus,
+        opt_in_timestamp: optInTimestamp,
+        status: leadStatus,
       })
       .select()
       .single()
@@ -108,37 +155,102 @@ Deno.serve(async (req) => {
 
     console.log('Lead saved successfully:', lead.id)
 
-    // Check if GHL webhook is configured
-    const ghlWebhookUrl = funnel.settings?.ghl_webhook_url
+    // Auto-create contact if enabled
+    let contactId: string | null = null
+    if (funnel.auto_create_contact !== false && (email || phone)) {
+      // Check if contact already exists by email
+      let existingContact = null
+      if (email) {
+        const { data: existing } = await supabase
+          .from('contacts')
+          .select('id')
+          .eq('team_id', funnel.team_id)
+          .eq('email', email)
+          .maybeSingle()
+        existingContact = existing
+      }
 
+      if (existingContact) {
+        // Update existing contact
+        const { error: updateError } = await supabase
+          .from('contacts')
+          .update({
+            funnel_lead_id: lead.id,
+            name: name || undefined,
+            phone: phone || undefined,
+            opt_in: optInStatus ?? undefined,
+            calendly_booked_at: calendly_booking?.event_start_time || undefined,
+            custom_fields: answers,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingContact.id)
+        
+        if (!updateError) {
+          contactId = existingContact.id
+          console.log('Updated existing contact:', contactId)
+        }
+      } else {
+        // Create new contact
+        const { data: contact, error: contactError } = await supabase
+          .from('contacts')
+          .insert({
+            team_id: funnel.team_id,
+            funnel_lead_id: lead.id,
+            name,
+            email,
+            phone,
+            opt_in: optInStatus ?? false,
+            source: `Funnel: ${funnel.name}`,
+            calendly_booked_at: calendly_booking?.event_start_time || null,
+            custom_fields: answers,
+          })
+          .select('id')
+          .single()
+        
+        if (!contactError && contact) {
+          contactId = contact.id
+          console.log('Created new contact:', contactId)
+        } else {
+          console.error('Error creating contact:', contactError)
+        }
+      }
+    }
+
+    // Prepare webhook payload
+    const webhookPayload: Record<string, any> = {
+      lead_id: lead.id,
+      contact_id: contactId,
+      email,
+      phone,
+      name,
+      source: `Funnel: ${funnel.name}`,
+      funnel_id: funnel_id,
+      funnel_name: funnel.name,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      opt_in: optInStatus,
+      opt_in_timestamp: optInTimestamp,
+      custom_fields: answers,
+      calendly_booked: !!calendly_booking,
+      calendly_event_time: calendly_booking?.event_start_time || null,
+      calendly_event_uri: calendly_booking?.event_uri || null,
+      submitted_at: new Date().toISOString(),
+    }
+
+    // Send to GHL webhook if configured
+    const ghlWebhookUrl = funnel.settings?.ghl_webhook_url
     if (ghlWebhookUrl) {
       console.log('Sending to GHL webhook:', ghlWebhookUrl)
-
       try {
-        // Prepare GHL payload
-        const ghlPayload: Record<string, any> = {
-          email,
-          phone,
-          name,
-          source: 'Funnel: ' + funnel_id,
-          utm_source,
-          utm_medium,
-          utm_campaign,
-          custom_fields: answers,
-        }
-
         const ghlResponse = await fetch(ghlWebhookUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(ghlPayload),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(webhookPayload),
         })
 
         if (ghlResponse.ok) {
           console.log('GHL webhook successful')
-          
-          // Update lead with sync timestamp
           await supabase
             .from('funnel_leads')
             .update({ ghl_synced_at: new Date().toISOString() })
@@ -148,12 +260,47 @@ Deno.serve(async (req) => {
         }
       } catch (ghlError) {
         console.error('GHL webhook error:', ghlError)
-        // Don't fail the request if GHL sync fails
+      }
+    }
+
+    // Send to Zapier webhook if configured
+    if (funnel.zapier_webhook_url) {
+      console.log('Sending to Zapier webhook')
+      try {
+        await fetch(funnel.zapier_webhook_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(webhookPayload),
+        })
+        console.log('Zapier webhook sent')
+      } catch (zapierError) {
+        console.error('Zapier webhook error:', zapierError)
+      }
+    }
+
+    // Send to additional webhook URLs if configured
+    const webhookUrls = funnel.webhook_urls || []
+    for (const webhookUrl of webhookUrls) {
+      if (webhookUrl && typeof webhookUrl === 'string') {
+        console.log('Sending to custom webhook:', webhookUrl)
+        try {
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(webhookPayload),
+          })
+        } catch (webhookError) {
+          console.error('Custom webhook error:', webhookError)
+        }
       }
     }
 
     return new Response(
-      JSON.stringify({ success: true, lead_id: lead.id }),
+      JSON.stringify({ 
+        success: true, 
+        lead_id: lead.id,
+        contact_id: contactId,
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
