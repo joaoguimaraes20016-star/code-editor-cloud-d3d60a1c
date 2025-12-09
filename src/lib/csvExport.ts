@@ -85,3 +85,25 @@ export const SALES_COLUMNS: ExportColumn[] = [
   { key: "setter_commission", label: "Setter Commission" },
   { key: "status", label: "Status" },
 ];
+
+export const FUNNEL_LEAD_COLUMNS: ExportColumn[] = [
+  { key: "created_at", label: "Submitted At" },
+  { key: "name", label: "Name" },
+  { key: "email", label: "Email" },
+  { key: "phone", label: "Phone" },
+  { key: "status", label: "Status" },
+  { key: "opt_in_status", label: "Opted In" },
+  { key: "utm_source", label: "UTM Source" },
+  { key: "utm_medium", label: "UTM Medium" },
+  { key: "utm_campaign", label: "UTM Campaign" },
+];
+
+export const CONTACT_COLUMNS: ExportColumn[] = [
+  { key: "created_at", label: "Created At" },
+  { key: "name", label: "Name" },
+  { key: "email", label: "Email" },
+  { key: "phone", label: "Phone" },
+  { key: "opt_in", label: "Opted In" },
+  { key: "source", label: "Source" },
+  { key: "calendly_booked_at", label: "Calendly Booking" },
+];
