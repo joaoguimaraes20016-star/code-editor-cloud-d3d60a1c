@@ -56,6 +56,16 @@ export interface StepDesign {
   // Button animation
   buttonAnimation?: 'none' | 'fade' | 'slide-up' | 'bounce' | 'scale';
   buttonAnimationDuration?: number;
+  // Button hover effect
+  buttonHoverEffect?: 'none' | 'glow' | 'lift' | 'pulse' | 'shine';
+  // Option card styling (multi-choice)
+  optionCardBg?: string;
+  optionCardBorder?: string;
+  optionCardBorderWidth?: number;
+  optionCardSelectedBg?: string;
+  optionCardSelectedBorder?: string;
+  optionCardHoverEffect?: 'none' | 'scale' | 'glow' | 'lift';
+  optionCardRadius?: number;
 }
 
 export interface FunnelStep {

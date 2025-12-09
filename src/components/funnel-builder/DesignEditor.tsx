@@ -37,6 +37,16 @@ interface StepDesign {
   // Button animation options
   buttonAnimation?: 'none' | 'fade' | 'slide-up' | 'bounce' | 'scale';
   buttonAnimationDuration?: number;
+  // Button hover effect
+  buttonHoverEffect?: 'none' | 'glow' | 'lift' | 'pulse' | 'shine';
+  // Option card styling (multi-choice)
+  optionCardBg?: string;
+  optionCardBorder?: string;
+  optionCardBorderWidth?: number;
+  optionCardSelectedBg?: string;
+  optionCardSelectedBorder?: string;
+  optionCardHoverEffect?: 'none' | 'scale' | 'glow' | 'lift';
+  optionCardRadius?: number;
 }
 
 interface DesignEditorProps {
@@ -97,6 +107,21 @@ const BUTTON_ANIMATION_OPTIONS = [
   { value: 'slide-up', label: 'Slide Up' },
   { value: 'bounce', label: 'Bounce' },
   { value: 'scale', label: 'Scale' },
+];
+
+const BUTTON_HOVER_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'glow', label: 'Glow' },
+  { value: 'lift', label: 'Lift' },
+  { value: 'pulse', label: 'Pulse' },
+  { value: 'shine', label: 'Shine' },
+];
+
+const OPTION_HOVER_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'scale', label: 'Scale' },
+  { value: 'glow', label: 'Glow' },
+  { value: 'lift', label: 'Lift' },
 ];
 
 export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }: DesignEditorProps) {
@@ -429,7 +454,181 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }
             />
           </div>
         )}
+
+        {/* Button Hover Effect */}
+        <div className="space-y-2">
+          <Label className="text-xs">Button Hover Effect</Label>
+          <div className="flex flex-wrap gap-1">
+            {BUTTON_HOVER_OPTIONS.map((effect) => (
+              <Button
+                key={effect.value}
+                variant={design.buttonHoverEffect === effect.value || (!design.buttonHoverEffect && effect.value === 'none') ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => updateField('buttonHoverEffect', effect.value)}
+              >
+                {effect.label}
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {/* Option Card Styling Section (for multi-choice) */}
+      {step.step_type === 'multi_choice' && (
+        <div className="space-y-4 border-t pt-4">
+          <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
+            Option Cards
+          </h4>
+          
+          {/* Option Card Background */}
+          <div className="space-y-2">
+            <Label className="text-xs">Card Background</Label>
+            <div className="flex flex-wrap gap-2">
+              {['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.5)'].map((color) => (
+                <button
+                  key={color}
+                  className={cn(
+                    "w-8 h-8 rounded-lg border-2 transition-all",
+                    design.optionCardBg === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                  )}
+                  style={{ backgroundColor: color }}
+                  onClick={() => updateField('optionCardBg', color)}
+                />
+              ))}
+            </div>
+            <Input
+              type="color"
+              value={design.optionCardBg || '#1a1a1a'}
+              onChange={(e) => updateField('optionCardBg', e.target.value)}
+              className="h-8 w-full"
+            />
+          </div>
+
+          {/* Option Card Border */}
+          <div className="space-y-2">
+            <Label className="text-xs">Card Border Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.2)', 'rgba(255,255,255,0.3)', '#3b82f6', '#f59e0b', '#10b981'].map((color) => (
+                <button
+                  key={color}
+                  className={cn(
+                    "w-8 h-8 rounded-lg border-2 transition-all",
+                    design.optionCardBorder === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                  )}
+                  style={{ backgroundColor: color }}
+                  onClick={() => updateField('optionCardBorder', color)}
+                />
+              ))}
+            </div>
+            <Input
+              type="color"
+              value={design.optionCardBorder || '#333333'}
+              onChange={(e) => updateField('optionCardBorder', e.target.value)}
+              className="h-8 w-full"
+            />
+          </div>
+
+          {/* Border Width */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Border Width</Label>
+              <span className="text-xs text-muted-foreground">{design.optionCardBorderWidth || 1}px</span>
+            </div>
+            <Slider
+              value={[design.optionCardBorderWidth || 1]}
+              onValueChange={([value]) => updateField('optionCardBorderWidth', value)}
+              min={0}
+              max={4}
+              step={1}
+            />
+          </div>
+
+          {/* Card Corner Radius */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Card Roundness</Label>
+              <span className="text-xs text-muted-foreground">{design.optionCardRadius || 12}px</span>
+            </div>
+            <Slider
+              value={[design.optionCardRadius || 12]}
+              onValueChange={([value]) => updateField('optionCardRadius', value)}
+              min={0}
+              max={24}
+              step={2}
+            />
+          </div>
+
+          {/* Selected State Colors */}
+          <div className="space-y-3 p-3 bg-secondary/50 rounded-lg">
+            <Label className="text-xs font-medium">Selected State</Label>
+            
+            <div className="space-y-2">
+              <Label className="text-xs">Selected Background</Label>
+              <div className="flex flex-wrap gap-2">
+                {['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.2)', '#3b82f620', '#f59e0b20', '#10b98120'].map((color) => (
+                  <button
+                    key={color}
+                    className={cn(
+                      "w-8 h-8 rounded-lg border-2 transition-all",
+                      design.optionCardSelectedBg === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                    )}
+                    style={{ backgroundColor: color }}
+                    onClick={() => updateField('optionCardSelectedBg', color)}
+                  />
+                ))}
+              </div>
+              <Input
+                type="color"
+                value={design.optionCardSelectedBg || '#2a2a2a'}
+                onChange={(e) => updateField('optionCardSelectedBg', e.target.value)}
+                className="h-8 w-full"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Selected Border</Label>
+              <div className="flex flex-wrap gap-2">
+                {['rgba(255,255,255,0.3)', '#ffffff', '#3b82f6', '#f59e0b', '#10b981'].map((color) => (
+                  <button
+                    key={color}
+                    className={cn(
+                      "w-8 h-8 rounded-lg border-2 transition-all",
+                      design.optionCardSelectedBorder === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                    )}
+                    style={{ backgroundColor: color }}
+                    onClick={() => updateField('optionCardSelectedBorder', color)}
+                  />
+                ))}
+              </div>
+              <Input
+                type="color"
+                value={design.optionCardSelectedBorder || '#ffffff'}
+                onChange={(e) => updateField('optionCardSelectedBorder', e.target.value)}
+                className="h-8 w-full"
+              />
+            </div>
+          </div>
+
+          {/* Option Card Hover Effect */}
+          <div className="space-y-2">
+            <Label className="text-xs">Card Hover Effect</Label>
+            <div className="flex flex-wrap gap-1">
+              {OPTION_HOVER_OPTIONS.map((effect) => (
+                <Button
+                  key={effect.value}
+                  variant={design.optionCardHoverEffect === effect.value || (!design.optionCardHoverEffect && effect.value === 'scale') ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => updateField('optionCardHoverEffect', effect.value)}
+                >
+                  {effect.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Font Size */}
       <div className="space-y-3">

@@ -37,6 +37,19 @@ interface StepDesign {
   imageOverlay?: boolean;
   imageOverlayColor?: string;
   imageOverlayOpacity?: number;
+  // Button gradient
+  useButtonGradient?: boolean;
+  buttonGradientFrom?: string;
+  buttonGradientTo?: string;
+  buttonGradientDirection?: string;
+  // Option card styling
+  optionCardBg?: string;
+  optionCardBorder?: string;
+  optionCardBorderWidth?: number;
+  optionCardSelectedBg?: string;
+  optionCardSelectedBorder?: string;
+  optionCardHoverEffect?: 'none' | 'scale' | 'glow' | 'lift';
+  optionCardRadius?: number;
 }
 
 interface StepPreviewProps {
@@ -527,6 +540,22 @@ export function StepPreview({
         const showNextBtn = content.show_next_button !== false;
         const nextBtnText = content.next_button_text || 'Next Question';
         
+        const optionBg = design?.optionCardBg || 'rgba(255,255,255,0.05)';
+        const optionBorder = design?.optionCardBorder || 'rgba(255,255,255,0.1)';
+        const optionBorderWidth = design?.optionCardBorderWidth ?? 1;
+        const optionRadius = design?.optionCardRadius ?? 12;
+        const optionHoverEffect = design?.optionCardHoverEffect || 'scale';
+        
+        const getHoverClass = () => {
+          switch (optionHoverEffect) {
+            case 'scale': return 'hover:scale-[1.02]';
+            case 'glow': return 'hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]';
+            case 'lift': return 'hover:-translate-y-1 hover:shadow-lg';
+            case 'none': return '';
+            default: return 'hover:scale-[1.02]';
+          }
+        };
+        
         return (
           <div className="w-full max-w-xs space-y-3">
             {content.options.map((option: string | { text: string; emoji?: string }, index: number) => {
@@ -536,7 +565,12 @@ export function StepPreview({
               return (
                 <button
                   key={index}
-                  className="w-full p-3 text-left rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-200 hover:scale-[1.02] flex items-center gap-3"
+                  className={`w-full p-3 text-left transition-all duration-200 flex items-center gap-3 ${getHoverClass()}`}
+                  style={{
+                    backgroundColor: optionBg,
+                    border: `${optionBorderWidth}px solid ${optionBorder}`,
+                    borderRadius: `${optionRadius}px`
+                  }}
                 >
                   {/* Emoji on left */}
                   {optionEmoji && (
@@ -552,7 +586,10 @@ export function StepPreview({
                   </span>
                   
                   {/* Radio circle on right */}
-                  <div className="w-5 h-5 rounded-full border-2 border-white/40 shrink-0" />
+                  <div 
+                    className="w-5 h-5 rounded-full border-2 shrink-0"
+                    style={{ borderColor: optionBorder }}
+                  />
                 </button>
               );
             })}
@@ -560,10 +597,13 @@ export function StepPreview({
             {/* Next Question Button preview */}
             {showNextBtn && (
               <button
-                className="w-full p-3 mt-2 rounded-xl font-semibold text-sm transition-all opacity-50"
+                className="w-full p-3 mt-2 font-semibold text-sm transition-all opacity-50"
                 style={{ 
-                  background: `linear-gradient(135deg, ${buttonColor}, ${buttonColor}dd)`,
-                  color: buttonTextColor
+                  background: design?.useButtonGradient && design?.buttonGradientFrom
+                    ? `linear-gradient(${design.buttonGradientDirection || '135deg'}, ${design.buttonGradientFrom}, ${design.buttonGradientTo || design.buttonGradientFrom})`
+                    : `linear-gradient(135deg, ${buttonColor}, ${buttonColor}dd)`,
+                  color: buttonTextColor,
+                  borderRadius: `${borderRadius}px`
                 }}
               >
                 {nextBtnText}

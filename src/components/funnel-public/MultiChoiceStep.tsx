@@ -32,7 +32,16 @@ interface MultiChoiceStepProps {
       buttonGradientDirection?: string;
       buttonAnimation?: 'none' | 'fade' | 'slide-up' | 'bounce' | 'scale';
       buttonAnimationDuration?: number;
+      buttonHoverEffect?: 'none' | 'glow' | 'lift' | 'pulse' | 'shine';
       borderRadius?: number;
+      // Option card styling
+      optionCardBg?: string;
+      optionCardBorder?: string;
+      optionCardBorderWidth?: number;
+      optionCardSelectedBg?: string;
+      optionCardSelectedBorder?: string;
+      optionCardHoverEffect?: 'none' | 'scale' | 'glow' | 'lift';
+      optionCardRadius?: number;
     };
     next_button_text?: string;
     show_next_button?: boolean;
@@ -76,6 +85,49 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
       color: design.buttonTextColor || '#ffffff',
       borderRadius: `${design.borderRadius ?? 12}px`,
     };
+  };
+
+  // Option card styling
+  const getOptionCardStyle = (isSelected: boolean) => {
+    const bgColor = isSelected 
+      ? (design.optionCardSelectedBg || 'rgba(255,255,255,0.15)') 
+      : (design.optionCardBg || 'rgba(255,255,255,0.05)');
+    const borderColor = isSelected 
+      ? (design.optionCardSelectedBorder || 'rgba(255,255,255,0.3)') 
+      : (design.optionCardBorder || 'rgba(255,255,255,0.1)');
+    const borderWidth = design.optionCardBorderWidth ?? 1;
+    const borderRadius = design.optionCardRadius ?? 12;
+
+    return {
+      backgroundColor: bgColor,
+      border: `${borderWidth}px solid ${borderColor}`,
+      borderRadius: `${borderRadius}px`,
+    };
+  };
+
+  // Option card hover class
+  const getOptionHoverClass = () => {
+    const hoverEffect = design.optionCardHoverEffect || 'scale';
+    switch (hoverEffect) {
+      case 'scale': return 'hover:scale-[1.02]';
+      case 'glow': return 'hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]';
+      case 'lift': return 'hover:-translate-y-1 hover:shadow-lg';
+      case 'none': return '';
+      default: return 'hover:scale-[1.02]';
+    }
+  };
+
+  // Button hover class
+  const getButtonHoverClass = () => {
+    const hoverEffect = design.buttonHoverEffect || 'none';
+    switch (hoverEffect) {
+      case 'glow': return 'hover:shadow-[0_0_30px_rgba(59,130,246,0.5)]';
+      case 'lift': return 'hover:-translate-y-1';
+      case 'pulse': return 'hover:animate-pulse';
+      case 'shine': return 'overflow-hidden relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:-translate-x-full hover:after:translate-x-full after:transition-transform after:duration-500';
+      case 'none': return '';
+      default: return '';
+    }
   };
 
   const animationClass = ANIMATION_CLASSES[design.buttonAnimation || 'fade'] || ANIMATION_CLASSES.fade;
@@ -127,13 +179,11 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
           key={index}
           onClick={() => handleOptionClick(option.text)}
           className={`
-            w-full p-4 text-left rounded-xl
-            bg-white/5 border border-white/10
-            hover:bg-white/10 hover:border-white/20
-            transition-all duration-200 hover:scale-[1.02]
+            w-full p-4 text-left transition-all duration-200
             flex items-center gap-4
-            ${selectedOption === option.text ? 'bg-white/15 border-white/30 scale-[1.02]' : ''}
+            ${getOptionHoverClass()}
           `}
+          style={getOptionCardStyle(selectedOption === option.text)}
         >
           {/* Emoji on left */}
           {option.emoji && (
@@ -146,14 +196,15 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
           </span>
           
           {/* Radio circle on right */}
-          <div className={`
-            w-6 h-6 rounded-full border-2 shrink-0
-            flex items-center justify-center transition-all
-            ${selectedOption === option.text 
-              ? 'border-white bg-white' 
-              : 'border-white/40'
-            }
-          `}>
+          <div 
+            className="w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all"
+            style={{
+              borderColor: selectedOption === option.text 
+                ? (design.optionCardSelectedBorder || '#ffffff') 
+                : 'rgba(255,255,255,0.4)',
+              backgroundColor: selectedOption === option.text ? '#ffffff' : 'transparent'
+            }}
+          >
             {selectedOption === option.text && (
               <div className="w-2.5 h-2.5 rounded-full bg-black" />
             )}
@@ -165,7 +216,7 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
       {showNextButton && selectedOption && (
         <button
           onClick={handleNextClick}
-          className={`w-full p-4 mt-4 font-semibold text-base transition-all hover:scale-[1.02] hover:shadow-lg ${animationClass}`}
+          className={`w-full p-4 mt-4 font-semibold text-base transition-all ${animationClass} ${getButtonHoverClass()}`}
           style={{ 
             ...getButtonStyle(),
             animationDuration: `${animationDuration}ms`,
