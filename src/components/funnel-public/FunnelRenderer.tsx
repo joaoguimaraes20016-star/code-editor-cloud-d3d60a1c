@@ -8,6 +8,7 @@ import { PhoneCaptureStep } from './PhoneCaptureStep';
 import { VideoStep } from './VideoStep';
 import { ThankYouStep } from './ThankYouStep';
 import { OptInStep } from './OptInStep';
+import { EmbedStep } from './EmbedStep';
 import { ProgressDots } from './ProgressDots';
 import { cn } from '@/lib/utils';
 
@@ -148,6 +149,8 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         return <OptInStep {...commonProps} />;
       case 'video':
         return <VideoStep {...commonProps} />;
+      case 'embed':
+        return <EmbedStep {...commonProps} />;
       case 'thank_you':
         return <ThankYouStep {...commonProps} />;
       default:

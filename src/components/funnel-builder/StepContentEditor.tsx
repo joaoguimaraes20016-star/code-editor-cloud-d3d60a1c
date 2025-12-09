@@ -25,7 +25,7 @@ interface StepContentEditorProps {
   onUpdateDynamicContent?: (elementId: string, value: any) => void;
 }
 
-const stepTypeLabels = {
+const stepTypeLabels: Record<string, string> = {
   welcome: 'Welcome',
   text_question: 'Text Question',
   multi_choice: 'Multi Choice',
@@ -34,6 +34,7 @@ const stepTypeLabels = {
   video: 'Video',
   thank_you: 'Thank You',
   opt_in: 'Opt-In Form',
+  embed: 'Embed/iFrame',
 };
 
 const getElementTypeLabel = (elementId: string) => {
@@ -420,6 +421,48 @@ export function StepContentEditor({
           <p className="text-xs text-muted-foreground">
             Redirect to this URL after 3 seconds
           </p>
+        </div>
+      )}
+
+      {/* Embed URL and Height - embed only */}
+      {step.step_type === 'embed' && (
+        <div 
+          id="editor-section-embed"
+          className={cn(
+          "space-y-4 p-3 -mx-3 rounded-lg",
+          isHighlighted('embed_url') && "bg-primary/10 ring-1 ring-primary/30"
+        )}>
+          <div className="space-y-2">
+            <Label className="text-xs">Embed URL</Label>
+            <Input
+              value={content.embed_url || ''}
+              onChange={(e) => updateField('embed_url', e.target.value)}
+              placeholder="https://calendly.com/your-link"
+            />
+            <p className="text-xs text-muted-foreground">
+              Paste any URL to embed (Calendly, Typeform, YouTube, etc.)
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Height (px)</Label>
+            <Input
+              type="number"
+              value={content.embed_height || 600}
+              onChange={(e) => updateField('embed_height', parseInt(e.target.value) || 600)}
+              placeholder="600"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Continue Button Text (optional)</Label>
+            <Input
+              value={content.button_text || ''}
+              onChange={(e) => updateField('button_text', e.target.value)}
+              placeholder="Continue"
+            />
+            <p className="text-xs text-muted-foreground">
+              Leave empty to hide the button
+            </p>
+          </div>
         </div>
       )}
 

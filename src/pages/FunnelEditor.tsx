@@ -82,7 +82,7 @@ export interface FunnelStep {
   id: string;
   funnel_id: string;
   order_index: number;
-  step_type: 'welcome' | 'text_question' | 'multi_choice' | 'email_capture' | 'phone_capture' | 'video' | 'thank_you' | 'opt_in';
+  step_type: 'welcome' | 'text_question' | 'multi_choice' | 'email_capture' | 'phone_capture' | 'video' | 'thank_you' | 'opt_in' | 'embed';
   content: {
     headline?: string;
     subtext?: string;
@@ -106,6 +106,9 @@ export interface FunnelStep {
     phone_icon?: string;
     privacy_text?: string;
     privacy_link?: string;
+    // Embed specific
+    embed_url?: string;
+    embed_height?: number;
     // Persisted design and layout
     design?: StepDesign;
     element_order?: string[];

@@ -2,7 +2,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
-import { GripVertical, Trash2, Play, MessageSquare, List, Mail, Phone, Video, CheckCircle, Plus, Copy, UserCheck } from 'lucide-react';
+import { GripVertical, Trash2, Play, MessageSquare, List, Mail, Phone, Video, CheckCircle, Plus, Copy, UserCheck, Code } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FunnelStep } from '@/pages/FunnelEditor';
 import { PageContextMenu } from './PageContextMenu';
@@ -34,6 +34,7 @@ const stepTypeIcons: Record<string, typeof Play> = {
   phone_capture: Phone,
   opt_in: UserCheck,
   video: Video,
+  embed: Code,
   thank_you: CheckCircle,
 };
 
