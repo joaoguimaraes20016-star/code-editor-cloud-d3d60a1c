@@ -44,8 +44,8 @@ interface DomainsSectionProps {
   teamId: string;
 }
 
-// The hosting domain - must have Cloudflare Worker deployed
-const HOSTING_DOMAIN = 'grwthop.com';
+// The hosting subdomain - Cloudflare Worker deployed on funnel.grwthop.com
+const HOSTING_DOMAIN = 'funnel.grwthop.com';
 
 export function DomainsSection({ teamId }: DomainsSectionProps) {
   const queryClient = useQueryClient();
