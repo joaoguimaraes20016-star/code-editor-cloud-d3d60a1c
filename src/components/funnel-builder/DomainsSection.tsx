@@ -80,6 +80,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
     icon: <ShieldCheck className="h-3 w-3 mr-1" />,
     description: 'SSL provisioning in progress'
   },
+  ready: {
+    label: 'Pending DNS',
+    color: 'border-amber-500/50 text-amber-600 bg-amber-50 dark:bg-amber-500/10',
+    icon: <Clock className="h-3 w-3 mr-1" />,
+    description: 'Configure your DNS settings'
+  },
   active: {
     label: 'Active',
     color: 'border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10',
@@ -309,17 +315,27 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
   };
 
   const getStatusConfig = (domain: Domain) => {
-    // Determine effective status
+    // Determine effective status based on actual verification state
     let effectiveStatus = domain.status || 'pending';
     
-    // If verified and SSL provisioned, it's active
-    if (domain.status === 'verified' && domain.ssl_provisioned) {
+    // Map "ready" to pending (legacy status)
+    if (effectiveStatus === 'ready') {
+      effectiveStatus = 'pending';
+    }
+    
+    // Only mark as active if BOTH verified AND SSL provisioned
+    if (domain.status === 'verified' && domain.ssl_provisioned === true) {
       effectiveStatus = 'active';
     }
     
-    // If health_status is set and domain was verified, use health status
+    // If health_status is offline and domain was previously verified, use offline
     if (domain.health_status === 'offline' && domain.verified_at) {
       effectiveStatus = 'offline';
+    }
+    
+    // Don't mark as active if SSL is not provisioned, even if status is verified
+    if (domain.status === 'verified' && !domain.ssl_provisioned) {
+      effectiveStatus = 'verified'; // DNS verified, awaiting SSL
     }
 
     return STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.pending;
