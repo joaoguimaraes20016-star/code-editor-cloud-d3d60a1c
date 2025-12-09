@@ -1,6 +1,71 @@
 import { cn } from '@/lib/utils';
+import { useEffect, useRef } from 'react';
 
-// Clean HTML content for display - remove messy inline styles and font tags
+// Component for Calendly embeds with event detection
+function CalendlyEmbed({
+  embedUrl,
+  embedScale,
+  iframeHeight,
+  scaledHeight,
+  borderRadius,
+  isCalendly,
+  onScheduled,
+}: {
+  embedUrl: string;
+  embedScale: number;
+  iframeHeight: number;
+  scaledHeight: number;
+  borderRadius: number;
+  isCalendly: boolean;
+  onScheduled?: () => void;
+}) {
+  const hasScheduledRef = useRef(false);
+
+  useEffect(() => {
+    if (!isCalendly || !onScheduled) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      // Calendly sends postMessage when booking is complete
+      if (event.origin.includes('calendly.com') && event.data?.event === 'calendly.event_scheduled') {
+        if (!hasScheduledRef.current) {
+          hasScheduledRef.current = true;
+          // Small delay to let user see confirmation
+          setTimeout(() => {
+            onScheduled();
+          }, 1500);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [isCalendly, onScheduled]);
+
+  return (
+    <div 
+      className="w-full max-w-2xl mx-auto overflow-hidden"
+      style={{ 
+        borderRadius: `${borderRadius}px`,
+        height: `${scaledHeight}px`,
+      }}
+    >
+      <iframe
+        src={embedUrl}
+        className="w-full origin-top-left"
+        style={{
+          height: `${iframeHeight}px`,
+          width: `${100 / embedScale}%`,
+          transform: `scale(${embedScale})`,
+        }}
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  );
+}
+
+
 const cleanHtmlContent = (html: string): string => {
   if (!html) return '';
   return html
@@ -239,28 +304,20 @@ export function DynamicElementRenderer({
       // Use scaling to show the full embed at a reduced size
       const iframeHeight = 700; // Original iframe height for Calendly
       const scaledHeight = iframeHeight * embedScale;
+
+      // Check if this is a Calendly embed for event listening
+      const isCalendly = embedUrl.includes('calendly.com');
       
       return (
-        <div 
-          className="w-full max-w-2xl mx-auto overflow-hidden"
-          style={{ 
-            borderRadius: `${borderRadius}px`,
-            height: `${scaledHeight}px`,
-          }}
-        >
-          <iframe
-            src={embedUrl}
-            className="w-full origin-top-left"
-            style={{
-              height: `${iframeHeight}px`,
-              width: `${100 / embedScale}%`,
-              transform: `scale(${embedScale})`,
-            }}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
+        <CalendlyEmbed
+          embedUrl={embedUrl}
+          embedScale={embedScale}
+          iframeHeight={iframeHeight}
+          scaledHeight={scaledHeight}
+          borderRadius={borderRadius}
+          isCalendly={isCalendly}
+          onScheduled={onButtonClick}
+        />
       );
     }
 
