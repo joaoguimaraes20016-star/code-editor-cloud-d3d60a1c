@@ -1,5 +1,28 @@
 import { cn } from '@/lib/utils';
 
+// Clean HTML content for display - remove messy inline styles and font tags
+const cleanHtmlContent = (html: string): string => {
+  if (!html) return '';
+  return html
+    // Remove font tags completely
+    .replace(/<font[^>]*>/gi, '')
+    .replace(/<\/font>/gi, '')
+    // Remove excessive inline styles that contain font-family
+    .replace(/style="[^"]*font-family[^"]*"/gi, '')
+    // Remove fun-font classes
+    .replace(/class="[^"]*fun-font[^"]*"/gi, '')
+    // Clean up empty style attributes
+    .replace(/style="\s*"/gi, '')
+    // Clean up empty class attributes  
+    .replace(/class="\s*"/gi, '')
+    // Remove border-color and border-image styles that get added
+    .replace(/border-color:[^;]+;?/gi, '')
+    .replace(/border-image:[^;]+;?/gi, '')
+    // Clean up any resulting empty style attributes
+    .replace(/style=";\s*"/gi, '')
+    .replace(/style="\s*;"/gi, '');
+};
+
 interface DynamicElementRendererProps {
   elementOrder: string[];
   dynamicElements: Record<string, any>;
@@ -233,12 +256,7 @@ export function DynamicElementRenderer({
         
       case 'headline':
         if (!content.headline) return null;
-        // Clean HTML - remove font tags and excessive inline styles
-        const cleanedHeadline = content.headline
-          .replace(/<font[^>]*>/gi, '')
-          .replace(/<\/font>/gi, '')
-          .replace(/style="[^"]*font-family[^"]*"/gi, '')
-          .replace(/class="[^"]*fun-font[^"]*"/gi, '');
+        const cleanedHeadline = cleanHtmlContent(content.headline);
         const headlineHasColor = cleanedHeadline.includes('color=') || cleanedHeadline.includes('color:');
         return (
           <h1 
@@ -250,12 +268,7 @@ export function DynamicElementRenderer({
         
       case 'subtext':
         if (!content.subtext) return null;
-        // Clean HTML - remove font tags and excessive inline styles
-        const cleanedSubtext = content.subtext
-          .replace(/<font[^>]*>/gi, '')
-          .replace(/<\/font>/gi, '')
-          .replace(/style="[^"]*font-family[^"]*"/gi, '')
-          .replace(/class="[^"]*fun-font[^"]*"/gi, '');
+        const cleanedSubtext = cleanHtmlContent(content.subtext);
         const subtextHasColor = cleanedSubtext.includes('color=') || cleanedSubtext.includes('color:');
         return (
           <p 

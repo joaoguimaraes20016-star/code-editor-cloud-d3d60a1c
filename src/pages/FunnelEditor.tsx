@@ -552,6 +552,87 @@ export default function FunnelEditor() {
 
   const selectedStep = steps.find((s) => s.id === selectedStepId);
 
+  // Keyboard shortcuts for element navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input field
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      if (!selectedStep) return;
+
+      const currentOrder = elementOrders[selectedStep.id] || [];
+
+      // Arrow keys - navigate between elements
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        
+        if (!selectedElement && currentOrder.length > 0) {
+          // Select first element if nothing selected
+          setSelectedElement(currentOrder[0]);
+          return;
+        }
+        
+        const currentIndex = currentOrder.indexOf(selectedElement || '');
+        if (currentIndex === -1) return;
+        
+        const newIndex = e.key === 'ArrowUp' 
+          ? Math.max(0, currentIndex - 1)
+          : Math.min(currentOrder.length - 1, currentIndex + 1);
+        
+        setSelectedElement(currentOrder[newIndex]);
+      }
+
+      // Delete key - remove selected element
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElement) {
+        // Only delete dynamic elements (not standard ones like headline, button)
+        if (selectedElement.includes('_') && /^\w+_\d+/.test(selectedElement)) {
+          e.preventDefault();
+          const newOrder = currentOrder.filter(id => id !== selectedElement);
+          handleUpdateElementOrder(selectedStep.id, newOrder);
+          setSelectedElement(null);
+        }
+      }
+
+      // Ctrl+D or Cmd+D - duplicate element
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedElement) {
+        e.preventDefault();
+        const index = currentOrder.indexOf(selectedElement);
+        if (index !== -1) {
+          const newElementId = `${selectedElement}_copy_${Date.now()}`;
+          const newOrder = [...currentOrder];
+          newOrder.splice(index + 1, 0, newElementId);
+          
+          // Copy dynamic content if exists
+          const currentDynamic = dynamicElements[selectedStep.id]?.[selectedElement];
+          if (currentDynamic) {
+            setDynamicElements(prev => ({
+              ...prev,
+              [selectedStep.id]: {
+                ...(prev[selectedStep.id] || {}),
+                [newElementId]: { ...currentDynamic }
+              }
+            }));
+          }
+          
+          handleUpdateElementOrder(selectedStep.id, newOrder);
+          setSelectedElement(newElementId);
+          setHasUnsavedChanges(true);
+        }
+      }
+
+      // Escape - deselect element
+      if (e.key === 'Escape') {
+        setSelectedElement(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedElement, selectedStep, elementOrders, dynamicElements, handleUpdateElementOrder, setDynamicElements, setHasUnsavedChanges]);
+
   if (funnelLoading || stepsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
