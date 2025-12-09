@@ -105,7 +105,9 @@ export function StepContentEditor({
       </div>
 
       {/* Headline - all types */}
-      <div className={cn(
+      <div 
+        id="editor-section-headline"
+        className={cn(
         "space-y-2 p-3 -mx-3 rounded-lg transition-colors",
         isHighlighted('headline') && "bg-primary/10 ring-1 ring-primary/30"
       )}>
@@ -121,7 +123,9 @@ export function StepContentEditor({
 
       {/* Subtext - most types */}
       {step.step_type !== 'multi_choice' && (
-        <div className={cn(
+        <div 
+          id="editor-section-subtext"
+          className={cn(
           "space-y-2 p-3 -mx-3 rounded-lg transition-colors",
           isHighlighted('subtext') && "bg-primary/10 ring-1 ring-primary/30"
         )}>
@@ -138,7 +142,9 @@ export function StepContentEditor({
 
       {/* Button text - welcome, video */}
       {(step.step_type === 'welcome' || step.step_type === 'video') && (
-        <div className={cn(
+        <div 
+          id="editor-section-button"
+          className={cn(
           "space-y-2 p-3 -mx-3 rounded-lg transition-colors",
           isHighlighted('button_text') && "bg-primary/10 ring-1 ring-primary/30"
         )}>
@@ -154,7 +160,9 @@ export function StepContentEditor({
 
       {/* Placeholder - text_question, email, phone */}
       {(step.step_type === 'text_question' || step.step_type === 'email_capture' || step.step_type === 'phone_capture') && (
-        <div className={cn(
+        <div 
+          id="editor-section-placeholder"
+          className={cn(
           "space-y-2 p-3 -mx-3 rounded-lg transition-colors",
           isHighlighted('placeholder') && "bg-primary/10 ring-1 ring-primary/30"
         )}>
@@ -170,7 +178,9 @@ export function StepContentEditor({
 
       {/* Video URL */}
       {step.step_type === 'video' && (
-        <div className={cn(
+        <div 
+          id="editor-section-video"
+          className={cn(
           "space-y-2 p-3 -mx-3 rounded-lg transition-colors",
           isHighlighted('video_url') && "bg-primary/10 ring-1 ring-primary/30"
         )}>
@@ -188,7 +198,9 @@ export function StepContentEditor({
 
       {/* Multi Choice Options */}
       {step.step_type === 'multi_choice' && (
-        <div className={cn(
+        <div 
+          id="editor-section-options"
+          className={cn(
           "space-y-3 p-3 -mx-3 rounded-lg transition-colors",
           isHighlighted('options') && "bg-primary/10 ring-1 ring-primary/30"
         )}>
@@ -297,7 +309,7 @@ export function StepContentEditor({
 
       {/* Dynamic Elements Section */}
       {dynamicElementIds.length > 0 && (
-        <div className="border-t pt-4 mt-4">
+        <div id="dynamic-elements-section" className="border-t pt-4 mt-4">
           <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide mb-3">
             Added Elements
           </h4>

@@ -144,16 +144,48 @@ function ElementWrapper({
   canMoveUp: boolean;
   canMoveDown: boolean;
 }) {
+  // Get a friendly label for the element
+  const getElementLabel = (elementId: string) => {
+    if (elementId === 'headline') return 'Headline';
+    if (elementId === 'subtext') return 'Subtext';
+    if (elementId === 'button') return 'Button';
+    if (elementId === 'input') return 'Input Field';
+    if (elementId === 'options') return 'Options';
+    if (elementId === 'video') return 'Video';
+    if (elementId.startsWith('text_')) return 'Text Block';
+    if (elementId.startsWith('headline_')) return 'Headline';
+    if (elementId.startsWith('video_')) return 'Video';
+    if (elementId.startsWith('image_')) return 'Image';
+    if (elementId.startsWith('button_')) return 'Button';
+    if (elementId.startsWith('divider_')) return 'Divider';
+    return elementId;
+  };
+
   return (
     <div
       className={cn(
-        "relative transition-all w-full",
+        "relative transition-all w-full cursor-pointer group",
         isSelected 
-          ? "ring-2 ring-primary rounded-md" 
-          : "hover:ring-1 hover:ring-primary/40 rounded-md"
+          ? "ring-2 ring-primary rounded-md shadow-lg shadow-primary/20" 
+          : "hover:ring-2 hover:ring-primary/50 rounded-md"
       )}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      title={`Click to edit ${getElementLabel(id)}`}
     >
+      {/* Edit indicator - shows on hover when not selected */}
+      {!isSelected && (
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+          Click to edit
+        </div>
+      )}
+      
+      {/* Selected indicator label */}
+      {isSelected && !isEditing && (
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded z-20 whitespace-nowrap">
+          {getElementLabel(id)}
+        </div>
+      )}
+      
       <div className="px-2 py-1">
         {children}
       </div>

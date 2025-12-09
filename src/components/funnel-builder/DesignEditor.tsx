@@ -63,6 +63,7 @@ interface DesignEditorProps {
   design: StepDesign;
   onUpdateDesign: (design: StepDesign) => void;
   onOpenImagePicker: () => void;
+  highlightedSection?: string | null;
 }
 
 const FONT_SIZES = [
@@ -133,7 +134,7 @@ const OPTION_HOVER_OPTIONS = [
   { value: 'lift', label: 'Lift' },
 ];
 
-export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }: DesignEditorProps) {
+export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker, highlightedSection }: DesignEditorProps) {
   const updateField = (field: keyof StepDesign, value: any) => {
     onUpdateDesign({ ...design, [field]: value });
   };
@@ -148,6 +149,8 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }
     });
   };
 
+  const isHighlighted = (section: string) => highlightedSection === section || highlightedSection?.includes(section);
+
   return (
     <div className="space-y-6">
       <div>
@@ -160,7 +163,7 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }
       </div>
 
       {/* Background Type Toggle */}
-      <div className="space-y-3">
+      <div id="editor-section-background" className={cn("space-y-3 p-3 -mx-3 rounded-lg transition-colors", isHighlighted('background') && "bg-primary/10 ring-1 ring-primary/30")}>
         <div className="flex items-center justify-between">
           <Label className="text-xs">Use Gradient Background</Label>
           <Switch
@@ -288,7 +291,7 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }
       </div>
 
       {/* Button Styling Section */}
-      <div className="space-y-4 border-t pt-4">
+      <div id="editor-section-button-styling" className={cn("space-y-4 border-t pt-4 p-3 -mx-3 rounded-lg transition-colors", isHighlighted('button') && "bg-primary/10 ring-1 ring-primary/30")}>
         <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
           Button Styling
         </h4>
@@ -485,7 +488,7 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }
 
       {/* Option Card Styling Section (for multi-choice) */}
       {step.step_type === 'multi_choice' && (
-        <div className="space-y-4 border-t pt-4">
+        <div id="editor-section-option-cards" className={cn("space-y-4 border-t pt-4 p-3 -mx-3 rounded-lg transition-colors", isHighlighted('options') && "bg-primary/10 ring-1 ring-primary/30")}>
           <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
             Option Cards
           </h4>
@@ -641,7 +644,7 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }
 
       {/* Input Field Styling Section (for text_question) */}
       {step.step_type === 'text_question' && (
-        <div className="space-y-4 border-t pt-4">
+        <div id="editor-section-input-styling" className={cn("space-y-4 border-t pt-4 p-3 -mx-3 rounded-lg transition-colors", isHighlighted('input') && "bg-primary/10 ring-1 ring-primary/30")}>
           <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
             Input Field Styling
           </h4>
