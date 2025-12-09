@@ -230,20 +230,32 @@ export function DynamicElementRenderer({
       );
     }
 
-    // Dynamic embeds (iframes)
+    // Dynamic embeds (iframes) - scaled down to fit without scrolling
     if (elementId.startsWith('embed_')) {
       const embedUrl = dynamicElements?.[elementId]?.embed_url || '';
-      const embedHeight = dynamicElements?.[elementId]?.embed_height || 400;
+      const embedScale = dynamicElements?.[elementId]?.embed_scale || 0.75;
       if (!embedUrl) return null;
+      
+      // Use scaling to show the full embed at a reduced size
+      const iframeHeight = 700; // Original iframe height for Calendly
+      const scaledHeight = iframeHeight * embedScale;
       
       return (
         <div 
           className="w-full max-w-2xl mx-auto overflow-hidden"
-          style={{ borderRadius: `${borderRadius}px`, height: `${embedHeight}px` }}
+          style={{ 
+            borderRadius: `${borderRadius}px`,
+            height: `${scaledHeight}px`,
+          }}
         >
           <iframe
             src={embedUrl}
-            className="w-full h-full"
+            className="w-full origin-top-left"
+            style={{
+              height: `${iframeHeight}px`,
+              width: `${100 / embedScale}%`,
+              transform: `scale(${embedScale})`,
+            }}
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
