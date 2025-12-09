@@ -9,8 +9,10 @@ import {
   Plus, ExternalLink, Edit, Trash2, Copy, Users, Search, 
   LayoutGrid, List, Link2, MoreHorizontal, Star, BarChart3,
   MessageSquare, Calendar, Download, TrendingUp, TrendingDown,
-  Phone, Mail, CheckCircle, ArrowLeft
+  Phone, Mail, CheckCircle, ArrowLeft, Globe, Plug
 } from 'lucide-react';
+import { DomainsSection } from '@/components/funnel-builder/DomainsSection';
+import { IntegrationsSection } from '@/components/funnel-builder/IntegrationsSection';
 import { toast } from '@/hooks/use-toast';
 import { CreateFunnelDialog } from '@/components/funnel-builder/CreateFunnelDialog';
 import { useTeamRole } from '@/hooks/useTeamRole';
@@ -81,7 +83,7 @@ interface Contact {
   created_at: string;
 }
 
-type TabType = 'funnels' | 'performance' | 'contacts';
+type TabType = 'funnels' | 'performance' | 'contacts' | 'domains' | 'integrations';
 type ViewMode = 'grid' | 'list';
 
 export default function FunnelList() {
@@ -223,6 +225,8 @@ export default function FunnelList() {
     { id: 'funnels' as const, label: 'Funnels', icon: LayoutGrid },
     { id: 'performance' as const, label: 'Performance', icon: BarChart3 },
     { id: 'contacts' as const, label: 'Contacts', icon: Users },
+    { id: 'domains' as const, label: 'Domains', icon: Globe },
+    { id: 'integrations' as const, label: 'Integrations', icon: Plug },
   ];
 
   return (
@@ -777,6 +781,16 @@ export default function FunnelList() {
               )}
             </div>
           </>
+        )}
+
+        {/* Domains Tab */}
+        {activeTab === 'domains' && (
+          <DomainsSection teamId={teamId!} />
+        )}
+
+        {/* Integrations Tab */}
+        {activeTab === 'integrations' && (
+          <IntegrationsSection teamId={teamId!} />
         )}
       </div>
 
