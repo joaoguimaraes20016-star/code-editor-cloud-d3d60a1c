@@ -199,19 +199,6 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
         </Button>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <Globe className="h-5 w-5 text-blue-400 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-blue-400">Custom Domain Hosting</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add your domain, link it to a funnel, then point your DNS to <span className="font-mono text-blue-400">{HOSTING_DOMAIN}</span> - that's it!
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Domain List */}
       {domainsLoading ? (
         <div className="text-center py-8 text-muted-foreground">Loading domains...</div>
@@ -463,18 +450,6 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
               </p>
             </div>
 
-            {/* Important Note */}
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-amber-500">Cloudflare Users</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    If using Cloudflare, make sure the <span className="font-medium">Proxy (orange cloud)</span> is enabled for SSL to work automatically.
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="flex justify-between items-center pt-4 border-t">
