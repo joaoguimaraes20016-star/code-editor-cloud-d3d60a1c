@@ -2,7 +2,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
-import { GripVertical, Trash2, Play, MessageSquare, List, Mail, Phone, Video, CheckCircle, Plus, Copy } from 'lucide-react';
+import { GripVertical, Trash2, Play, MessageSquare, List, Mail, Phone, Video, CheckCircle, Plus, Copy, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FunnelStep } from '@/pages/FunnelEditor';
 import { PageContextMenu } from './PageContextMenu';
@@ -26,12 +26,13 @@ interface PagesListProps {
   onMoveStep?: (stepId: string, direction: 'up' | 'down') => void;
 }
 
-const stepTypeIcons = {
+const stepTypeIcons: Record<string, typeof Play> = {
   welcome: Play,
   text_question: MessageSquare,
   multi_choice: List,
   email_capture: Mail,
   phone_capture: Phone,
+  opt_in: UserCheck,
   video: Video,
   thank_you: CheckCircle,
 };
