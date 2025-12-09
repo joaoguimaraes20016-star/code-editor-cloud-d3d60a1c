@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Globe, Plus, Copy, CheckCircle, ExternalLink, Trash2, Link2, ArrowRight, Server
+  Globe, Plus, Copy, CheckCircle, ExternalLink, Trash2, Link2, ArrowRight, AlertCircle
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -44,16 +44,14 @@ interface DomainsSectionProps {
   teamId: string;
 }
 
-// The hosting domain for funnels - this is where the Cloudflare Worker runs
+// The hosting domain - must have Cloudflare Worker deployed
 const HOSTING_DOMAIN = 'grwthop.com';
-const SUPABASE_PROJECT_ID = 'inbvluddkutyfhsxfqco';
 
 export function DomainsSection({ teamId }: DomainsSectionProps) {
   const queryClient = useQueryClient();
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showSetupDialog, setShowSetupDialog] = useState(false);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
-  const [showHostingSetupDialog, setShowHostingSetupDialog] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
   const [newDomain, setNewDomain] = useState('');
   const [selectedDomainForLink, setSelectedDomainForLink] = useState<Domain | null>(null);
@@ -185,35 +183,6 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     return funnels.find(f => f.domain_id === domainId);
   };
 
-  const workerScript = `// Cloudflare Worker - Deploy this once on ${HOSTING_DOMAIN}
-// Go to Workers & Pages in Cloudflare dashboard
-
-export default {
-  async fetch(request) {
-    const url = new URL(request.url);
-    const domain = url.hostname;
-    
-    // Call the serve-funnel edge function
-    const response = await fetch(
-      'https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/serve-funnel',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain })
-      }
-    );
-    
-    const html = await response.text();
-    
-    return new Response(html, {
-      headers: {
-        'Content-Type': 'text/html',
-        'Cache-Control': 'public, max-age=300'
-      }
-    });
-  }
-};`;
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -224,30 +193,20 @@ export default {
             Connect custom domains to your funnels
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => setShowHostingSetupDialog(true)}
-          >
-            <Server className="h-4 w-4 mr-2" />
-            Hosting Setup
-          </Button>
-          <Button onClick={() => setShowConnectDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Domain
-          </Button>
-        </div>
+        <Button onClick={() => setShowConnectDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Domain
+        </Button>
       </div>
 
       {/* Info Banner */}
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <Server className="h-5 w-5 text-blue-400 mt-0.5" />
+          <Globe className="h-5 w-5 text-blue-400 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-blue-400">Custom Domain Hosting via {HOSTING_DOMAIN}</p>
+            <p className="text-sm font-medium text-blue-400">Custom Domain Hosting</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Your custom domains CNAME to {HOSTING_DOMAIN}, which serves your funnels automatically.
-              Click "Hosting Setup" to configure the one-time Cloudflare Worker.
+              Add your domain, link it to a funnel, then point your DNS to <span className="font-mono text-blue-400">{HOSTING_DOMAIN}</span> - that's it!
             </p>
           </div>
         </div>
@@ -436,78 +395,92 @@ export default {
         </DialogContent>
       </Dialog>
 
-      {/* DNS Setup Dialog */}
+      {/* DNS Setup Dialog - Simplified */}
       <Dialog open={showSetupDialog} onOpenChange={setShowSetupDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>DNS Setup for {selectedDomain?.domain}</DialogTitle>
             <DialogDescription>
-              Point your domain to {HOSTING_DOMAIN} to serve your funnel
+              Point your domain to {HOSTING_DOMAIN} with a simple CNAME record
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6 py-4">
+            {/* Step 1 */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">1</div>
-                <h4 className="font-medium">Add CNAME Record</h4>
+                <h4 className="font-medium">Go to your DNS provider</h4>
               </div>
-              <div className="ml-8 space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  In your domain's DNS settings, add this CNAME record:
-                </p>
-                <div className="bg-muted rounded-md p-3 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Type:</span>
-                    <span className="font-mono">CNAME</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Name:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono">@</span>
-                      <span className="text-xs text-muted-foreground">(or your subdomain)</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Target:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono">{HOSTING_DOMAIN}</span>
-                      <button onClick={() => copyToClipboard(HOSTING_DOMAIN)} className="hover:text-foreground text-muted-foreground">
-                        <Copy className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-amber-600">
-                  Note: If your registrar doesn't support CNAME on root domain, use an ALIAS or ANAME record, or add a subdomain like "go.{selectedDomain?.domain}"
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground ml-8">
+                Log in to where you registered your domain (Cloudflare, GoDaddy, Namecheap, etc.)
+              </p>
             </div>
 
+            {/* Step 2 */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">2</div>
-                <h4 className="font-medium">Enable Cloudflare Proxy (if using Cloudflare)</h4>
+                <h4 className="font-medium">Add CNAME Record</h4>
               </div>
-              <p className="text-sm text-muted-foreground ml-8">
-                Make sure the orange cloud (Proxied) is enabled so Cloudflare handles SSL.
-              </p>
+              <div className="ml-8 bg-muted rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Type:</span>
+                  <span className="font-mono text-sm">CNAME</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Name:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm">@</span>
+                    <span className="text-xs text-muted-foreground">(or www)</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Target:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm text-emerald-500">{HOSTING_DOMAIN}</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => copyToClipboard(HOSTING_DOMAIN)}
+                      className="h-7 w-7 p-0"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
 
+            {/* Step 3 */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">3</div>
-                <h4 className="font-medium">Wait for propagation</h4>
+                <h4 className="font-medium">Wait for DNS propagation</h4>
               </div>
               <p className="text-sm text-muted-foreground ml-8">
-                DNS changes can take up to 24 hours. Once propagated, your funnel will be live at <strong>https://{selectedDomain?.domain}</strong>
+                Changes typically take 1-5 minutes, but can take up to 24 hours.
               </p>
+            </div>
+
+            {/* Important Note */}
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-amber-500">Cloudflare Users</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    If using Cloudflare, make sure the <span className="font-medium">Proxy (orange cloud)</span> is enabled for SSL to work automatically.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-between pt-4 border-t">
-            <Button
-              variant="outline"
+          <div className="flex justify-between items-center pt-4 border-t">
+            <Button 
+              variant="outline" 
+              size="sm"
               onClick={() => window.open(`https://${selectedDomain?.domain}`, '_blank')}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
@@ -515,117 +488,6 @@ export default {
             </Button>
             <Button onClick={() => setShowSetupDialog(false)}>
               Done
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* One-Time Hosting Setup Dialog */}
-      <Dialog open={showHostingSetupDialog} onOpenChange={setShowHostingSetupDialog}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>One-Time Hosting Setup for {HOSTING_DOMAIN}</DialogTitle>
-            <DialogDescription>
-              Set this up once to enable custom domain hosting for all your funnels
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
-              <p className="text-sm text-amber-600">
-                <strong>You only need to do this once.</strong> After setup, all custom domains that CNAME to {HOSTING_DOMAIN} will automatically serve the linked funnel.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">1</div>
-                <h4 className="font-medium">Go to Cloudflare Dashboard</h4>
-              </div>
-              <p className="text-sm text-muted-foreground ml-8">
-                Open <a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">dash.cloudflare.com</a> → Select {HOSTING_DOMAIN} → Workers & Pages
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">2</div>
-                <h4 className="font-medium">Create a new Worker</h4>
-              </div>
-              <p className="text-sm text-muted-foreground ml-8">
-                Click "Create" → "Create Worker" → Name it "funnel-proxy" → Click "Deploy"
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">3</div>
-                <h4 className="font-medium">Replace the worker code</h4>
-              </div>
-              <div className="ml-8">
-                <p className="text-sm text-muted-foreground mb-2">
-                  Click "Edit Code", delete everything, and paste this:
-                </p>
-                <div className="relative">
-                  <pre className="bg-muted rounded-md p-3 text-xs overflow-x-auto font-mono">
-                    {workerScript}
-                  </pre>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="absolute top-2 right-2"
-                    onClick={() => copyToClipboard(workerScript)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Click "Save and Deploy"
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">4</div>
-                <h4 className="font-medium">Add a Route (catch-all)</h4>
-              </div>
-              <div className="ml-8 space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Go to "Triggers" tab → "Add route" with:
-                </p>
-                <div className="bg-muted rounded-md p-3 space-y-1 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Route:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono">*/*</span>
-                      <button onClick={() => copyToClipboard('*/*')} className="hover:text-foreground text-muted-foreground">
-                        <Copy className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Zone:</span>
-                    <span className="font-mono">{HOSTING_DOMAIN}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  This catches all requests to any domain pointing to {HOSTING_DOMAIN}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
-              <p className="text-sm font-medium text-emerald-600 mb-2">That's it!</p>
-              <p className="text-sm text-muted-foreground">
-                Now any domain that CNAMEs to <strong>{HOSTING_DOMAIN}</strong> will automatically serve the linked funnel. Just add domains above and follow the DNS setup.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-4 border-t">
-            <Button onClick={() => setShowHostingSetupDialog(false)}>
-              Got it
             </Button>
           </div>
         </DialogContent>
