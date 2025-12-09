@@ -6,7 +6,7 @@ import { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Settings, Eye, Save, Globe, Play, Maximize2, Minimize2, ChevronLeft, ChevronRight, Undo2, Redo2 } from 'lucide-react';
+import { ArrowLeft, Settings, Eye, Save, Globe, Play, Maximize2, Minimize2, ChevronLeft, ChevronRight, Undo2, Redo2, Link2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { PagesList } from '@/components/funnel-builder/PagesList';
 import { EditorSidebar } from '@/components/funnel-builder/EditorSidebar';
@@ -25,6 +25,13 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useFunnelHistory } from '@/hooks/useFunnelHistory';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 type DeviceType = 'mobile' | 'tablet' | 'desktop';
 
@@ -134,6 +141,7 @@ export interface Funnel {
   settings: FunnelSettings;
   zapier_webhook_url?: string | null;
   webhook_urls?: string[] | null;
+  domain_id?: string | null;
 }
 
 // Using StepDesign from the exported interface above
@@ -198,6 +206,7 @@ export default function FunnelEditor() {
   const [pageSettings, setPageSettingsState] = useState<Record<string, any>>({});
   const [dynamicElements, setDynamicElements] = useState<Record<string, Record<string, any>>>({});
   const [isInitialized, setIsInitialized] = useState(false); // Track if initial load happened
+  const [showPublishPrompt, setShowPublishPrompt] = useState(false); // Domain prompt on publish
   
   // Auto-save timer ref
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -268,6 +277,21 @@ export default function FunnelEditor() {
     refetchOnMount: false,
     refetchOnReconnect: false,
     staleTime: Infinity,
+  });
+
+  // Fetch domains for publish prompt
+  const { data: domains = [] } = useQuery({
+    queryKey: ['funnel-domains', teamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('funnel_domains')
+        .select('*')
+        .eq('team_id', teamId)
+        .eq('status', 'verified');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!teamId,
   });
 
   const { data: initialSteps, isLoading: stepsLoading } = useQuery({
@@ -789,7 +813,14 @@ export default function FunnelEditor() {
 
             <Button
               size="sm"
-              onClick={() => publishMutation.mutate()}
+              onClick={() => {
+                // Check if funnel has no domain and there are verified domains available
+                if (!funnel.domain_id && domains.length > 0) {
+                  setShowPublishPrompt(true);
+                } else {
+                  publishMutation.mutate();
+                }
+              }}
               disabled={publishMutation.isPending}
             >
               <Globe className="h-4 w-4 sm:mr-2" />
@@ -1020,6 +1051,60 @@ export default function FunnelEditor() {
           }}
         />
       )}
+
+      {/* Publish Domain Prompt Dialog */}
+      <Dialog open={showPublishPrompt} onOpenChange={setShowPublishPrompt}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-emerald-500/10">
+                <Link2 className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div>
+                <DialogTitle>Connect a Custom Domain?</DialogTitle>
+                <DialogDescription>
+                  You have verified domains available. Would you like to connect one to this funnel?
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Publishing on a custom domain gives your funnel a professional, branded URL.
+            </p>
+            <div className="flex flex-col gap-2">
+              {domains.slice(0, 3).map((domain: any) => (
+                <div key={domain.id} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                  <Globe className="h-4 w-4 text-emerald-500" />
+                  <span className="text-sm font-medium">{domain.domain}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-between gap-2 pt-4 border-t">
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                setShowPublishPrompt(false);
+                publishMutation.mutate();
+              }}
+            >
+              Skip for now
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowPublishPrompt(false);
+                navigate(`/team/${teamId}/funnels?tab=domains`);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              Connect Domain
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -15,21 +17,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 
 interface Integration {
   id: string;
-  name: string;
-  type: 'ghl' | 'zapier' | 'webhook';
-  icon: React.ReactNode;
-  description: string;
-  connected: boolean;
-  url?: string;
+  team_id: string;
+  integration_type: string;
+  config: Record<string, any>;
+  is_connected: boolean;
+  connected_at: string | null;
 }
 
 interface IntegrationsSectionProps {
@@ -37,26 +32,7 @@ interface IntegrationsSectionProps {
 }
 
 export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
-  const [integrations, setIntegrations] = useState<Integration[]>([
-    {
-      id: 'ghl',
-      name: 'GoHighLevel',
-      type: 'ghl',
-      icon: <div className="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs">GHL</div>,
-      description: 'Send leads directly to your GHL CRM and trigger automations',
-      connected: false,
-    },
-    {
-      id: 'zapier',
-      name: 'Zapier',
-      type: 'zapier',
-      icon: <div className="w-8 h-8 rounded bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center"><Zap className="h-4 w-4 text-white" /></div>,
-      description: 'Connect to 5,000+ apps with Zapier webhooks',
-      connected: false,
-    },
-  ]);
-
-  const [customWebhooks, setCustomWebhooks] = useState<{id: string; name: string; url: string; active: boolean}[]>([]);
+  const queryClient = useQueryClient();
   const [showGHLDialog, setShowGHLDialog] = useState(false);
   const [showZapierDialog, setShowZapierDialog] = useState(false);
   const [showWebhookDialog, setShowWebhookDialog] = useState(false);
@@ -67,17 +43,129 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
   const [isTesting, setIsTesting] = useState(false);
 
+  // Fetch integrations
+  const { data: integrations = [], isLoading } = useQuery({
+    queryKey: ['team-integrations', teamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_integrations')
+        .select('*')
+        .eq('team_id', teamId);
+      
+      if (error) throw error;
+      return data as Integration[];
+    },
+  });
+
+  // Get specific integration
+  const getIntegration = (type: string) => integrations.find(i => i.integration_type === type);
+  const ghlIntegration = getIntegration('ghl');
+  const zapierIntegration = getIntegration('zapier');
+  const customWebhooks = integrations.filter(i => i.integration_type === 'custom_webhook');
+
+  // Connect integration mutation
+  const connectMutation = useMutation({
+    mutationFn: async ({ type, config }: { type: string; config: Record<string, any> }) => {
+      const existing = getIntegration(type);
+      
+      if (existing) {
+        const { error } = await supabase
+          .from('team_integrations')
+          .update({
+            config,
+            is_connected: true,
+            connected_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+        
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('team_integrations')
+          .insert({
+            team_id: teamId,
+            integration_type: type,
+            config,
+            is_connected: true,
+            connected_at: new Date().toISOString(),
+          });
+        
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-integrations', teamId] });
+    },
+  });
+
+  // Disconnect integration mutation
+  const disconnectMutation = useMutation({
+    mutationFn: async (integrationId: string) => {
+      const { error } = await supabase
+        .from('team_integrations')
+        .update({ is_connected: false })
+        .eq('id', integrationId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-integrations', teamId] });
+      toast({ title: 'Integration disconnected' });
+    },
+  });
+
+  // Delete webhook mutation
+  const deleteWebhookMutation = useMutation({
+    mutationFn: async (integrationId: string) => {
+      const { error } = await supabase
+        .from('team_integrations')
+        .delete()
+        .eq('id', integrationId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-integrations', teamId] });
+      toast({ title: 'Webhook removed' });
+    },
+  });
+
+  // Toggle webhook active state
+  const toggleWebhookMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      const webhook = integrations.find(i => i.id === id);
+      if (!webhook) return;
+      
+      const { error } = await supabase
+        .from('team_integrations')
+        .update({ 
+          config: { ...webhook.config, active } 
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-integrations', teamId] });
+    },
+  });
+
   const connectGHL = () => {
     if (!ghlWebhookUrl.trim()) {
       toast({ title: 'Please enter your GHL webhook URL', variant: 'destructive' });
       return;
     }
     
-    setIntegrations(prev => prev.map(i => 
-      i.id === 'ghl' ? { ...i, connected: true, url: ghlWebhookUrl } : i
-    ));
-    setShowGHLDialog(false);
-    toast({ title: 'GoHighLevel connected', description: 'Leads will now sync to your GHL account' });
+    connectMutation.mutate(
+      { type: 'ghl', config: { webhook_url: ghlWebhookUrl } },
+      {
+        onSuccess: () => {
+          setShowGHLDialog(false);
+          setGhlWebhookUrl('');
+          toast({ title: 'GoHighLevel connected', description: 'Leads will now sync to your GHL account' });
+        },
+      }
+    );
   };
 
   const connectZapier = () => {
@@ -86,11 +174,16 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
       return;
     }
     
-    setIntegrations(prev => prev.map(i => 
-      i.id === 'zapier' ? { ...i, connected: true, url: zapierWebhookUrl } : i
-    ));
-    setShowZapierDialog(false);
-    toast({ title: 'Zapier connected', description: 'Your Zap will trigger on new leads' });
+    connectMutation.mutate(
+      { type: 'zapier', config: { webhook_url: zapierWebhookUrl } },
+      {
+        onSuccess: () => {
+          setShowZapierDialog(false);
+          setZapierWebhookUrl('');
+          toast({ title: 'Zapier connected', description: 'Your Zap will trigger on new leads' });
+        },
+      }
+    );
   };
 
   const addCustomWebhook = () => {
@@ -99,22 +192,29 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
       return;
     }
     
-    setCustomWebhooks(prev => [...prev, {
-      id: crypto.randomUUID(),
-      name: newWebhookName || `Webhook ${prev.length + 1}`,
-      url: newWebhookUrl,
-      active: true
-    }]);
-    setShowWebhookDialog(false);
-    setNewWebhookName('');
-    setNewWebhookUrl('');
-    toast({ title: 'Webhook added' });
+    connectMutation.mutate(
+      { 
+        type: 'custom_webhook', 
+        config: { 
+          name: newWebhookName || `Webhook ${customWebhooks.length + 1}`,
+          webhook_url: newWebhookUrl,
+          active: true,
+        } 
+      },
+      {
+        onSuccess: () => {
+          setShowWebhookDialog(false);
+          setNewWebhookName('');
+          setNewWebhookUrl('');
+          toast({ title: 'Webhook added' });
+        },
+      }
+    );
   };
 
   const testWebhook = async (url: string) => {
     setIsTesting(true);
     try {
-      // Send a test payload
       await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -138,23 +238,28 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
     }
   };
 
-  const disconnectIntegration = (id: string) => {
-    setIntegrations(prev => prev.map(i => 
-      i.id === id ? { ...i, connected: false, url: undefined } : i
-    ));
-    toast({ title: 'Integration disconnected' });
-  };
-
-  const removeWebhook = (id: string) => {
-    setCustomWebhooks(prev => prev.filter(w => w.id !== id));
-    toast({ title: 'Webhook removed' });
-  };
-
-  const toggleWebhook = (id: string) => {
-    setCustomWebhooks(prev => prev.map(w => 
-      w.id === id ? { ...w, active: !w.active } : w
-    ));
-  };
+  const integrationsList = [
+    {
+      id: 'ghl',
+      name: 'GoHighLevel',
+      type: 'ghl',
+      icon: <div className="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs">GHL</div>,
+      description: 'Send leads directly to your GHL CRM and trigger automations',
+      connected: ghlIntegration?.is_connected || false,
+      url: ghlIntegration?.config?.webhook_url,
+      integration: ghlIntegration,
+    },
+    {
+      id: 'zapier',
+      name: 'Zapier',
+      type: 'zapier',
+      icon: <div className="w-8 h-8 rounded bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center"><Zap className="h-4 w-4 text-white" /></div>,
+      description: 'Connect to 5,000+ apps with Zapier webhooks',
+      connected: zapierIntegration?.is_connected || false,
+      url: zapierIntegration?.config?.webhook_url,
+      integration: zapierIntegration,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -172,7 +277,7 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
       <div className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">CRM & Automation</h2>
         <div className="grid gap-3">
-          {integrations.map((integration) => (
+          {integrationsList.map((integration) => (
             <div 
               key={integration.id}
               className="bg-card border rounded-xl p-4 flex items-center justify-between hover:shadow-sm transition-all"
@@ -207,7 +312,7 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={() => disconnectIntegration(integration.id)}
+                    onClick={() => disconnectMutation.mutate(integration.integration!.id)}
                     className="text-destructive hover:text-destructive"
                   >
                     Disconnect
@@ -216,8 +321,14 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
               ) : (
                 <Button 
                   onClick={() => {
-                    if (integration.type === 'ghl') setShowGHLDialog(true);
-                    if (integration.type === 'zapier') setShowZapierDialog(true);
+                    if (integration.type === 'ghl') {
+                      setGhlWebhookUrl(ghlIntegration?.config?.webhook_url || '');
+                      setShowGHLDialog(true);
+                    }
+                    if (integration.type === 'zapier') {
+                      setZapierWebhookUrl(zapierIntegration?.config?.webhook_url || '');
+                      setShowZapierDialog(true);
+                    }
                   }}
                   className="bg-emerald-600 hover:bg-emerald-700"
                 >
@@ -250,25 +361,25 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{webhook.name}</span>
-                      {!webhook.active && (
+                      <span className="font-medium">{webhook.config?.name || 'Webhook'}</span>
+                      {!webhook.config?.active && (
                         <Badge variant="outline" className="text-xs">Paused</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground font-mono truncate max-w-[300px]">
-                      {webhook.url}
+                      {webhook.config?.webhook_url}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Switch 
-                    checked={webhook.active} 
-                    onCheckedChange={() => toggleWebhook(webhook.id)} 
+                    checked={webhook.config?.active !== false} 
+                    onCheckedChange={(checked) => toggleWebhookMutation.mutate({ id: webhook.id, active: checked })} 
                   />
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={() => testWebhook(webhook.url)}
+                    onClick={() => testWebhook(webhook.config?.webhook_url)}
                     disabled={isTesting}
                   >
                     <Send className="h-4 w-4" />
@@ -276,7 +387,7 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={() => removeWebhook(webhook.id)}
+                    onClick={() => deleteWebhookMutation.mutate(webhook.id)}
                     className="text-destructive hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -354,8 +465,12 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
             <Button variant="outline" onClick={() => setShowGHLDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={connectGHL} className="bg-blue-600 hover:bg-blue-700">
-              Connect GHL
+            <Button 
+              onClick={connectGHL} 
+              disabled={connectMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {connectMutation.isPending ? 'Connecting...' : 'Connect GHL'}
             </Button>
           </div>
         </DialogContent>
@@ -397,8 +512,12 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
             <Button variant="outline" onClick={() => setShowZapierDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={connectZapier} className="bg-orange-600 hover:bg-orange-700">
-              Connect Zapier
+            <Button 
+              onClick={connectZapier} 
+              disabled={connectMutation.isPending}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {connectMutation.isPending ? 'Connecting...' : 'Connect Zapier'}
             </Button>
           </div>
         </DialogContent>
@@ -446,8 +565,12 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
             <Button variant="outline" onClick={() => setShowWebhookDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={addCustomWebhook} className="bg-purple-600 hover:bg-purple-700">
-              Add Webhook
+            <Button 
+              onClick={addCustomWebhook}
+              disabled={connectMutation.isPending}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {connectMutation.isPending ? 'Adding...' : 'Add Webhook'}
             </Button>
           </div>
         </DialogContent>

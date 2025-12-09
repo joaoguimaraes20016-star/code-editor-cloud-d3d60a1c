@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Globe, Plus, Copy, CheckCircle, AlertCircle, 
-  ExternalLink, Trash2, RefreshCw, X 
+  ExternalLink, Trash2, RefreshCw, Link2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -15,14 +17,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Domain {
   id: string;
   domain: string;
-  status: 'pending' | 'verified' | 'failed';
-  createdAt: string;
-  funnelId?: string;
-  funnelName?: string;
+  status: string;
+  verification_token: string;
+  verified_at: string | null;
+  ssl_provisioned: boolean;
+  created_at: string;
+}
+
+interface Funnel {
+  id: string;
+  name: string;
+  domain_id: string | null;
 }
 
 interface DomainsSectionProps {
@@ -30,13 +46,139 @@ interface DomainsSectionProps {
 }
 
 export function DomainsSection({ teamId }: DomainsSectionProps) {
-  const [domains, setDomains] = useState<Domain[]>([]);
+  const queryClient = useQueryClient();
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showDNSDialog, setShowDNSDialog] = useState(false);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [newDomain, setNewDomain] = useState('');
   const [addWww, setAddWww] = useState(true);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [currentDomain, setCurrentDomain] = useState<string>('');
+  const [currentDomain, setCurrentDomain] = useState<Domain | null>(null);
+  const [selectedDomainForLink, setSelectedDomainForLink] = useState<Domain | null>(null);
+  const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
+
+  // Fetch domains
+  const { data: domains = [], isLoading: domainsLoading } = useQuery({
+    queryKey: ['funnel-domains', teamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('funnel_domains')
+        .select('*')
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as Domain[];
+    },
+  });
+
+  // Fetch funnels for linking
+  const { data: funnels = [] } = useQuery({
+    queryKey: ['funnels-for-domains', teamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('funnels')
+        .select('id, name, domain_id')
+        .eq('team_id', teamId);
+      
+      if (error) throw error;
+      return data as Funnel[];
+    },
+  });
+
+  // Add domain mutation
+  const addDomainMutation = useMutation({
+    mutationFn: async (domain: string) => {
+      const { data, error } = await supabase
+        .from('funnel_domains')
+        .insert({
+          team_id: teamId,
+          domain: domain.toLowerCase().trim(),
+          status: 'pending',
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['funnel-domains', teamId] });
+      setCurrentDomain(data);
+      setShowConnectDialog(false);
+      setShowDNSDialog(true);
+      setNewDomain('');
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to add domain', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Delete domain mutation
+  const deleteDomainMutation = useMutation({
+    mutationFn: async (domainId: string) => {
+      const { error } = await supabase
+        .from('funnel_domains')
+        .delete()
+        .eq('id', domainId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['funnel-domains', teamId] });
+      toast({ title: 'Domain removed' });
+    },
+  });
+
+  // Link funnel to domain mutation
+  const linkFunnelMutation = useMutation({
+    mutationFn: async ({ funnelId, domainId }: { funnelId: string; domainId: string }) => {
+      const { error } = await supabase
+        .from('funnels')
+        .update({ domain_id: domainId })
+        .eq('id', funnelId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['funnels-for-domains', teamId] });
+      setShowLinkDialog(false);
+      setSelectedDomainForLink(null);
+      setSelectedFunnelId('');
+      toast({ title: 'Funnel linked to domain' });
+    },
+  });
+
+  // Verify domain mutation
+  const verifyDomainMutation = useMutation({
+    mutationFn: async (domainId: string) => {
+      // In production, this would check DNS records
+      // For now, simulate verification after a delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const { error } = await supabase
+        .from('funnel_domains')
+        .update({ 
+          status: 'verified',
+          verified_at: new Date().toISOString(),
+          ssl_provisioned: true,
+        })
+        .eq('id', domainId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['funnel-domains', teamId] });
+      setShowDNSDialog(false);
+      setCurrentDomain(null);
+      setIsVerifying(false);
+      toast({ title: 'Domain verified', description: 'Your domain is now active' });
+    },
+    onError: () => {
+      setIsVerifying(false);
+      toast({ title: 'Verification pending', description: 'DNS changes may take up to 48 hours to propagate' });
+    },
+  });
 
   const handleContinue = () => {
     if (!newDomain.trim()) {
@@ -46,36 +188,19 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     
     // Basic validation
     const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*\.[a-zA-Z]{2,}$/;
-    if (!domainRegex.test(newDomain.replace('www.', ''))) {
+    const cleanDomain = newDomain.replace('www.', '').toLowerCase().trim();
+    if (!domainRegex.test(cleanDomain)) {
       toast({ title: 'Please enter a valid domain', variant: 'destructive' });
       return;
     }
 
-    setCurrentDomain(newDomain);
-    setShowConnectDialog(false);
-    setShowDNSDialog(true);
+    addDomainMutation.mutate(cleanDomain);
   };
 
   const handleVerifyRecords = () => {
+    if (!currentDomain) return;
     setIsVerifying(true);
-    // Simulate verification - in production this would check DNS
-    setTimeout(() => {
-      const newDomainEntry: Domain = {
-        id: crypto.randomUUID(),
-        domain: currentDomain,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      };
-      setDomains(prev => [...prev, newDomainEntry]);
-      setShowDNSDialog(false);
-      setNewDomain('');
-      setCurrentDomain('');
-      setIsVerifying(false);
-      toast({ 
-        title: 'Domain added', 
-        description: 'DNS verification is in progress. This may take up to 48 hours.' 
-      });
-    }, 2000);
+    verifyDomainMutation.mutate(currentDomain.id);
   };
 
   const copyToClipboard = (text: string) => {
@@ -83,9 +208,8 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     toast({ title: 'Copied to clipboard' });
   };
 
-  const removeDomain = (id: string) => {
-    setDomains(prev => prev.filter(d => d.id !== id));
-    toast({ title: 'Domain removed' });
+  const getFunnelForDomain = (domainId: string) => {
+    return funnels.find(f => f.domain_id === domainId);
   };
 
   return (
@@ -105,65 +229,103 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
       </div>
 
       {/* Domain List */}
-      {domains.length > 0 ? (
+      {domainsLoading ? (
+        <div className="text-center py-8 text-muted-foreground">Loading domains...</div>
+      ) : domains.length > 0 ? (
         <div className="bg-card border rounded-xl overflow-hidden">
           <div className="divide-y">
-            {domains.map((domain) => (
-              <div key={domain.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "p-2 rounded-lg",
-                    domain.status === 'verified' ? "bg-emerald-500/10" : 
-                    domain.status === 'failed' ? "bg-red-500/10" : "bg-amber-500/10"
-                  )}>
-                    <Globe className={cn(
-                      "h-5 w-5",
-                      domain.status === 'verified' ? "text-emerald-500" : 
-                      domain.status === 'failed' ? "text-red-500" : "text-amber-500"
-                    )} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{domain.domain}</span>
-                      <Badge 
-                        variant="outline"
-                        className={cn(
-                          "text-xs",
-                          domain.status === 'verified' 
-                            ? "border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10"
-                            : domain.status === 'failed'
-                            ? "border-red-500/50 text-red-600 bg-red-50 dark:bg-red-500/10"
-                            : "border-amber-500/50 text-amber-600 bg-amber-50 dark:bg-amber-500/10"
-                        )}
-                      >
-                        {domain.status === 'verified' ? (
-                          <><CheckCircle className="h-3 w-3 mr-1" /> Verified</>
-                        ) : domain.status === 'failed' ? (
-                          <><AlertCircle className="h-3 w-3 mr-1" /> Failed</>
-                        ) : (
-                          <><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Pending</>
-                        )}
-                      </Badge>
+            {domains.map((domain) => {
+              const linkedFunnel = getFunnelForDomain(domain.id);
+              return (
+                <div key={domain.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "p-2 rounded-lg",
+                      domain.status === 'verified' ? "bg-emerald-500/10" : 
+                      domain.status === 'failed' ? "bg-red-500/10" : "bg-amber-500/10"
+                    )}>
+                      <Globe className={cn(
+                        "h-5 w-5",
+                        domain.status === 'verified' ? "text-emerald-500" : 
+                        domain.status === 'failed' ? "text-red-500" : "text-amber-500"
+                      )} />
                     </div>
-                    {domain.funnelName && (
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        Connected to {domain.funnelName}
-                      </p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{domain.domain}</span>
+                        <Badge 
+                          variant="outline"
+                          className={cn(
+                            "text-xs",
+                            domain.status === 'verified' 
+                              ? "border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10"
+                              : domain.status === 'failed'
+                              ? "border-red-500/50 text-red-600 bg-red-50 dark:bg-red-500/10"
+                              : "border-amber-500/50 text-amber-600 bg-amber-50 dark:bg-amber-500/10"
+                          )}
+                        >
+                          {domain.status === 'verified' ? (
+                            <><CheckCircle className="h-3 w-3 mr-1" /> Verified</>
+                          ) : domain.status === 'failed' ? (
+                            <><AlertCircle className="h-3 w-3 mr-1" /> Failed</>
+                          ) : (
+                            <><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Pending</>
+                          )}
+                        </Badge>
+                      </div>
+                      {linkedFunnel ? (
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          Connected to <span className="font-medium">{linkedFunnel.name}</span>
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          Not connected to any funnel
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setSelectedDomainForLink(domain);
+                        setSelectedFunnelId(linkedFunnel?.id || '');
+                        setShowLinkDialog(true);
+                      }}
+                    >
+                      <Link2 className="h-4 w-4 mr-1.5" />
+                      {linkedFunnel ? 'Change' : 'Link Funnel'}
+                    </Button>
+                    {domain.status === 'verified' && (
+                      <Button variant="ghost" size="sm" onClick={() => window.open(`https://${domain.domain}`, '_blank')}>
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
                     )}
+                    {domain.status === 'pending' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setCurrentDomain(domain);
+                          setShowDNSDialog(true);
+                        }}
+                      >
+                        View DNS
+                      </Button>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => deleteDomainMutation.mutate(domain.id)} 
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {domain.status === 'verified' && (
-                    <Button variant="ghost" size="sm" onClick={() => window.open(`https://${domain.domain}`, '_blank')}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <Button variant="ghost" size="sm" onClick={() => removeDomain(domain.id)} className="text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : (
@@ -222,19 +384,13 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t">
-            <button 
-              className="text-sm text-muted-foreground hover:text-foreground underline"
-              onClick={() => {
-                setShowConnectDialog(false);
-                setShowDNSDialog(true);
-                setCurrentDomain(newDomain);
-              }}
+          <div className="flex items-center justify-end pt-4 border-t">
+            <Button 
+              onClick={handleContinue} 
+              disabled={addDomainMutation.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700"
             >
-              Add record manually
-            </button>
-            <Button onClick={handleContinue} className="bg-emerald-600 hover:bg-emerald-700">
-              Continue
+              {addDomainMutation.isPending ? 'Adding...' : 'Continue'}
             </Button>
           </div>
         </DialogContent>
@@ -290,8 +446,8 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                 </div>
                 <div>
                   <div className="px-3 py-2 bg-muted rounded-md flex items-center justify-between">
-                    <span className="font-mono text-xs truncate">{currentDomain || 'yourdomain.com'}</span>
-                    <button onClick={() => copyToClipboard(currentDomain)} className="hover:text-foreground text-muted-foreground">
+                    <span className="font-mono text-xs truncate">{currentDomain?.domain || 'yourdomain.com'}</span>
+                    <button onClick={() => copyToClipboard(currentDomain?.domain || '')} className="hover:text-foreground text-muted-foreground">
                       <Copy className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -314,8 +470,8 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
               </div>
               <div>
                 <div className="px-3 py-2 bg-muted rounded-md flex items-center justify-between">
-                  <span className="font-mono text-xs truncate">lovable_verify={teamId?.slice(0, 8)}</span>
-                  <button onClick={() => copyToClipboard(`lovable_verify=${teamId?.slice(0, 8)}`)} className="hover:text-foreground text-muted-foreground">
+                  <span className="font-mono text-xs truncate">lovable_verify={currentDomain?.verification_token?.slice(0, 8) || teamId?.slice(0, 8)}</span>
+                  <button onClick={() => copyToClipboard(`lovable_verify=${currentDomain?.verification_token?.slice(0, 8) || teamId?.slice(0, 8)}`)} className="hover:text-foreground text-muted-foreground">
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -330,7 +486,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
             </button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowDNSDialog(false)}>
-                Back
+                Close
               </Button>
               <Button 
                 onClick={handleVerifyRecords} 
@@ -347,6 +503,63 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                 )}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Link Funnel Dialog */}
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-emerald-500/10">
+                <Link2 className="h-5 w-5 text-emerald-500" />
+              </div>
+              <DialogTitle>Link Funnel to Domain</DialogTitle>
+            </div>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Select a funnel to publish on <span className="font-medium text-foreground">{selectedDomainForLink?.domain}</span>
+              </p>
+              <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a funnel" />
+                </SelectTrigger>
+                <SelectContent>
+                  {funnels.map((funnel) => (
+                    <SelectItem key={funnel.id} value={funnel.id}>
+                      {funnel.name}
+                      {funnel.domain_id && funnel.domain_id !== selectedDomainForLink?.id && (
+                        <span className="text-muted-foreground ml-2">(linked to another domain)</span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowLinkDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (selectedDomainForLink && selectedFunnelId) {
+                  linkFunnelMutation.mutate({ 
+                    funnelId: selectedFunnelId, 
+                    domainId: selectedDomainForLink.id 
+                  });
+                }
+              }}
+              disabled={!selectedFunnelId || linkFunnelMutation.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {linkFunnelMutation.isPending ? 'Linking...' : 'Link Funnel'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
