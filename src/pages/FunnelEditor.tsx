@@ -109,6 +109,7 @@ export interface FunnelStep {
     // Embed specific
     embed_url?: string;
     embed_height?: number;
+    embed_scale?: number;
     // Persisted design and layout
     design?: StepDesign;
     element_order?: string[];

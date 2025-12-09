@@ -447,13 +447,19 @@ export function StepContentEditor({
             </p>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs">Height (px)</Label>
-            <Input
-              type="number"
-              value={content.embed_height || 600}
-              onChange={(e) => updateField('embed_height', parseInt(e.target.value) || 600)}
-              placeholder="600"
+            <Label className="text-xs">Scale ({Math.round((content.embed_scale || 0.75) * 100)}%)</Label>
+            <input
+              type="range"
+              min="0.5"
+              max="1"
+              step="0.05"
+              value={content.embed_scale || 0.75}
+              onChange={(e) => updateField('embed_scale', parseFloat(e.target.value))}
+              className="w-full"
             />
+            <p className="text-xs text-muted-foreground">
+              Adjust to fit Calendly without scrolling
+            </p>
           </div>
           <div className="space-y-2">
             <Label className="text-xs">Continue Button Text (optional)</Label>
@@ -538,14 +544,17 @@ export function StepContentEditor({
                         className="text-sm"
                       />
                       <div className="flex items-center gap-2">
-                        <Label className="text-xs whitespace-nowrap">Height:</Label>
-                        <Input
-                          type="number"
-                          value={elementData.embed_height || 400}
-                          onChange={(e) => onUpdateDynamicContent?.(elementId, { ...elementData, embed_height: parseInt(e.target.value) || 400 })}
-                          className="text-sm w-20"
+                        <Label className="text-xs whitespace-nowrap">Scale:</Label>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="1"
+                          step="0.05"
+                          value={elementData.embed_scale || 0.75}
+                          onChange={(e) => onUpdateDynamicContent?.(elementId, { ...elementData, embed_scale: parseFloat(e.target.value) })}
+                          className="flex-1"
                         />
-                        <span className="text-xs text-muted-foreground">px</span>
+                        <span className="text-xs text-muted-foreground w-10">{Math.round((elementData.embed_scale || 0.75) * 100)}%</span>
                       </div>
                     </div>
                   )}

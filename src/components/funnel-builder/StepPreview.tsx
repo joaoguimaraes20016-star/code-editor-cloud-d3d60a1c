@@ -506,20 +506,27 @@ export function StepPreview({
       );
     }
 
-    // Dynamic embeds (iframes)
+    // Dynamic embeds (iframes) - scaled down for Calendly etc.
     if (elementId.startsWith('embed_')) {
       const embedUrl = dynamicContent[elementId]?.embed_url || '';
-      const embedHeight = dynamicContent[elementId]?.embed_height || 400;
+      const embedScale = dynamicContent[elementId]?.embed_scale || 0.75;
+      const iframeHeight = 700;
+      const scaledHeight = iframeHeight * embedScale;
       
       return (
         <div 
           className="w-full overflow-hidden bg-black/20"
-          style={{ borderRadius: `${borderRadius}px`, height: `${embedHeight}px` }}
+          style={{ borderRadius: `${borderRadius}px`, height: `${scaledHeight}px` }}
         >
           {embedUrl ? (
             <iframe
               src={embedUrl}
-              className="w-full h-full"
+              className="w-full origin-top-left"
+              style={{
+                height: `${iframeHeight}px`,
+                width: `${100 / embedScale}%`,
+                transform: `scale(${embedScale})`,
+              }}
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
