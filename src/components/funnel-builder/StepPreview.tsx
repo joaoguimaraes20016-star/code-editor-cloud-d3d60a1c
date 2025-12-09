@@ -95,6 +95,7 @@ const DEFAULT_ELEMENT_ORDERS: Record<string, string[]> = {
   phone_capture: ['image_top', 'headline', 'subtext', 'input', 'hint'],
   video: ['headline', 'video', 'button'],
   thank_you: ['image_top', 'headline', 'subtext'],
+  opt_in: ['image_top', 'headline', 'opt_in_form'],
 };
 
 const ADD_ELEMENT_OPTIONS = [
@@ -161,6 +162,7 @@ function ElementWrapper({
     if (elementId === 'input') return 'Input Field';
     if (elementId === 'options') return 'Options';
     if (elementId === 'video') return 'Video';
+    if (elementId === 'opt_in_form') return 'Contact Form';
     if (elementId.startsWith('text_')) return 'Text Block';
     if (elementId.startsWith('headline_')) return 'Headline';
     if (elementId.startsWith('video_')) return 'Video';
@@ -729,6 +731,107 @@ export function StepPreview({
           <p className="text-xs text-center" style={{ color: textColor, opacity: 0.4 }}>
             Press Enter ↵
           </p>
+        );
+        
+      case 'opt_in_form':
+        // Get input styling from design
+        const optInInputBg = design?.inputBg || '#ffffff';
+        const optInInputTextColor = design?.inputTextColor || '#000000';
+        const optInInputBorder = design?.inputBorder || '#e5e7eb';
+        const optInInputBorderWidth = design?.inputBorderWidth ?? 1;
+        const optInInputRadius = design?.inputRadius || 12;
+        const optInInputPlaceholderColor = design?.inputPlaceholderColor || '#9ca3af';
+        const optInShowIcon = design?.inputShowIcon !== false;
+        const optInSubmitText = content.submit_button_text || 'Submit and proceed';
+        
+        return (
+          <div className="w-full max-w-sm space-y-3">
+            {/* Name Field */}
+            <div 
+              className="relative flex items-center gap-3 px-4 py-3"
+              style={{ 
+                backgroundColor: optInInputBg,
+                borderRadius: `${optInInputRadius}px`,
+                border: `${optInInputBorderWidth}px solid ${optInInputBorder}`
+              }}
+            >
+              {optInShowIcon && (
+                <span className="text-base flex-shrink-0">{content.name_icon || '👋'}</span>
+              )}
+              <span style={{ color: optInInputPlaceholderColor }} className="flex-1 text-sm">
+                {content.name_placeholder || 'Your name'}
+              </span>
+            </div>
+
+            {/* Email Field */}
+            <div 
+              className="relative flex items-center gap-3 px-4 py-3"
+              style={{ 
+                backgroundColor: optInInputBg,
+                borderRadius: `${optInInputRadius}px`,
+                border: `${optInInputBorderWidth}px solid ${optInInputBorder}`
+              }}
+            >
+              {optInShowIcon && (
+                <span className="text-base flex-shrink-0">{content.email_icon || '✉️'}</span>
+              )}
+              <span style={{ color: optInInputPlaceholderColor }} className="flex-1 text-sm">
+                {content.email_placeholder || 'Your email address'}
+              </span>
+            </div>
+
+            {/* Phone Field */}
+            <div 
+              className="relative flex items-center gap-3 px-4 py-3"
+              style={{ 
+                backgroundColor: optInInputBg,
+                borderRadius: `${optInInputRadius}px`,
+                border: `${optInInputBorderWidth}px solid ${optInInputBorder}`
+              }}
+            >
+              {optInShowIcon && (
+                <span className="text-base flex-shrink-0">{content.phone_icon || '🇺🇸'}</span>
+              )}
+              <span style={{ color: optInInputPlaceholderColor }} className="text-xs mr-1">+1</span>
+              <span style={{ color: optInInputPlaceholderColor }} className="flex-1 text-sm">
+                {content.phone_placeholder || 'Your phone number'}
+              </span>
+            </div>
+
+            {/* Privacy Checkbox */}
+            <label className="flex items-start gap-2 cursor-pointer px-1">
+              <div 
+                className="w-4 h-4 mt-0.5 rounded border-2 flex-shrink-0"
+                style={{ borderColor: 'rgba(255,255,255,0.3)' }}
+              />
+              <span className="text-xs" style={{ color: textColor, opacity: 0.8 }}>
+                {content.privacy_text || 'I have read and accept the'}{' '}
+                <span className="underline">privacy policy</span>.
+              </span>
+            </label>
+
+            {/* Submit Button */}
+            <button
+              className="w-full px-6 py-3 text-sm font-semibold transition-all"
+              style={{ 
+                background: design?.useButtonGradient && design?.buttonGradientFrom
+                  ? `linear-gradient(${design.buttonGradientDirection || '135deg'}, ${design.buttonGradientFrom}, ${design.buttonGradientTo || design.buttonGradientFrom})`
+                  : buttonColor,
+                color: buttonTextColor,
+                borderRadius: `${borderRadius}px`
+              }}
+            >
+              <InlineTextEditor
+                value={optInSubmitText}
+                onChange={(val) => handleTextChange('submit_button_text', val)}
+                className="text-center"
+                style={{ color: buttonTextColor }}
+                isSelected={selectedElement === 'submit_button'}
+                onSelect={() => onSelectElement('submit_button')}
+                onEditingChange={(editing) => setEditingElement(editing ? 'submit_button' : null)}
+              />
+            </button>
+          </div>
         );
         
       default:
