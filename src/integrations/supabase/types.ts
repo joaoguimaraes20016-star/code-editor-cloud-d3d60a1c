@@ -811,6 +811,50 @@ export type Database = {
           },
         ]
       }
+      funnel_domains: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          ssl_provisioned: boolean | null
+          status: string
+          team_id: string
+          updated_at: string
+          verification_token: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          ssl_provisioned?: boolean | null
+          status?: string
+          team_id: string
+          updated_at?: string
+          verification_token?: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          ssl_provisioned?: boolean | null
+          status?: string
+          team_id?: string
+          updated_at?: string
+          verification_token?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_domains_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funnel_leads: {
         Row: {
           answers: Json
@@ -929,6 +973,7 @@ export type Database = {
           auto_create_contact: boolean | null
           created_at: string
           created_by: string
+          domain_id: string | null
           id: string
           name: string
           settings: Json
@@ -943,6 +988,7 @@ export type Database = {
           auto_create_contact?: boolean | null
           created_at?: string
           created_by: string
+          domain_id?: string | null
           id?: string
           name: string
           settings?: Json
@@ -957,6 +1003,7 @@ export type Database = {
           auto_create_contact?: boolean | null
           created_at?: string
           created_by?: string
+          domain_id?: string | null
           id?: string
           name?: string
           settings?: Json
@@ -968,6 +1015,13 @@ export type Database = {
           zapier_webhook_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "funnels_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_domains"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "funnels_team_id_fkey"
             columns: ["team_id"]
@@ -1524,6 +1578,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "team_follow_up_settings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_integrations: {
+        Row: {
+          config: Json | null
+          connected_at: string | null
+          created_at: string
+          id: string
+          integration_type: string
+          is_connected: boolean | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          integration_type: string
+          is_connected?: boolean | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          integration_type?: string
+          is_connected?: boolean | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_integrations_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
