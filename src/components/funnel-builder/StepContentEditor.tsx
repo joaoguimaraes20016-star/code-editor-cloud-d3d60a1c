@@ -9,6 +9,13 @@ import { FunnelStep } from '@/pages/FunnelEditor';
 import { cn } from '@/lib/utils';
 import { EmojiPicker } from './EmojiPicker';
 
+// Strip HTML tags and decode entities for display in input fields
+const stripHtml = (html: string): string => {
+  if (!html) return '';
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return doc.body.textContent || '';
+};
+
 interface StepContentEditorProps {
   step: FunnelStep;
   onUpdate: (content: FunnelStep['content']) => void;
@@ -105,7 +112,8 @@ export function StepContentEditor({
         <Label className="text-xs">Headline</Label>
         <Input
           ref={headlineRef}
-          value={content.headline || ''}
+          // Display stripped text but preserve HTML on change
+          value={stripHtml(content.headline || '')}
           onChange={(e) => updateField('headline', e.target.value)}
           placeholder="Enter headline..."
         />

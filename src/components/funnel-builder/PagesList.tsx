@@ -7,6 +7,13 @@ import { cn } from '@/lib/utils';
 import { FunnelStep } from '@/pages/FunnelEditor';
 import { PageContextMenu } from './PageContextMenu';
 
+// Strip HTML tags and decode entities for display
+const stripHtml = (html: string): string => {
+  if (!html) return '';
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return doc.body.textContent || '';
+};
+
 interface PagesListProps {
   steps: FunnelStep[];
   selectedStepId: string | null;
@@ -109,7 +116,7 @@ function PageItem({
         "flex-1 truncate text-sm",
         isSelected ? "text-primary font-medium" : ""
       )}>
-        {step.content.headline || 'Untitled'}
+        {stripHtml(step.content.headline) || 'Untitled'}
       </span>
 
       <PageContextMenu
