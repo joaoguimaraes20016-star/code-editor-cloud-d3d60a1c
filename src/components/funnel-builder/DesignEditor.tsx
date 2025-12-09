@@ -47,6 +47,15 @@ interface StepDesign {
   optionCardSelectedBorder?: string;
   optionCardHoverEffect?: 'none' | 'scale' | 'glow' | 'lift';
   optionCardRadius?: number;
+  // Input/Textarea styling (text_question)
+  inputBg?: string;
+  inputTextColor?: string;
+  inputBorder?: string;
+  inputBorderWidth?: number;
+  inputRadius?: number;
+  inputPlaceholderColor?: string;
+  inputFocusBorder?: string;
+  inputShowIcon?: boolean;
 }
 
 interface DesignEditorProps {
@@ -625,6 +634,184 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker }
                   {effect.label}
                 </Button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Input Field Styling Section (for text_question) */}
+      {step.step_type === 'text_question' && (
+        <div className="space-y-4 border-t pt-4">
+          <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
+            Input Field Styling
+          </h4>
+          
+          {/* Show Icon Toggle */}
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Show Chat Icon</Label>
+            <Switch
+              checked={design.inputShowIcon !== false}
+              onCheckedChange={(checked) => updateField('inputShowIcon', checked)}
+            />
+          </div>
+          
+          {/* Input Background */}
+          <div className="space-y-2">
+            <Label className="text-xs">Input Background</Label>
+            <div className="flex flex-wrap gap-2">
+              {['#ffffff', '#f5f5f5', '#e5e5e5', 'rgba(255,255,255,0.95)', 'rgba(255,255,255,0.1)', 'transparent'].map((color) => (
+                <button
+                  key={color}
+                  className={cn(
+                    "w-8 h-8 rounded-lg border-2 transition-all",
+                    design.inputBg === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                  )}
+                  style={{ backgroundColor: color }}
+                  onClick={() => updateField('inputBg', color)}
+                />
+              ))}
+            </div>
+            <Input
+              type="color"
+              value={design.inputBg || '#ffffff'}
+              onChange={(e) => updateField('inputBg', e.target.value)}
+              className="h-8 w-full"
+            />
+          </div>
+
+          {/* Input Text Color */}
+          <div className="space-y-2">
+            <Label className="text-xs">Text Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {['#000000', '#1a1a1a', '#333333', '#666666', '#ffffff', '#a3a3a3'].map((color) => (
+                <button
+                  key={color}
+                  className={cn(
+                    "w-8 h-8 rounded-lg border-2 transition-all",
+                    design.inputTextColor === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                  )}
+                  style={{ backgroundColor: color }}
+                  onClick={() => updateField('inputTextColor', color)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Placeholder Color */}
+          <div className="space-y-2">
+            <Label className="text-xs">Placeholder Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {['#9ca3af', '#6b7280', '#a3a3a3', '#d4d4d4', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.6)'].map((color) => (
+                <button
+                  key={color}
+                  className={cn(
+                    "w-8 h-8 rounded-lg border-2 transition-all",
+                    design.inputPlaceholderColor === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                  )}
+                  style={{ backgroundColor: color }}
+                  onClick={() => updateField('inputPlaceholderColor', color)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Input Border Color */}
+          <div className="space-y-2">
+            <Label className="text-xs">Border Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {['#e5e7eb', '#d1d5db', '#9ca3af', 'transparent', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.2)'].map((color) => (
+                <button
+                  key={color}
+                  className={cn(
+                    "w-8 h-8 rounded-lg border-2 transition-all",
+                    design.inputBorder === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                  )}
+                  style={{ backgroundColor: color === 'transparent' ? '#fff' : color }}
+                  onClick={() => updateField('inputBorder', color)}
+                />
+              ))}
+            </div>
+            <Input
+              type="color"
+              value={design.inputBorder || '#e5e7eb'}
+              onChange={(e) => updateField('inputBorder', e.target.value)}
+              className="h-8 w-full"
+            />
+          </div>
+
+          {/* Border Width */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Border Width</Label>
+              <span className="text-xs text-muted-foreground">{design.inputBorderWidth ?? 1}px</span>
+            </div>
+            <Slider
+              value={[design.inputBorderWidth ?? 1]}
+              onValueChange={([value]) => updateField('inputBorderWidth', value)}
+              min={0}
+              max={4}
+              step={1}
+            />
+          </div>
+
+          {/* Input Corner Radius */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Corner Roundness</Label>
+              <span className="text-xs text-muted-foreground">{design.inputRadius || 12}px</span>
+            </div>
+            <Slider
+              value={[design.inputRadius || 12]}
+              onValueChange={([value]) => updateField('inputRadius', value)}
+              min={0}
+              max={24}
+              step={2}
+            />
+          </div>
+
+          {/* Focus Border Color */}
+          <div className="space-y-2">
+            <Label className="text-xs">Focus Border Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {['#3b82f6', '#2563eb', '#1d4ed8', '#10b981', '#f59e0b', '#8b5cf6'].map((color) => (
+                <button
+                  key={color}
+                  className={cn(
+                    "w-8 h-8 rounded-lg border-2 transition-all",
+                    design.inputFocusBorder === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                  )}
+                  style={{ backgroundColor: color }}
+                  onClick={() => updateField('inputFocusBorder', color)}
+                />
+              ))}
+            </div>
+            <Input
+              type="color"
+              value={design.inputFocusBorder || '#3b82f6'}
+              onChange={(e) => updateField('inputFocusBorder', e.target.value)}
+              className="h-8 w-full"
+            />
+          </div>
+
+          {/* Preview */}
+          <div className="space-y-2 p-3 bg-secondary/50 rounded-lg">
+            <Label className="text-xs font-medium">Preview</Label>
+            <div 
+              className="relative flex items-start gap-3 p-4"
+              style={{ 
+                backgroundColor: design.inputBg || '#ffffff',
+                borderRadius: `${design.inputRadius || 12}px`,
+                border: `${design.inputBorderWidth ?? 1}px solid ${design.inputBorder || '#e5e7eb'}`
+              }}
+            >
+              {design.inputShowIcon !== false && (
+                <svg className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: design.inputPlaceholderColor || '#9ca3af' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              )}
+              <span style={{ color: design.inputPlaceholderColor || '#9ca3af' }} className="text-sm">
+                Type here
+              </span>
             </div>
           </div>
         </div>
