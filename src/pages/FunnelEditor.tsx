@@ -66,6 +66,15 @@ export interface StepDesign {
   optionCardSelectedBorder?: string;
   optionCardHoverEffect?: 'none' | 'scale' | 'glow' | 'lift';
   optionCardRadius?: number;
+  // Input/Textarea styling (text_question)
+  inputBg?: string;
+  inputTextColor?: string;
+  inputBorder?: string;
+  inputBorderWidth?: number;
+  inputRadius?: number;
+  inputPlaceholderColor?: string;
+  inputFocusBorder?: string;
+  inputShowIcon?: boolean;
 }
 
 export interface FunnelStep {
