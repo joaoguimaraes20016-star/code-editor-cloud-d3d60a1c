@@ -163,10 +163,11 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['funnels-for-domains', teamId] });
+      queryClient.invalidateQueries({ queryKey: ['funnel'] }); // Refresh funnel editor data
       setShowLinkDialog(false);
       setSelectedDomainForLink(null);
       setSelectedFunnelId('');
-      toast({ title: 'Funnel linked to domain' });
+      toast({ title: 'Funnel linked to domain', description: 'Your funnel will now be accessible at the custom domain.' });
     },
   });
 
@@ -190,11 +191,17 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
       
       if (data.verified) {
         setShowDNSDialog(false);
-        setCurrentDomain(null);
         toast({ 
           title: 'Domain verified!', 
-          description: `SSL certificate provisioned. Your domain is now active.` 
+          description: `SSL certificate provisioned. Now link a funnel to your domain.` 
         });
+        // Auto-open the link funnel dialog after verification
+        if (currentDomain) {
+          setSelectedDomainForLink(currentDomain);
+          setSelectedFunnelId('');
+          setShowLinkDialog(true);
+        }
+        setCurrentDomain(null);
       } else {
         // Show which records are missing
         const missing: string[] = [];

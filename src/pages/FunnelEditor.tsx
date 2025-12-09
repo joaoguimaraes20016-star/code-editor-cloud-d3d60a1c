@@ -294,6 +294,11 @@ export default function FunnelEditor() {
     enabled: !!teamId,
   });
 
+  // Get linked domain for this funnel
+  const linkedDomain = funnel?.domain_id 
+    ? domains.find(d => d.id === funnel.domain_id)?.domain 
+    : null;
+
   const { data: initialSteps, isLoading: stepsLoading } = useQuery({
     queryKey: ['funnel-steps', funnelId],
     queryFn: async () => {
@@ -531,7 +536,12 @@ export default function FunnelEditor() {
   };
 
   const handleOpenInNewTab = () => {
-    window.open(`/f/${funnel?.slug}`, '_blank');
+    // Use custom domain URL if linked, otherwise use slug URL
+    if (linkedDomain) {
+      window.open(`https://${linkedDomain}`, '_blank');
+    } else {
+      window.open(`/f/${funnel?.slug}`, '_blank');
+    }
   };
 
   const handleDuplicateStep = (stepId: string) => {
@@ -722,6 +732,17 @@ export default function FunnelEditor() {
             >
               {funnel.status}
             </Badge>
+
+            {/* Show linked domain */}
+            {linkedDomain && (
+              <Badge 
+                variant="outline" 
+                className="hidden lg:inline-flex text-xs border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10"
+              >
+                <Link2 className="h-3 w-3 mr-1" />
+                {linkedDomain}
+              </Badge>
+            )}
 
             {/* Silent auto-save - no visible indicators */}
           </div>
