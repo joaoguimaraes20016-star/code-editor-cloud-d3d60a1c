@@ -238,120 +238,170 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
     }
   };
 
-  const integrationsList = [
+  // All available integrations as cards
+  const allIntegrations = [
     {
       id: 'ghl',
       name: 'GoHighLevel',
       type: 'ghl',
-      icon: <div className="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs">GHL</div>,
+      icon: <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs">GHL</div>,
       description: 'Send leads directly to your GHL CRM and trigger automations',
       connected: ghlIntegration?.is_connected || false,
       url: ghlIntegration?.config?.webhook_url,
       integration: ghlIntegration,
+      available: true,
     },
     {
       id: 'zapier',
       name: 'Zapier',
       type: 'zapier',
-      icon: <div className="w-8 h-8 rounded bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center"><Zap className="h-4 w-4 text-white" /></div>,
+      icon: <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center"><Zap className="h-5 w-5 text-white" /></div>,
       description: 'Connect to 5,000+ apps with Zapier webhooks',
       connected: zapierIntegration?.is_connected || false,
       url: zapierIntegration?.config?.webhook_url,
       integration: zapierIntegration,
+      available: true,
+    },
+    {
+      id: 'webhooks',
+      name: 'Webhooks',
+      type: 'webhook',
+      icon: <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center"><Webhook className="h-5 w-5 text-foreground" /></div>,
+      description: 'Connect events within your Funnel to a URL',
+      connected: customWebhooks.length > 0,
+      available: true,
+    },
+    {
+      id: 'close',
+      name: 'Close CRM',
+      type: 'close',
+      icon: <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-white font-bold text-sm">C</div>,
+      description: 'Send funnel data to Close CRM for sales automation',
+      connected: false,
+      available: false,
+    },
+    {
+      id: 'hubspot',
+      name: 'HubSpot',
+      type: 'hubspot',
+      icon: <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm">H</div>,
+      description: 'Sync contacts and leads to HubSpot CRM',
+      connected: false,
+      available: false,
+    },
+    {
+      id: 'activecampaign',
+      name: 'ActiveCampaign',
+      type: 'activecampaign',
+      icon: <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center text-white font-bold text-sm">AC</div>,
+      description: 'Send lead data from funnels to ActiveCampaign',
+      connected: false,
+      available: false,
+    },
+    {
+      id: 'make',
+      name: 'Make',
+      type: 'make',
+      icon: <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">M</div>,
+      description: 'Send funnel data to Make and connect 1000+ apps',
+      connected: false,
+      available: false,
+    },
+    {
+      id: 'slack',
+      name: 'Slack',
+      type: 'slack',
+      icon: <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-2xl">💬</div>,
+      description: 'Get notified in Slack when leads are captured',
+      connected: false,
+      available: false,
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Integrations</h1>
-          <p className="text-muted-foreground mt-1">
-            Connect your funnels to external services and CRMs
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Apps</h1>
+        <p className="text-muted-foreground mt-1">
+          Connect your funnels to external services and CRMs
+        </p>
       </div>
 
-      {/* Native Integrations */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">CRM & Automation</h2>
-        <div className="grid gap-3">
-          {integrationsList.map((integration) => (
-            <div 
-              key={integration.id}
-              className="bg-card border rounded-xl p-4 flex items-center justify-between hover:shadow-sm transition-all"
-            >
-              <div className="flex items-center gap-4">
-                {integration.icon}
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium">{integration.name}</h3>
-                    {integration.connected && (
-                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/50 text-xs">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Connected
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{integration.description}</p>
-                </div>
-              </div>
-              
-              {integration.connected ? (
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => testWebhook(integration.url!)}
-                    disabled={isTesting}
-                  >
-                    <Send className="h-4 w-4 mr-1.5" />
-                    Test
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => disconnectMutation.mutate(integration.integration!.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    Disconnect
-                  </Button>
-                </div>
-              ) : (
-                <Button 
-                  onClick={() => {
-                    if (integration.type === 'ghl') {
-                      setGhlWebhookUrl(ghlIntegration?.config?.webhook_url || '');
-                      setShowGHLDialog(true);
-                    }
-                    if (integration.type === 'zapier') {
-                      setZapierWebhookUrl(zapierIntegration?.config?.webhook_url || '');
-                      setShowZapierDialog(true);
+      {/* Integration Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {allIntegrations.map((integration) => (
+          <div 
+            key={integration.id}
+            className={cn(
+              "bg-card border rounded-xl p-5 hover:shadow-md transition-all relative group",
+              !integration.available && "opacity-60"
+            )}
+          >
+            {/* Toggle/Menu in top right */}
+            {integration.available && integration.connected && (
+              <div className="absolute top-4 right-4 flex items-center gap-2">
+                <Switch 
+                  checked={integration.connected}
+                  onCheckedChange={() => {
+                    if (integration.integration) {
+                      disconnectMutation.mutate(integration.integration.id);
                     }
                   }}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  Connect
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
+                />
+              </div>
+            )}
+            
+            <div className="space-y-3">
+              {integration.icon}
+              
+              <div>
+                <h3 className="font-semibold text-foreground">{integration.name}</h3>
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                  {integration.description}
+                </p>
+              </div>
+              
+              {integration.available ? (
+                integration.connected ? (
+                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/50">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : (
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                      if (integration.type === 'ghl') {
+                        setGhlWebhookUrl(ghlIntegration?.config?.webhook_url || '');
+                        setShowGHLDialog(true);
+                      }
+                      if (integration.type === 'zapier') {
+                        setZapierWebhookUrl(zapierIntegration?.config?.webhook_url || '');
+                        setShowZapierDialog(true);
+                      }
+                      if (integration.type === 'webhook') {
+                        setShowWebhookDialog(true);
+                      }
+                    }}
+                  >
+                    Connect
+                  </Button>
+                )
+              ) : (
+                <Badge variant="outline" className="mt-2">Coming Soon</Badge>
               )}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
-      {/* Custom Webhooks */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Custom Webhooks</h2>
-          <Button variant="outline" size="sm" onClick={() => setShowWebhookDialog(true)}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add Webhook
-          </Button>
-        </div>
-        
-        {customWebhooks.length > 0 ? (
+      {/* Active Custom Webhooks */}
+      {customWebhooks.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Active Webhooks</h2>
           <div className="bg-card border rounded-xl divide-y">
             {customWebhooks.map((webhook) => (
               <div key={webhook.id} className="p-4 flex items-center justify-between">
@@ -396,40 +446,8 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-8 border rounded-xl bg-muted/30">
-            <Webhook className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">No custom webhooks configured</p>
-            <p className="text-xs text-muted-foreground mt-1">Add a webhook to receive lead data at your own endpoint</p>
-          </div>
-        )}
-      </div>
-
-      {/* Coming Soon */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Coming Soon</h2>
-        <div className="grid gap-3 opacity-60">
-          {[
-            { name: 'Twilio', description: 'SMS and voice automation', icon: '📱' },
-            { name: 'Slack', description: 'Team notifications', icon: '💬' },
-            { name: 'Mailchimp', description: 'Email marketing', icon: '📧' },
-            { name: 'HubSpot', description: 'CRM integration', icon: '🔶' },
-          ].map((item) => (
-            <div key={item.name} className="bg-card border rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-lg">
-                  {item.icon}
-                </div>
-                <div>
-                  <h3 className="font-medium">{item.name}</h3>
-                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                </div>
-              </div>
-              <Badge variant="outline">Coming Soon</Badge>
-            </div>
-          ))}
         </div>
-      </div>
+      )}
 
       {/* GHL Dialog */}
       <Dialog open={showGHLDialog} onOpenChange={setShowGHLDialog}>

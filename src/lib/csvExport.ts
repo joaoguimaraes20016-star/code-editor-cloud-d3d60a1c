@@ -99,11 +99,12 @@ export const FUNNEL_LEAD_COLUMNS: ExportColumn[] = [
 ];
 
 export const CONTACT_COLUMNS: ExportColumn[] = [
-  { key: "created_at", label: "Created At" },
-  { key: "name", label: "Name" },
+  { key: "name", label: "First Name" },
   { key: "email", label: "Email" },
   { key: "phone", label: "Phone" },
-  { key: "opt_in", label: "Opted In" },
-  { key: "source", label: "Source" },
-  { key: "calendly_booked_at", label: "Calendly Booking" },
+  { key: "opt_in", label: "Opt In" },
+  { key: "source", label: "Lead Source" },
+  { key: "tags", label: "Tags" },
+  { key: "created_at", label: "Date Added" },
+  { key: "updated_at", label: "Last Updated" },
 ];

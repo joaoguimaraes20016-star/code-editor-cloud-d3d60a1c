@@ -22,6 +22,7 @@ import { generateCSV, downloadCSV, FUNNEL_LEAD_COLUMNS, CONTACT_COLUMNS } from '
 import { FunnelDropOffChart } from '@/components/funnel-analytics/FunnelDropOffChart';
 import { LeadsVsVisitorsChart } from '@/components/funnel-analytics/LeadsVsVisitorsChart';
 import { ExpandableLeadRow } from '@/components/funnel-analytics/ExpandableLeadRow';
+import { ContactDetailDrawer } from '@/components/funnel-analytics/ContactDetailDrawer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -100,7 +101,10 @@ interface Contact {
   opt_in: boolean;
   source: string | null;
   calendly_booked_at: string | null;
+  custom_fields: Record<string, any> | null;
+  tags: string[] | null;
   created_at: string;
+  updated_at: string;
 }
 
 type TabType = 'funnels' | 'performance' | 'contacts' | 'domains' | 'integrations';
@@ -118,6 +122,7 @@ export default function FunnelList() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [funnelToDelete, setFunnelToDelete] = useState<Funnel | null>(null);
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('all');
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   // Fetch funnels with lead counts
   const { data: funnels, isLoading: funnelsLoading } = useQuery({
@@ -817,7 +822,7 @@ export default function FunnelList() {
               <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
               <Button variant="outline" onClick={exportContacts} disabled={!contacts?.length}>
                 <Download className="h-4 w-4 mr-2" />
-                Export Contacts
+                Export to CRM
               </Button>
             </div>
 
@@ -848,11 +853,13 @@ export default function FunnelList() {
               <div className="bg-card border rounded-xl p-5">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-lg bg-purple-500/10">
-                    <Calendar className="h-5 w-5 text-purple-500" />
+                    <MessageSquare className="h-5 w-5 text-purple-500" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Booked Appointments</p>
-                    <p className="text-2xl font-bold">{bookedContacts}</p>
+                    <p className="text-sm text-muted-foreground">With Form Responses</p>
+                    <p className="text-2xl font-bold">
+                      {contacts?.filter(c => c.custom_fields && Object.keys(c.custom_fields).length > 0).length || 0}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -868,21 +875,31 @@ export default function FunnelList() {
                     <TableHead>Phone</TableHead>
                     <TableHead>Source</TableHead>
                     <TableHead>Opt-In</TableHead>
-                    <TableHead>Booking</TableHead>
                     <TableHead>Added</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {contacts?.map((contact) => (
-                    <TableRow key={contact.id}>
+                    <TableRow 
+                      key={contact.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setSelectedContact(contact)}
+                    >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                            <span className="text-xs font-medium">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-xs font-medium text-primary">
                               {contact.name?.charAt(0)?.toUpperCase() || contact.email?.charAt(0)?.toUpperCase() || '?'}
                             </span>
                           </div>
-                          {contact.name || '—'}
+                          <div>
+                            <p className="font-medium">{contact.name || '—'}</p>
+                            {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                {Object.keys(contact.custom_fields).length} response{Object.keys(contact.custom_fields).length !== 1 ? 's' : ''}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -903,7 +920,7 @@ export default function FunnelList() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {contact.source || 'Direct'}
+                          {contact.source?.replace('Funnel: ', '') || 'Direct'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -914,16 +931,6 @@ export default function FunnelList() {
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">No</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {contact.calendly_booked_at ? (
-                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/50 text-xs">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {format(new Date(contact.calendly_booked_at), 'MMM d')}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
@@ -943,6 +950,13 @@ export default function FunnelList() {
             </div>
           </>
         )}
+
+        {/* Contact Detail Drawer */}
+        <ContactDetailDrawer 
+          contact={selectedContact}
+          open={!!selectedContact}
+          onOpenChange={(open) => !open && setSelectedContact(null)}
+        />
 
         {/* Domains Tab */}
         {activeTab === 'domains' && (
