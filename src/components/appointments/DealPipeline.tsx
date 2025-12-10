@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useUndoAction } from "@/hooks/useUndoAction";
 import {
   DndContext,
@@ -101,6 +102,7 @@ interface PipelineStage {
 
 export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, viewFilter = 'all' }: DealPipelineProps) {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -891,10 +893,21 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           .update({ 
             pipeline_stage: depositDialog.stageId,
             cc_collected: depositAmount,
-            setter_notes: notes
+            setter_notes: notes,
+            updated_at: new Date().toISOString()
           })
           .eq("id", depositDialog.appointmentId)
           .select();
+
+        // Log the deposit activity
+        await supabase.from("activity_logs").insert({
+          team_id: appointment.team_id,
+          appointment_id: depositDialog.appointmentId,
+          actor_id: user?.id || null,
+          actor_name: user?.user_metadata?.full_name || appointment.closer_name || 'User',
+          action_type: 'Deposit Collected',
+          note: `$${depositAmount} deposit collected`
+        });
 
         if (error) {
           console.error("❌ Deposit update error:", error);
@@ -1067,7 +1080,10 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
       const { error } = await supabase
         .from("appointments")
-        .update({ pipeline_stage: stage })
+        .update({ 
+          pipeline_stage: stage,
+          updated_at: new Date().toISOString()
+        })
         .eq("id", appointmentId);
 
       if (error) throw error;

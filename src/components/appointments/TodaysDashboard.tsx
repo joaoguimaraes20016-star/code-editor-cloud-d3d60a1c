@@ -440,8 +440,18 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
         .update({
           cc_collected: depositAmount,
           setter_notes: notes,
+          updated_at: new Date().toISOString()
         })
         .eq('id', depositAppointment.id);
+
+      // Log the deposit activity
+      await supabase.from("activity_logs").insert({
+        team_id: teamId,
+        appointment_id: depositAppointment.id,
+        actor_name: 'User',
+        action_type: 'Deposit Collected',
+        note: `$${depositAmount} deposit collected`
+      });
 
       // Create follow-up task if needed
       await supabase
