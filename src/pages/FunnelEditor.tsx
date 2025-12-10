@@ -130,6 +130,11 @@ export interface FunnelSettings {
   background_color: string;
   button_text: string;
   ghl_webhook_url?: string;
+  // SEO settings
+  favicon_url?: string;
+  seo_title?: string;
+  seo_description?: string;
+  seo_image?: string;
 }
 
 export interface Funnel {

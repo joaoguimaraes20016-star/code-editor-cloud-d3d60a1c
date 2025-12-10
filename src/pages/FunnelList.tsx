@@ -226,16 +226,47 @@ export default function FunnelList() {
     toast({ title: 'URL copied to clipboard' });
   };
 
-  // Calculate performance stats
+  // Calculate performance stats with real percentage changes
   const now = new Date();
   const todayStart = startOfDay(now);
+  const yesterdayStart = startOfDay(subDays(now, 1));
+  const twoDaysAgo = startOfDay(subDays(now, 2));
   const weekAgo = subDays(now, 7);
+  const twoWeeksAgo = subDays(now, 14);
   const monthAgo = subDays(now, 30);
+  const twoMonthsAgo = subDays(now, 60);
 
+  // Current period leads
   const todayLeads = leads?.filter(l => new Date(l.created_at) >= todayStart).length || 0;
   const weekLeads = leads?.filter(l => new Date(l.created_at) >= weekAgo).length || 0;
   const monthLeads = leads?.filter(l => new Date(l.created_at) >= monthAgo).length || 0;
   const totalLeads = leads?.length || 0;
+
+  // Previous period leads for comparison
+  const yesterdayLeads = leads?.filter(l => {
+    const date = new Date(l.created_at);
+    return date >= twoDaysAgo && date < yesterdayStart;
+  }).length || 0;
+  
+  const previousWeekLeads = leads?.filter(l => {
+    const date = new Date(l.created_at);
+    return date >= twoWeeksAgo && date < weekAgo;
+  }).length || 0;
+  
+  const previousMonthLeads = leads?.filter(l => {
+    const date = new Date(l.created_at);
+    return date >= twoMonthsAgo && date < monthAgo;
+  }).length || 0;
+
+  // Calculate percentage changes
+  const calcPercentChange = (current: number, previous: number): number => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 100);
+  };
+
+  const todayChange = calcPercentChange(todayLeads, yesterdayLeads);
+  const weekChange = calcPercentChange(weekLeads, previousWeekLeads);
+  const monthChange = calcPercentChange(monthLeads, previousMonthLeads);
 
   const optedInContacts = contacts?.filter(c => c.opt_in).length || 0;
   const bookedContacts = contacts?.filter(c => c.calendly_booked_at).length || 0;
@@ -616,8 +647,24 @@ export default function FunnelList() {
               <div className="bg-card border rounded-xl p-5">
                 <p className="text-sm text-muted-foreground mb-1">Today</p>
                 <p className="text-2xl font-semibold">{todayLeads} Leads</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  • 0% vs. yesterday
+                <p className="text-sm mt-2 flex items-center gap-1">
+                  {todayChange !== 0 ? (
+                    <>
+                      {todayChange > 0 ? (
+                        <TrendingUp className="h-3 w-3 text-emerald-500" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 text-red-500" />
+                      )}
+                      <span className={todayChange > 0 ? "text-emerald-500" : "text-red-500"}>
+                        {todayChange > 0 ? '+' : ''}{todayChange}%
+                      </span>
+                    </>
+                  ) : yesterdayLeads === 0 && todayLeads > 0 ? (
+                    <span className="text-emerald-500">New</span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                  <span className="text-muted-foreground">vs. yesterday</span>
                 </p>
               </div>
               
@@ -625,9 +672,23 @@ export default function FunnelList() {
                 <p className="text-sm text-muted-foreground mb-1">Last 7 days</p>
                 <p className="text-2xl font-semibold">{weekLeads} Leads</p>
                 <p className="text-sm mt-2 flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3 text-emerald-500" />
-                  <span className="text-emerald-500">0%</span>
-                  <span className="text-muted-foreground">vs. 7 days ago</span>
+                  {weekChange !== 0 ? (
+                    <>
+                      {weekChange > 0 ? (
+                        <TrendingUp className="h-3 w-3 text-emerald-500" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 text-red-500" />
+                      )}
+                      <span className={weekChange > 0 ? "text-emerald-500" : "text-red-500"}>
+                        {weekChange > 0 ? '+' : ''}{weekChange}%
+                      </span>
+                    </>
+                  ) : previousWeekLeads === 0 && weekLeads > 0 ? (
+                    <span className="text-emerald-500">New</span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                  <span className="text-muted-foreground">vs. prev 7 days</span>
                 </p>
               </div>
               
@@ -635,18 +696,31 @@ export default function FunnelList() {
                 <p className="text-sm text-muted-foreground mb-1">Last 30 days</p>
                 <p className="text-2xl font-semibold">{monthLeads} Leads</p>
                 <p className="text-sm mt-2 flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3 text-emerald-500" />
-                  <span className="text-emerald-500">0%</span>
-                  <span className="text-muted-foreground">vs. 30 days ago</span>
+                  {monthChange !== 0 ? (
+                    <>
+                      {monthChange > 0 ? (
+                        <TrendingUp className="h-3 w-3 text-emerald-500" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 text-red-500" />
+                      )}
+                      <span className={monthChange > 0 ? "text-emerald-500" : "text-red-500"}>
+                        {monthChange > 0 ? '+' : ''}{monthChange}%
+                      </span>
+                    </>
+                  ) : previousMonthLeads === 0 && monthLeads > 0 ? (
+                    <span className="text-emerald-500">New</span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                  <span className="text-muted-foreground">vs. prev 30 days</span>
                 </p>
               </div>
               
               <div className="bg-card border rounded-xl p-5">
                 <p className="text-sm text-muted-foreground mb-1">Total</p>
                 <p className="text-2xl font-semibold">{totalLeads} Leads</p>
-                <p className="text-sm mt-2">
-                  <span className="text-emerald-500">0%</span>
-                  <span className="text-muted-foreground"> of all visitors</span>
+                <p className="text-sm text-muted-foreground mt-2">
+                  All time leads captured
                 </p>
               </div>
             </div>

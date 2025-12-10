@@ -18,6 +18,11 @@ interface FunnelSettings {
   primary_color: string;
   background_color: string;
   button_text: string;
+  // SEO settings
+  favicon_url?: string;
+  seo_title?: string;
+  seo_description?: string;
+  seo_image?: string;
 }
 
 serve(async (req) => {
@@ -208,6 +213,12 @@ function generateFunnelHTML(
   const stepsData = escapeJsonForScript(steps);
   const primaryColor = settings.primary_color || '#22c55e';
   const bgColor = settings.background_color || '#0a0a0a';
+  
+  // SEO and favicon settings
+  const pageTitle = settings.seo_title || funnel.name;
+  const pageDescription = settings.seo_description || '';
+  const ogImage = settings.seo_image || '';
+  const faviconUrl = settings.favicon_url || '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -215,7 +226,21 @@ function generateFunnelHTML(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="${bgColor}">
-  <title>${escapeHtml(funnel.name)}</title>
+  <title>${escapeHtml(pageTitle)}</title>
+  ${pageDescription ? `<meta name="description" content="${escapeHtml(pageDescription)}">` : ''}
+  ${faviconUrl ? `<link rel="icon" type="image/png" href="${escapeHtml(faviconUrl)}">
+  <link rel="apple-touch-icon" href="${escapeHtml(faviconUrl)}">` : ''}
+  <!-- Open Graph / Social Media -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${escapeHtml(pageTitle)}">
+  ${pageDescription ? `<meta property="og:description" content="${escapeHtml(pageDescription)}">` : ''}
+  ${ogImage ? `<meta property="og:image" content="${escapeHtml(ogImage)}">` : ''}
+  <meta property="og:url" content="https://${escapeHtml(domain)}">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="${ogImage ? 'summary_large_image' : 'summary'}">
+  <meta name="twitter:title" content="${escapeHtml(pageTitle)}">
+  ${pageDescription ? `<meta name="twitter:description" content="${escapeHtml(pageDescription)}">` : ''}
+  ${ogImage ? `<meta name="twitter:image" content="${escapeHtml(ogImage)}">` : ''}
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     

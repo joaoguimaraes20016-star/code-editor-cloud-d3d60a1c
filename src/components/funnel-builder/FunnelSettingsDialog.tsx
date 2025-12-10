@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Zap, Link2, TestTube, CheckCircle, AlertCircle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Plus, Trash2, Zap, Link2, TestTube, CheckCircle, AlertCircle, Search, Image } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -130,8 +131,9 @@ export function FunnelSettingsDialog({ open, onOpenChange, funnel, onSave }: Fun
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="seo">SEO</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
           </TabsList>
 
@@ -199,6 +201,80 @@ export function FunnelSettingsDialog({ open, onOpenChange, funnel, onSave }: Fun
                 onChange={(e) => updateSetting('button_text', e.target.value)}
                 placeholder="Continue"
               />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="seo" className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Favicon URL</Label>
+              <Input
+                value={settings.favicon_url || ''}
+                onChange={(e) => updateSetting('favicon_url', e.target.value || null)}
+                placeholder="https://yourdomain.com/favicon.png"
+              />
+              {settings.favicon_url && (
+                <div className="flex items-center gap-2 mt-2">
+                  <img 
+                    src={settings.favicon_url} 
+                    alt="Favicon preview" 
+                    className="w-6 h-6 object-contain rounded"
+                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                  />
+                  <span className="text-xs text-muted-foreground">Favicon preview</span>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Custom favicon for your funnel. Overrides the default Lovable favicon.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>SEO Title</Label>
+              <Input
+                value={settings.seo_title || ''}
+                onChange={(e) => updateSetting('seo_title', e.target.value || null)}
+                placeholder="Your Funnel Title | Brand Name"
+                maxLength={60}
+              />
+              <p className="text-xs text-muted-foreground">
+                {(settings.seo_title || '').length}/60 characters. Shows in browser tabs and search results.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>SEO Description</Label>
+              <Textarea
+                value={settings.seo_description || ''}
+                onChange={(e) => updateSetting('seo_description', e.target.value || null)}
+                placeholder="A compelling description of your funnel that appears in search results..."
+                maxLength={160}
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                {(settings.seo_description || '').length}/160 characters. Appears in search engine results.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Social Share Image (OG Image)</Label>
+              <Input
+                value={settings.seo_image || ''}
+                onChange={(e) => updateSetting('seo_image', e.target.value || null)}
+                placeholder="https://yourdomain.com/og-image.png"
+              />
+              {settings.seo_image && (
+                <div className="mt-2 border rounded-lg overflow-hidden">
+                  <img 
+                    src={settings.seo_image} 
+                    alt="OG Image preview" 
+                    className="w-full max-h-40 object-cover"
+                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                  />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Image shown when sharing on social media. Recommended: 1200x630px.
+              </p>
             </div>
           </TabsContent>
 
