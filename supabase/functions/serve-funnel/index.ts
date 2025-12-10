@@ -114,12 +114,17 @@ serve(async (req) => {
     const html = generateFunnelHTML(funnel, steps, settings, cleanDomain);
 
     console.log(`Serving funnel ${funnel.slug} for domain ${cleanDomain}`);
+    console.log(`HTML length: ${html.length} bytes`);
 
+    // Return clean HTML response with explicit headers
     return new Response(html, {
       status: 200,
       headers: new Headers({
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=300',
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
       }),
@@ -520,8 +525,20 @@ function generateFunnelHTML(
     let calendlyBookingData = null;
     
     document.addEventListener('DOMContentLoaded', () => {
-      renderFunnel();
-      setupCalendlyListener();
+      try {
+        console.log('Funnel data:', FUNNEL_DATA);
+        console.log('Steps data:', STEPS_DATA);
+        renderFunnel();
+        setupCalendlyListener();
+      } catch (error) {
+        console.error('Error initializing funnel:', error);
+        document.getElementById('funnel-root').innerHTML = 
+          '<div style="color: white; padding: 2rem; text-align: center;">' +
+          '<h2>Error Loading Funnel</h2>' +
+          '<p style="color: #888;">Please try refreshing the page.</p>' +
+          '<pre style="color: #666; font-size: 0.75rem; margin-top: 1rem; text-align: left; overflow-x: auto;">' + error.message + '</pre>' +
+          '</div>';
+      }
     });
     
     function setupCalendlyListener() {
