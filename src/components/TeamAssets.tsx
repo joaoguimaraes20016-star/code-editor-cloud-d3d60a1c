@@ -230,7 +230,7 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
                   emptyMessage={`No ${cat.label.toLowerCase()} added yet`}
                   onReorder={handleReorder}
                   onEdit={(asset) => setEditAsset(asset)}
-                  onDelete={handleDelete}
+                  onDelete={(id, filePath) => handleDelete({ id, file_path: filePath } as TeamAsset)}
                   onClick={handleAssetClick}
                 />
               )}
