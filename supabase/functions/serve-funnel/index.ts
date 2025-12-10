@@ -181,10 +181,15 @@ function escapeHtml(str: string): string {
 
 function escapeJsonForScript(obj: unknown): string {
   return JSON.stringify(obj)
+    .replace(/\u2028/g, '\\u2028')  // Line separator
+    .replace(/\u2029/g, '\\u2029')  // Paragraph separator
     .replace(/</g, '\\u003c')
     .replace(/>/g, '\\u003e')
     .replace(/&/g, '\\u0026')
-    .replace(/'/g, '\\u0027');
+    .replace(/'/g, '\\u0027')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
 }
 
 function generateFunnelHTML(
@@ -638,22 +643,45 @@ function generateFunnelHTML(
     let leadId = null;
     let calendlyBookingData = null;
     
-    document.addEventListener('DOMContentLoaded', function() {
+    // Initialize with fallback timeout in case DOMContentLoaded already fired
+    function initFunnel() {
       try {
+        console.log('Funnel initializing...');
         console.log('Funnel data:', FUNNEL_DATA);
-        console.log('Steps data:', STEPS_DATA);
+        console.log('Steps count:', STEPS_DATA ? STEPS_DATA.length : 0);
         renderFunnel();
         setupCalendlyListener();
+        console.log('Funnel initialized successfully');
       } catch (error) {
         console.error('Error initializing funnel:', error);
-        document.getElementById('funnel-root').innerHTML = 
-          '<div style="color: white; padding: 2rem; text-align: center;">' +
-          '<h2>Error Loading Funnel</h2>' +
-          '<p style="color: #888;">Please try refreshing the page.</p>' +
-          '<pre style="color: #666; font-size: 0.75rem; margin-top: 1rem; text-align: left; overflow-x: auto;">' + error.message + '</pre>' +
-          '</div>';
+        var root = document.getElementById('funnel-root');
+        if (root) {
+          root.innerHTML = 
+            '<div style="color: white; padding: 2rem; text-align: center;">' +
+            '<h2>Error Loading Funnel</h2>' +
+            '<p style="color: #888;">Please try refreshing the page.</p>' +
+            '<pre style="color: #666; font-size: 0.75rem; margin-top: 1rem; text-align: left; overflow-x: auto; max-width: 100%;">' + 
+            (error.message || 'Unknown error') + '\\n' + (error.stack || '') + 
+            '</pre></div>';
+        }
       }
-    });
+    }
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initFunnel);
+    } else {
+      // DOM already loaded, run immediately
+      initFunnel();
+    }
+    
+    // Fallback timeout in case events don't fire properly
+    setTimeout(function() {
+      var root = document.getElementById('funnel-root');
+      if (root && root.querySelector('.loading-container')) {
+        console.log('Fallback init triggered');
+        initFunnel();
+      }
+    }, 1000);
     
     function setupCalendlyListener() {
       window.addEventListener('message', function(event) {
