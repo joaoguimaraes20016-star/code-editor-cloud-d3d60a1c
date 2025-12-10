@@ -544,6 +544,20 @@ function generateFunnelHTML(
     
     .step-hidden { display: none; }
     
+    .press-enter-hint {
+      color: rgba(255,255,255,0.4);
+      font-size: 0.875rem;
+      text-align: center;
+      margin-top: 0.5rem;
+    }
+    
+    .element-hint {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      text-align: center;
+      margin-top: 0.5rem;
+    }
+    
     .fade-in {
       animation: fadeIn 0.3s ease forwards;
     }
@@ -631,16 +645,16 @@ function generateFunnelHTML(
       
       // Check if step has element_order (dynamic elements)
       if (content.element_order && Array.isArray(content.element_order) && content.element_order.length > 0) {
-        return renderDynamicElements(content, index);
+        return renderDynamicElements(content, index, type);
       }
       
       // Fallback to basic rendering
       switch (type) {
         case 'welcome': return renderWelcome(content);
-        case 'text': return renderTextQuestion(content, index);
+        case 'text_question': return renderTextQuestion(content, index);
         case 'multi_choice': return renderMultiChoice(content, index);
-        case 'email': return renderEmailCapture(content);
-        case 'phone': return renderPhoneCapture(content);
+        case 'email_capture': return renderEmailCapture(content);
+        case 'phone_capture': return renderPhoneCapture(content);
         case 'opt_in': return renderOptIn(content);
         case 'video': return renderVideo(content);
         case 'embed': return renderEmbed(content);
@@ -649,7 +663,7 @@ function generateFunnelHTML(
       }
     }
     
-    function renderDynamicElements(content, stepIndex) {
+    function renderDynamicElements(content, stepIndex, stepType) {
       const elementOrder = content.element_order || [];
       const dynamicElements = content.dynamic_elements || {};
       const design = content.design || {};
@@ -662,8 +676,11 @@ function generateFunnelHTML(
         buttonStyle = 'background: linear-gradient(' + direction + ', ' + design.buttonGradientFrom + ', ' + design.buttonGradientTo + ');';
       }
       
+      const questionId = 'question_' + stepIndex;
+      const inputIcon = content.input_icon || '💬';
+      
       for (const elementId of elementOrder) {
-        // Check if it's a base element (headline, subheadline, button, video)
+        // Check if it's a base element (headline, subheadline, button, video, input, hint)
         if (elementId === 'headline' && content.headline) {
           html += '<div class="element-headline">' + content.headline + '</div>';
         } else if (elementId === 'subheadline' && content.subheadline) {
@@ -672,6 +689,21 @@ function generateFunnelHTML(
           html += '<button class="element-button" style="' + buttonStyle + '" onclick="handleNext()">' + (content.button_text || design.buttonText || 'Continue') + '</button>';
         } else if (elementId === 'video' && content.video_url) {
           html += renderVideoElement(content.video_url);
+        } else if (elementId === 'input') {
+          // Text input for text_question steps
+          html += '<div class="input-wrapper"><span class="input-icon">' + inputIcon + '</span><input type="text" class="input-field" id="' + questionId + '" placeholder="' + (content.placeholder || 'Type your answer...') + '"></div>';
+          html += '<button class="element-button" style="' + buttonStyle + '" onclick="handleTextSubmit(\\'' + questionId + '\\')">' + (content.submit_button_text || content.button_text || 'Submit') + '</button>';
+          html += '<div class="press-enter-hint">Press Enter ↵</div>';
+        } else if (elementId === 'hint') {
+          // Hint text below input
+          if (content.hint) {
+            html += '<div class="element-hint">' + content.hint + '</div>';
+          }
+        } else if (elementId === 'image_top') {
+          // Top image element
+          if (content.image_top_url) {
+            html += '<img class="element-image" src="' + content.image_top_url + '" alt="">';
+          }
         } else if (dynamicElements[elementId]) {
           // Render dynamic element
           html += renderDynamicElement(elementId, dynamicElements[elementId], design);
