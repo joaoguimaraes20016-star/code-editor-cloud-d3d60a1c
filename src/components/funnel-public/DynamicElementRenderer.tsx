@@ -89,26 +89,16 @@ export function CalendlyEmbed({
 }
 
 
+// Preserve color formatting from font tags and spans - DO NOT strip colors
 const cleanHtmlContent = (html: string): string => {
-  if (!html) return '';
+  if (!html) return html;
+  // Only remove problematic classes, keep all color and styling
   return html
-    // Remove font tags completely
-    .replace(/<font[^>]*>/gi, '')
-    .replace(/<\/font>/gi, '')
-    // Remove excessive inline styles that contain font-family
-    .replace(/style="[^"]*font-family[^"]*"/gi, '')
-    // Remove fun-font classes
+    // Remove fun-font classes that cause issues
     .replace(/class="[^"]*fun-font[^"]*"/gi, '')
-    // Clean up empty style attributes
-    .replace(/style="\s*"/gi, '')
-    // Clean up empty class attributes  
+    // Clean up empty attributes  
     .replace(/class="\s*"/gi, '')
-    // Remove border-color and border-image styles that get added
-    .replace(/border-color:[^;]+;?/gi, '')
-    .replace(/border-image:[^;]+;?/gi, '')
-    // Clean up any resulting empty style attributes
-    .replace(/style=";\s*"/gi, '')
-    .replace(/style="\s*;"/gi, '');
+    .replace(/style="\s*"/gi, '');
 };
 
 interface DynamicElementRendererProps {
