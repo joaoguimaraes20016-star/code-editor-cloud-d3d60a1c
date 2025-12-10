@@ -27,11 +27,11 @@ interface Funnel {
   settings: FunnelSettings;
 }
 
-// Check if we're on a custom domain (not localhost or lovable.app)
+// Check if we're on a custom domain (not localhost or preview domains)
 function isCustomDomain(): boolean {
   const hostname = window.location.hostname;
   return !hostname.includes('localhost') && 
-         !hostname.includes('lovable.app') && 
+         !hostname.includes('.app') && 
          !hostname.includes('127.0.0.1');
 }
 

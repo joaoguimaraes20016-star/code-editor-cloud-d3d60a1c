@@ -224,7 +224,7 @@ export function FunnelSettingsDialog({ open, onOpenChange, funnel, onSave }: Fun
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Custom favicon for your funnel. Overrides the default Lovable favicon.
+                Custom favicon for your funnel. Required for custom domains.
               </p>
             </div>
 

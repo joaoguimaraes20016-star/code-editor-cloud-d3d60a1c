@@ -222,7 +222,7 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
         body: JSON.stringify({
           test: true,
           timestamp: new Date().toISOString(),
-          message: 'Test webhook from Lovable',
+          message: 'Test webhook from GRWTH OP',
           data: {
             name: 'Test Lead',
             email: 'test@example.com',
