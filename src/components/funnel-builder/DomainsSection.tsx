@@ -35,7 +35,7 @@ interface Domain {
   ssl_status: string | null;
   health_status: string | null;
   dns_a_record_valid: boolean | null;
-  dns_txt_record_valid: boolean | null;
+  dns_www_valid: boolean | null;
   cloudflare_hostname_id: string | null;
   created_at: string;
 }
@@ -53,25 +53,31 @@ interface DomainsSectionProps {
 
 interface VerificationResult {
   verified: boolean;
-  aRecordValid: boolean;
-  cnameValid?: boolean;
-  wwwCnameValid?: boolean;
-  wwwARecordValid?: boolean;
+  status: string;
+  rootAValid: boolean;
+  rootAValue: string | null;
+  wwwAValid: boolean;
+  wwwAValue: string | null;
   message?: string;
-  path?: 'vps' | 'cloudflare';
+  missing?: string;
 }
 
-// DNS targets
-const VPS_IP = '143.198.103.189';        // Caddy VPS path (A record)
-const CNAME_TARGET = 'grwthop.com';      // Cloudflare Worker path (CNAME)
+// DNS target - simplified to just A records
+const VPS_IP = '143.198.103.189';
 
 // Status display configuration
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode; description: string }> = {
   pending: {
-    label: 'Pending DNS',
+    label: 'Add DNS Records',
     color: 'border-amber-500/50 text-amber-600 bg-amber-50 dark:bg-amber-500/10',
     icon: <Clock className="h-3 w-3 mr-1" />,
     description: 'Configure your DNS settings'
+  },
+  partial: {
+    label: 'Almost There',
+    color: 'border-blue-500/50 text-blue-600 bg-blue-50 dark:bg-blue-500/10',
+    icon: <AlertCircle className="h-3 w-3 mr-1" />,
+    description: 'One more record needed'
   },
   verifying: {
     label: 'Verifying',
@@ -147,7 +153,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     },
   });
 
-  // Add domain mutation - simplified without Cloudflare
+  // Add domain mutation
   const addDomainMutation = useMutation({
     mutationFn: async (domain: string) => {
       const cleanDomain = domain.toLowerCase().trim();
@@ -159,6 +165,8 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
           domain: cleanDomain,
           status: 'pending',
           ssl_provisioned: false,
+          dns_a_record_valid: false,
+          dns_www_valid: false,
         })
         .select()
         .single();
@@ -237,12 +245,13 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
 
       setDnsCheckResult({
         verified: data.verified,
-        aRecordValid: data.dnsCheck?.aRecordValid || false,
-        cnameValid: data.dnsCheck?.cnameValid || false,
-        wwwCnameValid: data.dnsCheck?.wwwCnameValid || false,
-        wwwARecordValid: data.dnsCheck?.wwwARecordValid || false,
+        status: data.status,
+        rootAValid: data.dnsCheck?.rootAValid || false,
+        rootAValue: data.dnsCheck?.rootAValue || null,
+        wwwAValid: data.dnsCheck?.wwwAValid || false,
+        wwwAValue: data.dnsCheck?.wwwAValue || null,
         message: data.message,
-        path: data.path
+        missing: data.missing
       });
 
       // Refresh domains list
@@ -250,10 +259,15 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
 
       if (data.verified) {
         toast({ title: 'Domain verified and active!' });
+      } else if (data.status === 'partial') {
+        toast({ 
+          title: 'Almost there!', 
+          description: data.message,
+        });
       } else {
         toast({ 
           title: 'DNS not ready yet', 
-          description: `Add an A record pointing to ${VPS_IP} or CNAME to ${CNAME_TARGET}`,
+          description: 'Add both A records to complete setup',
           variant: 'destructive' 
         });
       }
@@ -269,13 +283,12 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
     }
   }, [queryClient, teamId]);
 
-  // Auto-poll for pending domains when setup dialog is open
+  // Auto-poll for pending/partial domains when setup dialog is open
   useEffect(() => {
     if (!showSetupDialog || !selectedDomain) return;
     if (selectedDomain.status === 'verified') return;
 
     const pollInterval = setInterval(async () => {
-      // Verify domain
       const { data } = await supabase.functions.invoke('verify-domain', {
         body: {
           domainId: selectedDomain.id,
@@ -283,8 +296,20 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
         }
       });
 
+      if (data) {
+        setDnsCheckResult({
+          verified: data.verified,
+          status: data.status,
+          rootAValid: data.dnsCheck?.rootAValid || false,
+          rootAValue: data.dnsCheck?.rootAValue || null,
+          wwwAValid: data.dnsCheck?.wwwAValid || false,
+          wwwAValue: data.dnsCheck?.wwwAValue || null,
+          message: data.message,
+          missing: data.missing
+        });
+      }
+
       if (data?.verified) {
-        // Re-fetch domain from DB
         const { data: domainData } = await supabase
           .from('funnel_domains')
           .select('*')
@@ -297,7 +322,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
           toast({ title: 'Domain is now active!' });
         }
       }
-    }, 15000); // Poll every 15 seconds
+    }, 15000);
 
     return () => clearInterval(pollInterval);
   }, [showSetupDialog, selectedDomain, queryClient, teamId]);
@@ -342,6 +367,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
   };
 
   const isVerifying = (domainId: string) => verifyingDomainId === domainId;
+  const needsSetup = (domain: Domain) => domain.status === 'pending' || domain.status === 'partial';
 
   return (
     <div className="space-y-6">
@@ -369,17 +395,17 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
               const linkedFunnel = getFunnelForDomain(domain.id);
               const statusConfig = getStatusConfig(domain);
               const isPending = domain.status === 'pending';
+              const isPartial = domain.status === 'partial';
               const isActive = domain.status === 'verified' && domain.ssl_provisioned;
               const isOffline = domain.health_status === 'offline';
-
               const isExpandedDomain = expandedDomainId === domain.id;
               
               return (
                 <div key={domain.id} className="border-b last:border-b-0">
                   <div className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${isActive ? 'bg-emerald-500/10' : isPending ? 'bg-amber-500/10' : isOffline ? 'bg-red-500/10' : 'bg-blue-500/10'}`}>
-                        <Globe className={`h-5 w-5 ${isActive ? 'text-emerald-500' : isPending ? 'text-amber-500' : isOffline ? 'text-red-500' : 'text-blue-500'}`} />
+                      <div className={`p-2 rounded-lg ${isActive ? 'bg-emerald-500/10' : isPending ? 'bg-amber-500/10' : isPartial ? 'bg-blue-500/10' : isOffline ? 'bg-red-500/10' : 'bg-blue-500/10'}`}>
+                        <Globe className={`h-5 w-5 ${isActive ? 'text-emerald-500' : isPending ? 'text-amber-500' : isPartial ? 'text-blue-500' : isOffline ? 'text-red-500' : 'text-blue-500'}`} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -418,6 +444,12 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                               Not linked to any funnel
                             </p>
                           )}
+                          {/* Show record status for partial domains */}
+                          {isPartial && (
+                            <span className="text-xs text-blue-600">
+                              • {domain.dns_a_record_valid ? '@ ✓' : '@ ✗'} {domain.dns_www_valid ? 'www ✓' : 'www ✗'}
+                            </span>
+                          )}
                           {isPending && (
                             <span className="text-xs text-muted-foreground">
                               • {statusConfig.description}
@@ -439,8 +471,8 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                         {isExpandedDomain ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
                       </Button>
 
-                      {/* Verify DNS button for pending/offline domains */}
-                      {(isPending || isOffline) && (
+                      {/* Verify DNS button for pending/partial/offline domains */}
+                      {needsSetup(domain) || isOffline ? (
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -456,7 +488,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                             </>
                           )}
                         </Button>
-                      )}
+                      ) : null}
                       
                       {/* Link funnel button */}
                       {!linkedFunnel && (
@@ -637,22 +669,24 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
         </DialogContent>
       </Dialog>
 
-      {/* DNS Setup Dialog */}
+      {/* DNS Setup Dialog - Simplified to require BOTH A records */}
       <Dialog open={showSetupDialog} onOpenChange={setShowSetupDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>DNS Setup for {selectedDomain?.domain}</DialogTitle>
             <DialogDescription>
-              Point your domain to our server with an A record
+              Add both A records to activate your domain
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6 py-4">
-            {/* Current Status */}
+            {/* Current Status with individual record indicators */}
             {selectedDomain && (
               <div className={`rounded-lg p-4 ${
                 getStatusConfig(selectedDomain).label === 'Active' 
                   ? 'bg-emerald-500/10 border border-emerald-500/20' 
+                  : getStatusConfig(selectedDomain).label === 'Almost There'
+                  ? 'bg-blue-500/10 border border-blue-500/20'
                   : getStatusConfig(selectedDomain).label === 'Offline'
                   ? 'bg-red-500/10 border border-red-500/20'
                   : 'bg-amber-500/10 border border-amber-500/20'
@@ -661,6 +695,8 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                   <div className="flex items-center gap-3">
                     {getStatusConfig(selectedDomain).label === 'Active' ? (
                       <CheckCircle className="h-5 w-5 text-emerald-500" />
+                    ) : getStatusConfig(selectedDomain).label === 'Almost There' ? (
+                      <AlertCircle className="h-5 w-5 text-blue-500" />
                     ) : getStatusConfig(selectedDomain).label === 'Offline' ? (
                       <XCircle className="h-5 w-5 text-red-500" />
                     ) : (
@@ -671,11 +707,11 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                         {getStatusConfig(selectedDomain).label}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {getStatusConfig(selectedDomain).description}
+                        {dnsCheckResult?.message || getStatusConfig(selectedDomain).description}
                       </p>
                     </div>
                   </div>
-                  {selectedDomain.status === 'pending' && (
+                  {needsSetup(selectedDomain) && (
                     <Button 
                       size="sm" 
                       variant="outline"
@@ -691,39 +727,29 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                   )}
                 </div>
 
-                {/* DNS Check Results */}
-                {dnsCheckResult && (
-                  <div className="mt-3 pt-3 border-t border-current/10 space-y-2">
+                {/* Individual record status */}
+                {(dnsCheckResult || selectedDomain.status !== 'pending') && (
+                  <div className="mt-3 pt-3 border-t border-current/10 grid grid-cols-2 gap-2">
                     <div className="flex items-center gap-2 text-sm">
-                      {dnsCheckResult.aRecordValid ? (
+                      {(dnsCheckResult?.rootAValid || selectedDomain.dns_a_record_valid) ? (
                         <CheckCircle className="h-4 w-4 text-emerald-500" />
                       ) : (
                         <XCircle className="h-4 w-4 text-red-500" />
                       )}
-                      <span>A Record @ → {VPS_IP}</span>
+                      <span>@ (root domain)</span>
                     </div>
-                    {dnsCheckResult.cnameValid !== undefined && (
-                      <div className="flex items-center gap-2 text-sm">
-                        {dnsCheckResult.cnameValid ? (
-                          <CheckCircle className="h-4 w-4 text-emerald-500" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <span>CNAME @ → {CNAME_TARGET} (alternative)</span>
-                      </div>
-                    )}
                     <div className="flex items-center gap-2 text-sm">
-                      {(dnsCheckResult.wwwCnameValid || dnsCheckResult.wwwARecordValid) ? (
+                      {(dnsCheckResult?.wwwAValid || selectedDomain.dns_www_valid) ? (
                         <CheckCircle className="h-4 w-4 text-emerald-500" />
                       ) : (
-                        <XCircle className="h-4 w-4 text-muted-foreground" />
+                        <XCircle className="h-4 w-4 text-red-500" />
                       )}
-                      <span>www → {dnsCheckResult.wwwCnameValid ? CNAME_TARGET : VPS_IP}</span>
+                      <span>www subdomain</span>
                     </div>
-                    {dnsCheckResult.verified && (
-                      <div className="flex items-center gap-2 text-sm">
+                    {selectedDomain.ssl_provisioned && (
+                      <div className="flex items-center gap-2 text-sm col-span-2">
                         <CheckCircle className="h-4 w-4 text-emerald-500" />
-                        <span>SSL Certificate (Auto)</span>
+                        <span>SSL Certificate (Auto-provisioned)</span>
                       </div>
                     )}
                   </div>
@@ -742,21 +768,22 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
               </p>
             </div>
 
-            {/* Step 2 - DNS Records Table */}
+            {/* Step 2 - Simplified DNS Records Table */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">2</div>
-                <h4 className="font-medium">Add DNS Records</h4>
+                <h4 className="font-medium">Add these 2 A records</h4>
               </div>
               
-              {/* DNS Records Table */}
+              {/* DNS Records Table - Simplified to just 2 A records */}
               <div className="ml-8 bg-muted rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-muted-foreground/10">
                     <tr>
                       <th className="text-left px-4 py-2 font-medium">Type</th>
-                      <th className="text-left px-4 py-2 font-medium">Name/Host</th>
-                      <th className="text-left px-4 py-2 font-medium">Value/Points To</th>
+                      <th className="text-left px-4 py-2 font-medium">Name</th>
+                      <th className="text-left px-4 py-2 font-medium">Value</th>
+                      <th className="w-16 text-center px-2 py-2 font-medium">Status</th>
                       <th className="w-8"></th>
                     </tr>
                   </thead>
@@ -768,6 +795,13 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">@</td>
                       <td className="px-4 py-3 font-mono text-xs">{VPS_IP}</td>
+                      <td className="px-2 py-3 text-center">
+                        {(dnsCheckResult?.rootAValid || selectedDomain?.dns_a_record_valid) ? (
+                          <CheckCircle className="h-4 w-4 text-emerald-500 mx-auto" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500 mx-auto" />
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <Button 
                           variant="ghost" 
@@ -778,18 +812,25 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                         </Button>
                       </td>
                     </tr>
-                    {/* www subdomain CNAME record */}
+                    {/* www subdomain A record */}
                     <tr className="border-t border-muted-foreground/10">
                       <td className="px-4 py-3">
-                        <Badge variant="outline">CNAME</Badge>
+                        <Badge variant="outline">A</Badge>
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">www</td>
-                      <td className="px-4 py-3 font-mono text-xs">{CNAME_TARGET}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{VPS_IP}</td>
+                      <td className="px-2 py-3 text-center">
+                        {(dnsCheckResult?.wwwAValid || selectedDomain?.dns_www_valid) ? (
+                          <CheckCircle className="h-4 w-4 text-emerald-500 mx-auto" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500 mx-auto" />
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => copyToClipboard(CNAME_TARGET)}
+                          onClick={() => copyToClipboard(VPS_IP)}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -799,14 +840,9 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                 </table>
               </div>
               
-              <div className="ml-8 space-y-1">
-                <p className="text-xs text-muted-foreground">
-                  <strong>Root domain (@):</strong> A record pointing to {VPS_IP}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  <strong>www subdomain:</strong> CNAME pointing to {CNAME_TARGET} (or A record to {VPS_IP})
-                </p>
-              </div>
+              <p className="ml-8 text-xs text-muted-foreground">
+                Both records point to the same IP address. This ensures both yourdomain.com and www.yourdomain.com work correctly.
+              </p>
             </div>
 
             {/* Step 3 */}
@@ -816,12 +852,12 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                 <h4 className="font-medium">Wait for DNS propagation</h4>
               </div>
               <p className="text-sm text-muted-foreground ml-8">
-                DNS changes can take up to 24-48 hours to propagate worldwide. We'll automatically check and provision SSL once ready.
+                DNS changes can take up to 24-48 hours to propagate. We'll automatically check and provision SSL once both records are configured.
               </p>
             </div>
 
             {/* Verify Button */}
-            {selectedDomain && selectedDomain.status === 'pending' && (
+            {selectedDomain && needsSetup(selectedDomain) && (
               <div className="pt-4 border-t">
                 <Button 
                   className="w-full bg-emerald-600 hover:bg-emerald-700"

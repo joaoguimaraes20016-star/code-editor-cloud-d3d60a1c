@@ -6,33 +6,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Two valid paths for custom domains
-const VPS_IP = '143.198.103.189';        // Caddy VPS path (A record)
-const CNAME_TARGET = 'grwthop.com';      // Cloudflare Worker path (CNAME)
+// DNS targets - A records point to Caddy VPS
+const VPS_IP = '143.198.103.189';
 
 async function checkDNSRecords(domain: string): Promise<{
-  aRecordValid: boolean;
-  aRecordValue: string | null;
-  cnameValid: boolean;
-  cnameValue: string | null;
-  wwwARecordValid: boolean;
-  wwwARecordValue: string | null;
-  wwwCnameValid: boolean;
-  wwwCnameValue: string | null;
+  rootAValid: boolean;
+  rootAValue: string | null;
+  wwwAValid: boolean;
+  wwwAValue: string | null;
 }> {
   const results = {
-    aRecordValid: false,
-    aRecordValue: null as string | null,
-    cnameValid: false,
-    cnameValue: null as string | null,
-    wwwARecordValid: false,
-    wwwARecordValue: null as string | null,
-    wwwCnameValid: false,
-    wwwCnameValue: null as string | null,
+    rootAValid: false,
+    rootAValue: null as string | null,
+    wwwAValid: false,
+    wwwAValue: null as string | null,
   };
 
   try {
-    // Check A record for root domain
+    // Check A record for root domain (@)
     const rootAResponse = await fetch(`https://cloudflare-dns.com/dns-query?name=${domain}&type=A`, {
       headers: { 'Accept': 'application/dns-json' }
     });
@@ -45,31 +36,9 @@ async function checkDNSRecords(domain: string): Promise<{
         const aRecords = rootAData.Answer.filter((r: any) => r.type === 1); // Type 1 = A record
         for (const record of aRecords) {
           const ip = record.data;
-          results.aRecordValue = ip;
+          results.rootAValue = ip;
           if (ip === VPS_IP) {
-            results.aRecordValid = true;
-            break;
-          }
-        }
-      }
-    }
-
-    // Check CNAME record for root domain (usually won't exist for apex, but check anyway)
-    const rootCnameResponse = await fetch(`https://cloudflare-dns.com/dns-query?name=${domain}&type=CNAME`, {
-      headers: { 'Accept': 'application/dns-json' }
-    });
-    
-    if (rootCnameResponse.ok) {
-      const rootCnameData = await rootCnameResponse.json();
-      console.log(`CNAME record response for ${domain}:`, JSON.stringify(rootCnameData));
-      
-      if (rootCnameData.Answer && rootCnameData.Answer.length > 0) {
-        const cnameRecords = rootCnameData.Answer.filter((r: any) => r.type === 5); // Type 5 = CNAME
-        for (const record of cnameRecords) {
-          const target = record.data.replace(/\.$/, ''); // Remove trailing dot
-          results.cnameValue = target;
-          if (target === CNAME_TARGET || target.endsWith('.' + CNAME_TARGET)) {
-            results.cnameValid = true;
+            results.rootAValid = true;
             break;
           }
         }
@@ -89,31 +58,9 @@ async function checkDNSRecords(domain: string): Promise<{
         const aRecords = wwwAData.Answer.filter((r: any) => r.type === 1);
         for (const record of aRecords) {
           const ip = record.data;
-          results.wwwARecordValue = ip;
+          results.wwwAValue = ip;
           if (ip === VPS_IP) {
-            results.wwwARecordValid = true;
-            break;
-          }
-        }
-      }
-    }
-
-    // Check CNAME record for www subdomain
-    const wwwCnameResponse = await fetch(`https://cloudflare-dns.com/dns-query?name=www.${domain}&type=CNAME`, {
-      headers: { 'Accept': 'application/dns-json' }
-    });
-    
-    if (wwwCnameResponse.ok) {
-      const wwwCnameData = await wwwCnameResponse.json();
-      console.log(`CNAME record response for www.${domain}:`, JSON.stringify(wwwCnameData));
-      
-      if (wwwCnameData.Answer && wwwCnameData.Answer.length > 0) {
-        const cnameRecords = wwwCnameData.Answer.filter((r: any) => r.type === 5);
-        for (const record of cnameRecords) {
-          const target = record.data.replace(/\.$/, '');
-          results.wwwCnameValue = target;
-          if (target === CNAME_TARGET || target.endsWith('.' + CNAME_TARGET)) {
-            results.wwwCnameValid = true;
+            results.wwwAValid = true;
             break;
           }
         }
@@ -150,13 +97,17 @@ serve(async (req) => {
     
     console.log('DNS check results:', JSON.stringify(dnsResults));
 
-    // Domain is verified if:
-    // - Root A record points to VPS IP, OR
-    // - Root CNAME points to grwthop.com (for subdomains that can use CNAME)
-    const isVerified = dnsResults.aRecordValid || dnsResults.cnameValid;
+    // BOTH root (@) AND www MUST be valid for full verification
+    const isFullyVerified = dnsResults.rootAValid && dnsResults.wwwAValid;
+    const isPartiallyVerified = dnsResults.rootAValid || dnsResults.wwwAValid;
     
-    // www is valid if CNAME to grwthop.com OR A record to VPS IP
-    const wwwValid = dnsResults.wwwCnameValid || dnsResults.wwwARecordValid;
+    // Determine status
+    let status = 'pending';
+    if (isFullyVerified) {
+      status = 'verified';
+    } else if (isPartiallyVerified) {
+      status = 'partial';
+    }
     
     // Update database with results
     const supabase = createClient(
@@ -164,8 +115,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    if (isVerified) {
-      // Domain is verified - update status
+    if (isFullyVerified) {
+      // Both records valid - domain is fully verified
       const { error: updateError } = await supabase
         .from('funnel_domains')
         .update({
@@ -173,8 +124,8 @@ serve(async (req) => {
           verified_at: new Date().toISOString(),
           ssl_provisioned: true,
           ssl_status: 'active',
-          dns_a_record_valid: dnsResults.aRecordValid || dnsResults.cnameValid,
-          dns_txt_record_valid: wwwValid,
+          dns_a_record_valid: dnsResults.rootAValid,
+          dns_www_valid: dnsResults.wwwAValid,
           health_status: 'healthy',
           last_health_check: new Date().toISOString(),
         })
@@ -188,72 +139,80 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           verified: true,
+          status: 'verified',
           ssl_status: 'active',
           dnsCheck: {
-            aRecordValid: dnsResults.aRecordValid,
-            aRecordValue: dnsResults.aRecordValue,
-            cnameValid: dnsResults.cnameValid,
-            cnameValue: dnsResults.cnameValue,
-            wwwARecordValid: dnsResults.wwwARecordValid,
-            wwwARecordValue: dnsResults.wwwARecordValue,
-            wwwCnameValid: dnsResults.wwwCnameValid,
-            wwwCnameValue: dnsResults.wwwCnameValue,
-            wwwValid,
+            rootAValid: dnsResults.rootAValid,
+            rootAValue: dnsResults.rootAValue,
+            wwwAValid: dnsResults.wwwAValid,
+            wwwAValue: dnsResults.wwwAValue,
           },
-          message: 'Domain verified successfully! SSL is active.',
-          path: dnsResults.aRecordValid ? 'vps' : 'cloudflare'
+          message: 'Domain verified! Both @ and www records are configured correctly. SSL is active.',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else if (isPartiallyVerified) {
+      // Partial - one record valid, one missing
+      const { error: updateError } = await supabase
+        .from('funnel_domains')
+        .update({
+          status: 'partial',
+          dns_a_record_valid: dnsResults.rootAValid,
+          dns_www_valid: dnsResults.wwwAValid,
+          last_health_check: new Date().toISOString(),
+        })
+        .eq('id', domainId);
+
+      if (updateError) {
+        console.error('Error updating domain status:', updateError);
+      }
+
+      const missingRecord = !dnsResults.rootAValid ? '@' : 'www';
+      
+      return new Response(
+        JSON.stringify({
+          verified: false,
+          status: 'partial',
+          ssl_status: 'pending',
+          dnsCheck: {
+            rootAValid: dnsResults.rootAValid,
+            rootAValue: dnsResults.rootAValue,
+            wwwAValid: dnsResults.wwwAValid,
+            wwwAValue: dnsResults.wwwAValue,
+          },
+          message: `Almost there! Add the ${missingRecord} A record pointing to ${VPS_IP}`,
+          missing: missingRecord,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else {
-      // Not verified yet - return current status
+      // Neither record valid
       return new Response(
         JSON.stringify({
           verified: false,
+          status: 'pending',
           ssl_status: 'pending',
           dnsCheck: {
-            aRecordValid: dnsResults.aRecordValid,
-            aRecordValue: dnsResults.aRecordValue,
-            cnameValid: dnsResults.cnameValid,
-            cnameValue: dnsResults.cnameValue,
-            wwwARecordValid: dnsResults.wwwARecordValid,
-            wwwARecordValue: dnsResults.wwwARecordValue,
-            wwwCnameValid: dnsResults.wwwCnameValid,
-            wwwCnameValue: dnsResults.wwwCnameValue,
-            wwwValid,
+            rootAValid: dnsResults.rootAValid,
+            rootAValue: dnsResults.rootAValue,
+            wwwAValid: dnsResults.wwwAValid,
+            wwwAValue: dnsResults.wwwAValue,
           },
-          message: 'DNS records not yet configured correctly',
+          message: 'DNS records not yet configured. Add both A records to complete setup.',
           requirements: {
-            a_record: {
+            root_a_record: {
               host: '@',
               type: 'A',
               required: VPS_IP,
-              found: dnsResults.aRecordValue,
-              valid: dnsResults.aRecordValid
-            },
-            cname_record: {
-              host: '@',
-              type: 'CNAME',
-              required: CNAME_TARGET,
-              found: dnsResults.cnameValue,
-              valid: dnsResults.cnameValid,
-              note: 'Alternative to A record (for subdomains)'
-            },
-            www_cname: {
-              host: 'www',
-              type: 'CNAME',
-              required: CNAME_TARGET,
-              found: dnsResults.wwwCnameValue,
-              valid: dnsResults.wwwCnameValid,
-              note: 'Recommended for www subdomain'
+              found: dnsResults.rootAValue,
+              valid: dnsResults.rootAValid
             },
             www_a_record: {
               host: 'www',
               type: 'A',
               required: VPS_IP,
-              found: dnsResults.wwwARecordValue,
-              valid: dnsResults.wwwARecordValid,
-              note: 'Alternative to CNAME for www'
+              found: dnsResults.wwwAValue,
+              valid: dnsResults.wwwAValid
             }
           }
         }),

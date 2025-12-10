@@ -818,6 +818,7 @@ export type Database = {
           created_at: string
           dns_a_record_valid: boolean | null
           dns_txt_record_valid: boolean | null
+          dns_www_valid: boolean | null
           domain: string
           health_status: string | null
           id: string
@@ -838,6 +839,7 @@ export type Database = {
           created_at?: string
           dns_a_record_valid?: boolean | null
           dns_txt_record_valid?: boolean | null
+          dns_www_valid?: boolean | null
           domain: string
           health_status?: string | null
           id?: string
@@ -858,6 +860,7 @@ export type Database = {
           created_at?: string
           dns_a_record_valid?: boolean | null
           dns_txt_record_valid?: boolean | null
+          dns_www_valid?: boolean | null
           domain?: string
           health_status?: string | null
           id?: string
