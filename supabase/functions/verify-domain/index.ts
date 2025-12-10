@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Two valid paths for custom domains
-const VPS_IP = '159.223.210.203';        // Caddy VPS path (A record)
+const VPS_IP = '143.198.103.189';        // Caddy VPS path (A record)
 const CNAME_TARGET = 'grwthop.com';      // Cloudflare Worker path (CNAME)
 
 async function checkDNSRecords(domain: string): Promise<{
