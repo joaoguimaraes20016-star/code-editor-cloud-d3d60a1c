@@ -369,6 +369,10 @@ function generateFunnelHTML(
       box-shadow: 0 8px 20px ${primaryColor}40;
     }
     
+    .element-button.gradient {
+      background: var(--btn-gradient, linear-gradient(to bottom, ${primaryColor}, ${primaryColor}));
+    }
+    
     .element-image {
       width: 100%;
       max-width: 100%;
@@ -412,6 +416,49 @@ function generateFunnelHTML(
       height: 100%;
       border: none;
       min-height: 500px;
+    }
+    
+    /* Input with icon */
+    .input-wrapper {
+      position: relative;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+    
+    .input-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.25rem;
+      z-index: 1;
+    }
+    
+    .input-wrapper .input-field {
+      padding-left: 3rem;
+      margin-bottom: 0;
+    }
+    
+    /* Privacy checkbox */
+    .privacy-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin: 1rem 0;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.875rem;
+    }
+    
+    .privacy-checkbox {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: ${primaryColor};
+    }
+    
+    .privacy-text a {
+      color: ${primaryColor};
+      text-decoration: underline;
     }
     
     /* Input fields */
@@ -605,7 +652,15 @@ function generateFunnelHTML(
     function renderDynamicElements(content, stepIndex) {
       const elementOrder = content.element_order || [];
       const dynamicElements = content.dynamic_elements || {};
+      const design = content.design || {};
+      const btnDesign = design.button || {};
       let html = '';
+      
+      // Build button style with gradient
+      let buttonStyle = '';
+      if (btnDesign.gradient_from && btnDesign.gradient_to) {
+        buttonStyle = 'background: linear-gradient(to bottom, ' + btnDesign.gradient_from + ', ' + btnDesign.gradient_to + ');';
+      }
       
       for (const elementId of elementOrder) {
         // Check if it's a base element (headline, subheadline, button, video)
@@ -614,12 +669,12 @@ function generateFunnelHTML(
         } else if (elementId === 'subheadline' && content.subheadline) {
           html += '<div class="element-subheadline">' + content.subheadline + '</div>';
         } else if (elementId === 'button') {
-          html += '<button class="element-button" onclick="handleNext()">' + (content.button_text || 'Continue') + '</button>';
+          html += '<button class="element-button" style="' + buttonStyle + '" onclick="handleNext()">' + (content.button_text || btnDesign.text || 'Continue') + '</button>';
         } else if (elementId === 'video' && content.video_url) {
           html += renderVideoElement(content.video_url);
         } else if (dynamicElements[elementId]) {
           // Render dynamic element
-          html += renderDynamicElement(elementId, dynamicElements[elementId]);
+          html += renderDynamicElement(elementId, dynamicElements[elementId], design);
         } else if (elementId.startsWith('divider')) {
           // Divider element
           html += '<div class="element-divider"></div>';
@@ -629,13 +684,26 @@ function generateFunnelHTML(
       return html;
     }
     
-    function renderDynamicElement(elementId, element) {
+    function renderDynamicElement(elementId, element, design) {
+      design = design || {};
+      const btnDesign = design.button || {};
+      let buttonStyle = '';
+      if (btnDesign.gradient_from && btnDesign.gradient_to) {
+        buttonStyle = 'background: linear-gradient(to bottom, ' + btnDesign.gradient_from + ', ' + btnDesign.gradient_to + ');';
+      }
+      
       if (elementId.startsWith('text_')) {
         return '<div class="element-text">' + (element.text || '') + '</div>';
       } else if (elementId.startsWith('headline_copy') || elementId.startsWith('headline_')) {
         return '<div class="element-headline">' + (element.text || '') + '</div>';
       } else if (elementId.startsWith('button_')) {
-        return '<button class="element-button" onclick="handleNext()">' + (element.text || 'Continue') + '</button>';
+        const btnText = element.text || btnDesign.text || 'Continue';
+        // Check for element-specific gradient
+        let elStyle = buttonStyle;
+        if (element.gradient_from && element.gradient_to) {
+          elStyle = 'background: linear-gradient(to bottom, ' + element.gradient_from + ', ' + element.gradient_to + ');';
+        }
+        return '<button class="element-button" style="' + elStyle + '" onclick="handleNext()">' + btnText + '</button>';
       } else if (elementId.startsWith('image_')) {
         if (element.image_url) {
           return '<img class="element-image" src="' + element.image_url + '" alt="">';
@@ -725,22 +793,32 @@ function generateFunnelHTML(
     
     function renderMultiChoice(content, index) {
       const options = content.options || [];
+      const design = content.design || {};
+      const btnStyle = design.button || {};
+      
       const optionsHTML = options.map((opt, i) => {
-        // Safely extract label as string - check for label, text, or if opt is a string
+        // Safely extract label and emoji - check for label, text, or if opt is a string
         const label = typeof opt === 'string' ? opt : (opt.label || opt.text || '');
+        const emoji = typeof opt === 'object' ? (opt.emoji || opt.icon || '') : '';
         const safeLabel = String(label).replace(/'/g, "\\\\'");
         
         return '<div class="option-card" onclick="selectOption(this, ' + index + ', \\'' + safeLabel + '\\')">' +
-          (opt.icon ? '<span class="option-icon">' + opt.icon + '</span>' : '') +
+          (emoji ? '<span class="option-icon">' + emoji + '</span>' : '') +
           '<span class="option-label">' + label + '</span>' +
           '<div class="option-radio"><div class="option-radio-inner"></div></div>' +
         '</div>';
       }).join('');
       
+      // Build button style with gradient if configured
+      let buttonStyle = 'margin-top: 1rem;';
+      if (btnStyle.gradient_from && btnStyle.gradient_to) {
+        buttonStyle += ' background: linear-gradient(to bottom, ' + btnStyle.gradient_from + ', ' + btnStyle.gradient_to + ');';
+      }
+      
       return '<div class="question-counter">Question ' + (index + 1) + ' of ' + STEPS_DATA.length + '</div>' +
         '<div class="element-headline">' + (content.question || 'Choose an option') + '</div>' +
         '<div class="options-container">' + optionsHTML + '</div>' +
-        '<button class="element-button" style="margin-top: 1rem;" onclick="handleMultiChoiceSubmit(' + index + ')">Continue</button>';
+        '<button class="element-button" style="' + buttonStyle + '" onclick="handleMultiChoiceSubmit(' + index + ')">' + (content.button_text || btnStyle.text || 'Continue') + '</button>';
     }
     
     function renderEmailCapture(content) {
@@ -758,11 +836,33 @@ function generateFunnelHTML(
     }
     
     function renderOptIn(content) {
+      const design = content.design || {};
+      const btnStyle = design.button || {};
+      
+      // Build button style with gradient if configured
+      let buttonStyle = '';
+      if (btnStyle.gradient_from && btnStyle.gradient_to) {
+        buttonStyle = 'background: linear-gradient(to bottom, ' + btnStyle.gradient_from + ', ' + btnStyle.gradient_to + ');';
+      }
+      
+      // Input icons
+      const nameIcon = content.name_icon || '👤';
+      const emailIcon = content.email_icon || '✉️';
+      const phoneIcon = content.phone_icon || '📱';
+      
+      // Privacy text
+      const privacyText = content.privacy_text || '';
+      const privacyLink = content.privacy_link || '#';
+      const privacyHtml = privacyText 
+        ? '<div class="privacy-row"><input type="checkbox" class="privacy-checkbox" id="privacy-check" checked><span class="privacy-text">' + privacyText.replace('[Privacy Policy]', '<a href="' + privacyLink + '" target="_blank">Privacy Policy</a>') + '</span></div>'
+        : '';
+      
       return '<div class="element-headline">' + (content.headline || 'Complete your information') + '</div>' +
-        '<input type="text" class="input-field" id="name-input" placeholder="' + (content.name_placeholder || 'Your name') + '">' +
-        '<input type="email" class="input-field" id="optin-email" placeholder="' + (content.email_placeholder || 'Your email') + '">' +
-        '<input type="tel" class="input-field" id="optin-phone" placeholder="' + (content.phone_placeholder || 'Your phone') + '">' +
-        '<button class="element-button" onclick="handleOptInSubmit()">Continue</button>';
+        '<div class="input-wrapper"><span class="input-icon">' + nameIcon + '</span><input type="text" class="input-field" id="name-input" placeholder="' + (content.name_placeholder || 'Your name') + '"></div>' +
+        '<div class="input-wrapper"><span class="input-icon">' + emailIcon + '</span><input type="email" class="input-field" id="optin-email" placeholder="' + (content.email_placeholder || 'Your email') + '"></div>' +
+        '<div class="input-wrapper"><span class="input-icon">' + phoneIcon + '</span><input type="tel" class="input-field" id="optin-phone" placeholder="' + (content.phone_placeholder || 'Your phone') + '"></div>' +
+        privacyHtml +
+        '<button class="element-button" style="' + buttonStyle + '" onclick="handleOptInSubmit()">' + (content.submit_button_text || btnStyle.text || 'Continue') + '</button>';
     }
     
     function renderVideo(content) {
