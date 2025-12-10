@@ -26,17 +26,29 @@ serve(async (req) => {
   }
 
   try {
-    let domain: string | null = null;
-
-    if (req.method === 'GET') {
-      const url = new URL(req.url);
-      domain = url.searchParams.get('domain') || 
-               req.headers.get('x-forwarded-host') || 
-               req.headers.get('host');
-      console.log(`GET request - Query domain: ${url.searchParams.get('domain')}, X-Forwarded-Host: ${req.headers.get('x-forwarded-host')}, Host: ${req.headers.get('host')}`);
-    } else {
-      const body = await req.json();
-      domain = body.domain;
+    // Always try to get domain from URL query params first (for Caddy GET requests)
+    const url = new URL(req.url);
+    let domain: string | null = url.searchParams.get('domain');
+    
+    console.log(`Request method: ${req.method}`);
+    console.log(`Query param domain: ${domain}`);
+    console.log(`X-Forwarded-Host: ${req.headers.get('x-forwarded-host')}`);
+    console.log(`Host: ${req.headers.get('host')}`);
+    
+    // If no domain from query params, try headers
+    if (!domain) {
+      domain = req.headers.get('x-forwarded-host') || req.headers.get('host');
+    }
+    
+    // Only try JSON body for POST requests, wrapped in try-catch to prevent crashes
+    if (!domain && req.method === 'POST') {
+      try {
+        const body = await req.json();
+        domain = body.domain;
+        console.log(`Domain from POST body: ${domain}`);
+      } catch (e) {
+        console.log('Failed to parse JSON body:', e);
+      }
     }
     
     if (!domain) {
