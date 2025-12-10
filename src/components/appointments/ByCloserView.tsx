@@ -297,10 +297,21 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
     appointmentId: string, 
     newStageId: string, 
     appointment: any,
-    additionalData?: { rescheduleDate?: Date; followUpDate?: Date; followUpReason?: string }
+    additionalData?: { rescheduleDate?: Date; followUpDate?: Date; followUpReason?: string; depositAmount?: number; depositNotes?: string }
   ) => {
     try {
-      const updateData: any = { pipeline_stage: newStageId };
+      const updateData: any = { 
+        pipeline_stage: newStageId,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Handle deposit data
+      if (additionalData?.depositAmount) {
+        updateData.cc_collected = additionalData.depositAmount;
+        if (additionalData.depositNotes) {
+          updateData.setter_notes = additionalData.depositNotes;
+        }
+      }
       
       if (newStageId === "rescheduled" && additionalData?.rescheduleDate) {
         updateData.retarget_date = format(additionalData.rescheduleDate, "yyyy-MM-dd");
@@ -335,6 +346,18 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
         action_type: 'Stage Changed',
         note: `Moved from ${appointment.pipeline_stage || 'unknown'} to ${newStageId}`
       });
+
+      // Log deposit activity if applicable
+      if (additionalData?.depositAmount) {
+        await supabase.from('activity_logs').insert({
+          team_id: teamId,
+          appointment_id: appointmentId,
+          actor_id: user?.id,
+          actor_name: profile?.full_name || 'Unknown',
+          action_type: 'Deposit Collected',
+          note: `$${additionalData.depositAmount} deposit collected`
+        });
+      }
 
       // Cleanup confirmation tasks for terminal stages
       const terminalStages = ['rescheduled', 'cancelled', 'no_show', 'won', 'closed', 'lost', 'disqualified'];
@@ -782,7 +805,8 @@ function CloserPipelineView({ group, stages, teamId, onReload, onCloseDeal }: Cl
           dealName={depositDialog.dealName}
           onConfirm={async (amount, notes, followUpDate) => {
             await performStageMove(depositDialog.appointmentId, depositDialog.stageId,
-              group.appointments.find(a => a.id === depositDialog.appointmentId)!);
+              group.appointments.find(a => a.id === depositDialog.appointmentId)!,
+              { depositAmount: amount, depositNotes: notes, followUpDate, followUpReason: `Deposit collected: $${amount}. ${notes}` });
             setDepositDialog(null);
           }}
         />
