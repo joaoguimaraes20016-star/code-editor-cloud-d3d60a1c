@@ -65,6 +65,11 @@ export function FunnelDropOffChart({ steps, leads, funnelName }: FunnelDropOffCh
       const answerKeys = isQuestionStep ? getAnswerKeysForStep(step, currentQuestionIndex) : [];
       
       const count = leads.filter(lead => {
+        // First step (Welcome) - all leads who started count
+        if (step.order_index === 0) {
+          return true;
+        }
+        
         // Method 1: Check if lead reached this step index or beyond via last_step_index
         const reachedByIndex = lead.last_step_index !== undefined && 
                                lead.last_step_index !== null &&
@@ -76,13 +81,28 @@ export function FunnelDropOffChart({ steps, leads, funnelName }: FunnelDropOffCh
           return value !== undefined && value !== null && value !== '';
         });
         
-        // Method 3: For non-question steps (welcome, video, embed), 
-        // if they reached ANY later step, they passed this one
-        const passedThisStep = lead.last_step_index !== undefined && 
-                               lead.last_step_index !== null &&
-                               lead.last_step_index > step.order_index;
+        // Method 3: Check if they have ANY answers for later steps (means they passed this one)
+        const hasLaterAnswers = lead.answers && Object.keys(lead.answers).length > 0 && 
+          sortedSteps.slice(displayIndex + 1).some(laterStep => {
+            const laterIsQuestion = ['multi_choice', 'text_question', 'email_capture', 'phone_capture', 'opt_in'].includes(laterStep.step_type);
+            if (!laterIsQuestion) return false;
+            
+            // Check common answer keys
+            const laterKeys = ['email', 'phone', 'name', 'opt_in'];
+            for (let i = 1; i <= 10; i++) {
+              laterKeys.push(`choice_${i}`, `question_${i}`);
+            }
+            return laterKeys.some(key => {
+              const val = lead.answers[key];
+              return val !== undefined && val !== null && val !== '';
+            });
+          });
         
-        return reachedByIndex || hasAnswer || passedThisStep;
+        // Method 4: If lead has email/phone, they passed earlier steps
+        const hasContactInfo = !!(lead.email || lead.phone);
+        const isEarlyStep = step.order_index < sortedSteps.length - 2; // Not one of the last 2 steps
+        
+        return reachedByIndex || hasAnswer || hasLaterAnswers || (hasContactInfo && isEarlyStep);
       }).length;
       
       return {
