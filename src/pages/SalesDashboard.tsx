@@ -653,18 +653,15 @@ const Index = () => {
     return true;
   });
   
-  // Total CC Revenue: From sales table only (accurate via close_deal_transaction)
-  const totalCCRevenue = filteredSalesFromTable
-    .filter(s => s.status === 'closed')
-    .reduce((sum, sale) => sum + sale.revenue, 0);
+  // Total CC Revenue: From BOTH sales table AND deposits from appointments
+  // filteredSales already combines depositsAsSales + filteredSalesFromTable without duplicates
+  const totalCCRevenue = filteredSales.reduce((sum, sale) => sum + sale.revenue, 0);
   
   // Total MRR: From closed appointments
   const totalMRR = closedAppointmentsForMRR.reduce((sum, apt) => sum + (Number(apt.mrr_amount) || 0), 0);
   
-  // Total Commissions (Closer only): From sales table only
-  const totalCommissions = filteredSalesFromTable
-    .filter(s => s.status === 'closed')
-    .reduce((sum, sale) => sum + sale.commission, 0);
+  // Total Commissions (Closer only): From both sources
+  const totalCommissions = filteredSales.reduce((sum, sale) => sum + sale.commission, 0);
   
   // Keep closedAppointments for other metrics (show rate, close rate, etc.)
   const closedAppointments = filteredAppointments.filter(apt => {
