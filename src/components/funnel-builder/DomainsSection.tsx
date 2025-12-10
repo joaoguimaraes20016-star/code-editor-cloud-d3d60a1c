@@ -53,11 +53,16 @@ interface DomainsSectionProps {
 interface VerificationResult {
   verified: boolean;
   aRecordValid: boolean;
+  cnameValid?: boolean;
+  wwwCnameValid?: boolean;
+  wwwARecordValid?: boolean;
   message?: string;
+  path?: 'vps' | 'cloudflare';
 }
 
-// VPS IP where Caddy is running
-const VPS_IP = '159.223.210.203';
+// DNS targets
+const VPS_IP = '159.223.210.203';        // Caddy VPS path (A record)
+const CNAME_TARGET = 'grwthop.com';      // Cloudflare Worker path (CNAME)
 
 // Status display configuration
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode; description: string }> = {
@@ -231,7 +236,11 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
       setDnsCheckResult({
         verified: data.verified,
         aRecordValid: data.dnsCheck?.aRecordValid || false,
-        message: data.message
+        cnameValid: data.dnsCheck?.cnameValid || false,
+        wwwCnameValid: data.dnsCheck?.wwwCnameValid || false,
+        wwwARecordValid: data.dnsCheck?.wwwARecordValid || false,
+        message: data.message,
+        path: data.path
       });
 
       // Refresh domains list
@@ -242,7 +251,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
       } else {
         toast({ 
           title: 'DNS not ready yet', 
-          description: `Add an A record pointing to ${VPS_IP}`,
+          description: `Add an A record pointing to ${VPS_IP} or CNAME to ${CNAME_TARGET}`,
           variant: 'destructive' 
         });
       }
@@ -658,7 +667,25 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                       ) : (
                         <XCircle className="h-4 w-4 text-red-500" />
                       )}
-                      <span>A Record → {VPS_IP}</span>
+                      <span>A Record @ → {VPS_IP}</span>
+                    </div>
+                    {dnsCheckResult.cnameValid !== undefined && (
+                      <div className="flex items-center gap-2 text-sm">
+                        {dnsCheckResult.cnameValid ? (
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span>CNAME @ → {CNAME_TARGET} (alternative)</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-sm">
+                      {(dnsCheckResult.wwwCnameValid || dnsCheckResult.wwwARecordValid) ? (
+                        <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span>www → {dnsCheckResult.wwwCnameValid ? CNAME_TARGET : VPS_IP}</span>
                     </div>
                     {dnsCheckResult.verified && (
                       <div className="flex items-center gap-2 text-sm">
@@ -686,7 +713,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-sm font-bold flex items-center justify-center">2</div>
-                <h4 className="font-medium">Add an A Record</h4>
+                <h4 className="font-medium">Add DNS Records</h4>
               </div>
               
               {/* DNS Records Table */}
@@ -701,6 +728,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                     </tr>
                   </thead>
                   <tbody>
+                    {/* Root domain A record */}
                     <tr className="border-t border-muted-foreground/10">
                       <td className="px-4 py-3">
                         <Badge variant="outline">A</Badge>
@@ -717,17 +745,18 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                         </Button>
                       </td>
                     </tr>
+                    {/* www subdomain CNAME record */}
                     <tr className="border-t border-muted-foreground/10">
                       <td className="px-4 py-3">
-                        <Badge variant="outline">A</Badge>
+                        <Badge variant="outline">CNAME</Badge>
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">www</td>
-                      <td className="px-4 py-3 font-mono text-xs">{VPS_IP}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{CNAME_TARGET}</td>
                       <td className="px-4 py-3">
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => copyToClipboard(VPS_IP)}
+                          onClick={() => copyToClipboard(CNAME_TARGET)}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -737,9 +766,14 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
                 </table>
               </div>
               
-              <p className="text-xs text-muted-foreground ml-8">
-                Add both records to support root domain and www subdomain
-              </p>
+              <div className="ml-8 space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  <strong>Root domain (@):</strong> A record pointing to {VPS_IP}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <strong>www subdomain:</strong> CNAME pointing to {CNAME_TARGET} (or A record to {VPS_IP})
+                </p>
+              </div>
             </div>
 
             {/* Step 3 */}
