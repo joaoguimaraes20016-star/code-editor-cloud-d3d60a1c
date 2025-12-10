@@ -116,18 +116,19 @@ serve(async (req) => {
     console.log(`Serving funnel ${funnel.slug} for domain ${cleanDomain}`);
     console.log(`HTML length: ${html.length} bytes`);
 
-    // Return clean HTML response with explicit headers
-    return new Response(html, {
+    // Create a Blob with explicit MIME type to force Content-Type
+    const htmlBlob = new Blob([html], { type: 'text/html; charset=utf-8' });
+    
+    return new Response(htmlBlob, {
       status: 200,
-      headers: new Headers({
-        'Content-Type': 'text/html; charset=utf-8',
-        'X-Content-Type-Options': 'nosniff',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      }),
+      headers: {
+        'x-content-type-options': 'nosniff',
+        'cache-control': 'no-cache, no-store, must-revalidate',
+        'pragma': 'no-cache',
+        'expires': '0',
+        'access-control-allow-origin': '*',
+        'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
+      },
     });
 
   } catch (error: unknown) {
