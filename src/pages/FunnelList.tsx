@@ -679,15 +679,6 @@ export default function FunnelList() {
             </div>
           </>
         )}
-              </Table>
-              {!leads?.length && (
-                <div className="text-center py-12 text-muted-foreground">
-                  No leads captured yet
-                </div>
-              )}
-            </div>
-          </>
-        )}
 
         {/* Contacts Tab */}
         {activeTab === 'contacts' && (
