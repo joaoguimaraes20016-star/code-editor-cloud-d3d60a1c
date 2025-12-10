@@ -725,13 +725,17 @@ function generateFunnelHTML(
     
     function renderMultiChoice(content, index) {
       const options = content.options || [];
-      const optionsHTML = options.map((opt, i) => 
-        '<div class="option-card" onclick="selectOption(this, ' + index + ', \\'' + (opt.label || opt).replace(/'/g, "\\\\'") + '\\')">' +
+      const optionsHTML = options.map((opt, i) => {
+        // Safely extract label as string - check for label, text, or if opt is a string
+        const label = typeof opt === 'string' ? opt : (opt.label || opt.text || '');
+        const safeLabel = String(label).replace(/'/g, "\\\\'");
+        
+        return '<div class="option-card" onclick="selectOption(this, ' + index + ', \\'' + safeLabel + '\\')">' +
           (opt.icon ? '<span class="option-icon">' + opt.icon + '</span>' : '') +
-          '<span class="option-label">' + (opt.label || opt) + '</span>' +
+          '<span class="option-label">' + label + '</span>' +
           '<div class="option-radio"><div class="option-radio-inner"></div></div>' +
-        '</div>'
-      ).join('');
+        '</div>';
+      }).join('');
       
       return '<div class="question-counter">Question ' + (index + 1) + ' of ' + STEPS_DATA.length + '</div>' +
         '<div class="element-headline">' + (content.question || 'Choose an option') + '</div>' +
