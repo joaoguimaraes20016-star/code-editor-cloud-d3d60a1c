@@ -259,8 +259,8 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
   );
 
   const ZapierIcon = () => (
-    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#FF4A00] p-2">
-      <img src={zapierLogo} alt="Zapier" className="w-full h-full" />
+    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#FF4A00]">
+      <span className="text-white font-semibold text-[10px] tracking-tight">zapier</span>
     </div>
   );
 
