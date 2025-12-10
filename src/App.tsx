@@ -10,6 +10,7 @@ import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import TeamSettings from "./pages/TeamSettings";
+import Workflows from "./pages/Workflows";
 import ClientAssets from "./pages/ClientAssets";
 import OnboardingForm from "./pages/OnboardingForm";
 import NotFound from "./pages/NotFound";
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="chat" element={<TeamChatPage />} />
               <Route path="apps" element={<AppsPortal />} />
               <Route path="profile" element={<PersonalSettings />} />
+              <Route path="workflows" element={<Workflows />} />
               <Route path="settings" element={<TeamSettings />} />
               {/* Legacy redirect */}
               <Route path="integrations" element={<Navigate to="../apps" replace />} />

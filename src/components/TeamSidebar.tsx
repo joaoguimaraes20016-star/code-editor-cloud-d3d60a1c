@@ -10,7 +10,8 @@ import {
   ChevronRight,
   LogOut,
   UserCircle,
-  Settings2
+  Settings2,
+  Workflow
 } from "lucide-react";
 import { useTeamRole } from "@/hooks/useTeamRole";
 import { cn } from "@/lib/utils";
@@ -37,7 +38,7 @@ export function TeamSidebar({ teamName, teamLogo }: TeamSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { teamId } = useParams();
-  const { role, isAdmin } = useTeamRole(teamId);
+  const { isAdmin } = useTeamRole(teamId);
   
   const basePath = `/team/${teamId}`;
   
@@ -129,6 +130,12 @@ export function TeamSidebar({ teamName, teamLogo }: TeamSidebarProps) {
         {renderNavButton(
           { id: "profile", label: "Settings", icon: UserCircle, path: "/profile" },
           isActive("/profile")
+        )}
+        
+        {/* Workflows (admin only) */}
+        {isAdmin && renderNavButton(
+          { id: "workflows", label: "Workflows", icon: Workflow, path: "/workflows" },
+          isActive("/workflows")
         )}
         
         {/* Team Settings (admin only) */}

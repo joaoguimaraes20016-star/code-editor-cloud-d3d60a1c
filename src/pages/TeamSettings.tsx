@@ -1,736 +1,450 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { useTeamRole } from '@/hooks/useTeamRole';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Trash2, Users, DollarSign, Workflow, Link2, AlertTriangle, Settings2, Activity } from 'lucide-react';
-import { CalendlyConfig } from '@/components/CalendlyConfig';
-import { SetterBookingLinks } from '@/components/SetterBookingLinks';
-import { CommissionSettings } from '@/components/CommissionSettings';
-import { SetterRotationSettings } from '@/components/SetterRotationSettings';
-import { ClearTeamData } from '@/components/ClearTeamData';
-import { CleanupDuplicateSales } from '@/components/CleanupDuplicateSales';
-import { BackfillRescheduleUrls } from '@/components/BackfillRescheduleUrls';
-import { BackfillMeetingLinks } from '@/components/BackfillMeetingLinks';
-import { WorkflowSettings } from '@/components/WorkflowSettings';
-import { FollowUpSettings } from '@/components/FollowUpSettings';
-import { SystemMonitoring } from '@/components/SystemMonitoring';
-import { DataRecoveryPanel } from '@/components/DataRecoveryPanel';
-import { EmailAliasManager } from '@/components/EmailAliasManager';
-import { getUserFriendlyError } from '@/lib/errorUtils';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useTeamRole } from "@/hooks/useTeamRole";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Settings, DollarSign, Trash2, Loader2, Upload, UserPlus, Mail, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+import { CommissionSettings } from "@/components/CommissionSettings";
+import { ClearTeamData } from "@/components/ClearTeamData";
 
 interface TeamMember {
   id: string;
-  email: string;
-  full_name: string;
+  user_id: string;
   role: string;
-  user_id?: string;
-  is_super_admin?: boolean;
-  is_current_user?: boolean;
+  is_active: boolean;
+  profiles: {
+    full_name: string | null;
+    email: string | null;
+    avatar_url: string | null;
+  };
 }
 
 export default function TeamSettings() {
   const { teamId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { role, isAdmin, loading: roleLoading } = useTeamRole(teamId);
-  const { toast } = useToast();
+  const { isAdmin, loading: roleLoading } = useTeamRole(teamId);
 
-  const [teamName, setTeamName] = useState('');
+  const [teamName, setTeamName] = useState("");
+  const [teamLogo, setTeamLogo] = useState<string | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
-  const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState<string>('member');
   const [loading, setLoading] = useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [calendlyAccessToken, setCalendlyAccessToken] = useState<string | null>(null);
-  const [calendlyOrgUri, setCalendlyOrgUri] = useState<string | null>(null);
-  const [calendlyWebhookId, setCalendlyWebhookId] = useState<string | null>(null);
-  const [calendlyEventTypes, setCalendlyEventTypes] = useState<string[] | null>(null);
-  const [availableEventTypes, setAvailableEventTypes] = useState<Array<{
-    uri: string;
-    name: string;
-    scheduling_url: string;
-    pooling_type?: string | null;
-  }>>([]);
+  const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  // Invite state
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("closer");
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
-    if (!user || !teamId) {
-      navigate('/dashboard');
-      return;
+    if (teamId) {
+      loadTeamData();
+      loadMembers();
     }
-    
-    checkSuperAdmin();
-    
-    // Allow all team members to access settings (limited view for closers/setters)
-    if (!roleLoading && !isAdmin && !isSuperAdmin && role !== 'setter' && role !== 'offer_owner' && role !== 'admin' && role !== 'closer' && role !== 'owner') {
-      toast({
-        title: 'Access denied',
-        description: 'You do not have permission to access settings',
-        variant: 'destructive',
-      });
+  }, [teamId]);
+
+  // Redirect non-admins
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
       navigate(`/team/${teamId}`);
-      return;
+      toast.error("You don't have permission to access team settings");
     }
-
-    loadTeamData();
-    loadMembers();
-
-    // Subscribe to real-time updates for team members
-    const channel = supabase
-      .channel('team_members_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'team_members',
-          filter: `team_id=eq.${teamId}`,
-        },
-        () => {
-          loadMembers();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, teamId, isAdmin, roleLoading, navigate, isSuperAdmin]);
-
-  const checkSuperAdmin = async () => {
-    if (!user) return;
-    
-    try {
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'super_admin')
-        .maybeSingle();
-      
-      setIsSuperAdmin(!!data);
-    } catch (error) {
-      console.error('Error checking super admin status:', error);
-    }
-  };
+  }, [roleLoading, isAdmin, navigate, teamId]);
 
   const loadTeamData = async () => {
     try {
       const { data, error } = await supabase
-        .from('teams')
-        .select('name, calendly_access_token, calendly_organization_uri, calendly_webhook_id, calendly_event_types')
-        .eq('id', teamId)
-        .maybeSingle();
+        .from("teams")
+        .select("name, logo_url")
+        .eq("id", teamId)
+        .single();
 
       if (error) throw error;
-      if (data) {
-        setTeamName(data.name);
-        setCalendlyAccessToken(data.calendly_access_token);
-        setCalendlyOrgUri(data.calendly_organization_uri);
-        setCalendlyWebhookId(data.calendly_webhook_id);
-        setCalendlyEventTypes(data.calendly_event_types);
-        
-        // Fetch event type details if Calendly is connected
-        if (data.calendly_access_token && data.calendly_organization_uri) {
-          await fetchEventTypeDetails(data.calendly_access_token, data.calendly_organization_uri);
-        }
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Error loading team',
-        description: getUserFriendlyError(error),
-        variant: 'destructive',
-      });
+      setTeamName(data?.name || "");
+      setTeamLogo(data?.logo_url || null);
+    } catch (error) {
+      console.error("Error loading team:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchEventTypeDetails = async (accessToken: string, orgUri: string) => {
-    try {
-      console.log('Fetching organization members for event types...');
-      const membersResponse = await fetch(
-        `https://api.calendly.com/organization_memberships?organization=${encodeURIComponent(orgUri)}&count=100`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!membersResponse.ok) return;
-
-      const membersData = await membersResponse.json();
-      const members = membersData.collection || [];
-
-      const allEventTypesMap = new Map<string, any>();
-      
-      for (const member of members) {
-        const userUri = member.user?.uri;
-        if (!userUri) continue;
-
-        try {
-          const userEventTypesResponse = await fetch(
-            `https://api.calendly.com/event_types?user=${encodeURIComponent(userUri)}&count=100`,
-            {
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-            }
-          );
-
-          if (userEventTypesResponse.ok) {
-            const userEventTypesData = await userEventTypesResponse.json();
-            const userEventTypes = userEventTypesData.collection || [];
-            
-            userEventTypes.forEach((et: any) => {
-              if (!allEventTypesMap.has(et.uri)) {
-                allEventTypesMap.set(et.uri, {
-                  uri: et.uri,
-                  name: et.name,
-                  scheduling_url: et.scheduling_url,
-                  pooling_type: et.pooling_type,
-                });
-              }
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching event types for user:', error);
-        }
-      }
-
-      // Fetch organization-level event types (includes Round Robin)
-      try {
-        console.log('Fetching organization-level event types (Round Robin)...');
-        const orgEventTypesResponse = await fetch(
-          `https://api.calendly.com/event_types?organization=${encodeURIComponent(orgUri)}&count=100`,
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        if (orgEventTypesResponse.ok) {
-          const orgEventTypesData = await orgEventTypesResponse.json();
-          const orgEventTypes = orgEventTypesData.collection || [];
-          
-          orgEventTypes.forEach((et: any) => {
-            if (!allEventTypesMap.has(et.uri)) {
-              allEventTypesMap.set(et.uri, {
-                uri: et.uri,
-                name: et.name,
-                scheduling_url: et.scheduling_url,
-                pooling_type: et.pooling_type,
-              });
-            }
-          });
-          console.log(`Found ${orgEventTypes.length} organization-level event types`);
-        }
-      } catch (error) {
-        console.error('Error fetching org-level event types:', error);
-      }
-
-      setAvailableEventTypes(Array.from(allEventTypesMap.values()));
-    } catch (error) {
-      console.error('Error fetching event type details:', error);
     }
   };
 
   const loadMembers = async () => {
     try {
       const { data, error } = await supabase
-        .from('team_members')
-        .select(`
-          id,
-          role,
-          user_id,
-          profiles!team_members_user_id_fkey (
-            email,
-            full_name
-          )
-        `)
-        .eq('team_id', teamId);
+        .from("team_members")
+        .select("*, profiles(full_name, email, avatar_url)")
+        .eq("team_id", teamId)
+        .eq("is_active", true);
 
       if (error) throw error;
+      setMembers(data || []);
+    } catch (error) {
+      console.error("Error loading members:", error);
+    }
+  };
 
-      // Get user IDs to check for super admin status
-      const userIds = (data || []).map((m: any) => m.user_id);
-      
-      // Check which users are super admins
-      const { data: superAdmins } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .in('user_id', userIds)
-        .eq('role', 'super_admin');
+  const handleSaveTeam = async () => {
+    if (!teamName.trim()) {
+      toast.error("Team name cannot be empty");
+      return;
+    }
 
-      const superAdminIds = new Set(superAdmins?.map(sa => sa.user_id) || []);
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("teams")
+        .update({ name: teamName.trim() })
+        .eq("id", teamId);
 
-      const formattedMembers = (data || []).map((member: any) => ({
-        id: member.id,
-        email: member.profiles?.email || 'Unknown',
-        full_name: member.profiles?.full_name || 'Unknown',
-        role: member.role,
-        user_id: member.user_id,
-        is_super_admin: superAdminIds.has(member.user_id),
-        is_current_user: member.user_id === user?.id,
-      }));
+      if (error) throw error;
+      toast.success("Team settings saved");
+    } catch (error) {
+      console.error("Error saving team:", error);
+      toast.error("Failed to save team settings");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-      setMembers(formattedMembers);
-    } catch (error: any) {
-      toast({
-        title: 'Error loading members',
-        description: getUserFriendlyError(error),
-        variant: 'destructive',
-      });
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${teamId}/logo.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("team-assets")
+        .upload(path, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("team-assets")
+        .getPublicUrl(path);
+
+      const { error: updateError } = await supabase
+        .from("teams")
+        .update({ logo_url: urlData.publicUrl })
+        .eq("id", teamId);
+
+      if (updateError) throw updateError;
+
+      setTeamLogo(urlData.publicUrl);
+      toast.success("Logo updated");
+    } catch (error) {
+      console.error("Error uploading logo:", error);
+      toast.error("Failed to upload logo");
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
   const handleRoleChange = async (memberId: string, newRole: string) => {
     try {
       const { error } = await supabase
-        .from('team_members')
+        .from("team_members")
         .update({ role: newRole })
-        .eq('id', memberId);
+        .eq("id", memberId);
 
       if (error) throw error;
-
-      toast({
-        title: 'Role updated',
-        description: 'Team member role has been updated successfully',
-      });
-
+      toast.success("Role updated");
       loadMembers();
-    } catch (error: any) {
-      toast({
-        title: 'Error updating role',
-        description: getUserFriendlyError(error),
-        variant: 'destructive',
-      });
+    } catch (error) {
+      console.error("Error updating role:", error);
+      toast.error("Failed to update role");
     }
   };
 
-  const handleFixWebhook = async () => {
-    setLoading(true);
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    if (!confirm(`Remove ${memberName} from the team?`)) return;
+
     try {
-      const { data, error } = await supabase.functions.invoke('fix-webhook', {
-        body: { teamId },
-      });
+      const { error } = await supabase
+        .from("team_members")
+        .update({ is_active: false })
+        .eq("id", memberId);
 
       if (error) throw error;
-
-      toast({
-        title: 'Webhook fixed',
-        description: 'Your Calendly webhook has been re-registered successfully',
-      });
-
-      loadTeamData();
-    } catch (error: any) {
-      toast({
-        title: 'Error fixing webhook',
-        description: getUserFriendlyError(error),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+      toast.success("Member removed");
+      loadMembers();
+    } catch (error) {
+      console.error("Error removing member:", error);
+      toast.error("Failed to remove member");
     }
   };
 
-  const handleInviteMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) {
+      toast.error("Please enter an email address");
+      return;
+    }
+
+    setInviting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-team-invite', {
+      const { error } = await supabase.functions.invoke("send-team-invite", {
         body: {
-          teamId: teamId,
-          email: newMemberEmail.toLowerCase(),
-          role: newMemberRole,
-          teamName: teamName,
+          teamId,
+          email: inviteEmail.trim(),
+          role: inviteRole,
+          invitedBy: user?.id,
         },
       });
 
       if (error) throw error;
-
-      // Show the invitation link for manual sharing
-      if (data?.inviteUrl) {
-        if (data?.emailSent) {
-          toast({
-            title: 'Invitation sent',
-            description: `An invitation email has been sent to ${newMemberEmail}`,
-          });
-        } else {
-          // Copy to clipboard
-          navigator.clipboard.writeText(data.inviteUrl);
-          toast({
-            title: 'Invitation created!',
-            description: 'Link copied to clipboard. Share it with the new member to join.',
-          });
-        }
-      }
-
-      setNewMemberEmail('');
-      setNewMemberRole('member');
-    } catch (error: any) {
-      toast({
-        title: 'Error sending invitation',
-        description: getUserFriendlyError(error),
-        variant: 'destructive',
-      });
+      toast.success("Invitation sent");
+      setInviteEmail("");
+    } catch (error) {
+      console.error("Error sending invite:", error);
+      toast.error("Failed to send invitation");
     } finally {
-      setLoading(false);
+      setInviting(false);
     }
   };
 
-  const handleRemoveMember = async (memberId: string) => {
-    try {
-      const { error } = await supabase
-        .from('team_members')
-        .delete()
-        .eq('id', memberId);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Member removed',
-        description: 'Team member has been removed successfully',
-      });
-
-      loadMembers();
-    } catch (error: any) {
-      toast({
-        title: 'Error removing member',
-        description: getUserFriendlyError(error),
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const getRoleBadge = (role: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
-      admin: 'default',
-      offer_owner: 'default',
-      closer: 'secondary',
-      setter: 'secondary',
-      member: 'outline',
-    };
-
-    const displayName = role === 'admin' ? 'Admin' : role === 'offer_owner' ? 'Offer Owner' : role;
-    return <Badge variant={variants[role] || 'outline'}>{displayName}</Badge>;
+  const getInitials = (name: string | null) => {
+    if (!name) return "?";
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
   if (loading || roleLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6 space-y-6 max-w-6xl">
-        {/* Header */}
-        <div className="mb-2">
-          <h1 className="text-2xl font-bold text-foreground">Team Settings</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage team members, integrations, and workflow configuration
-          </p>
-        </div>
+    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold flex items-center gap-2">
+          <Settings className="h-6 w-6 text-primary" />
+          Team Settings
+        </h1>
+        <p className="text-muted-foreground">
+          Manage your team's branding, members, and commissions
+        </p>
+      </div>
 
-        {/* Admin View - Tabbed Interface */}
-        {(isAdmin || role === 'offer_owner' || role === 'admin' || role === 'owner' || isSuperAdmin) ? (
-          <Tabs defaultValue="team" className="space-y-6">
-            <TabsList className="h-auto p-1 bg-muted/50 flex-wrap">
-              <TabsTrigger value="team" className="gap-2 text-sm py-2 px-3">
-                <Users className="h-4 w-4" />
-                Team
-              </TabsTrigger>
-              <TabsTrigger value="commissions" className="gap-2 text-sm py-2 px-3">
-                <DollarSign className="h-4 w-4" />
-                Commissions
-              </TabsTrigger>
-              <TabsTrigger value="workflow" className="gap-2 text-sm py-2 px-3">
-                <Workflow className="h-4 w-4" />
-                Workflow
-              </TabsTrigger>
-              <TabsTrigger value="monitoring" className="gap-2 text-sm py-2 px-3">
-                <Activity className="h-4 w-4" />
-                Monitoring
-              </TabsTrigger>
-              <TabsTrigger value="danger" className="gap-2 text-sm py-2 px-3 text-destructive">
-                <AlertTriangle className="h-4 w-4" />
-                Danger
-              </TabsTrigger>
-            </TabsList>
+      {/* Tabs */}
+      <Tabs defaultValue="branding" className="space-y-6">
+        <TabsList className="bg-muted/50">
+          <TabsTrigger value="branding">Branding</TabsTrigger>
+          <TabsTrigger value="members" className="gap-2">
+            <Users className="h-4 w-4" />
+            Members
+          </TabsTrigger>
+          <TabsTrigger value="commissions" className="gap-2">
+            <DollarSign className="h-4 w-4" />
+            Commissions
+          </TabsTrigger>
+          <TabsTrigger value="danger" className="gap-2 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            Danger Zone
+          </TabsTrigger>
+        </TabsList>
 
-            {/* Team Members Tab */}
-            <TabsContent value="team" className="space-y-6">
-              {/* Email Aliases */}
-              <EmailAliasManager teamId={teamId!} />
-              
-              <Card className="border-primary/20 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Add Team Member
-                  </CardTitle>
-                  <CardDescription>
-                    Invite new members to collaborate on your team
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleInviteMember} className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email Address</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="user@example.com"
-                          value={newMemberEmail}
-                          onChange={(e) => setNewMemberEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="role">Role</Label>
-                        <Select value={newMemberRole} onValueChange={setNewMemberRole}>
-                          <SelectTrigger id="role">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="offer_owner">Offer Owner</SelectItem>
-                            <SelectItem value="closer">Closer</SelectItem>
-                            <SelectItem value="setter">Setter</SelectItem>
-                            <SelectItem value="member">Member</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full md:w-auto">Add Member</Button>
-                  </form>
-                </CardContent>
-              </Card>
-
-              <Card className="border-primary/20 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Team Members ({members.length})
-                  </CardTitle>
-                  <CardDescription>
-                    Manage roles and permissions for your team
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-lg border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Role</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {members.map((member) => (
-                          <TableRow key={member.id}>
-                            <TableCell className="font-medium">
-                              {member.full_name}
-                              {member.is_super_admin && (
-                                <Badge variant="destructive" className="ml-2">SUPER ADMIN</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>{member.email}</TableCell>
-                            <TableCell>
-                              {(isSuperAdmin || isAdmin) && !member.is_super_admin ? (
-                                <Select
-                                  value={member.role}
-                                  onValueChange={(value) => handleRoleChange(member.id, value)}
-                                >
-                                  <SelectTrigger className="w-[140px]">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="offer_owner">Offer Owner</SelectItem>
-                                    <SelectItem value="closer">Closer</SelectItem>
-                                    <SelectItem value="setter">Setter</SelectItem>
-                                    <SelectItem value="member">Member</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                getRoleBadge(member.role)
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {((isSuperAdmin && !member.is_current_user) || (!member.is_super_admin && member.role !== 'admin' && member.role !== 'offer_owner')) && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRemoveMember(member.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Commissions & Money Tab */}
-            <TabsContent value="commissions" className="space-y-6">
-              <CommissionSettings teamId={teamId!} />
-              <SetterRotationSettings teamId={teamId!} />
-            </TabsContent>
-
-            {/* Workflow Tab */}
-            <TabsContent value="workflow" className="space-y-6">
-              <WorkflowSettings teamId={teamId!} />
-              <FollowUpSettings teamId={teamId!} />
-            </TabsContent>
-
-            {/* Booking Links Tab - Keep for admin management */}
-            <TabsContent value="booking" className="space-y-6">
-              {calendlyEventTypes && calendlyEventTypes.length > 0 && (
-                <SetterBookingLinks
-                  teamId={teamId!}
-                  calendlyEventTypes={calendlyEventTypes}
-                  availableEventTypes={availableEventTypes}
-                  calendlyAccessToken={calendlyAccessToken}
-                  calendlyOrgUri={calendlyOrgUri}
-                  onRefresh={loadTeamData}
-                  currentUserId={user?.id}
-                  isOwner={isAdmin}
-                />
-              )}
-            </TabsContent>
-
-            {/* Monitoring Tab */}
-            <TabsContent value="monitoring" className="space-y-6">
-              <SystemMonitoring teamId={teamId!} />
-              <DataRecoveryPanel teamId={teamId!} />
-            </TabsContent>
-
-            {/* Danger Zone Tab */}
-            <TabsContent value="danger" className="space-y-6">
-              <Card className="border-destructive shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-destructive flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5" />
-                    Danger Zone
-                  </CardTitle>
-                  <CardDescription>
-                    Irreversible actions - proceed with caution
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-3 p-4 border border-destructive/30 rounded-lg bg-destructive/5">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Clean Duplicate Sales</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Remove old sales records causing duplicate counts. Appointment data remains safe.
-                        </p>
-                        <div className="mt-3">
-                          <CleanupDuplicateSales 
-                            teamId={teamId!} 
-                            onComplete={() => window.location.reload()} 
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3 p-4 border border-destructive rounded-lg bg-destructive/10">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-destructive">Clear All Data</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Permanently delete all appointments, sales, and tasks. Team structure will be preserved.
-                        </p>
-                        <div className="mt-3">
-                          <ClearTeamData teamId={teamId!} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        ) : (
-          /* Closer/Setter View - Simple Booking Links */
-          <Card className="border-primary/20 shadow-lg">
+        {/* Branding Tab */}
+        <TabsContent value="branding" className="space-y-4">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Link2 className="h-5 w-5" />
-                Your Booking Links
-              </CardTitle>
+              <CardTitle className="text-lg">Team Branding</CardTitle>
               <CardDescription>
-                Manage your personal appointment booking links
+                Customize your team's name and logo
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Logo Upload */}
+              <div className="space-y-2">
+                <Label>Team Logo</Label>
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={teamLogo || undefined} />
+                    <AvatarFallback className="text-lg bg-primary text-primary-foreground">
+                      {getInitials(teamName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <input
+                      type="file"
+                      id="logo-upload"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleLogoUpload}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById("logo-upload")?.click()}
+                      disabled={uploadingLogo}
+                    >
+                      {uploadingLogo ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4 mr-2" />
+                      )}
+                      Upload Logo
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      PNG, JPG up to 2MB
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Team Name */}
+              <div className="space-y-2">
+                <Label htmlFor="team-name">Team Name</Label>
+                <Input
+                  id="team-name"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="Enter team name"
+                />
+              </div>
+
+              <Button onClick={handleSaveTeam} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Members Tab */}
+        <TabsContent value="members" className="space-y-4">
+          {/* Invite Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Invite Team Member
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Input
+                    type="email"
+                    placeholder="email@example.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                  />
+                </div>
+                <Select value={inviteRole} onValueChange={setInviteRole}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="closer">Closer</SelectItem>
+                    <SelectItem value="setter">Setter</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleInvite} disabled={inviting}>
+                  {inviting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Members List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Team Members</CardTitle>
+              <CardDescription>
+                {members.length} active member{members.length !== 1 ? "s" : ""}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {calendlyEventTypes && calendlyEventTypes.length > 0 ? (
-                <SetterBookingLinks
-                  teamId={teamId!}
-                  calendlyEventTypes={calendlyEventTypes}
-                  availableEventTypes={availableEventTypes}
-                  calendlyAccessToken={calendlyAccessToken}
-                  calendlyOrgUri={calendlyOrgUri}
-                  onRefresh={loadTeamData}
-                  currentUserId={user?.id}
-                  isOwner={isAdmin}
-                />
-              ) : (
-                <p className="text-muted-foreground">No booking links configured yet. Contact your admin.</p>
-              )}
+              <div className="space-y-3">
+                {members.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={member.profiles?.avatar_url || undefined} />
+                        <AvatarFallback>
+                          {getInitials(member.profiles?.full_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">
+                          {member.profiles?.full_name || "Unknown"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {member.profiles?.email}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={member.role || "closer"}
+                        onValueChange={(value) => handleRoleChange(member.id, value)}
+                        disabled={member.user_id === user?.id}
+                      >
+                        <SelectTrigger className="w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="closer">Closer</SelectItem>
+                          <SelectItem value="setter">Setter</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {member.user_id !== user?.id && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() =>
+                            handleRemoveMember(
+                              member.id,
+                              member.profiles?.full_name || "this member"
+                            )
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
-        )}
-      </div>
+        </TabsContent>
+
+        {/* Commissions Tab */}
+        <TabsContent value="commissions">
+          <CommissionSettings teamId={teamId!} />
+        </TabsContent>
+
+        {/* Danger Zone Tab */}
+        <TabsContent value="danger">
+          <ClearTeamData teamId={teamId!} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
