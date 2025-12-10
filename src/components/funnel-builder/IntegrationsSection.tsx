@@ -18,6 +18,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
+// Import real logo assets
+import zapierLogo from '@/assets/integrations/zapier.svg';
+import hubspotLogo from '@/assets/integrations/hubspot.svg';
+import slackLogo from '@/assets/integrations/slack.svg';
+
 interface Integration {
   id: string;
   team_id: string;
@@ -238,89 +243,63 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
     }
   };
 
-  // Brand-accurate SVG icons matching real logos
+  // Brand icons - using real logos where available
   const GHLIcon = () => (
     <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#0B1628]">
-      <svg viewBox="0 0 40 40" className="w-8 h-8">
-        {/* Yellow arrow */}
-        <path d="M10 28V18l4-6 4 6v10h-8z" fill="#D4A847"/>
-        <path d="M14 12l-4 6h8l-4-6z" fill="#D4A847"/>
-        {/* Blue arrow (shorter) */}
-        <path d="M16 28V22l4-5 4 5v6h-8z" fill="#4A90D9"/>
-        <path d="M20 17l-4 5h8l-4-5z" fill="#4A90D9"/>
-        {/* Green arrow */}
-        <path d="M22 28V16l4-6 4 6v12h-8z" fill="#5CB85C"/>
-        <path d="M26 10l-4 6h8l-4-6z" fill="#5CB85C"/>
+      <svg viewBox="0 0 48 48" className="w-9 h-9">
+        {/* HighLevel 3 arrows logo */}
+        <polygon points="12,36 12,22 18,14 24,22 24,36" fill="#D4A74A"/>
+        <polygon points="18,14 12,22 24,22" fill="#D4A74A"/>
+        <polygon points="18,36 18,26 24,20 30,26 30,36" fill="#4A9FD9"/>
+        <polygon points="24,20 18,26 30,26" fill="#4A9FD9"/>
+        <polygon points="24,36 24,20 30,12 36,20 36,36" fill="#5FBF5F"/>
+        <polygon points="30,12 24,20 36,20" fill="#5FBF5F"/>
       </svg>
     </div>
   );
 
   const ZapierIcon = () => (
-    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#FF4A00]">
-      <svg viewBox="0 0 60 24" className="w-9 h-4">
-        <text x="2" y="18" fill="white" fontFamily="system-ui, -apple-system, sans-serif" fontSize="16" fontWeight="600">zapier</text>
-      </svg>
+    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#FF4A00] p-2">
+      <img src={zapierLogo} alt="Zapier" className="w-full h-full" />
     </div>
   );
 
   const CloseIcon = () => (
-    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#5D5CDE]">
+    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#262B38]">
       <svg viewBox="0 0 40 40" className="w-7 h-7">
-        <text x="7" y="28" fill="white" fontFamily="system-ui, -apple-system, sans-serif" fontSize="24" fontWeight="700">C</text>
+        <circle cx="20" cy="20" r="12" stroke="white" strokeWidth="2.5" fill="none"/>
+        <path d="M15 15l10 10M25 15l-10 10" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
       </svg>
     </div>
   );
 
   const HubSpotIcon = () => (
-    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#FF7A59]">
-      <svg viewBox="0 0 40 40" className="w-7 h-7">
-        {/* HubSpot sprocket icon */}
-        <circle cx="20" cy="12" r="3" fill="white"/>
-        <circle cx="20" cy="20" r="5" stroke="white" strokeWidth="2" fill="none"/>
-        <rect x="18" y="15" width="4" height="5" fill="white"/>
-        <circle cx="12" cy="26" r="2.5" fill="white"/>
-        <circle cx="28" cy="26" r="2.5" fill="white"/>
-        <path d="M15 24l3-2M25 24l-3-2" stroke="white" strokeWidth="2"/>
-      </svg>
+    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#FF7A59] p-2">
+      <img src={hubspotLogo} alt="HubSpot" className="w-full h-full" />
     </div>
   );
 
   const ActiveCampaignIcon = () => (
-    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#356AE6]">
-      <svg viewBox="0 0 40 40" className="w-8 h-8">
-        {/* AC arrow/checkmark logo */}
-        <path d="M8 22l10 10 14-24" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#004CFF]">
+      <svg viewBox="0 0 40 40" className="w-7 h-7">
+        <path d="M10 22l8 8 14-18" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
       </svg>
     </div>
   );
 
   const MakeIcon = () => (
     <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#6D00CC]">
-      <svg viewBox="0 0 40 40" className="w-8 h-8">
-        {/* Make/Integromat connected circles */}
-        <circle cx="13" cy="20" r="6" stroke="white" strokeWidth="2" fill="none"/>
-        <circle cx="27" cy="20" r="6" stroke="white" strokeWidth="2" fill="none"/>
+      <svg viewBox="0 0 40 40" className="w-7 h-7">
+        <circle cx="14" cy="20" r="5" stroke="white" strokeWidth="2" fill="none"/>
+        <circle cx="26" cy="20" r="5" stroke="white" strokeWidth="2" fill="none"/>
+        <line x1="19" y1="20" x2="21" y2="20" stroke="white" strokeWidth="2"/>
       </svg>
     </div>
   );
 
   const SlackIcon = () => (
-    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-white border">
-      <svg viewBox="0 0 40 40" className="w-7 h-7">
-        {/* Slack colored icons */}
-        <path d="M10 16a2 2 0 114 0v2h-2a2 2 0 01-2-2z" fill="#E01E5A"/>
-        <path d="M14 10a2 2 0 110 4h-2v-2a2 2 0 012-2z" fill="#E01E5A"/>
-        <path d="M24 10a2 2 0 110 4h-2a2 2 0 010-4h2z" fill="#36C5F0"/>
-        <path d="M30 16a2 2 0 110 4h-2v-2a2 2 0 012-2z" fill="#36C5F0"/>
-        <path d="M30 24a2 2 0 11-4 0v-2h2a2 2 0 012 2z" fill="#2EB67D"/>
-        <path d="M26 30a2 2 0 110-4h2v2a2 2 0 01-2 2z" fill="#2EB67D"/>
-        <path d="M16 30a2 2 0 110-4h2a2 2 0 010 4h-2z" fill="#ECB22E"/>
-        <path d="M10 24a2 2 0 110-4h2v2a2 2 0 01-2 2z" fill="#ECB22E"/>
-        <rect x="14" y="14" width="4" height="4" fill="#E01E5A"/>
-        <rect x="22" y="14" width="4" height="4" fill="#36C5F0"/>
-        <rect x="22" y="22" width="4" height="4" fill="#2EB67D"/>
-        <rect x="14" y="22" width="4" height="4" fill="#ECB22E"/>
-      </svg>
+    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-white p-2">
+      <img src={slackLogo} alt="Slack" className="w-full h-full" />
     </div>
   );
 
