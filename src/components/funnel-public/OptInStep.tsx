@@ -1,6 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
 import { DynamicElementRenderer } from './DynamicElementRenderer';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ChevronDown } from 'lucide-react';
+
+interface CountryOption {
+  code: string;
+  flag: string;
+  name: string;
+}
+
+const COUNTRIES: CountryOption[] = [
+  { code: '+1', flag: '🇺🇸', name: 'United States' },
+  { code: '+1', flag: '🇨🇦', name: 'Canada' },
+  { code: '+44', flag: '🇬🇧', name: 'United Kingdom' },
+  { code: '+61', flag: '🇦🇺', name: 'Australia' },
+  { code: '+52', flag: '🇲🇽', name: 'Mexico' },
+  { code: '+55', flag: '🇧🇷', name: 'Brazil' },
+  { code: '+49', flag: '🇩🇪', name: 'Germany' },
+  { code: '+33', flag: '🇫🇷', name: 'France' },
+  { code: '+34', flag: '🇪🇸', name: 'Spain' },
+  { code: '+39', flag: '🇮🇹', name: 'Italy' },
+  { code: '+81', flag: '🇯🇵', name: 'Japan' },
+  { code: '+91', flag: '🇮🇳', name: 'India' },
+  { code: '+86', flag: '🇨🇳', name: 'China' },
+  { code: '+351', flag: '🇵🇹', name: 'Portugal' },
+  { code: '+234', flag: '🇳🇬', name: 'Nigeria' },
+];
 
 interface OptInStepProps {
   content: {
@@ -34,13 +59,26 @@ export function OptInStep({ content, settings, onNext, isActive }: OptInStepProp
   const [phone, setPhone] = useState('');
   const [optIn, setOptIn] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
+  const [showDropdown, setShowDropdown] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isActive && nameRef.current) {
       setTimeout(() => nameRef.current?.focus(), 100);
     }
   }, [isActive]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const formatPhone = (input: string) => {
     const digits = input.replace(/\D/g, '');

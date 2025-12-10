@@ -615,9 +615,84 @@ function generateFunnelHTML(
     .error-message {
       color: #f87171;
       font-size: 0.75rem;
-      margin-top: -0.5rem;
-      margin-bottom: 0.5rem;
+      margin-top: 0.25rem;
+      margin-bottom: 0.75rem;
       display: none;
+      text-align: left;
+    }
+    
+    /* Country code selector */
+    .country-selector {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.05);
+      flex-shrink: 0;
+    }
+    
+    .country-selector:hover {
+      background: rgba(0,0,0,0.1);
+    }
+    
+    .country-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      z-index: 1000;
+      min-width: 200px;
+      max-height: 250px;
+      overflow-y: auto;
+      display: none;
+    }
+    
+    .country-dropdown.open {
+      display: block;
+    }
+    
+    .country-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: #374151;
+    }
+    
+    .country-option:hover {
+      background: #f3f4f6;
+    }
+    
+    .country-option.selected {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+    
+    /* Prevent UI overlap - proper spacing */
+    .opt-in-form > * {
+      margin-bottom: 0.75rem;
+    }
+    
+    .opt-in-form > *:last-child {
+      margin-bottom: 0;
+    }
+    
+    /* Ensure all containers don't overlap */
+    #name-container, #email-container, #phone-container {
+      margin-bottom: 0.25rem !important;
+    }
+    
+    #name-error, #email-error, #phone-error {
+      min-height: 0;
+    }
     }
     
     .input-error {
@@ -1022,13 +1097,70 @@ function generateFunnelHTML(
       var design = content.design || {};
       var btnStyle = getButtonStyle(design);
       var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
+      var inputBg = design.inputBg || '#ffffff';
+      var inputTextColor = design.inputTextColor || '#0a0a0a';
+      var inputBorder = design.inputBorder || '#e5e7eb';
+      var inputRadius = design.inputRadius || 12;
+      
+      var inputStyle = 'display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; background: ' + inputBg + '; border: 1px solid ' + inputBorder + '; border-radius: ' + inputRadius + 'px; margin-bottom: 1rem;';
+      var fieldStyle = 'flex: 1; border: none; background: transparent; color: ' + inputTextColor + '; font-size: 1rem; outline: none;';
       
       return '<div class="element-headline" style="' + fontStyle + '">' + (content.headline || 'Enter your phone number') + '</div>' +
         (content.subheadline ? '<div class="element-subheadline">' + content.subheadline + '</div>' : '') +
         (content.subtext ? '<div class="element-subheadline">' + content.subtext + '</div>' : '') +
-        '<input type="tel" class="input-field" id="phone-input" placeholder="' + (content.placeholder || '+1 (555) 000-0000') + '" oninput="formatPhoneInput(this)">' +
+        '<div id="phone-capture-container" style="' + inputStyle + '">' +
+          '<div class="country-selector" onclick="toggleCountryDropdown(event)">' +
+            '<span id="selected-flag">🇺🇸</span>' +
+            '<span id="selected-code" style="font-size: 0.875rem; color: ' + inputTextColor + ';">+1</span>' +
+            '<span style="font-size: 0.5rem; color: #9ca3af;">▼</span>' +
+            '<div class="country-dropdown" id="country-dropdown">' +
+              '<div class="country-option" data-code="+1" data-flag="🇺🇸" onclick="selectCountry(event, \\'+1\\', \\'🇺🇸\\')">🇺🇸 United States (+1)</div>' +
+              '<div class="country-option" data-code="+1" data-flag="🇨🇦" onclick="selectCountry(event, \\'+1\\', \\'🇨🇦\\')">🇨🇦 Canada (+1)</div>' +
+              '<div class="country-option" data-code="+44" data-flag="🇬🇧" onclick="selectCountry(event, \\'+44\\', \\'🇬🇧\\')">🇬🇧 United Kingdom (+44)</div>' +
+              '<div class="country-option" data-code="+61" data-flag="🇦🇺" onclick="selectCountry(event, \\'+61\\', \\'🇦🇺\\')">🇦🇺 Australia (+61)</div>' +
+              '<div class="country-option" data-code="+52" data-flag="🇲🇽" onclick="selectCountry(event, \\'+52\\', \\'🇲🇽\\')">🇲🇽 Mexico (+52)</div>' +
+              '<div class="country-option" data-code="+55" data-flag="🇧🇷" onclick="selectCountry(event, \\'+55\\', \\'🇧🇷\\')">🇧🇷 Brazil (+55)</div>' +
+              '<div class="country-option" data-code="+49" data-flag="🇩🇪" onclick="selectCountry(event, \\'+49\\', \\'🇩🇪\\')">🇩🇪 Germany (+49)</div>' +
+              '<div class="country-option" data-code="+33" data-flag="🇫🇷" onclick="selectCountry(event, \\'+33\\', \\'🇫🇷\\')">🇫🇷 France (+33)</div>' +
+              '<div class="country-option" data-code="+34" data-flag="🇪🇸" onclick="selectCountry(event, \\'+34\\', \\'🇪🇸\\')">🇪🇸 Spain (+34)</div>' +
+              '<div class="country-option" data-code="+39" data-flag="🇮🇹" onclick="selectCountry(event, \\'+39\\', \\'🇮🇹\\')">🇮🇹 Italy (+39)</div>' +
+              '<div class="country-option" data-code="+81" data-flag="🇯🇵" onclick="selectCountry(event, \\'+81\\', \\'🇯🇵\\')">🇯🇵 Japan (+81)</div>' +
+              '<div class="country-option" data-code="+91" data-flag="🇮🇳" onclick="selectCountry(event, \\'+91\\', \\'🇮🇳\\')">🇮🇳 India (+91)</div>' +
+              '<div class="country-option" data-code="+86" data-flag="🇨🇳" onclick="selectCountry(event, \\'+86\\', \\'🇨🇳\\')">🇨🇳 China (+86)</div>' +
+              '<div class="country-option" data-code="+351" data-flag="🇵🇹" onclick="selectCountry(event, \\'+351\\', \\'🇵🇹\\')">🇵🇹 Portugal (+351)</div>' +
+              '<div class="country-option" data-code="+234" data-flag="🇳🇬" onclick="selectCountry(event, \\'+234\\', \\'🇳🇬\\')">🇳🇬 Nigeria (+234)</div>' +
+            '</div>' +
+          '</div>' +
+          '<input type="tel" style="' + fieldStyle + '" id="phone-input" placeholder="' + (content.placeholder || '(555) 000-0000') + '" oninput="formatPhoneInput(this)" maxlength="14">' +
+        '</div>' +
         '<button class="element-button' + btnStyle.hoverClass + '" style="' + btnStyle.style + '" onclick="handlePhoneSubmit()">Continue</button>';
     }
+    
+    var selectedCountryCode = '+1';
+    
+    function toggleCountryDropdown(e) {
+      e.stopPropagation();
+      var dropdown = document.getElementById('country-dropdown');
+      if (dropdown) dropdown.classList.toggle('open');
+    }
+    
+    function selectCountry(e, code, flag) {
+      e.stopPropagation();
+      selectedCountryCode = code;
+      var flagEl = document.getElementById('selected-flag');
+      var codeEl = document.getElementById('selected-code');
+      if (flagEl) flagEl.textContent = flag;
+      if (codeEl) codeEl.textContent = code;
+      var dropdown = document.getElementById('country-dropdown');
+      if (dropdown) dropdown.classList.remove('open');
+    }
+    
+    document.addEventListener('click', function(e) {
+      var dropdown = document.getElementById('country-dropdown');
+      if (dropdown && !e.target.closest('.country-selector')) {
+        dropdown.classList.remove('open');
+      }
+    });
     
     function renderOptIn(content) {
       var design = content.design || {};
@@ -1163,7 +1295,8 @@ function generateFunnelHTML(
       var phone = document.getElementById('phone-input');
       var value = phone ? phone.value.trim() : '';
       if (value) {
-        answers.phone = value;
+        // Include country code
+        answers.phone = selectedCountryCode + ' ' + value;
         handleNext();
       }
     }
@@ -1275,6 +1408,7 @@ function generateFunnelHTML(
             email: answers.email || null,
             phone: answers.phone || null,
             name: answers.name || null,
+            opt_in: answers.opt_in || false,
             answers: answers,
             calendly_booking_data: calendlyBookingData,
           }),
@@ -1282,6 +1416,7 @@ function generateFunnelHTML(
         
         var data = await response.json();
         if (data.lead_id) leadId = data.lead_id;
+        console.log('Lead saved:', data);
       } catch (err) {
         console.error('Failed to save lead:', err);
       }

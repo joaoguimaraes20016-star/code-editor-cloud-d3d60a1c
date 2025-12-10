@@ -18,6 +18,11 @@ interface FunnelLeadRequest {
   funnel_id: string
   lead_id?: string // For updating existing leads
   answers: Record<string, any>
+  // Direct fields from serve-funnel client-side
+  email?: string
+  phone?: string
+  name?: string
+  opt_in?: boolean
   utm_source?: string
   utm_medium?: string
   utm_campaign?: string
@@ -39,13 +44,23 @@ Deno.serve(async (req) => {
 
     const body: FunnelLeadRequest = await req.json()
     const { funnel_id, lead_id, answers, utm_source, utm_medium, utm_campaign, calendly_booking, is_complete } = body
+    
+    // Extract direct fields sent from serve-funnel client
+    const directEmail = body.email
+    const directPhone = body.phone
+    const directName = body.name
+    const directOptIn = body.opt_in
 
     console.log('Received funnel lead submission:', { 
       funnel_id, 
       lead_id, 
       utm_source, 
       has_calendly: !!calendly_booking,
-      is_complete 
+      is_complete,
+      directEmail,
+      directPhone,
+      directName,
+      directOptIn
     })
 
     if (!funnel_id || !answers) {
@@ -77,14 +92,16 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Extract email, phone, name, opt-in from answers
-    let email: string | null = null
-    let phone: string | null = null
-    let name: string | null = null
-    let optInStatus: boolean | null = null
-    let optInTimestamp: string | null = null
+    // Extract email, phone, name, opt-in from answers AND direct fields
+    // Direct fields take priority as they're explicitly captured
+    let email: string | null = directEmail || null
+    let phone: string | null = directPhone || null
+    let name: string | null = directName || null
+    let optInStatus: boolean | null = directOptIn !== undefined ? directOptIn : null
+    let optInTimestamp: string | null = directOptIn !== undefined ? new Date().toISOString() : null
 
-    for (const [stepId, answer] of Object.entries(answers)) {
+    // Also scan answers for any additional data
+    for (const [stepId, answer] of Object.entries(answers || {})) {
       const value = typeof answer === 'object' && answer !== null ? answer.value : answer
       const stepType = typeof answer === 'object' && answer !== null ? answer.step_type : null
 
