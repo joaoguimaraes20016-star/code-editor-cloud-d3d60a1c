@@ -27,17 +27,28 @@ serve(async (req) => {
   }
 
   try {
-    const { domain } = await req.json();
+    let domain: string | null = null;
+
+    // For GET requests (from Caddy reverse proxy), read domain from X-Forwarded-Host header
+    if (req.method === 'GET') {
+      // Caddy sends the original host in X-Forwarded-Host header
+      domain = req.headers.get('x-forwarded-host') || req.headers.get('host');
+      console.log(`GET request - X-Forwarded-Host: ${req.headers.get('x-forwarded-host')}, Host: ${req.headers.get('host')}`);
+    } else {
+      // For POST requests (legacy), read from body
+      const body = await req.json();
+      domain = body.domain;
+    }
     
     if (!domain) {
       return new Response(
-        JSON.stringify({ error: 'Domain is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        generateErrorPage('Configuration Error', 'Domain could not be determined from request.'),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'text/html' } }
       );
     }
 
-    // Clean domain (remove www. if present)
-    const cleanDomain = domain.toLowerCase().replace(/^www\./, '');
+    // Clean domain (remove www. if present, remove port if present)
+    const cleanDomain = domain.toLowerCase().replace(/^www\./, '').split(':')[0];
 
     console.log(`Serving funnel for domain: ${cleanDomain}`);
 
@@ -506,274 +517,249 @@ function generateFunnelHTML(
       const root = document.getElementById('funnel-root');
       const settings = FUNNEL_DATA.settings;
       
-      // Build HTML
-      let html = '';
+      // Build progress dots
+      const dotsHTML = STEPS_DATA.map((_, index) => 
+        '<div class="progress-dot ' + (index === 0 ? 'active' : '') + '" data-index="' + index + '"></div>'
+      ).join('');
       
-      // Logo
-      if (settings.logo_url) {
-        html += '<div class="logo"><img src="' + settings.logo_url + '" alt="Logo"></div>';
-      }
+      // Build logo HTML
+      const logoHTML = settings.logo_url 
+        ? '<div class="logo"><img src="' + settings.logo_url + '" alt="Logo"></div>' 
+        : '';
       
-      // Progress dots
-      html += '<div class="progress-dots">';
-      STEPS_DATA.forEach((_, i) => {
-        const isActive = i === currentStepIndex;
-        const isCompleted = i < currentStepIndex;
-        html += '<div class="progress-dot' + (isActive ? ' active' : '') + (isCompleted ? ' completed' : '') + '"></div>';
-      });
-      html += '</div>';
+      // Build steps HTML
+      const stepsHTML = STEPS_DATA.map((step, index) => {
+        return '<div class="step-container ' + (index !== 0 ? 'step-hidden' : 'fade-in') + '" data-step-index="' + index + '">' +
+          '<div class="step-content">' + renderStepContent(step, index) + '</div>' +
+        '</div>';
+      }).join('');
       
-      // Steps
-      STEPS_DATA.forEach((step, i) => {
-        const isVisible = i === currentStepIndex;
-        html += '<div class="step-container' + (isVisible ? ' fade-in' : ' step-hidden') + '" data-step-index="' + i + '">';
-        html += '<div class="step-content">';
-        html += renderStep(step, i);
-        html += '</div>';
-        html += '</div>';
-      });
-      
-      root.innerHTML = html;
+      root.innerHTML = logoHTML + '<div class="progress-dots">' + dotsHTML + '</div>' + stepsHTML;
     }
     
-    function renderStep(step, index) {
+    function renderStepContent(step, index) {
       const content = step.content || {};
-      const settings = FUNNEL_DATA.settings;
+      const type = step.step_type;
       
-      // Count question steps
-      const questionTypes = ['text_question', 'multi_choice', 'email_capture', 'phone_capture', 'opt_in'];
-      const questionSteps = STEPS_DATA.filter(s => questionTypes.includes(s.step_type));
-      const questionIndex = questionSteps.findIndex(s => s.id === step.id);
-      const questionNumber = questionIndex >= 0 ? questionIndex + 1 : null;
-      const totalQuestions = questionSteps.length;
-      
-      let html = '';
-      
-      switch (step.step_type) {
+      switch (type) {
         case 'welcome':
-          html += renderHeadline(content.headline);
-          html += renderSubheadline(content.subheadline);
-          html += '<button class="primary-button" onclick="handleNext()">' + (content.buttonText || settings.button_text || 'Get Started') + '</button>';
-          break;
-          
-        case 'text_question':
-          if (questionNumber) {
-            html += '<div class="question-counter">Question ' + questionNumber + ' of ' + totalQuestions + '</div>';
-          }
-          html += renderHeadline(content.question || content.headline);
-          html += '<input type="text" class="input-field" id="text-input-' + index + '" placeholder="' + (content.placeholder || 'Type your answer...') + '">';
-          html += '<button class="primary-button" onclick="handleTextSubmit(' + index + ')">' + (content.buttonText || 'Continue') + '</button>';
-          break;
-          
+          return renderWelcome(content);
+        case 'text':
+          return renderTextQuestion(content, index);
         case 'multi_choice':
-          if (questionNumber) {
-            html += '<div class="question-counter">Question ' + questionNumber + ' of ' + totalQuestions + '</div>';
-          }
-          html += renderHeadline(content.question || content.headline);
-          const options = content.options || [];
-          options.forEach((opt, i) => {
-            const label = typeof opt === 'string' ? opt : (opt.label || opt.text || '');
-            const icon = typeof opt === 'object' ? (opt.icon || '') : '';
-            html += '<div class="option-card" data-option-index="' + i + '" onclick="handleOptionSelect(this, ' + index + ', \\'' + label.replace(/'/g, "\\'") + '\\')">';
-            if (icon) html += '<span class="option-icon">' + icon + '</span>';
-            html += '<span class="option-label">' + label + '</span>';
-            html += '<div class="option-radio"><div class="option-radio-inner"></div></div>';
-            html += '</div>';
-          });
-          html += '<button class="primary-button" id="multi-next-' + index + '" style="opacity:0.5;pointer-events:none" onclick="handleNext()">' + (content.buttonText || 'Next Question') + '</button>';
-          break;
-          
-        case 'email_capture':
-          if (questionNumber) {
-            html += '<div class="question-counter">Question ' + questionNumber + ' of ' + totalQuestions + '</div>';
-          }
-          html += renderHeadline(content.headline || 'What\\'s your email?');
-          html += '<input type="email" class="input-field" id="email-input-' + index + '" placeholder="' + (content.placeholder || 'Enter your email...') + '">';
-          html += '<button class="primary-button" onclick="handleEmailSubmit(' + index + ')">' + (content.buttonText || 'Continue') + '</button>';
-          break;
-          
-        case 'phone_capture':
-          if (questionNumber) {
-            html += '<div class="question-counter">Question ' + questionNumber + ' of ' + totalQuestions + '</div>';
-          }
-          html += renderHeadline(content.headline || 'What\\'s your phone number?');
-          html += '<input type="tel" class="input-field" id="phone-input-' + index + '" placeholder="' + (content.placeholder || 'Enter your phone number...') + '">';
-          html += '<button class="primary-button" onclick="handlePhoneSubmit(' + index + ')">' + (content.buttonText || 'Continue') + '</button>';
-          break;
-          
+          return renderMultiChoice(content, index);
+        case 'email':
+          return renderEmailCapture(content);
+        case 'phone':
+          return renderPhoneCapture(content);
         case 'opt_in':
-          if (questionNumber) {
-            html += '<div class="question-counter">Question ' + questionNumber + ' of ' + totalQuestions + '</div>';
-          }
-          html += renderHeadline(content.headline || 'Enter your details');
-          html += '<input type="text" class="input-field" id="name-input-' + index + '" placeholder="Your name">';
-          html += '<input type="email" class="input-field" id="optin-email-' + index + '" placeholder="Your email">';
-          html += '<input type="tel" class="input-field" id="optin-phone-' + index + '" placeholder="Your phone">';
-          html += '<button class="primary-button" onclick="handleOptInSubmit(' + index + ')">' + (content.buttonText || 'Submit') + '</button>';
-          break;
-          
+          return renderOptIn(content);
         case 'video':
-          html += renderHeadline(content.headline);
-          if (content.videoUrl) {
-            html += '<div class="video-container">';
-            html += '<iframe src="' + getEmbedUrl(content.videoUrl) + '" allowfullscreen></iframe>';
-            html += '</div>';
-          }
-          html += '<button class="primary-button" onclick="handleNext()">' + (content.buttonText || 'Continue') + '</button>';
-          break;
-          
+          return renderVideo(content);
         case 'embed':
-          html += renderHeadline(content.headline);
-          if (content.embedUrl) {
-            const scale = content.scale || 0.75;
-            html += '<div class="embed-container" style="transform:scale(' + scale + ');transform-origin:top center;width:' + (100/scale) + '%">';
-            html += '<iframe src="' + content.embedUrl + '" allowfullscreen></iframe>';
-            html += '</div>';
-          }
-          break;
-          
+          return renderEmbed(content);
         case 'thank_you':
-          html += renderHeadline(content.headline || 'Thank you!');
-          html += renderSubheadline(content.subheadline || content.message || 'We\\'ll be in touch soon.');
-          break;
-          
+          return renderThankYou(content);
         default:
-          html += renderHeadline(content.headline || '');
-          if (content.buttonText) {
-            html += '<button class="primary-button" onclick="handleNext()">' + content.buttonText + '</button>';
-          }
+          return '<p style="color: white;">Unknown step type: ' + type + '</p>';
+      }
+    }
+    
+    function renderWelcome(content) {
+      return '<div class="headline">' + (content.headline || 'Welcome') + '</div>' +
+        (content.subheadline ? '<div class="subheadline">' + content.subheadline + '</div>' : '') +
+        '<button class="primary-button" onclick="handleNext()">' + (content.button_text || 'Get Started') + '</button>';
+    }
+    
+    function renderTextQuestion(content, index) {
+      const questionId = 'question_' + index;
+      return '<div class="question-counter">Question ' + (index + 1) + ' of ' + STEPS_DATA.length + '</div>' +
+        '<div class="headline">' + (content.question || 'Your question') + '</div>' +
+        '<input type="text" class="input-field" id="' + questionId + '" placeholder="' + (content.placeholder || 'Type your answer...') + '">' +
+        '<button class="primary-button" onclick="handleTextSubmit(\'' + questionId + '\')">Continue</button>';
+    }
+    
+    function renderMultiChoice(content, index) {
+      const options = content.options || [];
+      const optionsHTML = options.map((opt, i) => 
+        '<div class="option-card" onclick="selectOption(this, ' + index + ', \'' + (opt.label || opt) + '\')">' +
+          (opt.icon ? '<span class="option-icon">' + opt.icon + '</span>' : '') +
+          '<span class="option-label">' + (opt.label || opt) + '</span>' +
+          '<div class="option-radio"><div class="option-radio-inner"></div></div>' +
+        '</div>'
+      ).join('');
+      
+      return '<div class="question-counter">Question ' + (index + 1) + ' of ' + STEPS_DATA.length + '</div>' +
+        '<div class="headline">' + (content.question || 'Choose an option') + '</div>' +
+        '<div class="options-container">' + optionsHTML + '</div>' +
+        '<button class="primary-button" style="margin-top: 1rem;" onclick="handleMultiChoiceSubmit(' + index + ')">Continue</button>';
+    }
+    
+    function renderEmailCapture(content) {
+      return '<div class="headline">' + (content.headline || 'Enter your email') + '</div>' +
+        (content.subheadline ? '<div class="subheadline">' + content.subheadline + '</div>' : '') +
+        '<input type="email" class="input-field" id="email-input" placeholder="' + (content.placeholder || 'your@email.com') + '">' +
+        '<button class="primary-button" onclick="handleEmailSubmit()">Continue</button>';
+    }
+    
+    function renderPhoneCapture(content) {
+      return '<div class="headline">' + (content.headline || 'Enter your phone number') + '</div>' +
+        (content.subheadline ? '<div class="subheadline">' + content.subheadline + '</div>' : '') +
+        '<input type="tel" class="input-field" id="phone-input" placeholder="' + (content.placeholder || '+1 (555) 000-0000') + '">' +
+        '<button class="primary-button" onclick="handlePhoneSubmit()">Continue</button>';
+    }
+    
+    function renderOptIn(content) {
+      return '<div class="headline">' + (content.headline || 'Complete your information') + '</div>' +
+        '<input type="text" class="input-field" id="name-input" placeholder="' + (content.name_placeholder || 'Your name') + '">' +
+        '<input type="email" class="input-field" id="optin-email" placeholder="' + (content.email_placeholder || 'Your email') + '">' +
+        '<input type="tel" class="input-field" id="optin-phone" placeholder="' + (content.phone_placeholder || 'Your phone') + '">' +
+        '<button class="primary-button" onclick="handleOptInSubmit()">Continue</button>';
+    }
+    
+    function renderVideo(content) {
+      const videoUrl = content.video_url || '';
+      let embedUrl = '';
+      
+      if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+        const videoId = videoUrl.match(/(?:youtube\\.com\\/(?:[^\\/]+\\/.+\\/|(?:v|e(?:mbed)?)\\/|.*[?&]v=)|youtu\\.be\\/)([^"&?\\/\\s]{11})/)?.[1];
+        if (videoId) embedUrl = 'https://www.youtube.com/embed/' + videoId;
+      } else if (videoUrl.includes('vimeo.com')) {
+        const vimeoId = videoUrl.match(/vimeo\\.com\\/(?:video\\/)?(\\d+)/)?.[1];
+        if (vimeoId) embedUrl = 'https://player.vimeo.com/video/' + vimeoId;
+      } else if (videoUrl.includes('loom.com')) {
+        const loomId = videoUrl.match(/loom\\.com\\/(?:share|embed)\\/([a-zA-Z0-9]+)/)?.[1];
+        if (loomId) embedUrl = 'https://www.loom.com/embed/' + loomId;
       }
       
-      return html;
+      return '<div class="headline">' + (content.headline || 'Watch this video') + '</div>' +
+        (embedUrl ? '<div class="video-container"><iframe src="' + embedUrl + '" allowfullscreen></iframe></div>' : '<div class="video-container"></div>') +
+        '<button class="primary-button" onclick="handleNext()">' + (content.button_text || 'Continue') + '</button>';
     }
     
-    function renderHeadline(text) {
-      if (!text) return '';
-      // Support HTML content
-      return '<h1 class="headline">' + text + '</h1>';
-    }
-    
-    function renderSubheadline(text) {
-      if (!text) return '';
-      return '<p class="subheadline">' + text + '</p>';
-    }
-    
-    function getEmbedUrl(url) {
-      if (!url) return '';
-      // YouTube
-      if (url.includes('youtube.com') || url.includes('youtu.be')) {
-        const videoId = url.match(/(?:youtu\\.be\\/|youtube\\.com(?:\\/embed\\/|\\/v\\/|\\/watch\\?v=))([\\w-]{11})/);
-        if (videoId) return 'https://www.youtube.com/embed/' + videoId[1];
-      }
-      // Vimeo
-      if (url.includes('vimeo.com')) {
-        const videoId = url.match(/vimeo\\.com\\/(?:video\\/)?(\\d+)/);
-        if (videoId) return 'https://player.vimeo.com/video/' + videoId[1];
-      }
-      // Loom
-      if (url.includes('loom.com')) {
-        const videoId = url.match(/loom\\.com\\/share\\/([\\w-]+)/);
-        if (videoId) return 'https://www.loom.com/embed/' + videoId[1];
-      }
-      return url;
-    }
-    
-    function handleNext(value) {
-      const currentStep = STEPS_DATA[currentStepIndex];
+    function renderEmbed(content) {
+      const embedUrl = content.embed_url || '';
+      const scale = content.scale || 0.75;
       
-      if (value !== undefined) {
-        answers[currentStep.id] = {
-          value,
-          step_type: currentStep.step_type,
-        };
-        saveLead(false);
-      }
-      
-      // Check if next step is thank_you
-      const nextStep = STEPS_DATA[currentStepIndex + 1];
-      if (nextStep && nextStep.step_type === 'thank_you') {
-        saveLead(true);
-      }
-      
-      if (currentStepIndex < STEPS_DATA.length - 1) {
-        currentStepIndex++;
-        renderFunnel();
-      }
+      return '<div class="headline">' + (content.headline || '') + '</div>' +
+        '<div class="embed-container" style="transform: scale(' + scale + '); transform-origin: top center;">' +
+          '<iframe src="' + embedUrl + '" allow="camera; microphone"></iframe>' +
+        '</div>';
     }
     
-    function handleTextSubmit(index) {
-      const input = document.getElementById('text-input-' + index);
-      if (input && input.value.trim()) {
-        handleNext(input.value.trim());
-      }
+    function renderThankYou(content) {
+      return '<div class="headline">' + (content.headline || 'Thank you!') + '</div>' +
+        (content.subheadline ? '<div class="subheadline">' + content.subheadline + '</div>' : '') +
+        (content.redirect_url ? '<script>setTimeout(() => window.location.href = "' + content.redirect_url + '", 3000);</' + 'script>' : '');
     }
     
-    function handleEmailSubmit(index) {
-      const input = document.getElementById('email-input-' + index);
-      if (input && input.value.trim()) {
-        handleNext({ email: input.value.trim() });
-      }
+    function handleNext() {
+      saveLead();
+      goToNextStep();
     }
     
-    function handlePhoneSubmit(index) {
-      const input = document.getElementById('phone-input-' + index);
-      if (input && input.value.trim()) {
-        handleNext({ phone: input.value.trim() });
+    function handleTextSubmit(inputId) {
+      const input = document.getElementById(inputId);
+      const value = input?.value?.trim();
+      if (value) {
+        answers[inputId] = value;
       }
+      handleNext();
     }
     
-    function handleOptInSubmit(index) {
-      const name = document.getElementById('name-input-' + index)?.value?.trim();
-      const email = document.getElementById('optin-email-' + index)?.value?.trim();
-      const phone = document.getElementById('optin-phone-' + index)?.value?.trim();
-      
-      if (email || phone) {
-        handleNext({ name, email, phone, optIn: true });
-      }
-    }
-    
-    function handleOptionSelect(element, stepIndex, value) {
-      // Deselect others
+    function selectOption(element, stepIndex, value) {
+      // Remove selected from siblings
       const container = element.parentElement;
       container.querySelectorAll('.option-card').forEach(card => card.classList.remove('selected'));
       element.classList.add('selected');
-      
-      // Enable button
-      const btn = document.getElementById('multi-next-' + stepIndex);
-      if (btn) {
-        btn.style.opacity = '1';
-        btn.style.pointerEvents = 'auto';
-      }
-      
-      // Store selection
-      const currentStep = STEPS_DATA[currentStepIndex];
-      answers[currentStep.id] = {
-        value,
-        step_type: currentStep.step_type,
-      };
+      answers['choice_' + stepIndex] = value;
     }
     
-    async function saveLead(isComplete) {
+    function handleMultiChoiceSubmit(stepIndex) {
+      if (answers['choice_' + stepIndex]) {
+        handleNext();
+      }
+    }
+    
+    function handleEmailSubmit() {
+      const email = document.getElementById('email-input')?.value?.trim();
+      if (email) {
+        answers.email = email;
+        handleNext();
+      }
+    }
+    
+    function handlePhoneSubmit() {
+      const phone = document.getElementById('phone-input')?.value?.trim();
+      if (phone) {
+        answers.phone = phone;
+        handleNext();
+      }
+    }
+    
+    function handleOptInSubmit() {
+      const name = document.getElementById('name-input')?.value?.trim();
+      const email = document.getElementById('optin-email')?.value?.trim();
+      const phone = document.getElementById('optin-phone')?.value?.trim();
+      
+      if (name) answers.name = name;
+      if (email) answers.email = email;
+      if (phone) answers.phone = phone;
+      
+      handleNext();
+    }
+    
+    function goToNextStep() {
+      if (currentStepIndex >= STEPS_DATA.length - 1) return;
+      
+      // Hide current step
+      const currentStep = document.querySelector('[data-step-index="' + currentStepIndex + '"]');
+      if (currentStep) currentStep.classList.add('step-hidden');
+      
+      // Show next step
+      currentStepIndex++;
+      const nextStep = document.querySelector('[data-step-index="' + currentStepIndex + '"]');
+      if (nextStep) {
+        nextStep.classList.remove('step-hidden');
+        nextStep.classList.add('fade-in');
+      }
+      
+      // Update progress dots
+      document.querySelectorAll('.progress-dot').forEach((dot, index) => {
+        dot.classList.remove('active');
+        if (index < currentStepIndex) dot.classList.add('completed');
+        if (index === currentStepIndex) dot.classList.add('active');
+      });
+    }
+    
+    async function saveLead() {
+      // Only save if we have meaningful data
+      if (!answers.email && !answers.phone && !answers.name && Object.keys(answers).length === 0) {
+        return;
+      }
+      
       try {
         const response = await fetch(SUPABASE_URL + '/functions/v1/submit-funnel-lead', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
             funnel_id: FUNNEL_DATA.id,
+            team_id: FUNNEL_DATA.team_id,
             lead_id: leadId,
+            email: answers.email || null,
+            phone: answers.phone || null,
+            name: answers.name || null,
             answers: answers,
-            calendly_booking: calendlyBookingData,
-            is_complete: isComplete,
+            calendly_booking_data: calendlyBookingData,
           }),
         });
         
         const data = await response.json();
         if (data.lead_id) {
           leadId = data.lead_id;
-          console.log('Lead saved:', leadId, isComplete ? '(complete)' : '(partial)');
         }
       } catch (err) {
         console.error('Failed to save lead:', err);
