@@ -26,7 +26,6 @@ serve(async (req) => {
   }
 
   try {
-    // Always try to get domain from URL query params first (for Caddy GET requests)
     const url = new URL(req.url);
     let domain: string | null = url.searchParams.get('domain');
     
@@ -35,12 +34,10 @@ serve(async (req) => {
     console.log(`X-Forwarded-Host: ${req.headers.get('x-forwarded-host')}`);
     console.log(`Host: ${req.headers.get('host')}`);
     
-    // If no domain from query params, try headers
     if (!domain) {
       domain = req.headers.get('x-forwarded-host') || req.headers.get('host');
     }
     
-    // Only try JSON body for POST requests, wrapped in try-catch to prevent crashes
     if (!domain && req.method === 'POST') {
       try {
         const body = await req.json();
@@ -116,7 +113,6 @@ serve(async (req) => {
     console.log(`Serving funnel ${funnel.slug} for domain ${cleanDomain}`);
     console.log(`HTML length: ${html.length} bytes`);
 
-    // Create response with HTML - using Response constructor with explicit init
     const response = new Response(html, { 
       status: 200,
       headers: {
@@ -183,7 +179,6 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
-// Safely escape JSON for embedding in script tags
 function escapeJsonForScript(obj: unknown): string {
   return JSON.stringify(obj)
     .replace(/</g, '\\u003c')
@@ -267,6 +262,7 @@ function generateFunnelHTML(
       width: 100%;
       max-width: 600px;
       margin: 0 auto;
+      text-align: center;
     }
     
     .logo {
@@ -318,7 +314,7 @@ function generateFunnelHTML(
       background: ${primaryColor};
     }
     
-    /* Dynamic Elements */
+    /* Dynamic Elements - with font family support */
     .element-headline {
       color: white;
       font-size: 1.75rem;
@@ -351,6 +347,8 @@ function generateFunnelHTML(
     .element-button {
       display: block;
       width: 100%;
+      max-width: 400px;
+      margin: 0 auto 1rem;
       padding: 1rem 2rem;
       background: ${primaryColor};
       color: white;
@@ -362,16 +360,30 @@ function generateFunnelHTML(
       transition: all 0.2s ease;
       text-align: center;
       text-decoration: none;
-      margin-bottom: 1rem;
     }
     
+    /* Button hover effects */
     .element-button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px ${primaryColor}40;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     }
     
-    .element-button.gradient {
-      background: var(--btn-gradient, linear-gradient(to bottom, ${primaryColor}, ${primaryColor}));
+    .element-button.hover-glow:hover {
+      box-shadow: 0 0 30px var(--btn-glow-color, ${primaryColor}80);
+    }
+    
+    .element-button.hover-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+    }
+    
+    .element-button.hover-pulse:hover {
+      animation: pulse 0.5s ease-in-out;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
     }
     
     .element-image {
@@ -419,50 +431,7 @@ function generateFunnelHTML(
       min-height: 500px;
     }
     
-    /* Input with icon */
-    .input-wrapper {
-      position: relative;
-      width: 100%;
-      margin-bottom: 1rem;
-    }
-    
-    .input-icon {
-      position: absolute;
-      left: 1rem;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 1.25rem;
-      z-index: 1;
-    }
-    
-    .input-wrapper .input-field {
-      padding-left: 3rem;
-      margin-bottom: 0;
-    }
-    
-    /* Privacy checkbox */
-    .privacy-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-      margin: 1rem 0;
-      color: rgba(255,255,255,0.7);
-      font-size: 0.875rem;
-    }
-    
-    .privacy-checkbox {
-      width: 18px;
-      height: 18px;
-      margin-top: 2px;
-      accent-color: ${primaryColor};
-    }
-    
-    .privacy-text a {
-      color: ${primaryColor};
-      text-decoration: underline;
-    }
-    
-    /* Input fields - styled container like builder */
+    /* Styled input containers - matching React exactly */
     .styled-input-container {
       display: flex;
       align-items: flex-start;
@@ -484,8 +453,10 @@ function generateFunnelHTML(
       color: #9ca3af;
       font-size: 1.25rem;
       margin-top: 2px;
+      flex-shrink: 0;
     }
     
+    .styled-input-container input,
     .styled-input-container textarea {
       flex: 1;
       border: none;
@@ -493,15 +464,19 @@ function generateFunnelHTML(
       color: #0a0a0a;
       font-size: 1rem;
       outline: none;
+    }
+    
+    .styled-input-container textarea {
       resize: none;
       min-height: 80px;
     }
     
+    .styled-input-container input::placeholder,
     .styled-input-container textarea::placeholder {
       color: #9ca3af;
     }
     
-    /* Legacy input fields */
+    /* Legacy input fields fallback */
     .input-field {
       width: 100%;
       padding: 1rem;
@@ -524,7 +499,7 @@ function generateFunnelHTML(
       color: rgba(255,255,255,0.5);
     }
     
-    /* Option cards */
+    /* Option cards - matching React exactly */
     .option-card {
       width: 100%;
       padding: 1rem 1.25rem;
@@ -550,7 +525,7 @@ function generateFunnelHTML(
     }
     
     .option-icon { font-size: 1.5rem; }
-    .option-label { color: white; font-size: 1rem; font-weight: 500; flex: 1; }
+    .option-label { color: white; font-size: 1rem; font-weight: 500; flex: 1; text-align: left; }
     
     .option-radio {
       width: 20px;
@@ -560,6 +535,7 @@ function generateFunnelHTML(
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
     
     .option-card.selected .option-radio { border-color: ${primaryColor}; }
@@ -580,6 +556,29 @@ function generateFunnelHTML(
       font-size: 0.875rem;
       text-align: center;
       margin-bottom: 1.5rem;
+    }
+    
+    /* Privacy checkbox */
+    .privacy-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin: 1rem 0;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.875rem;
+    }
+    
+    .privacy-checkbox {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: ${primaryColor};
+      flex-shrink: 0;
+    }
+    
+    .privacy-text a {
+      color: ${primaryColor};
+      text-decoration: underline;
     }
     
     .step-hidden { display: none; }
@@ -606,6 +605,19 @@ function generateFunnelHTML(
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    
+    /* Error styling */
+    .error-message {
+      color: #f87171;
+      font-size: 0.75rem;
+      margin-top: -0.5rem;
+      margin-bottom: 0.5rem;
+      display: none;
+    }
+    
+    .input-error {
+      border-color: #ef4444 !important;
+    }
   </style>
 </head>
 <body>
@@ -626,7 +638,7 @@ function generateFunnelHTML(
     let leadId = null;
     let calendlyBookingData = null;
     
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', function() {
       try {
         console.log('Funnel data:', FUNNEL_DATA);
         console.log('Steps data:', STEPS_DATA);
@@ -644,7 +656,7 @@ function generateFunnelHTML(
     });
     
     function setupCalendlyListener() {
-      window.addEventListener('message', (event) => {
+      window.addEventListener('message', function(event) {
         if (event.data.event === 'calendly.event_scheduled') {
           console.log('Calendly booking detected:', event.data);
           calendlyBookingData = {
@@ -653,24 +665,25 @@ function generateFunnelHTML(
             invitee_uri: event.data.payload?.invitee?.uri,
             scheduling_url: event.data.payload?.event?.scheduling_url,
           };
-          setTimeout(() => handleNext(), 1500);
+          saveLead();
+          setTimeout(function() { goToNextStep(); }, 1500);
         }
       });
     }
     
     function renderFunnel() {
-      const root = document.getElementById('funnel-root');
-      const settings = FUNNEL_DATA.settings || {};
+      var root = document.getElementById('funnel-root');
+      var settings = FUNNEL_DATA.settings || {};
       
-      const dotsHTML = STEPS_DATA.map((_, index) => 
-        '<div class="progress-dot ' + (index === 0 ? 'active' : '') + '" data-index="' + index + '"></div>'
-      ).join('');
+      var dotsHTML = STEPS_DATA.map(function(_, index) {
+        return '<div class="progress-dot ' + (index === 0 ? 'active' : '') + '" data-index="' + index + '"></div>';
+      }).join('');
       
-      const logoHTML = settings.logo_url 
+      var logoHTML = settings.logo_url 
         ? '<div class="logo"><img src="' + settings.logo_url + '" alt="Logo"></div>' 
         : '';
       
-      const stepsHTML = STEPS_DATA.map((step, index) => {
+      var stepsHTML = STEPS_DATA.map(function(step, index) {
         return '<div class="step-container ' + (index !== 0 ? 'step-hidden' : 'fade-in') + '" data-step-index="' + index + '">' +
           '<div class="step-content">' + renderStepContent(step, index) + '</div>' +
         '</div>';
@@ -680,15 +693,13 @@ function generateFunnelHTML(
     }
     
     function renderStepContent(step, index) {
-      const content = step.content || {};
-      const type = step.step_type;
+      var content = step.content || {};
+      var type = step.step_type;
       
-      // Check if step has element_order (dynamic elements)
       if (content.element_order && Array.isArray(content.element_order) && content.element_order.length > 0) {
         return renderDynamicElements(content, index, type);
       }
       
-      // Fallback to basic rendering
       switch (type) {
         case 'welcome': return renderWelcome(content);
         case 'text_question': return renderTextQuestion(content, index);
@@ -703,52 +714,74 @@ function generateFunnelHTML(
       }
     }
     
-    function renderDynamicElements(content, stepIndex, stepType) {
-      const elementOrder = content.element_order || [];
-      const dynamicElements = content.dynamic_elements || {};
-      const design = content.design || {};
-      let html = '';
+    function getButtonStyle(design) {
+      var settings = FUNNEL_DATA.settings || {};
+      var primaryColor = settings.primary_color || '#22c55e';
+      var style = '';
+      var hoverClass = '';
       
-      // Build button style with gradient - use camelCase properties
-      let buttonStyle = '';
-      if (design.useButtonGradient && design.buttonGradientFrom && design.buttonGradientTo) {
-        const direction = design.buttonGradientDirection || '135deg';
-        buttonStyle = 'background: linear-gradient(' + direction + ', ' + design.buttonGradientFrom + ', ' + design.buttonGradientTo + ');';
+      if (design && design.useButtonGradient && design.buttonGradientFrom && design.buttonGradientTo) {
+        var direction = design.buttonGradientDirection || '135deg';
+        style = 'background: linear-gradient(' + direction + ', ' + design.buttonGradientFrom + ', ' + design.buttonGradientTo + ');';
+      } else if (design && design.buttonColor) {
+        style = 'background: ' + design.buttonColor + ';';
       }
       
-      const questionId = 'question_' + stepIndex;
-      const inputIcon = content.input_icon || '💬';
+      if (design && design.buttonTextColor) {
+        style += ' color: ' + design.buttonTextColor + ';';
+      }
       
-      for (const elementId of elementOrder) {
-        // Check if it's a base element (headline, subheadline, button, video, input, hint)
+      if (design && design.borderRadius) {
+        style += ' border-radius: ' + design.borderRadius + 'px;';
+      }
+      
+      if (design && design.fontFamily) {
+        style += ' font-family: ' + design.fontFamily + ';';
+      }
+      
+      if (design && design.buttonHoverEffect) {
+        hoverClass = ' hover-' + design.buttonHoverEffect;
+      }
+      
+      return { style: style, hoverClass: hoverClass };
+    }
+    
+    function renderDynamicElements(content, stepIndex, stepType) {
+      var elementOrder = content.element_order || [];
+      var dynamicElements = content.dynamic_elements || {};
+      var design = content.design || {};
+      var html = '';
+      
+      var btnStyle = getButtonStyle(design);
+      var questionId = 'question_' + stepIndex;
+      var inputIcon = content.input_icon || '💬';
+      
+      for (var i = 0; i < elementOrder.length; i++) {
+        var elementId = elementOrder[i];
+        
         if (elementId === 'headline' && content.headline) {
-          html += '<div class="element-headline">' + content.headline + '</div>';
+          var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
+          html += '<div class="element-headline" style="' + fontStyle + '">' + content.headline + '</div>';
         } else if (elementId === 'subheadline' && content.subheadline) {
           html += '<div class="element-subheadline">' + content.subheadline + '</div>';
+        } else if (elementId === 'subtext' && content.subtext) {
+          html += '<div class="element-subheadline">' + content.subtext + '</div>';
         } else if (elementId === 'button') {
-          html += '<button class="element-button" style="' + buttonStyle + '" onclick="handleNext()">' + (content.button_text || design.buttonText || 'Continue') + '</button>';
+          html += '<button class="element-button' + btnStyle.hoverClass + '" style="' + btnStyle.style + '" onclick="handleNext()">' + (content.button_text || design.buttonText || 'Continue') + '</button>';
         } else if (elementId === 'video' && content.video_url) {
           html += renderVideoElement(content.video_url);
         } else if (elementId === 'input') {
-          // Text input for text_question steps
-          html += '<div class="input-wrapper"><span class="input-icon">' + inputIcon + '</span><input type="text" class="input-field" id="' + questionId + '" placeholder="' + (content.placeholder || 'Type your answer...') + '"></div>';
-          html += '<button class="element-button" style="' + buttonStyle + '" onclick="handleTextSubmit(\\'' + questionId + '\\')">' + (content.submit_button_text || content.button_text || 'Submit') + '</button>';
-          html += '<div class="press-enter-hint">Press Enter ↵</div>';
-        } else if (elementId === 'hint') {
-          // Hint text below input
-          if (content.hint) {
-            html += '<div class="element-hint">' + content.hint + '</div>';
-          }
-        } else if (elementId === 'image_top') {
-          // Top image element
-          if (content.image_top_url) {
-            html += '<img class="element-image" src="' + content.image_top_url + '" alt="">';
-          }
+          html += renderInputForStep(stepType, content, design, stepIndex);
+        } else if (elementId === 'options' && content.options) {
+          html += renderOptionsHTML(content.options, stepIndex, design);
+          html += '<button class="element-button' + btnStyle.hoverClass + '" style="' + btnStyle.style + '" onclick="handleMultiChoiceSubmit(' + stepIndex + ')">' + (content.next_button_text || content.button_text || 'Next Question') + '</button>';
+        } else if (elementId === 'hint' && content.hint) {
+          html += '<div class="element-hint">' + content.hint + '</div>';
+        } else if (elementId === 'image_top' && content.image_top_url) {
+          html += '<img class="element-image" src="' + content.image_top_url + '" alt="">';
         } else if (dynamicElements[elementId]) {
-          // Render dynamic element
           html += renderDynamicElement(elementId, dynamicElements[elementId], design);
         } else if (elementId.startsWith('divider')) {
-          // Divider element
           html += '<div class="element-divider"></div>';
         }
       }
@@ -756,26 +789,65 @@ function generateFunnelHTML(
       return html;
     }
     
-    function renderDynamicElement(elementId, element, design) {
-      design = design || {};
-      let buttonStyle = '';
-      if (design.useButtonGradient && design.buttonGradientFrom && design.buttonGradientTo) {
-        const direction = design.buttonGradientDirection || '135deg';
-        buttonStyle = 'background: linear-gradient(' + direction + ', ' + design.buttonGradientFrom + ', ' + design.buttonGradientTo + ');';
+    function renderInputForStep(stepType, content, design, stepIndex) {
+      var inputBg = (design && design.inputBg) || '#ffffff';
+      var inputTextColor = (design && design.inputTextColor) || '#0a0a0a';
+      var inputBorder = (design && design.inputBorder) || '#e5e7eb';
+      var inputBorderWidth = (design && design.inputBorderWidth) || 1;
+      var inputRadius = (design && design.inputRadius) || 12;
+      var inputPlaceholderColor = (design && design.inputPlaceholderColor) || '#9ca3af';
+      var showInputIcon = design ? design.inputShowIcon !== false : true;
+      
+      var containerStyle = 'display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; background: ' + inputBg + '; border: ' + inputBorderWidth + 'px solid ' + inputBorder + '; border-radius: ' + inputRadius + 'px; margin-bottom: 1rem;';
+      var fieldStyle = 'flex: 1; border: none; background: transparent; color: ' + inputTextColor + '; font-size: 1rem; outline: none;';
+      var questionId = 'question_' + stepIndex;
+      var btnStyle = getButtonStyle(design);
+      
+      var html = '<div class="styled-input-container" style="' + containerStyle + '">';
+      if (showInputIcon) {
+        html += '<span class="input-icon" style="color: ' + inputPlaceholderColor + ';">💬</span>';
       }
+      html += '<textarea id="' + questionId + '" style="' + fieldStyle + ' resize: none; min-height: 80px;" placeholder="' + (content.placeholder || 'Type your answer...') + '" onkeydown="if(event.key===\\'Enter\\' && !event.shiftKey){event.preventDefault();handleTextSubmit(\\'' + questionId + '\\');}"></textarea>';
+      html += '</div>';
+      html += '<button class="element-button' + btnStyle.hoverClass + '" style="' + btnStyle.style + '" onclick="handleTextSubmit(\\'' + questionId + '\\')">' + (content.submit_button_text || content.button_text || 'Submit') + '</button>';
+      html += '<div class="press-enter-hint">Press Enter ↵</div>';
+      
+      return html;
+    }
+    
+    function renderOptionsHTML(options, stepIndex, design) {
+      var html = '<div class="options-container" style="margin-bottom: 1rem;">';
+      for (var i = 0; i < options.length; i++) {
+        var opt = options[i];
+        var label = typeof opt === 'string' ? opt : (opt.label || opt.text || '');
+        var emoji = typeof opt === 'object' ? (opt.emoji || opt.icon || '') : '';
+        var safeLabel = String(label).replace(/'/g, "\\\\'");
+        
+        html += '<div class="option-card" onclick="selectOption(this, ' + stepIndex + ', \\'' + safeLabel + '\\')">';
+        if (emoji) html += '<span class="option-icon">' + emoji + '</span>';
+        html += '<span class="option-label">' + label + '</span>';
+        html += '<div class="option-radio"><div class="option-radio-inner"></div></div>';
+        html += '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+    
+    function renderDynamicElement(elementId, element, design) {
+      var btnStyle = getButtonStyle(design);
+      var fontStyle = design && design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
       
       if (elementId.startsWith('text_')) {
-        return '<div class="element-text">' + (element.text || '') + '</div>';
-      } else if (elementId.startsWith('headline_copy') || elementId.startsWith('headline_')) {
-        return '<div class="element-headline">' + (element.text || '') + '</div>';
+        return '<div class="element-text" style="' + fontStyle + '">' + (element.text || '') + '</div>';
+      } else if (elementId.startsWith('headline_')) {
+        return '<div class="element-headline" style="' + fontStyle + '">' + (element.text || '') + '</div>';
       } else if (elementId.startsWith('button_')) {
-        const btnText = element.text || design.buttonText || 'Continue';
-        // Check for element-specific gradient
-        let elStyle = buttonStyle;
+        var btnText = element.text || 'Continue';
+        var elStyle = btnStyle.style;
         if (element.gradient_from && element.gradient_to) {
           elStyle = 'background: linear-gradient(135deg, ' + element.gradient_from + ', ' + element.gradient_to + ');';
         }
-        return '<button class="element-button" style="' + elStyle + '" onclick="handleNext()">' + btnText + '</button>';
+        return '<button class="element-button' + btnStyle.hoverClass + '" style="' + elStyle + '" onclick="handleNext()">' + btnText + '</button>';
       } else if (elementId.startsWith('image_')) {
         if (element.image_url) {
           return '<img class="element-image" src="' + element.image_url + '" alt="">';
@@ -796,220 +868,228 @@ function generateFunnelHTML(
     
     function renderVideoElement(videoUrl) {
       if (!videoUrl) return '';
-      
-      let embedUrl = '';
-      
-      // YouTube
-      if (videoUrl.indexOf('youtube.com') !== -1 || videoUrl.indexOf('youtu.be') !== -1) {
-        var vidId = '';
-        if (videoUrl.indexOf('v=') !== -1) {
-          vidId = videoUrl.split('v=')[1];
-          var ampPos = vidId.indexOf('&');
-          if (ampPos !== -1) vidId = vidId.substring(0, ampPos);
-        } else if (videoUrl.indexOf('youtu.be/') !== -1) {
-          vidId = videoUrl.split('youtu.be/')[1];
-          var qPos = vidId.indexOf('?');
-          if (qPos !== -1) vidId = vidId.substring(0, qPos);
-        }
-        if (vidId) embedUrl = 'https://www.youtube.com/embed/' + vidId;
-      }
-      // Vimeo
-      else if (videoUrl.indexOf('vimeo.com') !== -1) {
-        var parts = videoUrl.split('/');
-        var vimeoId = parts[parts.length - 1].split('?')[0];
-        if (vimeoId) embedUrl = 'https://player.vimeo.com/video/' + vimeoId;
-      }
-      // Loom
-      else if (videoUrl.indexOf('loom.com') !== -1) {
-        if (videoUrl.indexOf('/share/') !== -1) {
-          var loomId = videoUrl.split('/share/')[1].split('?')[0];
-          if (loomId) embedUrl = 'https://www.loom.com/embed/' + loomId;
-        } else if (videoUrl.indexOf('/embed/') !== -1) {
-          embedUrl = videoUrl;
-        }
-      }
-      // Wistia (handles subdomains like legitstealthy07.wistia.com)
-      else if (videoUrl.indexOf('wistia.com') !== -1 || videoUrl.indexOf('wistia.net') !== -1) {
-        if (videoUrl.indexOf('/medias/') !== -1) {
-          var wistiaId = videoUrl.split('/medias/')[1].split('?')[0].split('/')[0];
-          if (wistiaId) embedUrl = 'https://fast.wistia.net/embed/iframe/' + wistiaId;
-        } else if (videoUrl.indexOf('/embed/iframe/') !== -1) {
-          embedUrl = videoUrl;
-        }
-      }
-      
-      // Fallback: if URL already looks like an embed URL, use it directly
-      if (!embedUrl && (videoUrl.indexOf('/embed/') !== -1 || videoUrl.indexOf('/embed?') !== -1)) {
-        embedUrl = videoUrl;
-      }
-      
+      var embedUrl = getVideoEmbedUrl(videoUrl);
       if (embedUrl) {
         return '<div class="element-video"><iframe src="' + embedUrl + '" allowfullscreen allow="autoplay; fullscreen"></iframe></div>';
       }
       return '';
     }
     
+    function getVideoEmbedUrl(url) {
+      if (!url) return '';
+      
+      // YouTube
+      if (url.indexOf('youtube.com') !== -1 || url.indexOf('youtu.be') !== -1) {
+        var vidId = '';
+        if (url.indexOf('v=') !== -1) {
+          vidId = url.split('v=')[1];
+          var ampPos = vidId.indexOf('&');
+          if (ampPos !== -1) vidId = vidId.substring(0, ampPos);
+        } else if (url.indexOf('youtu.be/') !== -1) {
+          vidId = url.split('youtu.be/')[1];
+          var qPos = vidId.indexOf('?');
+          if (qPos !== -1) vidId = vidId.substring(0, qPos);
+        }
+        if (vidId) return 'https://www.youtube.com/embed/' + vidId;
+      }
+      // Vimeo
+      else if (url.indexOf('vimeo.com') !== -1) {
+        var parts = url.split('/');
+        var vimeoId = parts[parts.length - 1].split('?')[0];
+        if (vimeoId) return 'https://player.vimeo.com/video/' + vimeoId;
+      }
+      // Loom
+      else if (url.indexOf('loom.com') !== -1) {
+        if (url.indexOf('/share/') !== -1) {
+          var loomId = url.split('/share/')[1].split('?')[0];
+          if (loomId) return 'https://www.loom.com/embed/' + loomId;
+        } else if (url.indexOf('/embed/') !== -1) {
+          return url;
+        }
+      }
+      // Wistia
+      else if (url.indexOf('wistia.com') !== -1 || url.indexOf('wistia.net') !== -1) {
+        if (url.indexOf('/medias/') !== -1) {
+          var wistiaId = url.split('/medias/')[1].split('?')[0].split('/')[0];
+          if (wistiaId) return 'https://fast.wistia.net/embed/iframe/' + wistiaId;
+        } else if (url.indexOf('/embed/iframe/') !== -1) {
+          return url;
+        }
+      }
+      
+      if (url.indexOf('/embed/') !== -1 || url.indexOf('/embed?') !== -1) {
+        return url;
+      }
+      
+      return '';
+    }
+    
     function renderWelcome(content) {
-      return '<div class="element-headline">' + (content.headline || 'Welcome') + '</div>' +
+      var design = content.design || {};
+      var btnStyle = getButtonStyle(design);
+      var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
+      
+      return '<div class="element-headline" style="' + fontStyle + '">' + (content.headline || 'Welcome') + '</div>' +
         (content.subheadline ? '<div class="element-subheadline">' + content.subheadline + '</div>' : '') +
-        '<button class="element-button" onclick="handleNext()">' + (content.button_text || 'Get Started') + '</button>';
+        (content.subtext ? '<div class="element-subheadline">' + content.subtext + '</div>' : '') +
+        '<button class="element-button' + btnStyle.hoverClass + '" style="' + btnStyle.style + '" onclick="handleNext()">' + (content.button_text || 'Get Started') + '</button>';
     }
     
     function renderTextQuestion(content, index) {
-      const questionId = 'question_' + index;
-      const design = content.design || {};
+      var design = content.design || {};
+      var btnStyle = getButtonStyle(design);
+      var questionId = 'question_' + index;
+      var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
       
-      // Get input styling from design
-      const inputBg = design.inputBg || '#ffffff';
-      const inputTextColor = design.inputTextColor || '#0a0a0a';
-      const inputBorder = design.inputBorder || '#e5e7eb';
-      const inputRadius = design.inputRadius || 12;
-      const inputPlaceholderColor = design.inputPlaceholderColor || '#9ca3af';
-      const showInputIcon = design.inputShowIcon !== false;
+      var inputBg = design.inputBg || '#ffffff';
+      var inputTextColor = design.inputTextColor || '#0a0a0a';
+      var inputBorder = design.inputBorder || '#e5e7eb';
+      var inputRadius = design.inputRadius || 12;
+      var inputPlaceholderColor = design.inputPlaceholderColor || '#9ca3af';
+      var showInputIcon = design.inputShowIcon !== false;
       
-      // Build button style with gradient if configured
-      let buttonStyle = '';
-      if (design.useButtonGradient && design.buttonGradientFrom && design.buttonGradientTo) {
-        const direction = design.buttonGradientDirection || '135deg';
-        buttonStyle = 'background: linear-gradient(' + direction + ', ' + design.buttonGradientFrom + ', ' + design.buttonGradientTo + ');';
+      var containerStyle = 'display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; background: ' + inputBg + '; border: 1px solid ' + inputBorder + '; border-radius: ' + inputRadius + 'px; margin-bottom: 1rem;';
+      var fieldStyle = 'flex: 1; border: none; background: transparent; color: ' + inputTextColor + '; font-size: 1rem; outline: none; resize: none; min-height: 80px;';
+      
+      var html = '<div class="element-headline" style="' + fontStyle + '">' + (content.headline || content.question || 'Your question') + '</div>';
+      html += '<div class="styled-input-container" style="' + containerStyle + '">';
+      if (showInputIcon) {
+        html += '<span class="input-icon" style="color: ' + inputPlaceholderColor + ';">💬</span>';
       }
+      html += '<textarea id="' + questionId + '" style="' + fieldStyle + '" placeholder="' + (content.placeholder || 'Type your answer...') + '" onkeydown="if(event.key===\\'Enter\\' && !event.shiftKey){event.preventDefault();handleTextSubmit(\\'' + questionId + '\\');}"></textarea>';
+      html += '</div>';
+      html += '<button class="element-button' + btnStyle.hoverClass + '" style="' + btnStyle.style + '" onclick="handleTextSubmit(\\'' + questionId + '\\')">' + (content.submit_button_text || 'Submit') + '</button>';
+      html += '<div class="press-enter-hint">Press Enter ↵</div>';
       
-      // Use styled container matching the builder
-      const inputContainerStyle = 'display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; background: ' + inputBg + '; border: 1px solid ' + inputBorder + '; border-radius: ' + inputRadius + 'px; margin-bottom: 1rem;';
-      const textareaStyle = 'flex: 1; border: none; background: transparent; color: ' + inputTextColor + '; font-size: 1rem; outline: none; resize: none; min-height: 80px;';
-      
-      const inputHtml = '<div class="styled-input-container" style="' + inputContainerStyle + '">' +
-        (showInputIcon ? '<span class="input-icon" style="color: ' + inputPlaceholderColor + '; font-size: 1.25rem;">💬</span>' : '') +
-        '<textarea id="' + questionId + '" style="' + textareaStyle + '" placeholder="' + (content.placeholder || 'Type your answer...') + '" onkeydown="if(event.key===\\'Enter\\' && !event.shiftKey){event.preventDefault();handleTextSubmit(\\'' + questionId + '\\');}"></textarea>' +
-      '</div>';
-      
-      return '<div class="element-headline">' + (content.headline || content.question || 'Your question') + '</div>' +
-        inputHtml +
-        '<button class="element-button" style="' + buttonStyle + '" onclick="handleTextSubmit(\\'' + questionId + '\\')">' + (content.submit_button_text || 'Submit') + '</button>' +
-        '<div class="press-enter-hint">Press Enter ↵</div>';
+      return html;
     }
     
     function renderMultiChoice(content, index) {
-      const options = content.options || [];
-      const design = content.design || {};
+      var design = content.design || {};
+      var btnStyle = getButtonStyle(design);
+      var options = content.options || [];
+      var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
       
-      const optionsHTML = options.map((opt, i) => {
-        // Safely extract label and emoji - check for label, text, or if opt is a string
-        const label = typeof opt === 'string' ? opt : (opt.label || opt.text || '');
-        const emoji = typeof opt === 'object' ? (opt.emoji || opt.icon || '') : '';
-        const safeLabel = String(label).replace(/'/g, "\\\\'");
-        
-        return '<div class="option-card" onclick="selectOption(this, ' + index + ', \\'' + safeLabel + '\\')">' +
-          (emoji ? '<span class="option-icon">' + emoji + '</span>' : '') +
-          '<span class="option-label">' + label + '</span>' +
-          '<div class="option-radio"><div class="option-radio-inner"></div></div>' +
-        '</div>';
-      }).join('');
+      var html = '<div class="question-counter">Question ' + (index + 1) + ' of ' + STEPS_DATA.length + '</div>';
+      html += '<div class="element-headline" style="' + fontStyle + '">' + (content.headline || content.question || 'Choose an option') + '</div>';
+      html += renderOptionsHTML(options, index, design);
+      html += '<button class="element-button' + btnStyle.hoverClass + '" style="' + btnStyle.style + '" onclick="handleMultiChoiceSubmit(' + index + ')">' + (content.next_button_text || content.button_text || 'Next Question') + '</button>';
       
-      // Build button style with gradient if configured - use camelCase properties
-      let buttonStyle = 'margin-top: 1rem;';
-      if (design.useButtonGradient && design.buttonGradientFrom && design.buttonGradientTo) {
-        const direction = design.buttonGradientDirection || '135deg';
-        buttonStyle += ' background: linear-gradient(' + direction + ', ' + design.buttonGradientFrom + ', ' + design.buttonGradientTo + ');';
-      }
-      
-      return '<div class="question-counter">Question ' + (index + 1) + ' of ' + STEPS_DATA.length + '</div>' +
-        '<div class="element-headline">' + (content.headline || content.question || 'Choose an option') + '</div>' +
-        '<div class="options-container">' + optionsHTML + '</div>' +
-        '<button class="element-button" style="' + buttonStyle + '" onclick="handleMultiChoiceSubmit(' + index + ')">' + (content.next_button_text || content.button_text || 'Next Question') + '</button>';
+      return html;
     }
     
     function renderEmailCapture(content) {
-      return '<div class="element-headline">' + (content.headline || 'Enter your email') + '</div>' +
+      var design = content.design || {};
+      var btnStyle = getButtonStyle(design);
+      var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
+      
+      return '<div class="element-headline" style="' + fontStyle + '">' + (content.headline || 'Enter your email') + '</div>' +
         (content.subheadline ? '<div class="element-subheadline">' + content.subheadline + '</div>' : '') +
+        (content.subtext ? '<div class="element-subheadline">' + content.subtext + '</div>' : '') +
         '<input type="email" class="input-field" id="email-input" placeholder="' + (content.placeholder || 'your@email.com') + '">' +
-        '<button class="element-button" onclick="handleEmailSubmit()">Continue</button>';
+        '<button class="element-button' + btnStyle.hoverClass + '" style="' + btnStyle.style + '" onclick="handleEmailSubmit()">Continue</button>';
     }
     
     function renderPhoneCapture(content) {
-      return '<div class="element-headline">' + (content.headline || 'Enter your phone number') + '</div>' +
+      var design = content.design || {};
+      var btnStyle = getButtonStyle(design);
+      var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
+      
+      return '<div class="element-headline" style="' + fontStyle + '">' + (content.headline || 'Enter your phone number') + '</div>' +
         (content.subheadline ? '<div class="element-subheadline">' + content.subheadline + '</div>' : '') +
-        '<input type="tel" class="input-field" id="phone-input" placeholder="' + (content.placeholder || '+1 (555) 000-0000') + '">' +
-        '<button class="element-button" onclick="handlePhoneSubmit()">Continue</button>';
+        (content.subtext ? '<div class="element-subheadline">' + content.subtext + '</div>' : '') +
+        '<input type="tel" class="input-field" id="phone-input" placeholder="' + (content.placeholder || '+1 (555) 000-0000') + '" oninput="formatPhoneInput(this)">' +
+        '<button class="element-button' + btnStyle.hoverClass + '" style="' + btnStyle.style + '" onclick="handlePhoneSubmit()">Continue</button>';
     }
     
     function renderOptIn(content) {
-      const design = content.design || {};
-      const isRequired = content.is_required !== false;
+      var design = content.design || {};
+      var isRequired = content.is_required !== false;
+      var settings = FUNNEL_DATA.settings || {};
+      var primaryColor = settings.primary_color || '#22c55e';
       
-      // Input styling from design - matching React OptInStep exactly
-      const inputBg = design.inputBg || '#ffffff';
-      const inputTextColor = design.inputTextColor || '#0a0a0a';
-      const inputBorder = design.inputBorder || '#e5e7eb';
-      const inputBorderWidth = design.inputBorderWidth || 1;
-      const inputRadius = design.inputRadius || 12;
-      const inputPlaceholderColor = design.inputPlaceholderColor || '#9ca3af';
-      const showInputIcon = design.inputShowIcon !== false;
+      var inputBg = design.inputBg || '#ffffff';
+      var inputTextColor = design.inputTextColor || '#0a0a0a';
+      var inputBorder = design.inputBorder || '#e5e7eb';
+      var inputBorderWidth = design.inputBorderWidth || 1;
+      var inputRadius = design.inputRadius || 12;
+      var inputPlaceholderColor = design.inputPlaceholderColor || '#9ca3af';
+      var showInputIcon = design.inputShowIcon !== false;
       
-      // Button styling from design - matching React exactly
-      const buttonColor = design.buttonColor || FUNNEL_DATA.settings.primary_color || '#22c55e';
-      const buttonTextColor = design.buttonTextColor || '#ffffff';
-      const borderRadius = design.borderRadius || 12;
+      var buttonColor = design.buttonColor || primaryColor;
+      var buttonTextColor = design.buttonTextColor || '#ffffff';
+      var borderRadius = design.borderRadius || 12;
       
-      let buttonStyle = 'color: ' + buttonTextColor + '; border-radius: ' + borderRadius + 'px;';
+      var buttonStyle = 'color: ' + buttonTextColor + '; border-radius: ' + borderRadius + 'px;';
       if (design.useButtonGradient && design.buttonGradientFrom) {
-        const gradientTo = design.buttonGradientTo || design.buttonGradientFrom;
-        const direction = design.buttonGradientDirection || '135deg';
+        var gradientTo = design.buttonGradientTo || design.buttonGradientFrom;
+        var direction = design.buttonGradientDirection || '135deg';
         buttonStyle += ' background: linear-gradient(' + direction + ', ' + design.buttonGradientFrom + ', ' + gradientTo + ');';
       } else {
         buttonStyle += ' background: ' + buttonColor + ';';
       }
       
-      // Input icons - matching React
-      const nameIcon = content.name_icon || '👋';
-      const emailIcon = content.email_icon || '✉️';
-      const phoneIcon = content.phone_icon || '🇺🇸';
+      var hoverClass = design.buttonHoverEffect ? ' hover-' + design.buttonHoverEffect : '';
       
-      // Input container style - matching React OptInStep exactly
-      const inputStyle = 'display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: ' + inputBg + '; border: ' + inputBorderWidth + 'px solid ' + inputBorder + '; border-radius: ' + inputRadius + 'px; margin-bottom: 1rem;';
-      const fieldStyle = 'flex: 1; border: none; background: transparent; color: ' + inputTextColor + '; font-size: 1rem; outline: none;';
+      var nameIcon = content.name_icon || '👋';
+      var emailIcon = content.email_icon || '✉️';
+      var phoneIcon = content.phone_icon || '🇺🇸';
       
-      // Privacy text
-      const privacyText = content.privacy_text || 'I have read and accept the';
-      const privacyLink = content.privacy_link || '#';
-      const privacyHtml = '<div class="privacy-row"><input type="checkbox" class="privacy-checkbox" id="privacy-check"><span class="privacy-text">' + privacyText + ' <a href="' + privacyLink + '" target="_blank">privacy policy</a>.</span></div>';
+      var inputStyle = 'display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: ' + inputBg + '; border: ' + inputBorderWidth + 'px solid ' + inputBorder + '; border-radius: ' + inputRadius + 'px; margin-bottom: 0.25rem;';
+      var fieldStyle = 'flex: 1; border: none; background: transparent; color: ' + inputTextColor + '; font-size: 1rem; outline: none;';
       
-      // Error message container
-      const errorContainer = '<div id="optin-errors" style="color: #f87171; font-size: 0.75rem; margin-top: -0.5rem; margin-bottom: 0.5rem; display: none;"></div>';
+      var privacyText = content.privacy_text || 'I have read and accept the';
+      var privacyLink = content.privacy_link || '#';
+      var privacyHtml = '<div class="privacy-row"><input type="checkbox" class="privacy-checkbox" id="privacy-check"><span class="privacy-text">' + privacyText + ' <a href="' + privacyLink + '" target="_blank">privacy policy</a>.</span></div>';
       
-      return '<div class="element-headline">' + (content.headline || 'Complete your information') + '</div>' +
+      var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
+      
+      return '<div class="element-headline" style="' + fontStyle + '">' + (content.headline || 'Complete your information') + '</div>' +
         '<div id="name-container" style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + nameIcon + '</span>' : '') + '<input type="text" style="' + fieldStyle + '" id="name-input" placeholder="' + (content.name_placeholder || 'Your name') + '" data-required="' + isRequired + '"></div>' +
-        '<div id="name-error" style="color: #f87171; font-size: 0.75rem; margin-top: -0.5rem; margin-bottom: 0.5rem; display: none;"></div>' +
+        '<div id="name-error" class="error-message"></div>' +
         '<div id="email-container" style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + emailIcon + '</span>' : '') + '<input type="email" style="' + fieldStyle + '" id="optin-email" placeholder="' + (content.email_placeholder || 'Your email address') + '" data-required="' + isRequired + '"></div>' +
-        '<div id="email-error" style="color: #f87171; font-size: 0.75rem; margin-top: -0.5rem; margin-bottom: 0.5rem; display: none;"></div>' +
+        '<div id="email-error" class="error-message"></div>' +
         '<div id="phone-container" style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + phoneIcon + '</span>' : '') + '<span style="color: ' + inputPlaceholderColor + '; font-size: 0.875rem; flex-shrink: 0;">+1</span><input type="tel" style="' + fieldStyle + '" id="optin-phone" placeholder="' + (content.phone_placeholder || 'Your phone number') + '" maxlength="14" data-required="' + isRequired + '" oninput="formatPhoneInput(this)"></div>' +
-        '<div id="phone-error" style="color: #f87171; font-size: 0.75rem; margin-top: -0.5rem; margin-bottom: 0.5rem; display: none;"></div>' +
+        '<div id="phone-error" class="error-message"></div>' +
         privacyHtml +
-        '<button class="element-button" style="' + buttonStyle + '" onclick="handleOptInSubmit(' + isRequired + ')">' + (content.submit_button_text || 'Submit and proceed') + '</button>';
+        '<button class="element-button' + hoverClass + '" style="' + buttonStyle + '" onclick="handleOptInSubmit(' + isRequired + ')">' + (content.submit_button_text || 'Submit and proceed') + '</button>';
     }
     
     function renderVideo(content) {
-      const videoHTML = renderVideoElement(content.video_url || '');
-      return '<div class="element-headline">' + (content.headline || 'Watch this video') + '</div>' +
+      var design = content.design || {};
+      var btnStyle = getButtonStyle(design);
+      var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
+      var videoHTML = renderVideoElement(content.video_url || '');
+      
+      return '<div class="element-headline" style="' + fontStyle + '">' + (content.headline || 'Watch this video') + '</div>' +
         videoHTML +
-        '<button class="element-button" onclick="handleNext()">' + (content.button_text || 'Continue') + '</button>';
+        '<button class="element-button' + btnStyle.hoverClass + '" style="' + btnStyle.style + '" onclick="handleNext()">' + (content.button_text || 'Continue') + '</button>';
     }
     
     function renderEmbed(content) {
-      const scale = content.scale || 0.75;
-      return '<div class="element-headline">' + (content.headline || '') + '</div>' +
+      var design = content.design || {};
+      var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
+      var scale = content.scale || 0.75;
+      
+      return '<div class="element-headline" style="' + fontStyle + '">' + (content.headline || '') + '</div>' +
         '<div class="element-embed" style="transform: scale(' + scale + '); transform-origin: top center;">' +
           '<iframe src="' + (content.embed_url || '') + '" allow="camera; microphone"></iframe>' +
         '</div>';
     }
     
     function renderThankYou(content) {
-      let html = '<div class="element-headline">' + (content.headline || 'Thank you!') + '</div>';
+      var design = content.design || {};
+      var fontStyle = design.fontFamily ? 'font-family: ' + design.fontFamily + ';' : '';
+      
+      var html = '<div class="element-headline" style="' + fontStyle + '">' + (content.headline || 'Thank you!') + '</div>';
       if (content.subheadline) {
         html += '<div class="element-subheadline">' + content.subheadline + '</div>';
       }
+      if (content.subtext) {
+        html += '<div class="element-subheadline">' + content.subtext + '</div>';
+      }
       if (content.redirect_url) {
-        html += '<script>setTimeout(function() { window.location.href = "' + content.redirect_url + '"; }, 3000);</' + 'script>';
+        setTimeout(function() { window.location.href = content.redirect_url; }, 3000);
       }
       return html;
     }
@@ -1020,15 +1100,18 @@ function generateFunnelHTML(
     }
     
     function handleTextSubmit(inputId) {
-      const input = document.getElementById(inputId);
-      const value = input?.value?.trim();
+      var input = document.getElementById(inputId);
+      var value = input ? input.value.trim() : '';
       if (value) answers[inputId] = value;
       handleNext();
     }
     
     function selectOption(element, stepIndex, value) {
-      const container = element.parentElement;
-      container.querySelectorAll('.option-card').forEach(function(card) { card.classList.remove('selected'); });
+      var container = element.parentElement;
+      var cards = container.querySelectorAll('.option-card');
+      for (var i = 0; i < cards.length; i++) {
+        cards[i].classList.remove('selected');
+      }
       element.classList.add('selected');
       answers['choice_' + stepIndex] = value;
     }
@@ -1038,18 +1121,27 @@ function generateFunnelHTML(
     }
     
     function handleEmailSubmit() {
-      const email = document.getElementById('email-input')?.value?.trim();
-      if (email) { answers.email = email; handleNext(); }
+      var email = document.getElementById('email-input');
+      var value = email ? email.value.trim() : '';
+      if (value && validateEmail(value)) {
+        answers.email = value;
+        handleNext();
+      } else if (email) {
+        email.style.borderColor = '#ef4444';
+      }
     }
     
     function handlePhoneSubmit() {
-      const phone = document.getElementById('phone-input')?.value?.trim();
-      if (phone) { answers.phone = phone; handleNext(); }
+      var phone = document.getElementById('phone-input');
+      var value = phone ? phone.value.trim() : '';
+      if (value) {
+        answers.phone = value;
+        handleNext();
+      }
     }
     
-    // Phone formatting to match React component
     function formatPhoneInput(input) {
-      let digits = input.value.replace(/\\D/g, '');
+      var digits = input.value.replace(/\\D/g, '');
       if (digits.length <= 3) {
         input.value = digits;
       } else if (digits.length <= 6) {
@@ -1064,37 +1156,43 @@ function generateFunnelHTML(
     }
     
     function handleOptInSubmit(isRequired) {
-      const name = document.getElementById('name-input')?.value?.trim() || '';
-      const email = document.getElementById('optin-email')?.value?.trim() || '';
-      const phone = document.getElementById('optin-phone')?.value?.trim() || '';
+      var name = document.getElementById('name-input');
+      var email = document.getElementById('optin-email');
+      var phone = document.getElementById('optin-phone');
       
-      // Clear previous errors
+      var nameVal = name ? name.value.trim() : '';
+      var emailVal = email ? email.value.trim() : '';
+      var phoneVal = phone ? phone.value.trim() : '';
+      
+      // Clear errors
       ['name', 'email', 'phone'].forEach(function(field) {
-        document.getElementById(field + '-error').style.display = 'none';
-        document.getElementById(field + '-container').style.borderColor = '';
+        var err = document.getElementById(field + '-error');
+        var container = document.getElementById(field + '-container');
+        if (err) { err.style.display = 'none'; err.textContent = ''; }
+        if (container) container.style.borderColor = '';
       });
       
-      let hasErrors = false;
+      var hasErrors = false;
       
       if (isRequired) {
-        if (!name) {
+        if (!nameVal) {
           document.getElementById('name-error').textContent = 'Name is required';
           document.getElementById('name-error').style.display = 'block';
           document.getElementById('name-container').style.borderColor = '#ef4444';
           hasErrors = true;
         }
-        if (!email) {
+        if (!emailVal) {
           document.getElementById('email-error').textContent = 'Email is required';
           document.getElementById('email-error').style.display = 'block';
           document.getElementById('email-container').style.borderColor = '#ef4444';
           hasErrors = true;
-        } else if (!validateEmail(email)) {
+        } else if (!validateEmail(emailVal)) {
           document.getElementById('email-error').textContent = 'Invalid email';
           document.getElementById('email-error').style.display = 'block';
           document.getElementById('email-container').style.borderColor = '#ef4444';
           hasErrors = true;
         }
-        if (!phone || phone.replace(/\\D/g, '').length < 10) {
+        if (!phoneVal || phoneVal.replace(/\\D/g, '').length < 10) {
           document.getElementById('phone-error').textContent = 'Valid phone required';
           document.getElementById('phone-error').style.display = 'block';
           document.getElementById('phone-container').style.borderColor = '#ef4444';
@@ -1104,38 +1202,39 @@ function generateFunnelHTML(
       
       if (hasErrors) return;
       
-      if (name) answers.name = name;
-      if (email) answers.email = email;
-      if (phone) answers.phone = phone;
-      answers.opt_in = document.getElementById('privacy-check')?.checked || false;
+      if (nameVal) answers.name = nameVal;
+      if (emailVal) answers.email = emailVal;
+      if (phoneVal) answers.phone = phoneVal;
+      answers.opt_in = document.getElementById('privacy-check') ? document.getElementById('privacy-check').checked : false;
       handleNext();
     }
     
     function goToNextStep() {
       if (currentStepIndex >= STEPS_DATA.length - 1) return;
       
-      const currentStep = document.querySelector('[data-step-index="' + currentStepIndex + '"]');
+      var currentStep = document.querySelector('[data-step-index="' + currentStepIndex + '"]');
       if (currentStep) currentStep.classList.add('step-hidden');
       
       currentStepIndex++;
-      const nextStep = document.querySelector('[data-step-index="' + currentStepIndex + '"]');
+      var nextStep = document.querySelector('[data-step-index="' + currentStepIndex + '"]');
       if (nextStep) {
         nextStep.classList.remove('step-hidden');
         nextStep.classList.add('fade-in');
       }
       
-      document.querySelectorAll('.progress-dot').forEach(function(dot, index) {
-        dot.classList.remove('active');
-        if (index < currentStepIndex) dot.classList.add('completed');
-        if (index === currentStepIndex) dot.classList.add('active');
-      });
+      var dots = document.querySelectorAll('.progress-dot');
+      for (var i = 0; i < dots.length; i++) {
+        dots[i].classList.remove('active');
+        if (i < currentStepIndex) dots[i].classList.add('completed');
+        if (i === currentStepIndex) dots[i].classList.add('active');
+      }
     }
     
     async function saveLead() {
       if (!answers.email && !answers.phone && !answers.name && Object.keys(answers).length === 0) return;
       
       try {
-        const response = await fetch(SUPABASE_URL + '/functions/v1/submit-funnel-lead', {
+        var response = await fetch(SUPABASE_URL + '/functions/v1/submit-funnel-lead', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1153,7 +1252,7 @@ function generateFunnelHTML(
           }),
         });
         
-        const data = await response.json();
+        var data = await response.json();
         if (data.lead_id) leadId = data.lead_id;
       } catch (err) {
         console.error('Failed to save lead:', err);
