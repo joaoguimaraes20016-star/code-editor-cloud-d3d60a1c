@@ -86,10 +86,13 @@ export function DevicePreview({
           </div>
         )}
 
-        {/* Content area */}
+        {/* Content area - scrollable container */}
         <div 
-          className="flex-1 w-full overflow-visible"
-          style={{ backgroundColor }}
+          className="flex-1 w-full overflow-y-auto overflow-x-hidden"
+          style={{ 
+            backgroundColor,
+            maxHeight: device === 'mobile' ? 650 : device === 'tablet' ? 650 : 600,
+          }}
         >
           {children}
         </div>

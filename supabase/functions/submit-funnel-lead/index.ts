@@ -88,21 +88,33 @@ Deno.serve(async (req) => {
       const value = typeof answer === 'object' && answer !== null ? answer.value : answer
       const stepType = typeof answer === 'object' && answer !== null ? answer.step_type : null
 
-      if (stepType === 'email_capture' || (typeof value === 'string' && value.includes('@') && !email)) {
+      // Email capture step
+      if (stepType === 'email_capture' && typeof value === 'string' && value.includes('@')) {
         email = value
-      } else if (stepType === 'phone_capture') {
+      }
+
+      // Phone capture step
+      if (stepType === 'phone_capture' && typeof value === 'string') {
         phone = value
-      } else if (stepType === 'opt_in' && typeof value === 'object') {
-        // Opt-in step returns { name, email, phone, optIn }
+      }
+
+      // Opt-in step returns { name, email, phone, opt_in }
+      if (stepType === 'opt_in' && typeof value === 'object') {
         if (value.email) email = value.email
         if (value.phone) phone = value.phone
         if (value.name) name = value.name
-        if (value.optIn !== undefined) {
+        // Check both opt_in and optIn for backwards compatibility
+        if (value.opt_in !== undefined) {
+          optInStatus = value.opt_in
+          optInTimestamp = new Date().toISOString()
+        } else if (value.optIn !== undefined) {
           optInStatus = value.optIn
           optInTimestamp = new Date().toISOString()
         }
-      } else if (stepType === 'text_question' && !name && typeof value === 'string' && value.length > 0) {
-        // First text question might be the name
+      }
+
+      // Text question that asks for name
+      if (stepType === 'text_question' && !name && typeof value === 'string' && value.length > 0) {
         const content = typeof answer === 'object' ? answer.content : null
         if (content?.headline?.toLowerCase().includes('name')) {
           name = value

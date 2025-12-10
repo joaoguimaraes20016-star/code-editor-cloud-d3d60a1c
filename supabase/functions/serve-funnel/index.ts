@@ -461,7 +461,46 @@ function generateFunnelHTML(
       text-decoration: underline;
     }
     
-    /* Input fields */
+    /* Input fields - styled container like builder */
+    .styled-input-container {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      transition: all 0.2s ease;
+    }
+    
+    .styled-input-container:focus-within {
+      border-color: ${primaryColor};
+      box-shadow: 0 0 0 3px ${primaryColor}20;
+    }
+    
+    .styled-input-container .input-icon {
+      color: #9ca3af;
+      font-size: 1.25rem;
+      margin-top: 2px;
+    }
+    
+    .styled-input-container textarea {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: #0a0a0a;
+      font-size: 1rem;
+      outline: none;
+      resize: none;
+      min-height: 80px;
+    }
+    
+    .styled-input-container textarea::placeholder {
+      color: #9ca3af;
+    }
+    
+    /* Legacy input fields */
     .input-field {
       width: 100%;
       padding: 1rem;
@@ -818,7 +857,14 @@ function generateFunnelHTML(
     function renderTextQuestion(content, index) {
       const questionId = 'question_' + index;
       const design = content.design || {};
-      const inputIcon = content.input_icon || '';
+      
+      // Get input styling from design
+      const inputBg = design.inputBg || '#ffffff';
+      const inputTextColor = design.inputTextColor || '#0a0a0a';
+      const inputBorder = design.inputBorder || '#e5e7eb';
+      const inputRadius = design.inputRadius || 12;
+      const inputPlaceholderColor = design.inputPlaceholderColor || '#9ca3af';
+      const showInputIcon = design.inputShowIcon !== false;
       
       // Build button style with gradient if configured
       let buttonStyle = '';
@@ -827,19 +873,19 @@ function generateFunnelHTML(
         buttonStyle = 'background: linear-gradient(' + direction + ', ' + design.buttonGradientFrom + ', ' + design.buttonGradientTo + ');';
       }
       
-      // Count only question steps for counter
-      const questionSteps = STEPS_DATA.filter(s => ['text_question', 'multi_choice', 'email_capture', 'phone_capture', 'opt_in'].includes(s.step_type));
-      const questionIndex = questionSteps.findIndex(s => s.content && s.content === content) + 1;
-      const totalQuestions = questionSteps.length;
+      // Use styled container matching the builder
+      const inputContainerStyle = 'display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; background: ' + inputBg + '; border: 1px solid ' + inputBorder + '; border-radius: ' + inputRadius + 'px; margin-bottom: 1rem;';
+      const textareaStyle = 'flex: 1; border: none; background: transparent; color: ' + inputTextColor + '; font-size: 1rem; outline: none; resize: none; min-height: 80px;';
       
-      const inputHtml = inputIcon 
-        ? '<div class="input-wrapper"><span class="input-icon">' + inputIcon + '</span><input type="text" class="input-field" id="' + questionId + '" placeholder="' + (content.placeholder || 'Type your answer...') + '"></div>'
-        : '<input type="text" class="input-field" id="' + questionId + '" placeholder="' + (content.placeholder || 'Type your answer...') + '">';
+      const inputHtml = '<div class="styled-input-container" style="' + inputContainerStyle + '">' +
+        (showInputIcon ? '<span class="input-icon" style="color: ' + inputPlaceholderColor + '; font-size: 1.25rem;">💬</span>' : '') +
+        '<textarea id="' + questionId + '" style="' + textareaStyle + '" placeholder="' + (content.placeholder || 'Type your answer...') + '" onkeydown="if(event.key===\\'Enter\\' && !event.shiftKey){event.preventDefault();handleTextSubmit(\\'' + questionId + '\\');}"></textarea>' +
+      '</div>';
       
-      return '<div class="question-counter">Question ' + (index + 1) + ' of ' + STEPS_DATA.length + '</div>' +
-        '<div class="element-headline">' + (content.headline || content.question || 'Your question') + '</div>' +
+      return '<div class="element-headline">' + (content.headline || content.question || 'Your question') + '</div>' +
         inputHtml +
-        '<button class="element-button" style="' + buttonStyle + '" onclick="handleTextSubmit(\\'' + questionId + '\\')">Continue</button>';
+        '<button class="element-button" style="' + buttonStyle + '" onclick="handleTextSubmit(\\'' + questionId + '\\')">' + (content.submit_button_text || 'Submit') + '</button>' +
+        '<div class="press-enter-hint">Press Enter ↵</div>';
     }
     
     function renderMultiChoice(content, index) {
@@ -889,6 +935,14 @@ function generateFunnelHTML(
     function renderOptIn(content) {
       const design = content.design || {};
       
+      // Input styling from design
+      const inputBg = design.inputBg || '#ffffff';
+      const inputTextColor = design.inputTextColor || '#0a0a0a';
+      const inputBorder = design.inputBorder || '#e5e7eb';
+      const inputRadius = design.inputRadius || 12;
+      const inputPlaceholderColor = design.inputPlaceholderColor || '#9ca3af';
+      const showInputIcon = design.inputShowIcon !== false;
+      
       // Build button style with gradient if configured - use camelCase properties
       let buttonStyle = '';
       if (design.useButtonGradient && design.buttonGradientFrom && design.buttonGradientTo) {
@@ -897,23 +951,25 @@ function generateFunnelHTML(
       }
       
       // Input icons
-      const nameIcon = content.name_icon || '👤';
+      const nameIcon = content.name_icon || '👋';
       const emailIcon = content.email_icon || '✉️';
-      const phoneIcon = content.phone_icon || '📱';
+      const phoneIcon = content.phone_icon || '🇺🇸';
+      
+      // Input container style
+      const inputStyle = 'display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: ' + inputBg + '; border: 1px solid ' + inputBorder + '; border-radius: ' + inputRadius + 'px; margin-bottom: 1rem;';
+      const fieldStyle = 'flex: 1; border: none; background: transparent; color: ' + inputTextColor + '; font-size: 1rem; outline: none;';
       
       // Privacy text
-      const privacyText = content.privacy_text || '';
+      const privacyText = content.privacy_text || 'I have read and accept the';
       const privacyLink = content.privacy_link || '#';
-      const privacyHtml = privacyText 
-        ? '<div class="privacy-row"><input type="checkbox" class="privacy-checkbox" id="privacy-check" checked><span class="privacy-text">' + privacyText.replace('[Privacy Policy]', '<a href="' + privacyLink + '" target="_blank">Privacy Policy</a>') + '</span></div>'
-        : '';
+      const privacyHtml = '<div class="privacy-row"><input type="checkbox" class="privacy-checkbox" id="privacy-check"><span class="privacy-text">' + privacyText + ' <a href="' + privacyLink + '" target="_blank">privacy policy</a>.</span></div>';
       
       return '<div class="element-headline">' + (content.headline || 'Complete your information') + '</div>' +
-        '<div class="input-wrapper"><span class="input-icon">' + nameIcon + '</span><input type="text" class="input-field" id="name-input" placeholder="' + (content.name_placeholder || 'Your name') + '"></div>' +
-        '<div class="input-wrapper"><span class="input-icon">' + emailIcon + '</span><input type="email" class="input-field" id="optin-email" placeholder="' + (content.email_placeholder || 'Your email') + '"></div>' +
-        '<div class="input-wrapper"><span class="input-icon">' + phoneIcon + '</span><input type="tel" class="input-field" id="optin-phone" placeholder="' + (content.phone_placeholder || 'Your phone') + '"></div>' +
+        '<div style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + nameIcon + '</span>' : '') + '<input type="text" style="' + fieldStyle + '" id="name-input" placeholder="' + (content.name_placeholder || 'Your name') + '"></div>' +
+        '<div style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + emailIcon + '</span>' : '') + '<input type="email" style="' + fieldStyle + '" id="optin-email" placeholder="' + (content.email_placeholder || 'Your email address') + '"></div>' +
+        '<div style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + phoneIcon + '</span>' : '') + '<span style="color: ' + inputPlaceholderColor + '; font-size: 0.875rem;">+1</span><input type="tel" style="' + fieldStyle + '" id="optin-phone" placeholder="' + (content.phone_placeholder || 'Your phone number') + '" maxlength="14"></div>' +
         privacyHtml +
-        '<button class="element-button" style="' + buttonStyle + '" onclick="handleOptInSubmit()">' + (content.submit_button_text || 'Continue') + '</button>';
+        '<button class="element-button" style="' + buttonStyle + '" onclick="handleOptInSubmit()">' + (content.submit_button_text || 'Submit and proceed') + '</button>';
     }
     
     function renderVideo(content) {

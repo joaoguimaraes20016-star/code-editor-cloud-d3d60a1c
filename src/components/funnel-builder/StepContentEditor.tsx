@@ -499,10 +499,10 @@ export function StepContentEditor({
                     <Label className="text-xs font-medium">{getElementTypeLabel(elementId)}</Label>
                   </div>
                   
-                  {/* Text/Headline inputs */}
+                  {/* Text/Headline inputs - strip HTML for display */}
                   {(elementId.startsWith('text_') || elementId.startsWith('headline_') || elementId.startsWith('button_')) && (
                     <Input
-                      value={elementData.text || ''}
+                      value={stripHtml(elementData.text || '')}
                       onChange={(e) => onUpdateDynamicContent?.(elementId, { text: e.target.value })}
                       placeholder="Enter text..."
                       className="text-sm"
