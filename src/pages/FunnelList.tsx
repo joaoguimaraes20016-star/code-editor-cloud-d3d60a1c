@@ -563,13 +563,15 @@ export default function FunnelList() {
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => {
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedFunnelId(funnel.id);
                               setActiveTab('contacts');
                             }}>
                               <Users className="h-4 w-4 mr-2" /> Contacts
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedFunnelId(funnel.id);
                               setActiveTab('performance');
                             }}>
@@ -580,16 +582,23 @@ export default function FunnelList() {
                               <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setSettingsFunnel(funnel)}>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setSettingsFunnel(funnel);
+                            }}>
                               <Settings className="h-4 w-4 mr-2" /> Settings
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
                               setRenameFunnel(funnel);
                               setRenameValue(funnel.name);
                             }}>
                               <Edit className="h-4 w-4 mr-2" /> Rename
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => duplicateMutation.mutate(funnel)}>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              duplicateMutation.mutate(funnel);
+                            }}>
                               <Copy className="h-4 w-4 mr-2" /> Duplicate
                             </DropdownMenuItem>
                             <DropdownMenuItem disabled>
@@ -599,7 +608,10 @@ export default function FunnelList() {
                             <DropdownMenuSeparator />
                             {isAdmin && (
                               <DropdownMenuItem 
-                                onClick={() => setFunnelToDelete(funnel)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFunnelToDelete(funnel);
+                                }}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Archive className="h-4 w-4 mr-2" /> Archive
@@ -703,13 +715,15 @@ export default function FunnelList() {
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem onClick={() => {
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedFunnelId(funnel.id);
                                 setActiveTab('contacts');
                               }}>
                                 <Users className="h-4 w-4 mr-2" /> Contacts
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => {
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedFunnelId(funnel.id);
                                 setActiveTab('performance');
                               }}>
@@ -720,16 +734,23 @@ export default function FunnelList() {
                                 <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setSettingsFunnel(funnel)}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                setSettingsFunnel(funnel);
+                              }}>
                                 <Settings className="h-4 w-4 mr-2" /> Settings
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => {
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
                                 setRenameFunnel(funnel);
                                 setRenameValue(funnel.name);
                               }}>
                                 <Edit className="h-4 w-4 mr-2" /> Rename
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => duplicateMutation.mutate(funnel)}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                duplicateMutation.mutate(funnel);
+                              }}>
                                 <Copy className="h-4 w-4 mr-2" /> Duplicate
                               </DropdownMenuItem>
                               <DropdownMenuItem disabled>
@@ -739,7 +760,10 @@ export default function FunnelList() {
                               <DropdownMenuSeparator />
                               {isAdmin && (
                                 <DropdownMenuItem 
-                                  onClick={() => setFunnelToDelete(funnel)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setFunnelToDelete(funnel);
+                                  }}
                                   className="text-destructive focus:text-destructive"
                                 >
                                   <Archive className="h-4 w-4 mr-2" /> Archive
