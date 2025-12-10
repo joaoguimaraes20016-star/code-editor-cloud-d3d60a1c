@@ -29,11 +29,14 @@ serve(async (req) => {
   try {
     let domain: string | null = null;
 
-    // For GET requests (from Caddy reverse proxy), read domain from X-Forwarded-Host header
+    // For GET requests (from Caddy reverse proxy), read domain from query parameter
     if (req.method === 'GET') {
-      // Caddy sends the original host in X-Forwarded-Host header
-      domain = req.headers.get('x-forwarded-host') || req.headers.get('host');
-      console.log(`GET request - X-Forwarded-Host: ${req.headers.get('x-forwarded-host')}, Host: ${req.headers.get('host')}`);
+      // Caddy passes the domain as a query parameter: ?domain={host}
+      const url = new URL(req.url);
+      domain = url.searchParams.get('domain') || 
+               req.headers.get('x-forwarded-host') || 
+               req.headers.get('host');
+      console.log(`GET request - Query domain: ${url.searchParams.get('domain')}, X-Forwarded-Host: ${req.headers.get('x-forwarded-host')}, Host: ${req.headers.get('host')}`);
     } else {
       // For POST requests (legacy), read from body
       const body = await req.json();
