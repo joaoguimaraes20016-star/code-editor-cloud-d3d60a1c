@@ -611,24 +611,43 @@ export default function FunnelList() {
               </div>
             </div>
 
-            {/* Minimal Stats Row */}
-            <div className="flex items-center gap-8 mb-8 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Today</span>
-                <span className="font-semibold text-lg">{todayLeads}</span>
-                {todayLeads > 0 && <TrendingUp className="h-3 w-3 text-emerald-500" />}
+            {/* Perspective-style Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="bg-card border rounded-xl p-5">
+                <p className="text-sm text-muted-foreground mb-1">Today</p>
+                <p className="text-2xl font-semibold">{todayLeads} Leads</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  • 0% vs. yesterday
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">This Week</span>
-                <span className="font-semibold text-lg">{weekLeads}</span>
+              
+              <div className="bg-card border rounded-xl p-5">
+                <p className="text-sm text-muted-foreground mb-1">Last 7 days</p>
+                <p className="text-2xl font-semibold">{weekLeads} Leads</p>
+                <p className="text-sm mt-2 flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-emerald-500" />
+                  <span className="text-emerald-500">0%</span>
+                  <span className="text-muted-foreground">vs. 7 days ago</span>
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">This Month</span>
-                <span className="font-semibold text-lg">{monthLeads}</span>
+              
+              <div className="bg-card border rounded-xl p-5">
+                <p className="text-sm text-muted-foreground mb-1">Last 30 days</p>
+                <p className="text-2xl font-semibold">{monthLeads} Leads</p>
+                <p className="text-sm mt-2 flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-emerald-500" />
+                  <span className="text-emerald-500">0%</span>
+                  <span className="text-muted-foreground">vs. 30 days ago</span>
+                </p>
               </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-muted-foreground">Total</span>
-                <span className="font-semibold text-lg">{totalLeads}</span>
+              
+              <div className="bg-card border rounded-xl p-5">
+                <p className="text-sm text-muted-foreground mb-1">Total</p>
+                <p className="text-2xl font-semibold">{totalLeads} Leads</p>
+                <p className="text-sm mt-2">
+                  <span className="text-emerald-500">0%</span>
+                  <span className="text-muted-foreground"> of all visitors</span>
+                </p>
               </div>
             </div>
 
