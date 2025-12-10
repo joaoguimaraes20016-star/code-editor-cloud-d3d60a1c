@@ -559,14 +559,13 @@ const Index = () => {
       return hasDeposit && repMatch && !hasSaleRecord;
     })
     .map(apt => {
-      // For closed deals, use updated_at (when deal was closed) or today's date
-      // For deposits still in progress, use the appointment date
-      const isClosed = apt.status === 'CLOSED' || apt.pipeline_stage?.toLowerCase() === 'won';
+      // Use updated_at for both deposits and closed deals (when the action was taken)
+      // This ensures revenue shows on the day the deposit was collected, not appointment day
       let saleDate: string;
-      if (isClosed && apt.updated_at) {
+      if (apt.updated_at) {
         saleDate = apt.updated_at.split('T')[0];
       } else {
-        saleDate = apt.start_at_utc?.split('T')[0] || new Date().toISOString().split('T')[0];
+        saleDate = new Date().toISOString().split('T')[0];
       }
       
       return {
