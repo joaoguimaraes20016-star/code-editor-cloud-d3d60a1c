@@ -168,6 +168,7 @@ export default function FunnelList() {
       return funnelsWithCounts;
     },
     enabled: !!teamId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - prevent unnecessary refetches
   });
 
   // Fetch leads for performance and contacts
@@ -184,6 +185,7 @@ export default function FunnelList() {
       return data as FunnelLead[];
     },
     enabled: !!teamId,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch all funnel steps for drop-off analytics
@@ -411,11 +413,11 @@ export default function FunnelList() {
           <div className="flex items-center justify-between py-3">
             {/* Back Button */}
             <button
-              onClick={() => navigate(`/team/${teamId}/dashboard`)}
+              onClick={() => navigate(`/team/${teamId}`)}
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm font-medium">Dashboard</span>
+              <span className="text-sm font-medium">Team Hub</span>
             </button>
             
             {/* Tabs */}
