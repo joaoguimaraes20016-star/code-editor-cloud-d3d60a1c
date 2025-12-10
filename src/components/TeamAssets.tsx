@@ -3,11 +3,18 @@ import { useTeamRole } from "@/hooks/useTeamRole";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, GraduationCap, Users, FileSpreadsheet, BookOpen, Briefcase, Loader2 } from "lucide-react";
+import { 
+  Plus, GraduationCap, Users, FileSpreadsheet, BookOpen, Briefcase, 
+  Loader2, Video, FileText, Link as LinkIcon, Pencil, Trash2, 
+  GripVertical, Play, ExternalLink, ChevronDown, ChevronUp
+} from "lucide-react";
 import AssetUploadDialog from "./AssetUploadDialog";
 import EditAssetDialog from "./EditAssetDialog";
-import { SortableAssetList } from "./SortableAssetList";
 import { toast } from "sonner";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface TeamAsset {
   id: string;
@@ -27,12 +34,322 @@ interface TeamAssetsProps {
 }
 
 const ASSET_CATEGORIES = [
-  { id: "training", label: "Training", icon: GraduationCap, color: "text-blue-500", bgColor: "bg-blue-500/10" },
-  { id: "team_onboarding", label: "Team Onboarding", icon: Users, color: "text-green-500", bgColor: "bg-green-500/10" },
-  { id: "client_onboarding", label: "Client Onboarding", icon: Briefcase, color: "text-purple-500", bgColor: "bg-purple-500/10" },
-  { id: "tracking", label: "Tracking Sheets", icon: FileSpreadsheet, color: "text-amber-500", bgColor: "bg-amber-500/10" },
-  { id: "resources", label: "Resources & Scripts", icon: BookOpen, color: "text-cyan-500", bgColor: "bg-cyan-500/10" },
+  { id: "training", label: "Training", icon: GraduationCap, color: "text-blue-500", bgColor: "bg-blue-500/10", borderColor: "border-blue-500/20" },
+  { id: "team_onboarding", label: "Team Onboarding", icon: Users, color: "text-green-500", bgColor: "bg-green-500/10", borderColor: "border-green-500/20" },
+  { id: "client_onboarding", label: "Client Onboarding", icon: Briefcase, color: "text-purple-500", bgColor: "bg-purple-500/10", borderColor: "border-purple-500/20" },
+  { id: "tracking", label: "Tracking Sheets", icon: FileSpreadsheet, color: "text-amber-500", bgColor: "bg-amber-500/10", borderColor: "border-amber-500/20" },
+  { id: "resources", label: "Resources & Scripts", icon: BookOpen, color: "text-cyan-500", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/20" },
 ];
+
+// Helper to extract video embed URL
+const getVideoEmbedUrl = (url: string): string | null => {
+  if (!url) return null;
+  
+  // Loom
+  if (url.includes('loom.com')) {
+    const match = url.match(/loom\.com\/share\/([a-zA-Z0-9]+)/);
+    if (match) return `https://www.loom.com/embed/${match[1]}`;
+  }
+  
+  // YouTube
+  if (url.includes('youtube.com') || url.includes('youtu.be')) {
+    let videoId = '';
+    if (url.includes('youtu.be/')) {
+      videoId = url.split('youtu.be/')[1]?.split('?')[0];
+    } else if (url.includes('v=')) {
+      videoId = url.split('v=')[1]?.split('&')[0];
+    }
+    if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+  }
+  
+  // Vimeo
+  if (url.includes('vimeo.com')) {
+    const match = url.match(/vimeo\.com\/(\d+)/);
+    if (match) return `https://player.vimeo.com/video/${match[1]}`;
+  }
+  
+  // Wistia
+  if (url.includes('wistia.com') || url.includes('wi.st')) {
+    const match = url.match(/(?:wistia\.com\/medias\/|wi\.st\/medias\/)([a-zA-Z0-9]+)/);
+    if (match) return `https://fast.wistia.net/embed/iframe/${match[1]}`;
+  }
+  
+  return null;
+};
+
+// Sortable Asset Item with Video Embed
+function AssetItem({ 
+  asset, 
+  canManage, 
+  colorClass,
+  onEdit, 
+  onDelete, 
+  onDownload 
+}: { 
+  asset: TeamAsset; 
+  canManage: boolean; 
+  colorClass: string;
+  onEdit: (asset: TeamAsset) => void;
+  onDelete: (asset: TeamAsset) => void;
+  onDownload: (filePath: string, title: string) => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const videoUrl = asset.loom_url || asset.external_url;
+  const embedUrl = videoUrl ? getVideoEmbedUrl(videoUrl) : null;
+  const isVideo = !!embedUrl;
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: asset.id, disabled: !canManage });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleClick = () => {
+    if (isVideo) {
+      setIsExpanded(!isExpanded);
+    } else if (asset.file_path) {
+      onDownload(asset.file_path, asset.title);
+    } else if (asset.external_url) {
+      window.open(asset.external_url, "_blank");
+    }
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="border border-border/50 rounded-lg overflow-hidden bg-card hover:border-border transition-colors"
+    >
+      {/* Header Row */}
+      <div
+        className="group flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+        onClick={handleClick}
+      >
+        {canManage && (
+          <button 
+            type="button"
+            {...attributes} 
+            {...listeners}
+            className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity touch-none shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+        
+        {/* Icon */}
+        <div className={`p-2 rounded-lg ${asset.loom_url ? 'bg-red-500/10' : asset.external_url ? 'bg-blue-500/10' : 'bg-muted'} shrink-0`}>
+          {isVideo ? (
+            <Play className={`h-4 w-4 ${asset.loom_url ? 'text-red-500' : 'text-blue-500'}`} />
+          ) : asset.external_url ? (
+            <LinkIcon className="h-4 w-4 text-blue-500" />
+          ) : (
+            <FileText className={`h-4 w-4 ${colorClass}`} />
+          )}
+        </div>
+        
+        {/* Title & Description */}
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium text-sm truncate">{asset.title}</h4>
+          {asset.description && (
+            <p className="text-xs text-muted-foreground truncate">{asset.description}</p>
+          )}
+        </div>
+        
+        {/* Actions */}
+        <div className="flex items-center gap-1 shrink-0">
+          {isVideo && (
+            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs gap-1">
+              {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              {isExpanded ? 'Hide' : 'Watch'}
+            </Button>
+          )}
+          {!isVideo && asset.external_url && (
+            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs gap-1">
+              <ExternalLink className="h-3 w-3" />
+              Open
+            </Button>
+          )}
+          {canManage && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 opacity-0 group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(asset);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 opacity-0 group-hover:opacity-100 hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(asset);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+      
+      {/* Embedded Video */}
+      {isVideo && isExpanded && embedUrl && (
+        <div className="border-t border-border/50 bg-black/5">
+          <div className="aspect-video w-full">
+            <iframe
+              src={embedUrl}
+              className="w-full h-full"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Category Section Component
+function CategorySection({
+  category,
+  assets,
+  canManage,
+  onReorder,
+  onEdit,
+  onDelete,
+  onDownload,
+  onAddAsset,
+}: {
+  category: typeof ASSET_CATEGORIES[0];
+  assets: TeamAsset[];
+  canManage: boolean;
+  onReorder: (assets: TeamAsset[]) => void;
+  onEdit: (asset: TeamAsset) => void;
+  onDelete: (asset: TeamAsset) => void;
+  onDownload: (filePath: string, title: string) => void;
+  onAddAsset: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(true);
+  const Icon = category.icon;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = assets.findIndex((a) => a.id === active.id);
+      const newIndex = assets.findIndex((a) => a.id === over.id);
+      onReorder(arrayMove(assets, oldIndex, newIndex));
+    }
+  };
+
+  return (
+    <Card className={`border ${category.borderColor}`}>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors py-4">
+            <CardTitle className="flex items-center justify-between text-base">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${category.bgColor}`}>
+                  <Icon className={`h-5 w-5 ${category.color}`} />
+                </div>
+                <span>{category.label}</span>
+                <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  {assets.length} {assets.length === 1 ? 'item' : 'items'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {canManage && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddAsset();
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add
+                  </Button>
+                )}
+                {isOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+            </CardTitle>
+          </CardHeader>
+        </CollapsibleTrigger>
+        
+        <CollapsibleContent>
+          <CardContent className="pt-0 pb-4">
+            {assets.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
+                <Icon className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                <p className="text-sm">No {category.label.toLowerCase()} added yet</p>
+                {canManage && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={onAddAsset}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add First Item
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={assets.map(a => a.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2">
+                    {assets.map((asset) => (
+                      <AssetItem
+                        key={asset.id}
+                        asset={asset}
+                        canManage={canManage}
+                        colorClass={category.color}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onDownload={onDownload}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
+  );
+}
 
 export default function TeamAssets({ teamId }: TeamAssetsProps) {
   const { isAdmin, role } = useTeamRole(teamId);
@@ -110,6 +427,15 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
   };
 
   const handleReorder = async (reorderedAssets: TeamAsset[]) => {
+    // Optimistic update
+    setAssets(prev => {
+      const otherAssets = prev.filter(a => a.category !== reorderedAssets[0]?.category);
+      return [...otherAssets, ...reorderedAssets].sort((a, b) => {
+        if (a.category !== b.category) return a.category.localeCompare(b.category);
+        return (a.order_index || 0) - (b.order_index || 0);
+      });
+    });
+
     try {
       for (let i = 0; i < reorderedAssets.length; i++) {
         await supabase
@@ -117,25 +443,20 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
           .update({ order_index: i })
           .eq("id", reorderedAssets[i].id);
       }
-      loadAssets();
     } catch (error) {
       console.error("Error reordering assets:", error);
       toast.error("Failed to reorder assets");
-    }
-  };
-
-  const handleAssetClick = (asset: TeamAsset) => {
-    if (asset.file_path) {
-      handleDownload(asset.file_path, asset.title);
-    } else if (asset.loom_url) {
-      window.open(asset.loom_url, "_blank");
-    } else if (asset.external_url) {
-      window.open(asset.external_url, "_blank");
+      loadAssets();
     }
   };
 
   const getAssetsByCategory = (categoryId: string) => {
     return assets.filter((asset) => asset.category === categoryId);
+  };
+
+  const openUploadWithCategory = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setUploadDialogOpen(true);
   };
 
   if (loading) {
@@ -164,86 +485,29 @@ export default function TeamAssets({ teamId }: TeamAssetsProps) {
         )}
       </div>
 
-      {/* Category Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {ASSET_CATEGORIES.map((cat) => {
-          const count = getAssetsByCategory(cat.id).length;
-          const Icon = cat.icon;
-          return (
-            <Button
-              key={cat.id}
-              variant={selectedCategory === cat.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategory(cat.id)}
-              className="shrink-0"
-            >
-              <Icon className="h-4 w-4 mr-2" />
-              {cat.label}
-              {count > 0 && (
-                <span className="ml-2 bg-background/20 px-1.5 py-0.5 rounded text-xs">
-                  {count}
-                </span>
-              )}
-            </Button>
-          );
-        })}
+      {/* All Category Sections */}
+      <div className="space-y-4">
+        {ASSET_CATEGORIES.map((category) => (
+          <CategorySection
+            key={category.id}
+            category={category}
+            assets={getAssetsByCategory(category.id)}
+            canManage={canManage}
+            onReorder={handleReorder}
+            onEdit={(asset) => setEditAsset(asset)}
+            onDelete={handleDelete}
+            onDownload={handleDownload}
+            onAddAsset={() => openUploadWithCategory(category.id)}
+          />
+        ))}
       </div>
-
-      {/* Selected Category Content */}
-      {ASSET_CATEGORIES.map((cat) => {
-        if (cat.id !== selectedCategory) return null;
-        const categoryAssets = getAssetsByCategory(cat.id);
-        const Icon = cat.icon;
-
-        return (
-          <Card key={cat.id}>
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <div className={`p-2 rounded-lg ${cat.bgColor}`}>
-                  <Icon className={`h-5 w-5 ${cat.color}`} />
-                </div>
-                {cat.label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {categoryAssets.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Icon className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p>No {cat.label.toLowerCase()} added yet</p>
-                  {canManage && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={() => setUploadDialogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add First Asset
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <SortableAssetList
-                  assets={categoryAssets}
-                  canManage={canManage}
-                  colorClass={cat.color}
-                  emptyMessage={`No ${cat.label.toLowerCase()} added yet`}
-                  onReorder={handleReorder}
-                  onEdit={(asset) => setEditAsset(asset)}
-                  onDelete={(id, filePath) => handleDelete({ id, file_path: filePath } as TeamAsset)}
-                  onClick={handleAssetClick}
-                />
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
 
       {/* Dialogs */}
       <AssetUploadDialog
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
         teamId={teamId}
+        defaultCategory={selectedCategory}
         onSuccess={loadAssets}
       />
 

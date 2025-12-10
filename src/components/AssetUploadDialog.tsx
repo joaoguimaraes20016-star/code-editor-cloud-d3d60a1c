@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -27,39 +27,48 @@ interface AssetUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   teamId: string;
+  defaultCategory?: string;
   onSuccess: () => void;
 }
 
 const CATEGORIES = [
-  { value: 'scripts', label: 'Scripts' },
-  { value: 'onboarding', label: 'Onboarding' },
   { value: 'training', label: 'Training' },
-  { value: 'tracking', label: 'Tracking' },
-  { value: 'offer', label: 'Complete Offer' },
+  { value: 'team_onboarding', label: 'Team Onboarding' },
+  { value: 'client_onboarding', label: 'Client Onboarding' },
+  { value: 'tracking', label: 'Tracking Sheets' },
+  { value: 'resources', label: 'Resources & Scripts' },
 ];
 
 export default function AssetUploadDialog({
   open,
   onOpenChange,
   teamId,
+  defaultCategory,
   onSuccess,
 }: AssetUploadDialogProps) {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
-  const [assetType, setAssetType] = useState<'file' | 'loom' | 'link'>('file');
+  const [category, setCategory] = useState(defaultCategory || '');
+  const [assetType, setAssetType] = useState<'file' | 'loom' | 'link'>('loom');
   const [file, setFile] = useState<File | null>(null);
   const [loomUrl, setLoomUrl] = useState('');
   const [externalUrl, setExternalUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // Update category when defaultCategory changes
+  useEffect(() => {
+    if (defaultCategory && open) {
+      setCategory(defaultCategory);
+    }
+  }, [defaultCategory, open]);
+
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setCategory('');
-    setAssetType('file');
+    setCategory(defaultCategory || '');
+    setAssetType('loom');
     setFile(null);
     setLoomUrl('');
     setExternalUrl('');
@@ -125,7 +134,7 @@ export default function AssetUploadDialog({
         <DialogHeader>
           <DialogTitle>Add Team Asset</DialogTitle>
           <DialogDescription>
-            Upload files, add Loom videos, or external links
+            Add training videos, documents, or external resources
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -135,7 +144,7 @@ export default function AssetUploadDialog({
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Closer Script"
+              placeholder="e.g., Sales Training Module 1"
               required
             />
           </div>
@@ -171,21 +180,21 @@ export default function AssetUploadDialog({
             <Label>Asset Type *</Label>
             <RadioGroup value={assetType} onValueChange={(v: any) => setAssetType(v)}>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="file" id="file" />
-                <Label htmlFor="file" className="font-normal">
-                  File Upload (MP4, PDF, etc.)
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
                 <RadioGroupItem value="loom" id="loom" />
                 <Label htmlFor="loom" className="font-normal">
-                  Loom Video
+                  Video (Loom, YouTube, Vimeo, etc.)
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="link" id="link" />
                 <Label htmlFor="link" className="font-normal">
                   External Link
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="file" id="file" />
+                <Label htmlFor="file" className="font-normal">
+                  File Upload (PDF, etc.)
                 </Label>
               </div>
             </RadioGroup>
@@ -209,14 +218,17 @@ export default function AssetUploadDialog({
 
           {assetType === 'loom' && (
             <div className="space-y-2">
-              <Label htmlFor="loom-url">Loom URL *</Label>
+              <Label htmlFor="loom-url">Video URL *</Label>
               <Input
                 id="loom-url"
                 value={loomUrl}
                 onChange={(e) => setLoomUrl(e.target.value)}
-                placeholder="https://www.loom.com/share/..."
+                placeholder="https://www.loom.com/share/... or YouTube/Vimeo URL"
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Supports Loom, YouTube, Vimeo, and Wistia URLs
+              </p>
             </div>
           )}
 
