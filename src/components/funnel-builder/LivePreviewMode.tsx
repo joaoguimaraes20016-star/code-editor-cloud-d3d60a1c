@@ -46,6 +46,7 @@ const DEFAULT_ELEMENT_ORDERS: Record<string, string[]> = {
   phone_capture: ['headline', 'subtext', 'input'],
   video: ['headline', 'video', 'button'],
   thank_you: ['headline', 'subtext'],
+  opt_in: ['headline', 'opt_in_form'],
 };
 
 export function LivePreviewMode({ 
@@ -299,6 +300,34 @@ export function LivePreviewMode({
                       </div>
                     );
                   }}
+                  renderForm={() => (
+                    <div className="space-y-3 w-full max-w-sm mx-auto">
+                      {/* Preview opt-in form */}
+                      <div className="bg-white rounded-xl px-4 py-3 flex items-center gap-3">
+                        <span>👋</span>
+                        <input type="text" placeholder={stepContent.name_placeholder || 'Your name'} className="flex-1 bg-transparent outline-none text-black" readOnly />
+                      </div>
+                      <div className="bg-white rounded-xl px-4 py-3 flex items-center gap-3">
+                        <span>✉️</span>
+                        <input type="text" placeholder={stepContent.email_placeholder || 'Your email'} className="flex-1 bg-transparent outline-none text-black" readOnly />
+                      </div>
+                      <div className="bg-white rounded-xl px-4 py-3 flex items-center gap-3">
+                        <span>📱</span>
+                        <input type="text" placeholder={stepContent.phone_placeholder || 'Your phone'} className="flex-1 bg-transparent outline-none text-black" readOnly />
+                      </div>
+                      <button
+                        className="w-full p-4 rounded-xl font-semibold transition-all"
+                        style={{ 
+                          background: stepDesign.useButtonGradient && stepDesign.buttonGradientFrom 
+                            ? `linear-gradient(${stepDesign.buttonGradientDirection || '135deg'}, ${stepDesign.buttonGradientFrom}, ${stepDesign.buttonGradientTo || stepDesign.buttonGradientFrom})`
+                            : (stepDesign.buttonColor || funnel.settings.primary_color),
+                          color: stepDesign.buttonTextColor || '#ffffff'
+                        }}
+                      >
+                        {stepContent.submit_button_text || 'Continue'}
+                      </button>
+                    </div>
+                  )}
                 />
               </div>
             </div>

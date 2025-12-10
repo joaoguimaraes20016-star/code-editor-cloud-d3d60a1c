@@ -129,13 +129,20 @@ interface DynamicElementRendererProps {
     imagePosition?: 'top' | 'bottom' | 'background';
     fontSize?: 'small' | 'medium' | 'large';
     fontFamily?: string;
+    // Button gradient support
+    useButtonGradient?: boolean;
+    buttonGradientFrom?: string;
+    buttonGradientTo?: string;
+    buttonGradientDirection?: string;
+    buttonHoverEffect?: 'none' | 'glow' | 'lift' | 'pulse' | 'shine';
   };
   stepType: string;
   onButtonClick?: (bookingData?: CalendlyBookingData) => void;
   onCalendlyBooking?: (bookingData?: CalendlyBookingData) => void;
   renderInput?: () => React.ReactNode;
   renderOptions?: () => React.ReactNode;
-  isPreview?: boolean; // Whether this is the editor preview (smaller sizes)
+  renderForm?: () => React.ReactNode;
+  isPreview?: boolean;
 }
 
 const DEFAULT_ELEMENT_ORDERS: Record<string, string[]> = {
@@ -146,6 +153,7 @@ const DEFAULT_ELEMENT_ORDERS: Record<string, string[]> = {
   phone_capture: ['image_top', 'headline', 'subtext', 'input', 'hint'],
   video: ['headline', 'video', 'button'],
   thank_you: ['image_top', 'headline', 'subtext'],
+  opt_in: ['image_top', 'headline', 'opt_in_form'],
 };
 
 const IMAGE_ASPECT_RATIOS: Record<string, string> = {
@@ -200,6 +208,7 @@ export function DynamicElementRenderer({
   onCalendlyBooking,
   renderInput,
   renderOptions,
+  renderForm,
   isPreview = false,
 }: DynamicElementRendererProps) {
   const textColor = design?.textColor || '#ffffff';
@@ -208,6 +217,31 @@ export function DynamicElementRenderer({
   const borderRadius = design?.borderRadius ?? 12;
   const fontSize = design?.fontSize || 'medium';
   const fontFamily = design?.fontFamily || 'system-ui';
+
+  // Button gradient styling
+  const getButtonStyle = (): React.CSSProperties => {
+    const style: React.CSSProperties = {
+      color: buttonTextColor,
+      borderRadius: `${borderRadius}px`,
+      fontFamily,
+    };
+    
+    if (design?.useButtonGradient && design?.buttonGradientFrom && design?.buttonGradientTo) {
+      style.background = `linear-gradient(${design.buttonGradientDirection || '135deg'}, ${design.buttonGradientFrom}, ${design.buttonGradientTo})`;
+    } else {
+      style.backgroundColor = buttonColor;
+    }
+    
+    return style;
+  };
+
+  const buttonHoverClass = design?.buttonHoverEffect === 'glow' 
+    ? 'hover:shadow-lg hover:shadow-primary/30' 
+    : design?.buttonHoverEffect === 'lift'
+    ? 'hover:-translate-y-1'
+    : design?.buttonHoverEffect === 'pulse'
+    ? 'hover:animate-pulse'
+    : '';
 
   // Use the appropriate font size map based on context
   const fontSizeMap = isPreview ? PREVIEW_FONT_SIZE_MAP : PUBLIC_FONT_SIZE_MAP;
@@ -318,8 +352,8 @@ export function DynamicElementRenderer({
       return (
         <button
           onClick={handleSimpleButtonClick}
-          className={cn(sizes.text, "px-5 py-2.5 font-semibold transition-all w-full max-w-xs hover:scale-105")}
-          style={{ backgroundColor: buttonColor, color: buttonTextColor, borderRadius: `${borderRadius}px`, ...fontStyle }}
+          className={cn(sizes.text, `px-5 py-2.5 font-semibold transition-all w-full max-w-xs hover:scale-105 ${buttonHoverClass}`)}
+          style={getButtonStyle()}
           dangerouslySetInnerHTML={{ __html: buttonText }}
         />
       );
@@ -414,8 +448,8 @@ export function DynamicElementRenderer({
         return (
           <button
             onClick={handleSimpleButtonClick}
-            className={cn(sizes.text, "px-5 py-2.5 font-semibold transition-all w-full max-w-xs hover:scale-105 hover:shadow-lg")}
-            style={{ backgroundColor: buttonColor, color: buttonTextColor, borderRadius: `${borderRadius}px`, ...fontStyle }}
+            className={cn(sizes.text, `px-5 py-2.5 font-semibold transition-all w-full max-w-xs hover:scale-105 hover:shadow-lg ${buttonHoverClass}`)}
+            style={getButtonStyle()}
           >
             {content.button_text || settings.button_text || 'Get Started'}
           </button>
@@ -426,6 +460,9 @@ export function DynamicElementRenderer({
         
       case 'options':
         return renderOptions?.();
+
+      case 'opt_in_form':
+        return renderForm?.();
         
       case 'video':
         const videoUrl = content.video_url;
@@ -479,6 +516,7 @@ export function DynamicElementRenderer({
     if (id === 'button') return true;
     if (id === 'input') return true;
     if (id === 'options') return true;
+    if (id === 'opt_in_form') return true;
     if (id === 'hint') return true;
     
     return false;

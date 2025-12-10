@@ -591,10 +591,20 @@ export function StepPreview({
         );
         
       case 'button':
+        const buttonStyle: React.CSSProperties = {
+          color: buttonTextColor, 
+          borderRadius: `${borderRadius}px`
+        };
+        if (design?.useButtonGradient && design?.buttonGradientFrom && design?.buttonGradientTo) {
+          buttonStyle.background = `linear-gradient(${design.buttonGradientDirection || '135deg'}, ${design.buttonGradientFrom}, ${design.buttonGradientTo})`;
+        } else {
+          buttonStyle.backgroundColor = buttonColor;
+        }
+        
         return (
           <button
             className="px-6 py-3 text-sm font-semibold transition-all w-full max-w-xs"
-            style={{ backgroundColor: buttonColor, color: buttonTextColor, borderRadius: `${borderRadius}px` }}
+            style={buttonStyle}
           >
             <InlineTextEditor
               value={content.button_text || settings.button_text || 'Get Started'}

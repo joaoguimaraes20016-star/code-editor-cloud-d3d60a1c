@@ -231,7 +231,7 @@ export function OptInStep({ content, settings, onNext, isActive }: OptInStepProp
           settings={settings}
           design={content.design}
           stepType="opt_in"
-          renderInput={renderForm}
+          renderForm={renderForm}
         />
       </div>
     );
