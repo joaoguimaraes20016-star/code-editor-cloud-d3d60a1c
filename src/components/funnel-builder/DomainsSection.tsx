@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Globe, Plus, Copy, CheckCircle, ExternalLink, Trash2, Link2, ArrowRight, 
-  AlertCircle, Loader2, XCircle, Clock, RefreshCw, ShieldCheck
+  AlertCircle, Loader2, XCircle, Clock, RefreshCw, ShieldCheck, Activity, ChevronDown, ChevronUp
 } from 'lucide-react';
+import { DomainHealthPanel } from './DomainHealthPanel';
 import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -115,6 +116,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const [verifyingDomainId, setVerifyingDomainId] = useState<string | null>(null);
   const [dnsCheckResult, setDnsCheckResult] = useState<VerificationResult | null>(null);
+  const [expandedDomainId, setExpandedDomainId] = useState<string | null>(null);
 
   // Fetch domains
   const { data: domains = [], isLoading: domainsLoading } = useQuery({
@@ -362,7 +364,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
         <div className="text-center py-8 text-muted-foreground">Loading domains...</div>
       ) : domains.length > 0 ? (
         <div className="bg-card border rounded-xl overflow-hidden">
-          <div className="divide-y">
+          <div>
             {domains.map((domain) => {
               const linkedFunnel = getFunnelForDomain(domain.id);
               const statusConfig = getStatusConfig(domain);
@@ -370,131 +372,162 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
               const isActive = domain.status === 'verified' && domain.ssl_provisioned;
               const isOffline = domain.health_status === 'offline';
 
+              const isExpandedDomain = expandedDomainId === domain.id;
+              
               return (
-                <div key={domain.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${isActive ? 'bg-emerald-500/10' : isPending ? 'bg-amber-500/10' : isOffline ? 'bg-red-500/10' : 'bg-blue-500/10'}`}>
-                      <Globe className={`h-5 w-5 ${isActive ? 'text-emerald-500' : isPending ? 'text-amber-500' : isOffline ? 'text-red-500' : 'text-blue-500'}`} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{domain.domain}</span>
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${statusConfig.color}`}
-                        >
-                          {isVerifying(domain.id) ? (
-                            <>
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              Checking...
-                            </>
-                          ) : (
-                            <>
-                              {statusConfig.icon}
-                              {statusConfig.label}
-                            </>
-                          )}
-                        </Badge>
-                        {isActive && (
-                          <Badge variant="outline" className="text-xs border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10">
-                            <ShieldCheck className="h-3 w-3 mr-1" />
-                            SSL
+                <div key={domain.id} className="border-b last:border-b-0">
+                  <div className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isActive ? 'bg-emerald-500/10' : isPending ? 'bg-amber-500/10' : isOffline ? 'bg-red-500/10' : 'bg-blue-500/10'}`}>
+                        <Globe className={`h-5 w-5 ${isActive ? 'text-emerald-500' : isPending ? 'text-amber-500' : isOffline ? 'text-red-500' : 'text-blue-500'}`} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{domain.domain}</span>
+                          <Badge 
+                            variant="outline"
+                            className={`text-xs ${statusConfig.color}`}
+                          >
+                            {isVerifying(domain.id) ? (
+                              <>
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                Checking...
+                              </>
+                            ) : (
+                              <>
+                                {statusConfig.icon}
+                                {statusConfig.label}
+                              </>
+                            )}
                           </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {linkedFunnel ? (
-                          <p className="text-sm text-muted-foreground">
-                            <ArrowRight className="h-3 w-3 inline mr-1" />
-                            Serves <span className="font-medium">{linkedFunnel.name}</span>
-                          </p>
-                        ) : (
-                          <p className="text-sm text-amber-600">
-                            Not linked to any funnel
-                          </p>
-                        )}
-                        {isPending && (
-                          <span className="text-xs text-muted-foreground">
-                            • {statusConfig.description}
-                          </span>
-                        )}
+                          {isActive && (
+                            <Badge variant="outline" className="text-xs border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10">
+                              <ShieldCheck className="h-3 w-3 mr-1" />
+                              SSL
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {linkedFunnel ? (
+                            <p className="text-sm text-muted-foreground">
+                              <ArrowRight className="h-3 w-3 inline mr-1" />
+                              Serves <span className="font-medium">{linkedFunnel.name}</span>
+                            </p>
+                          ) : (
+                            <p className="text-sm text-amber-600">
+                              Not linked to any funnel
+                            </p>
+                          )}
+                          {isPending && (
+                            <span className="text-xs text-muted-foreground">
+                              • {statusConfig.description}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {/* Verify DNS button for pending/offline domains */}
-                    {(isPending || isOffline) && (
+                    <div className="flex items-center gap-2">
+                      {/* Check Health button */}
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => verifyDomain(domain)}
-                        disabled={isVerifying(domain.id)}
+                        onClick={() => setExpandedDomainId(isExpandedDomain ? null : domain.id)}
+                        className={isExpandedDomain ? 'bg-muted' : ''}
                       >
-                        {isVerifying(domain.id) ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-1" />
-                            Verify DNS
-                          </>
-                        )}
+                        <Activity className="h-4 w-4 mr-1" />
+                        Health
+                        {isExpandedDomain ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
                       </Button>
-                    )}
-                    
-                    {/* Link funnel button */}
-                    {!linkedFunnel && (
+
+                      {/* Verify DNS button for pending/offline domains */}
+                      {(isPending || isOffline) && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => verifyDomain(domain)}
+                          disabled={isVerifying(domain.id)}
+                        >
+                          {isVerifying(domain.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Verify DNS
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      
+                      {/* Link funnel button */}
+                      {!linkedFunnel && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDomainForLink(domain);
+                            setSelectedFunnelId('');
+                            setShowLinkDialog(true);
+                          }}
+                        >
+                          <Link2 className="h-4 w-4 mr-1" />
+                          Link Funnel
+                        </Button>
+                      )}
+
+                      {/* DNS Setup button */}
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => {
-                          setSelectedDomainForLink(domain);
-                          setSelectedFunnelId('');
-                          setShowLinkDialog(true);
+                          setSelectedDomain(domain);
+                          setDnsCheckResult(null);
+                          setShowSetupDialog(true);
                         }}
                       >
-                        <Link2 className="h-4 w-4 mr-1" />
-                        Link Funnel
+                        DNS Setup
                       </Button>
-                    )}
 
-                    {/* DNS Setup button */}
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setSelectedDomain(domain);
-                        setDnsCheckResult(null);
-                        setShowSetupDialog(true);
-                      }}
-                    >
-                      DNS Setup
-                    </Button>
+                      {/* Test link for active domains */}
+                      {isActive && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(`https://${domain.domain}`, '_blank')}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      )}
 
-                    {/* Test link for active domains */}
-                    {isActive && (
+                      {/* Delete button */}
                       <Button 
-                        variant="outline" 
+                        variant="ghost" 
                         size="sm"
-                        onClick={() => window.open(`https://${domain.domain}`, '_blank')}
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        onClick={() => {
+                          if (confirm('Are you sure you want to remove this domain?')) {
+                            deleteDomainMutation.mutate(domain);
+                          }
+                        }}
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
-
-                    {/* Delete button */}
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                      onClick={() => {
-                        if (confirm('Are you sure you want to remove this domain?')) {
-                          deleteDomainMutation.mutate(domain);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </div>
                   </div>
+                  
+                  {/* Expanded Health Panel */}
+                  {isExpandedDomain && (
+                    <div className="px-4 pb-4 pt-0 border-t bg-muted/30">
+                      <div className="pt-4">
+                        <DomainHealthPanel 
+                          domain={domain.domain} 
+                          domainId={domain.id}
+                          onHealthCheckComplete={() => {
+                            queryClient.invalidateQueries({ queryKey: ['funnel-domains', teamId] });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
