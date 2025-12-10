@@ -935,29 +935,38 @@ function generateFunnelHTML(
     
     function renderOptIn(content) {
       const design = content.design || {};
+      const isRequired = content.is_required !== false;
       
-      // Input styling from design
+      // Input styling from design - matching React OptInStep exactly
       const inputBg = design.inputBg || '#ffffff';
       const inputTextColor = design.inputTextColor || '#0a0a0a';
       const inputBorder = design.inputBorder || '#e5e7eb';
+      const inputBorderWidth = design.inputBorderWidth || 1;
       const inputRadius = design.inputRadius || 12;
       const inputPlaceholderColor = design.inputPlaceholderColor || '#9ca3af';
       const showInputIcon = design.inputShowIcon !== false;
       
-      // Build button style with gradient if configured - use camelCase properties
-      let buttonStyle = '';
-      if (design.useButtonGradient && design.buttonGradientFrom && design.buttonGradientTo) {
+      // Button styling from design - matching React exactly
+      const buttonColor = design.buttonColor || FUNNEL_DATA.settings.primary_color || '#22c55e';
+      const buttonTextColor = design.buttonTextColor || '#ffffff';
+      const borderRadius = design.borderRadius || 12;
+      
+      let buttonStyle = 'color: ' + buttonTextColor + '; border-radius: ' + borderRadius + 'px;';
+      if (design.useButtonGradient && design.buttonGradientFrom) {
+        const gradientTo = design.buttonGradientTo || design.buttonGradientFrom;
         const direction = design.buttonGradientDirection || '135deg';
-        buttonStyle = 'background: linear-gradient(' + direction + ', ' + design.buttonGradientFrom + ', ' + design.buttonGradientTo + ');';
+        buttonStyle += ' background: linear-gradient(' + direction + ', ' + design.buttonGradientFrom + ', ' + gradientTo + ');';
+      } else {
+        buttonStyle += ' background: ' + buttonColor + ';';
       }
       
-      // Input icons
+      // Input icons - matching React
       const nameIcon = content.name_icon || '👋';
       const emailIcon = content.email_icon || '✉️';
       const phoneIcon = content.phone_icon || '🇺🇸';
       
-      // Input container style
-      const inputStyle = 'display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: ' + inputBg + '; border: 1px solid ' + inputBorder + '; border-radius: ' + inputRadius + 'px; margin-bottom: 1rem;';
+      // Input container style - matching React OptInStep exactly
+      const inputStyle = 'display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: ' + inputBg + '; border: ' + inputBorderWidth + 'px solid ' + inputBorder + '; border-radius: ' + inputRadius + 'px; margin-bottom: 1rem;';
       const fieldStyle = 'flex: 1; border: none; background: transparent; color: ' + inputTextColor + '; font-size: 1rem; outline: none;';
       
       // Privacy text
@@ -965,12 +974,18 @@ function generateFunnelHTML(
       const privacyLink = content.privacy_link || '#';
       const privacyHtml = '<div class="privacy-row"><input type="checkbox" class="privacy-checkbox" id="privacy-check"><span class="privacy-text">' + privacyText + ' <a href="' + privacyLink + '" target="_blank">privacy policy</a>.</span></div>';
       
+      // Error message container
+      const errorContainer = '<div id="optin-errors" style="color: #f87171; font-size: 0.75rem; margin-top: -0.5rem; margin-bottom: 0.5rem; display: none;"></div>';
+      
       return '<div class="element-headline">' + (content.headline || 'Complete your information') + '</div>' +
-        '<div style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + nameIcon + '</span>' : '') + '<input type="text" style="' + fieldStyle + '" id="name-input" placeholder="' + (content.name_placeholder || 'Your name') + '"></div>' +
-        '<div style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + emailIcon + '</span>' : '') + '<input type="email" style="' + fieldStyle + '" id="optin-email" placeholder="' + (content.email_placeholder || 'Your email address') + '"></div>' +
-        '<div style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + phoneIcon + '</span>' : '') + '<span style="color: ' + inputPlaceholderColor + '; font-size: 0.875rem;">+1</span><input type="tel" style="' + fieldStyle + '" id="optin-phone" placeholder="' + (content.phone_placeholder || 'Your phone number') + '" maxlength="14"></div>' +
+        '<div id="name-container" style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + nameIcon + '</span>' : '') + '<input type="text" style="' + fieldStyle + '" id="name-input" placeholder="' + (content.name_placeholder || 'Your name') + '" data-required="' + isRequired + '"></div>' +
+        '<div id="name-error" style="color: #f87171; font-size: 0.75rem; margin-top: -0.5rem; margin-bottom: 0.5rem; display: none;"></div>' +
+        '<div id="email-container" style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + emailIcon + '</span>' : '') + '<input type="email" style="' + fieldStyle + '" id="optin-email" placeholder="' + (content.email_placeholder || 'Your email address') + '" data-required="' + isRequired + '"></div>' +
+        '<div id="email-error" style="color: #f87171; font-size: 0.75rem; margin-top: -0.5rem; margin-bottom: 0.5rem; display: none;"></div>' +
+        '<div id="phone-container" style="' + inputStyle + '">' + (showInputIcon ? '<span style="font-size: 1.25rem;">' + phoneIcon + '</span>' : '') + '<span style="color: ' + inputPlaceholderColor + '; font-size: 0.875rem; flex-shrink: 0;">+1</span><input type="tel" style="' + fieldStyle + '" id="optin-phone" placeholder="' + (content.phone_placeholder || 'Your phone number') + '" maxlength="14" data-required="' + isRequired + '" oninput="formatPhoneInput(this)"></div>' +
+        '<div id="phone-error" style="color: #f87171; font-size: 0.75rem; margin-top: -0.5rem; margin-bottom: 0.5rem; display: none;"></div>' +
         privacyHtml +
-        '<button class="element-button" style="' + buttonStyle + '" onclick="handleOptInSubmit()">' + (content.submit_button_text || 'Submit and proceed') + '</button>';
+        '<button class="element-button" style="' + buttonStyle + '" onclick="handleOptInSubmit(' + isRequired + ')">' + (content.submit_button_text || 'Submit and proceed') + '</button>';
     }
     
     function renderVideo(content) {
@@ -1032,13 +1047,67 @@ function generateFunnelHTML(
       if (phone) { answers.phone = phone; handleNext(); }
     }
     
-    function handleOptInSubmit() {
-      const name = document.getElementById('name-input')?.value?.trim();
-      const email = document.getElementById('optin-email')?.value?.trim();
-      const phone = document.getElementById('optin-phone')?.value?.trim();
+    // Phone formatting to match React component
+    function formatPhoneInput(input) {
+      let digits = input.value.replace(/\\D/g, '');
+      if (digits.length <= 3) {
+        input.value = digits;
+      } else if (digits.length <= 6) {
+        input.value = '(' + digits.slice(0,3) + ') ' + digits.slice(3);
+      } else {
+        input.value = '(' + digits.slice(0,3) + ') ' + digits.slice(3,6) + '-' + digits.slice(6,10);
+      }
+    }
+    
+    function validateEmail(email) {
+      return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);
+    }
+    
+    function handleOptInSubmit(isRequired) {
+      const name = document.getElementById('name-input')?.value?.trim() || '';
+      const email = document.getElementById('optin-email')?.value?.trim() || '';
+      const phone = document.getElementById('optin-phone')?.value?.trim() || '';
+      
+      // Clear previous errors
+      ['name', 'email', 'phone'].forEach(function(field) {
+        document.getElementById(field + '-error').style.display = 'none';
+        document.getElementById(field + '-container').style.borderColor = '';
+      });
+      
+      let hasErrors = false;
+      
+      if (isRequired) {
+        if (!name) {
+          document.getElementById('name-error').textContent = 'Name is required';
+          document.getElementById('name-error').style.display = 'block';
+          document.getElementById('name-container').style.borderColor = '#ef4444';
+          hasErrors = true;
+        }
+        if (!email) {
+          document.getElementById('email-error').textContent = 'Email is required';
+          document.getElementById('email-error').style.display = 'block';
+          document.getElementById('email-container').style.borderColor = '#ef4444';
+          hasErrors = true;
+        } else if (!validateEmail(email)) {
+          document.getElementById('email-error').textContent = 'Invalid email';
+          document.getElementById('email-error').style.display = 'block';
+          document.getElementById('email-container').style.borderColor = '#ef4444';
+          hasErrors = true;
+        }
+        if (!phone || phone.replace(/\\D/g, '').length < 10) {
+          document.getElementById('phone-error').textContent = 'Valid phone required';
+          document.getElementById('phone-error').style.display = 'block';
+          document.getElementById('phone-container').style.borderColor = '#ef4444';
+          hasErrors = true;
+        }
+      }
+      
+      if (hasErrors) return;
+      
       if (name) answers.name = name;
       if (email) answers.email = email;
       if (phone) answers.phone = phone;
+      answers.opt_in = document.getElementById('privacy-check')?.checked || false;
       handleNext();
     }
     

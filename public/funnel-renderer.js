@@ -311,22 +311,70 @@
   }
 
   function renderOptIn(content, settings) {
+    const design = content.design || {};
     const primaryColor = settings.primary_color || '#8B5CF6';
+    const isRequired = content.is_required !== false;
+    
+    // Input styling from design - matching React OptInStep exactly
+    const inputBg = design.inputBg || '#ffffff';
+    const inputTextColor = design.inputTextColor || '#0a0a0a';
+    const inputBorder = design.inputBorder || '#e5e7eb';
+    const inputBorderWidth = design.inputBorderWidth || 1;
+    const inputRadius = design.inputRadius || 12;
+    const inputPlaceholderColor = design.inputPlaceholderColor || '#9ca3af';
+    const showInputIcon = design.inputShowIcon !== false;
+    
+    // Button styling from design
+    const buttonTextColor = design.buttonTextColor || '#ffffff';
+    const borderRadius = design.borderRadius || 12;
+    
+    let buttonStyle = `color: ${buttonTextColor}; border-radius: ${borderRadius}px;`;
+    if (design.useButtonGradient && design.buttonGradientFrom) {
+      const gradientTo = design.buttonGradientTo || design.buttonGradientFrom;
+      const direction = design.buttonGradientDirection || '135deg';
+      buttonStyle += ` background: linear-gradient(${direction}, ${design.buttonGradientFrom}, ${gradientTo});`;
+    } else {
+      buttonStyle += ` background: ${design.buttonColor || primaryColor};`;
+    }
+    
+    // Input icons
+    const nameIcon = content.name_icon || '👋';
+    const emailIcon = content.email_icon || '✉️';
+    const phoneIcon = content.phone_icon || '🇺🇸';
+    
+    const inputContainerStyle = `display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;background:${inputBg};border:${inputBorderWidth}px solid ${inputBorder};border-radius:${inputRadius}px;margin-bottom:0.25rem;`;
+    const inputFieldStyle = `flex:1;border:none;background:transparent;color:${inputTextColor};font-size:1rem;outline:none;`;
+    
     return `
-      <h2 style="font-size:1.5rem;font-weight:bold;color:#fff;margin-bottom:1.5rem;">${escapeHtml(content.headline || 'Get Started')}</h2>
-      <div style="display:flex;flex-direction:column;gap:1rem;margin-bottom:1.5rem;">
-        <input type="text" id="funnel-name" placeholder="${escapeHtml(content.name_placeholder || 'Your name')}" 
-          style="width:100%;padding:1rem;border:1px solid #333;border-radius:8px;background:#1a1a1a;color:#fff;font-size:1rem;">
-        <input type="email" id="funnel-email" placeholder="${escapeHtml(content.email_placeholder || 'your@email.com')}" 
-          style="width:100%;padding:1rem;border:1px solid #333;border-radius:8px;background:#1a1a1a;color:#fff;font-size:1rem;">
-        <input type="tel" id="funnel-phone" placeholder="${escapeHtml(content.phone_placeholder || '(555) 555-5555')}" 
-          style="width:100%;padding:1rem;border:1px solid #333;border-radius:8px;background:#1a1a1a;color:#fff;font-size:1rem;">
+      <h2 style="font-size:1.5rem;font-weight:bold;color:#fff;margin-bottom:1.5rem;" dangerouslySetInnerHTML>${content.headline || 'Get Started'}</h2>
+      <div style="display:flex;flex-direction:column;gap:0.25rem;margin-bottom:1rem;">
+        <div id="name-container" style="${inputContainerStyle}">
+          ${showInputIcon ? `<span style="font-size:1.25rem;flex-shrink:0;">${nameIcon}</span>` : ''}
+          <input type="text" id="funnel-name" placeholder="${escapeHtml(content.name_placeholder || 'Your name')}" 
+            style="${inputFieldStyle}" data-required="${isRequired}">
+        </div>
+        <div id="name-error" style="color:#f87171;font-size:0.75rem;margin-bottom:0.5rem;display:none;"></div>
+        
+        <div id="email-container" style="${inputContainerStyle}">
+          ${showInputIcon ? `<span style="font-size:1.25rem;flex-shrink:0;">${emailIcon}</span>` : ''}
+          <input type="email" id="funnel-email" placeholder="${escapeHtml(content.email_placeholder || 'Your email address')}" 
+            style="${inputFieldStyle}" data-required="${isRequired}">
+        </div>
+        <div id="email-error" style="color:#f87171;font-size:0.75rem;margin-bottom:0.5rem;display:none;"></div>
+        
+        <div id="phone-container" style="${inputContainerStyle}">
+          ${showInputIcon ? `<span style="font-size:1.25rem;flex-shrink:0;">${phoneIcon}</span>` : ''}
+          <span style="color:${inputPlaceholderColor};font-size:0.875rem;flex-shrink:0;">+1</span>
+          <input type="tel" id="funnel-phone" placeholder="${escapeHtml(content.phone_placeholder || 'Your phone number')}" 
+            style="${inputFieldStyle}" data-required="${isRequired}" maxlength="14">
+        </div>
+        <div id="phone-error" style="color:#f87171;font-size:0.75rem;margin-bottom:0.5rem;display:none;"></div>
       </div>
-      <label style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:1.5rem;cursor:pointer;color:#aaa;font-size:0.9rem;">
-        <input type="checkbox" id="funnel-consent" style="margin-top:2px;">
-        <span>${content.privacy_text || 'I agree to receive communications and accept the privacy policy.'}</span>
+      <label style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:1.5rem;cursor:pointer;color:rgba(255,255,255,0.8);font-size:0.875rem;">
+        <input type="checkbox" id="funnel-consent" style="margin-top:2px;accent-color:${primaryColor};">
+        <span>${content.privacy_text || 'I have read and accept the'} ${content.privacy_link ? `<a href="${escapeHtml(content.privacy_link)}" target="_blank" style="color:#fff;text-decoration:underline;">privacy policy</a>` : '<span style="text-decoration:underline;">privacy policy</span>'}.</span>
       </label>
-      <button class="funnel-btn" data-action="submit-optin" style="background:${primaryColor};color:#fff;padding:1rem 2rem;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;width:100%;">${escapeHtml(content.button_text || settings.button_text || 'Submit')}</button>
+      <button class="funnel-btn" data-action="submit-optin" data-required="${isRequired}" style="${buttonStyle}padding:1rem 2rem;border:none;font-size:1rem;font-weight:600;cursor:pointer;width:100%;">${escapeHtml(content.submit_button_text || content.button_text || settings.button_text || 'Submit')}</button>
     `;
   }
 
@@ -434,24 +482,76 @@
       });
     });
 
-    // Opt-in submission
+    // Opt-in submission with validation
     document.querySelectorAll('[data-action="submit-optin"]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const name = document.getElementById('funnel-name')?.value?.trim();
-        const email = document.getElementById('funnel-email')?.value?.trim();
-        const phone = document.getElementById('funnel-phone')?.value?.trim();
+        const isRequired = btn.dataset.required === 'true';
+        const name = document.getElementById('funnel-name')?.value?.trim() || '';
+        const email = document.getElementById('funnel-email')?.value?.trim() || '';
+        const phone = document.getElementById('funnel-phone')?.value?.trim() || '';
         const consent = document.getElementById('funnel-consent')?.checked;
 
-        if (email && isValidEmail(email)) {
-          answers.name = name;
-          answers.email = email;
-          answers.phone = phone;
-          answers.opt_in = consent;
-          saveLead();
-          nextStep();
+        // Clear previous errors
+        ['name', 'email', 'phone'].forEach(field => {
+          const errorEl = document.getElementById(`${field}-error`);
+          const containerEl = document.getElementById(`${field}-container`);
+          if (errorEl) errorEl.style.display = 'none';
+          if (containerEl) containerEl.style.borderColor = '';
+        });
+
+        let hasErrors = false;
+
+        if (isRequired) {
+          if (!name) {
+            document.getElementById('name-error').textContent = 'Name is required';
+            document.getElementById('name-error').style.display = 'block';
+            document.getElementById('name-container').style.borderColor = '#ef4444';
+            hasErrors = true;
+          }
+          if (!email) {
+            document.getElementById('email-error').textContent = 'Email is required';
+            document.getElementById('email-error').style.display = 'block';
+            document.getElementById('email-container').style.borderColor = '#ef4444';
+            hasErrors = true;
+          } else if (!isValidEmail(email)) {
+            document.getElementById('email-error').textContent = 'Invalid email';
+            document.getElementById('email-error').style.display = 'block';
+            document.getElementById('email-container').style.borderColor = '#ef4444';
+            hasErrors = true;
+          }
+          if (!phone || phone.replace(/\D/g, '').length < 10) {
+            document.getElementById('phone-error').textContent = 'Valid phone required';
+            document.getElementById('phone-error').style.display = 'block';
+            document.getElementById('phone-container').style.borderColor = '#ef4444';
+            hasErrors = true;
+          }
         }
+
+        if (hasErrors) return;
+
+        answers.name = name;
+        answers.email = email;
+        answers.phone = phone;
+        answers.opt_in = consent;
+        saveLead();
+        nextStep();
       });
     });
+
+    // Phone formatting
+    const phoneInput = document.getElementById('funnel-phone');
+    if (phoneInput) {
+      phoneInput.addEventListener('input', (e) => {
+        let digits = e.target.value.replace(/\D/g, '');
+        if (digits.length <= 3) {
+          e.target.value = digits;
+        } else if (digits.length <= 6) {
+          e.target.value = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+        } else {
+          e.target.value = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6,10)}`;
+        }
+      });
+    }
 
     // Calendly listener
     window.addEventListener('message', (e) => {
