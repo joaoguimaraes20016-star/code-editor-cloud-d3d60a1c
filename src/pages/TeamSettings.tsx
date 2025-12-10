@@ -459,54 +459,37 @@ export default function TeamSettings() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-6 space-y-6 max-w-6xl">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate(`/team/${teamId}`)}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                <Settings2 className="h-8 w-8" />
-                {teamName}
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                {(role === 'closer' || role === 'setter') 
-                  ? 'Manage your booking links and preferences'
-                  : 'Complete team and workflow configuration'}
-              </p>
-            </div>
-          </div>
+        <div className="mb-2">
+          <h1 className="text-2xl font-bold text-foreground">Team Settings</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage team members, integrations, and workflow configuration
+          </p>
         </div>
 
         {/* Admin View - Tabbed Interface */}
         {(isAdmin || role === 'offer_owner' || role === 'admin' || role === 'owner' || isSuperAdmin) ? (
           <Tabs defaultValue="team" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
-              <TabsTrigger value="team" className="gap-2">
+            <TabsList className="h-auto p-1 bg-muted/50 flex-wrap">
+              <TabsTrigger value="team" className="gap-2 text-sm py-2 px-3">
                 <Users className="h-4 w-4" />
                 Team
               </TabsTrigger>
-              <TabsTrigger value="commissions" className="gap-2">
+              <TabsTrigger value="commissions" className="gap-2 text-sm py-2 px-3">
                 <DollarSign className="h-4 w-4" />
                 Commissions
               </TabsTrigger>
-              <TabsTrigger value="workflow" className="gap-2">
+              <TabsTrigger value="workflow" className="gap-2 text-sm py-2 px-3">
                 <Workflow className="h-4 w-4" />
                 Workflow
               </TabsTrigger>
-              <TabsTrigger value="integrations" className="gap-2">
-                <Link2 className="h-4 w-4" />
-                Integrations
-              </TabsTrigger>
-              <TabsTrigger value="monitoring" className="gap-2">
+              <TabsTrigger value="monitoring" className="gap-2 text-sm py-2 px-3">
                 <Activity className="h-4 w-4" />
                 Monitoring
               </TabsTrigger>
-              <TabsTrigger value="danger" className="gap-2 text-destructive">
+              <TabsTrigger value="danger" className="gap-2 text-sm py-2 px-3 text-destructive">
                 <AlertTriangle className="h-4 w-4" />
                 Danger
               </TabsTrigger>
@@ -646,64 +629,20 @@ export default function TeamSettings() {
               <FollowUpSettings teamId={teamId!} />
             </TabsContent>
 
-            {/* Integrations Tab */}
-            <TabsContent value="integrations" className="space-y-6">
-              {(() => {
-                try {
-                  return (
-                    <>
-                      <CalendlyConfig 
-                        teamId={teamId!}
-                        currentAccessToken={calendlyAccessToken}
-                        currentOrgUri={calendlyOrgUri}
-                        currentWebhookId={calendlyWebhookId}
-                        currentEventTypes={calendlyEventTypes}
-                        onUpdate={loadTeamData}
-                      />
-                      
-                      {calendlyAccessToken && (
-                        <>
-                          <Card className="border-primary/20 shadow-lg">
-                            <CardHeader>
-                              <CardTitle className="flex items-center gap-2">
-                                <Link2 className="h-5 w-5" />
-                                Webhook Troubleshooting
-                              </CardTitle>
-                              <CardDescription>
-                                Fix booking link issues and setter assignments
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <Button onClick={handleFixWebhook} disabled={loading}>
-                                Re-register Webhook
-                              </Button>
-                            </CardContent>
-                          </Card>
-                          
-                          <BackfillRescheduleUrls teamId={teamId!} />
-                          <BackfillMeetingLinks teamId={teamId!} />
-                        </>
-                      )}
-
-                      {calendlyEventTypes && calendlyEventTypes.length > 0 && (
-                        <SetterBookingLinks
-                          teamId={teamId!}
-                          calendlyEventTypes={calendlyEventTypes}
-                          availableEventTypes={availableEventTypes}
-                          calendlyAccessToken={calendlyAccessToken}
-                          calendlyOrgUri={calendlyOrgUri}
-                          onRefresh={loadTeamData}
-                          currentUserId={user?.id}
-                          isOwner={isAdmin}
-                        />
-                      )}
-                    </>
-                  );
-                } catch (error) {
-                  console.error('Error rendering integrations:', error);
-                  return null;
-                }
-              })()}
+            {/* Booking Links Tab - Keep for admin management */}
+            <TabsContent value="booking" className="space-y-6">
+              {calendlyEventTypes && calendlyEventTypes.length > 0 && (
+                <SetterBookingLinks
+                  teamId={teamId!}
+                  calendlyEventTypes={calendlyEventTypes}
+                  availableEventTypes={availableEventTypes}
+                  calendlyAccessToken={calendlyAccessToken}
+                  calendlyOrgUri={calendlyOrgUri}
+                  onRefresh={loadTeamData}
+                  currentUserId={user?.id}
+                  isOwner={isAdmin}
+                />
+              )}
             </TabsContent>
 
             {/* Monitoring Tab */}

@@ -750,26 +750,13 @@ const Index = () => {
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-grid h-auto">
-            <TabsTrigger value="dashboard" className="text-sm py-2.5">Dashboard</TabsTrigger>
-            <TabsTrigger value="appointments" className="text-sm py-2.5">Pipeline</TabsTrigger>
-          </TabsList>
-          <TabsList className={`grid w-full ${
-            (isAdmin || userRole === 'offer_owner') 
-              ? 'grid-cols-3' 
-              : 'grid-cols-2'
-          } md:w-auto md:inline-grid h-auto`}>
-            <TabsTrigger value="dashboard" className="text-[10px] sm:text-sm py-1.5 sm:py-2.5">
-              <span className="hidden sm:inline">Dashboard</span>
-              <span className="sm:hidden">Dash</span>
+          <TabsList className="h-auto p-1 bg-muted/50">
+            <TabsTrigger value="dashboard" className="text-sm py-2 px-4">
+              Dashboard
             </TabsTrigger>
-            <TabsTrigger value="appointments" className="text-[10px] sm:text-sm py-1.5 sm:py-2.5">CRM</TabsTrigger>
-            {(isAdmin || userRole === 'offer_owner') && (
-              <TabsTrigger value="integrations" className="text-[10px] sm:text-sm py-1.5 sm:py-2.5">
-                <span className="hidden sm:inline">Integrations</span>
-                <span className="sm:hidden">Integ</span>
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="appointments" className="text-sm py-2 px-4">
+              Pipeline
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
