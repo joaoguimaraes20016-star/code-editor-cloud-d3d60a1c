@@ -1255,6 +1255,7 @@ export type Database = {
       profiles: {
         Row: {
           account_type: string | null
+          avatar_url: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
@@ -1263,6 +1264,7 @@ export type Database = {
         }
         Insert: {
           account_type?: string | null
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
@@ -1271,6 +1273,7 @@ export type Database = {
         }
         Update: {
           account_type?: string | null
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
@@ -1853,6 +1856,7 @@ export type Database = {
           google_sheets_url: string | null
           id: string
           last_task_assignment: Json | null
+          logo_url: string | null
           minimum_booking_notice_hours: number | null
           mrr_task_assignment: string | null
           name: string
@@ -1885,6 +1889,7 @@ export type Database = {
           google_sheets_url?: string | null
           id?: string
           last_task_assignment?: Json | null
+          logo_url?: string | null
           minimum_booking_notice_hours?: number | null
           mrr_task_assignment?: string | null
           name: string
@@ -1917,6 +1922,7 @@ export type Database = {
           google_sheets_url?: string | null
           id?: string
           last_task_assignment?: Json | null
+          logo_url?: string | null
           minimum_booking_notice_hours?: number | null
           mrr_task_assignment?: string | null
           name?: string
