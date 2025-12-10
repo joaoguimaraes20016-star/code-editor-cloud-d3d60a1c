@@ -611,23 +611,69 @@ export default function FunnelList() {
               </div>
             </div>
 
-            {/* Stats Cards */}
+            {/* Visual Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <div className="bg-card border rounded-xl p-5">
-                <p className="text-sm text-muted-foreground mb-1">Today</p>
-                <p className="text-2xl font-bold">{todayLeads} Leads</p>
+              <div className="bg-gradient-to-br from-amber-500/10 via-background to-orange-500/5 border border-amber-500/20 rounded-xl p-5 group hover:border-amber-500/40 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-amber-500/20 group-hover:scale-110 transition-transform">
+                    <TrendingUp className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Today</p>
+                    <p className="text-2xl font-bold">{todayLeads}</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full" 
+                    style={{ width: `${Math.min((todayLeads / Math.max(totalLeads, 1)) * 100 * 10, 100)}%` }} />
+                </div>
               </div>
-              <div className="bg-card border rounded-xl p-5">
-                <p className="text-sm text-muted-foreground mb-1">Last 7 days</p>
-                <p className="text-2xl font-bold">{weekLeads} Leads</p>
+              
+              <div className="bg-gradient-to-br from-blue-500/10 via-background to-cyan-500/5 border border-blue-500/20 rounded-xl p-5 group hover:border-blue-500/40 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-blue-500/20 group-hover:scale-110 transition-transform">
+                    <Calendar className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">This Week</p>
+                    <p className="text-2xl font-bold">{weekLeads}</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full" 
+                    style={{ width: `${Math.min((weekLeads / Math.max(totalLeads, 1)) * 100 * 2, 100)}%` }} />
+                </div>
               </div>
-              <div className="bg-card border rounded-xl p-5">
-                <p className="text-sm text-muted-foreground mb-1">Last 30 days</p>
-                <p className="text-2xl font-bold">{monthLeads} Leads</p>
+              
+              <div className="bg-gradient-to-br from-purple-500/10 via-background to-pink-500/5 border border-purple-500/20 rounded-xl p-5 group hover:border-purple-500/40 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-purple-500/20 group-hover:scale-110 transition-transform">
+                    <BarChart3 className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">This Month</p>
+                    <p className="text-2xl font-bold">{monthLeads}</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" 
+                    style={{ width: `${Math.min((monthLeads / Math.max(totalLeads, 1)) * 100, 100)}%` }} />
+                </div>
               </div>
-              <div className="bg-card border rounded-xl p-5">
-                <p className="text-sm text-muted-foreground mb-1">Total</p>
-                <p className="text-2xl font-bold">{totalLeads} Leads</p>
+              
+              <div className="bg-gradient-to-br from-emerald-500/10 via-background to-teal-500/5 border border-emerald-500/20 rounded-xl p-5 group hover:border-emerald-500/40 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-emerald-500/20 group-hover:scale-110 transition-transform">
+                    <Users className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Leads</p>
+                    <p className="text-2xl font-bold">{totalLeads}</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full w-full" />
+                </div>
               </div>
             </div>
 
