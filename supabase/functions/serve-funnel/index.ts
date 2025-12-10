@@ -104,11 +104,13 @@ serve(async (req) => {
     console.log(`Serving funnel ${funnel.slug} for domain ${cleanDomain}`);
 
     return new Response(html, {
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'text/html',
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'public, max-age=300',
-      }
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      }),
     });
 
   } catch (error: unknown) {
