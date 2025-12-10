@@ -735,39 +735,25 @@ const Index = () => {
   const canViewSetterScheduling = userRole === 'setter' || userRole === 'admin' || isAdmin;
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto p-3 md:p-6 space-y-4 md:space-y-6 max-w-full overflow-x-hidden">
-        {/* Header */}
-        <div className="flex flex-col gap-2 sm:gap-4">
+    <div className="h-full bg-background overflow-auto">
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        {/* Clean Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="h-6 sm:h-8 text-[10px] sm:text-sm px-1.5 sm:px-3">
-                <ArrowLeft className="h-2.5 w-2.5 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
-                Back
-              </Button>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-              <Logo size="large" className="scale-75 sm:scale-100 origin-left" />
-              <h1 className="text-lg sm:text-3xl font-bold tracking-tight">{teamName}</h1>
-            </div>
-            <p className="text-muted-foreground mt-0.5 sm:mt-1 text-[11px] sm:text-base">
-              Track your sales performance and commissions
+            <h1 className="text-2xl font-bold text-foreground">Sales CRM</h1>
+            <p className="text-muted-foreground text-sm">
+              Track performance, pipeline, and commissions
             </p>
           </div>
-          <div className="flex flex-row gap-1.5 sm:gap-2 w-full sm:w-auto">
-            {(isAdmin || userRole === 'offer_owner') && (
-              <Button variant="outline" onClick={() => navigate(`/team/${teamId}/settings`)} className="text-[10px] sm:text-base h-7 sm:h-10 px-2 sm:px-4 flex-1 sm:flex-initial">
-                <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Settings</span>
-                <span className="sm:hidden">Set</span>
-              </Button>
-            )}
-            <AddSaleDialog onAddSale={handleAddSale} preselectedOfferOwner={userRole === 'offer_owner' ? currentUserName : undefined} />
-          </div>
+          <AddSaleDialog onAddSale={handleAddSale} preselectedOfferOwner={userRole === 'offer_owner' ? currentUserName : undefined} />
         </div>
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-grid h-auto">
+            <TabsTrigger value="dashboard" className="text-sm py-2.5">Dashboard</TabsTrigger>
+            <TabsTrigger value="appointments" className="text-sm py-2.5">Pipeline</TabsTrigger>
+          </TabsList>
           <TabsList className={`grid w-full ${
             (isAdmin || userRole === 'offer_owner') 
               ? 'grid-cols-3' 
@@ -932,24 +918,6 @@ const Index = () => {
                 loadAppointments();
               }}
             />
-          </TabsContent>
-
-          <TabsContent value="integrations" className="space-y-6 mt-6">
-            <div>
-              <h2 className="text-2xl font-semibold mb-2">Integrations</h2>
-              <p className="text-sm text-muted-foreground mb-6">
-                Connect and manage your external integrations
-              </p>
-              
-              <CalendlyConfig
-                teamId={teamId!} 
-                currentAccessToken={calendlyAccessToken}
-                currentOrgUri={calendlyOrgUri}
-                currentWebhookId={calendlyWebhookId}
-                currentEventTypes={calendlyEventTypes}
-                onUpdate={loadTeamData}
-              />
-            </div>
           </TabsContent>
         </Tabs>
       </div>
