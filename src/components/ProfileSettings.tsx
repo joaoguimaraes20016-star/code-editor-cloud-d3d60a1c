@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Loader2, Save } from "lucide-react";
+import { Camera, Loader2, Save, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 export function ProfileSettings() {
@@ -15,6 +15,7 @@ export function ProfileSettings() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [uploading, setUploading] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
@@ -29,6 +30,7 @@ export function ProfileSettings() {
       if (error) throw error;
       if (data) {
         setFullName(data.full_name || "");
+        setPhoneNumber((data as any).phone_number || "");
       }
       return data;
     },
@@ -36,10 +38,11 @@ export function ProfileSettings() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: async ({ fullName, avatarUrl }: { fullName?: string; avatarUrl?: string }) => {
+    mutationFn: async ({ fullName, avatarUrl, phoneNumber }: { fullName?: string; avatarUrl?: string; phoneNumber?: string }) => {
       const updates: Record<string, string> = {};
       if (fullName !== undefined) updates.full_name = fullName;
       if (avatarUrl !== undefined) updates.avatar_url = avatarUrl;
+      if (phoneNumber !== undefined) updates.phone_number = phoneNumber;
       
       const { error } = await supabase
         .from("profiles")
@@ -86,7 +89,7 @@ export function ProfileSettings() {
   };
 
   const handleSave = () => {
-    updateProfileMutation.mutate({ fullName });
+    updateProfileMutation.mutate({ fullName, phoneNumber });
   };
 
   const getInitials = (name: string) => {
@@ -102,7 +105,7 @@ export function ProfileSettings() {
   }
 
   return (
-    <Card>
+    <Card className="border-border/50">
       <CardHeader>
         <CardTitle>Profile Settings</CardTitle>
         <CardDescription>Manage your personal information and avatar</CardDescription>
@@ -145,7 +148,7 @@ export function ProfileSettings() {
         </div>
 
         {/* Form Fields */}
-        <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="fullName">Full Name</Label>
             <Input
@@ -157,6 +160,21 @@ export function ProfileSettings() {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="phone">Phone Number</Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="phone"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+1 (555) 000-0000"
+                className="pl-10"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">For future calling features</p>
+          </div>
+
+          <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"

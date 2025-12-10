@@ -19,7 +19,8 @@ import PublicFunnel from "./pages/PublicFunnel";
 import { TeamLayout } from "./layouts/TeamLayout";
 import { TeamHubOverview } from "./pages/TeamHubOverview";
 import { TeamChatPage } from "./pages/TeamChat";
-import { IntegrationsPortal } from "./components/IntegrationsPortal";
+import AppsPortal from "./pages/AppsPortal";
+import PersonalSettings from "./pages/PersonalSettings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,8 +58,11 @@ const App = () => (
               <Route path="funnels" element={<FunnelList />} />
               <Route path="funnels/:funnelId" element={<FunnelEditor />} />
               <Route path="chat" element={<TeamChatPage />} />
-              <Route path="integrations" element={<IntegrationsPortal />} />
+              <Route path="apps" element={<AppsPortal />} />
+              <Route path="profile" element={<PersonalSettings />} />
               <Route path="settings" element={<TeamSettings />} />
+              {/* Legacy redirect */}
+              <Route path="integrations" element={<Navigate to="../apps" replace />} />
             </Route>
             
             {/* Legacy routes - redirect to new structure */}

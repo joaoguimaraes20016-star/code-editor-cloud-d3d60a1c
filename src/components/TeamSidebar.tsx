@@ -5,12 +5,14 @@ import {
   TrendingUp, 
   Layers, 
   MessageCircle, 
-  Plug, 
-  Settings,
+  Grid3X3, 
   ChevronLeft,
   ChevronRight,
-  LogOut
+  LogOut,
+  UserCircle,
+  Settings2
 } from "lucide-react";
+import { useTeamRole } from "@/hooks/useTeamRole";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,13 +23,13 @@ interface TeamSidebarProps {
   teamLogo?: string | null;
 }
 
-const navItems = [
+// Main navigation items (visible to all)
+const mainNavItems = [
   { id: "home", label: "Team Hub", icon: Home, path: "" },
   { id: "crm", label: "Sales CRM", icon: TrendingUp, path: "/crm" },
   { id: "funnels", label: "Funnels", icon: Layers, path: "/funnels" },
   { id: "chat", label: "Team Chat", icon: MessageCircle, path: "/chat" },
-  { id: "integrations", label: "Integrations", icon: Plug, path: "/integrations" },
-  { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+  { id: "apps", label: "Apps", icon: Grid3X3, path: "/apps" },
 ];
 
 export function TeamSidebar({ teamName, teamLogo }: TeamSidebarProps) {
@@ -35,6 +37,7 @@ export function TeamSidebar({ teamName, teamLogo }: TeamSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { teamId } = useParams();
+  const { role, isAdmin } = useTeamRole(teamId);
   
   const basePath = `/team/${teamId}`;
   
@@ -52,6 +55,41 @@ export function TeamSidebar({ teamName, teamLogo }: TeamSidebarProps) {
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const renderNavButton = (item: typeof mainNavItems[0], active: boolean) => {
+    const NavButton = (
+      <Button
+        key={item.id}
+        variant="ghost"
+        className={cn(
+          "w-full justify-start gap-3 h-11 transition-all",
+          collapsed && "justify-center px-0",
+          active 
+            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
+            : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+        )}
+        onClick={() => handleNavigation(item.path)}
+      >
+        <item.icon className={cn("h-5 w-5 shrink-0", active && "text-primary")} />
+        {!collapsed && <span>{item.label}</span>}
+      </Button>
+    );
+
+    if (collapsed) {
+      return (
+        <Tooltip key={item.id} delayDuration={0}>
+          <TooltipTrigger asChild>
+            {NavButton}
+          </TooltipTrigger>
+          <TooltipContent side="right" className="font-medium">
+            {item.label}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return NavButton;
   };
 
   return (
@@ -80,43 +118,24 @@ export function TeamSidebar({ teamName, teamLogo }: TeamSidebarProps) {
         )}
       </div>
 
-      {/* Navigation */}
+      {/* Main Navigation */}
       <nav className="flex-1 p-2 space-y-1">
-        {navItems.map((item) => {
-          const active = isActive(item.path);
-          const NavButton = (
-            <Button
-              key={item.id}
-              variant="ghost"
-              className={cn(
-                "w-full justify-start gap-3 h-11 transition-all",
-                collapsed && "justify-center px-0",
-                active 
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-              )}
-              onClick={() => handleNavigation(item.path)}
-            >
-              <item.icon className={cn("h-5 w-5 shrink-0", active && "text-primary")} />
-              {!collapsed && <span>{item.label}</span>}
-            </Button>
-          );
-
-          if (collapsed) {
-            return (
-              <Tooltip key={item.id} delayDuration={0}>
-                <TooltipTrigger asChild>
-                  {NavButton}
-                </TooltipTrigger>
-                <TooltipContent side="right" className="font-medium">
-                  {item.label}
-                </TooltipContent>
-              </Tooltip>
-            );
-          }
-
-          return NavButton;
-        })}
+        {mainNavItems.map((item) => renderNavButton(item, isActive(item.path)))}
+        
+        {/* Divider */}
+        <div className="my-3 border-t border-sidebar-border" />
+        
+        {/* Personal Settings (all users) */}
+        {renderNavButton(
+          { id: "profile", label: "Settings", icon: UserCircle, path: "/profile" },
+          isActive("/profile")
+        )}
+        
+        {/* Team Settings (admin only) */}
+        {isAdmin && renderNavButton(
+          { id: "team-settings", label: "Team Settings", icon: Settings2, path: "/settings" },
+          isActive("/settings")
+        )}
       </nav>
 
       {/* Footer */}
