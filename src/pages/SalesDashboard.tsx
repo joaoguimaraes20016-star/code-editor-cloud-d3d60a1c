@@ -518,12 +518,19 @@ const Index = () => {
   
   const salesReps = ['all', ...Array.from(allNamesMap.values()).sort()];
 
-  // Filter appointments by date range FIRST
+  // Filter appointments with deposits/closes by the date they were updated (closed/deposited)
+  // This ensures revenue shows based on WHEN the close happened, not appointment date
   const filteredAppointments = appointments.filter(apt => {
+    // For deposits/closes, use updated_at for date filtering
+    const hasDeposit = (apt.pipeline_stage?.toLowerCase().includes('deposit') || apt.status === 'CLOSED') && Number(apt.cc_collected || 0) > 0;
+    
     if (!dateRange.from && !dateRange.to) return true;
     
-    const aptDate = new Date(apt.start_at_utc);
-    aptDate.setHours(0, 0, 0, 0);
+    // Use updated_at for deposits/closes (when the action happened), otherwise use start_at_utc
+    const relevantDate = hasDeposit && apt.updated_at 
+      ? new Date(apt.updated_at) 
+      : new Date(apt.start_at_utc);
+    relevantDate.setHours(0, 0, 0, 0);
 
     const fromDate = dateRange.from ? new Date(dateRange.from) : null;
     if (fromDate) fromDate.setHours(0, 0, 0, 0);
@@ -532,11 +539,11 @@ const Index = () => {
     if (toDate) toDate.setHours(0, 0, 0, 0);
 
     if (fromDate && toDate) {
-      return aptDate >= fromDate && aptDate <= toDate;
+      return relevantDate >= fromDate && relevantDate <= toDate;
     } else if (fromDate) {
-      return aptDate >= fromDate;
+      return relevantDate >= fromDate;
     } else if (toDate) {
-      return aptDate <= toDate;
+      return relevantDate <= toDate;
     }
     return true;
   });
