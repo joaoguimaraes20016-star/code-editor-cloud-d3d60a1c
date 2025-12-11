@@ -1861,6 +1861,8 @@ export type Database = {
           asset_categories: Json | null
           auto_create_tasks: boolean | null
           calendly_access_token: string | null
+          calendly_enabled_for_crm: boolean | null
+          calendly_enabled_for_funnels: boolean | null
           calendly_event_types: string[] | null
           calendly_organization_uri: string | null
           calendly_refresh_token: string | null
@@ -1895,6 +1897,8 @@ export type Database = {
           asset_categories?: Json | null
           auto_create_tasks?: boolean | null
           calendly_access_token?: string | null
+          calendly_enabled_for_crm?: boolean | null
+          calendly_enabled_for_funnels?: boolean | null
           calendly_event_types?: string[] | null
           calendly_organization_uri?: string | null
           calendly_refresh_token?: string | null
@@ -1929,6 +1933,8 @@ export type Database = {
           asset_categories?: Json | null
           auto_create_tasks?: boolean | null
           calendly_access_token?: string | null
+          calendly_enabled_for_crm?: boolean | null
+          calendly_enabled_for_funnels?: boolean | null
           calendly_event_types?: string[] | null
           calendly_organization_uri?: string | null
           calendly_refresh_token?: string | null

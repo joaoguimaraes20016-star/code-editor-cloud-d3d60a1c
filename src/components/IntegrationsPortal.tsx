@@ -110,12 +110,12 @@ export function IntegrationsPortal() {
   const { teamId } = useParams();
   const [calendlyDialogOpen, setCalendlyDialogOpen] = useState(false);
 
-  const { data: teamData } = useQuery({
+  const { data: teamData, refetch } = useQuery({
     queryKey: ["team-integrations", teamId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("teams")
-        .select("calendly_access_token, calendly_organization_uri")
+        .select("calendly_access_token, calendly_organization_uri, calendly_webhook_id, calendly_event_types, calendly_enabled_for_funnels, calendly_enabled_for_crm")
         .eq("id", teamId)
         .single();
       
@@ -235,7 +235,11 @@ export function IntegrationsPortal() {
               teamId={teamId} 
               currentAccessToken={teamData?.calendly_access_token}
               currentOrgUri={teamData?.calendly_organization_uri}
-              onUpdate={() => {}}
+              currentWebhookId={teamData?.calendly_webhook_id}
+              currentEventTypes={teamData?.calendly_event_types}
+              calendlyEnabledForFunnels={teamData?.calendly_enabled_for_funnels ?? false}
+              calendlyEnabledForCrm={teamData?.calendly_enabled_for_crm ?? false}
+              onUpdate={() => refetch()}
             />
           )}
         </DialogContent>

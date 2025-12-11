@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -19,6 +20,8 @@ interface CalendlyConfigProps {
   currentOrgUri?: string | null;
   currentWebhookId?: string | null;
   currentEventTypes?: string[] | null;
+  calendlyEnabledForFunnels?: boolean;
+  calendlyEnabledForCrm?: boolean;
   onUpdate: () => void;
 }
 
@@ -41,6 +44,8 @@ export function CalendlyConfig({
   currentOrgUri,
   currentWebhookId,
   currentEventTypes,
+  calendlyEnabledForFunnels = false,
+  calendlyEnabledForCrm = false,
   onUpdate 
 }: CalendlyConfigProps) {
   const [accessToken, setAccessToken] = useState("");
@@ -63,6 +68,9 @@ export function CalendlyConfig({
 
   const [tokenRefreshInProgress, setTokenRefreshInProgress] = useState(false);
   const [tokenValidationFailed, setTokenValidationFailed] = useState(false);
+  const [enabledForFunnels, setEnabledForFunnels] = useState(calendlyEnabledForFunnels);
+  const [enabledForCrm, setEnabledForCrm] = useState(calendlyEnabledForCrm);
+  const [savingToggles, setSavingToggles] = useState(false);
 
   const isConnected = Boolean(currentAccessToken && currentOrgUri && currentWebhookId);
 
@@ -417,6 +425,39 @@ export function CalendlyConfig({
       });
     } finally {
       setSavingEventTypes(false);
+    }
+  };
+
+  const handleToggleChange = async (field: 'calendly_enabled_for_funnels' | 'calendly_enabled_for_crm', value: boolean) => {
+    setSavingToggles(true);
+    try {
+      const { error } = await supabase
+        .from("teams")
+        .update({ [field]: value })
+        .eq("id", teamId);
+
+      if (error) throw error;
+
+      if (field === 'calendly_enabled_for_funnels') {
+        setEnabledForFunnels(value);
+      } else {
+        setEnabledForCrm(value);
+      }
+
+      toast({
+        title: "Setting Updated",
+        description: `Calendly ${field === 'calendly_enabled_for_funnels' ? 'in Funnels' : 'in CRM'} ${value ? 'enabled' : 'disabled'}`,
+      });
+      
+      onUpdate();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingToggles(false);
     }
   };
 
@@ -1058,6 +1099,39 @@ export function CalendlyConfig({
               </div>
             </div>
 
+            {/* Calendly Usage Settings */}
+            <div className="p-4 bg-muted/50 rounded-lg space-y-4">
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                <Label className="text-sm font-medium">Calendly Usage Settings</Label>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="funnels-toggle" className="text-sm font-medium">Use Calendly in Funnels</Label>
+                    <p className="text-xs text-muted-foreground">Enable Calendly scheduling in your funnels</p>
+                  </div>
+                  <Switch
+                    id="funnels-toggle"
+                    checked={enabledForFunnels}
+                    onCheckedChange={(checked) => handleToggleChange('calendly_enabled_for_funnels', checked)}
+                    disabled={savingToggles}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="crm-toggle" className="text-sm font-medium">Use Calendly in CRM</Label>
+                    <p className="text-xs text-muted-foreground">Enable Calendly scheduling in CRM/Sales dashboard</p>
+                  </div>
+                  <Switch
+                    id="crm-toggle"
+                    checked={enabledForCrm}
+                    onCheckedChange={(checked) => handleToggleChange('calendly_enabled_for_crm', checked)}
+                    disabled={savingToggles}
+                  />
+                </div>
+              </div>
+            </div>
             {tokenValidationFailed ? (
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                 <p className="text-sm text-destructive font-medium">⚠️ Calendly Token Issue</p>
