@@ -1,3 +1,21 @@
+/**
+ * Task Management Hook
+ * 
+ * This hook manages the loading, filtering, and assignment of confirmation tasks.
+ * 
+ * TASK ASSIGNMENT OVERVIEW:
+ * - Tasks are stored in the confirmation_tasks table
+ * - Each task has an assigned_to field (UUID of the assignee, or null if in queue)
+ * - Tasks with assigned_to = null are in the "queue" and can be claimed
+ * - Tasks auto-return to queue after 2 hours if not completed (auto_return_at field)
+ * 
+ * APPOINTMENT ASSIGNMENT OVERVIEW:
+ * - Appointments have setter_id (person who confirms) and closer_id (person who closes)
+ * - When a task is claimed on a fully unassigned appointment, setter_id is set
+ * - Both setter_name and closer_name are denormalized for display
+ * 
+ * See src/lib/assignment.ts for centralized assignment helper functions.
+ */
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -321,22 +339,39 @@ export function useTaskManagement(teamId: string, userId: string, userRole?: str
     }
   };
 
+  /**
+   * Claim a task from the queue and assign it to the current user.
+   * 
+   * CLAIM LOGIC:
+   * 1. Updates confirmation_tasks.assigned_to to current user's ID
+   * 2. Sets assigned_at to current timestamp
+   * 3. Sets auto_return_at to 2 hours from now (task returns to queue if not completed)
+   * 4. Sets claimed_manually = true to indicate manual claim vs auto-assignment
+   * 5. IF the appointment has no setter AND no closer assigned:
+   *    - Sets appointment.setter_id to the claiming user
+   *    - Sets appointment.assignment_source to 'manual_claim'
+   * 6. Logs activity with action 'Task Claimed & Assigned'
+   * 
+   * @param taskId - The ID of the task to claim
+   * @param appointmentId - The ID of the associated appointment
+   */
   const claimTask = async (taskId: string, appointmentId: string) => {
     try {
-      // Update task assignment
+      // Update task assignment - sets assigned_to to current user
       const { error: taskError } = await supabase
         .from('confirmation_tasks')
         .update({
           assigned_to: userId,
           assigned_at: new Date().toISOString(),
-          auto_return_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+          auto_return_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
           claimed_manually: true
         })
         .eq('id', taskId);
 
       if (taskError) throw taskError;
 
-      // Assign appointment to me if it's unassigned
+      // Assign appointment to me if it's unassigned (no setter AND no closer)
+      // This ensures the claiming user becomes the setter for fully unassigned appointments
       const { error: aptError } = await supabase
         .from('appointments')
         .update({ 

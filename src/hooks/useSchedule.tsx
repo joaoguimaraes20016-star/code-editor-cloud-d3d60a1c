@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isAppointmentAssignedToUser, isTaskAssignedToUser } from "@/lib/assignment";
 
 export interface ScheduleAppointment {
   id: string;
@@ -36,6 +37,15 @@ export interface ScheduleTask {
   assignee_name?: string;
 }
 
+/**
+ * Hook to fetch the current user's schedule (appointments and tasks).
+ * 
+ * ASSIGNMENT LOGIC:
+ * - Appointments: Fetched where user is either setter_id OR closer_id
+ * - Tasks: Fetched where assigned_to equals the user's ID
+ * 
+ * Uses centralized assignment helpers for filtering.
+ */
 export function useMySchedule(teamId: string | undefined, userId: string | undefined) {
   return useQuery({
     queryKey: ["my-schedule", teamId, userId],
@@ -45,6 +55,7 @@ export function useMySchedule(teamId: string | undefined, userId: string | undef
       const now = new Date().toISOString();
       
       // Fetch appointments where user is closer or setter
+      // Uses Supabase OR filter which maps to: closer_id = userId OR setter_id = userId
       const { data: appointments, error: appointmentsError } = await supabase
         .from("appointments")
         .select("id, lead_name, lead_email, lead_phone, start_at_utc, status, closer_id, closer_name, setter_id, setter_name, event_type_name, pipeline_stage, meeting_link")
@@ -57,6 +68,7 @@ export function useMySchedule(teamId: string | undefined, userId: string | undef
       if (appointmentsError) throw appointmentsError;
       
       // Fetch tasks assigned to user
+      // Task assignment uses the assigned_to field on confirmation_tasks
       const { data: tasks, error: tasksError } = await supabase
         .from("confirmation_tasks")
         .select(`
@@ -80,6 +92,15 @@ export function useMySchedule(teamId: string | undefined, userId: string | undef
   });
 }
 
+/**
+ * Hook to fetch the entire team's schedule (all appointments and tasks).
+ * 
+ * ASSIGNMENT LOGIC:
+ * - Appointments: Fetched for the entire team, includes setter/closer info for display
+ * - Tasks: Fetched for entire team, enriched with assignee names from profiles
+ * 
+ * This is used for the "Team Schedule" view where admins/managers can see all activity.
+ */
 export function useTeamSchedule(teamId: string | undefined) {
   return useQuery({
     queryKey: ["team-schedule", teamId],
@@ -89,6 +110,7 @@ export function useTeamSchedule(teamId: string | undefined) {
       const now = new Date().toISOString();
       
       // Fetch all team appointments
+      // No user filter - returns all appointments for the team
       const { data: appointments, error: appointmentsError } = await supabase
         .from("appointments")
         .select("id, lead_name, lead_email, lead_phone, start_at_utc, status, closer_id, closer_name, setter_id, setter_name, event_type_name, pipeline_stage, meeting_link")
@@ -100,6 +122,7 @@ export function useTeamSchedule(teamId: string | undefined) {
       if (appointmentsError) throw appointmentsError;
       
       // Fetch all team tasks with assignee info
+      // No user filter on assigned_to - returns all pending tasks
       const { data: tasks, error: tasksError } = await supabase
         .from("confirmation_tasks")
         .select(`
@@ -112,7 +135,7 @@ export function useTeamSchedule(teamId: string | undefined) {
       
       if (tasksError) throw tasksError;
       
-      // Fetch assignee names for tasks
+      // Fetch assignee names for tasks to display who owns each task
       const assigneeIds = [...new Set(tasks?.filter(t => t.assigned_to).map(t => t.assigned_to))];
       let assigneeMap: Record<string, string> = {};
       
@@ -130,6 +153,7 @@ export function useTeamSchedule(teamId: string | undefined) {
         }
       }
       
+      // Enrich tasks with assignee display names
       const tasksWithNames = tasks?.map(t => ({
         ...t,
         assignee_name: t.assigned_to ? assigneeMap[t.assigned_to] : "Unassigned"
