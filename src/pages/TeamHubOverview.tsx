@@ -52,10 +52,12 @@ interface TeamAsset {
 
 // Category configs with colors
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
-  training: { label: "TRAINING", color: "text-orange-500", bgColor: "bg-orange-500/20", icon: Video },
   resources: { label: "RESOURCES", color: "text-blue-500", bgColor: "bg-blue-500/20", icon: BookOpen },
-  team_onboarding: { label: "TEAM ONBOARDING", color: "text-emerald-500", bgColor: "bg-emerald-500/20", icon: Users },
+  offer: { label: "OFFER", color: "text-amber-500", bgColor: "bg-amber-500/20", icon: Briefcase },
+  scripts: { label: "SCRIPTS & SOPS", color: "text-purple-500", bgColor: "bg-purple-500/20", icon: FileText },
+  training: { label: "TRAINING", color: "text-orange-500", bgColor: "bg-orange-500/20", icon: Video },
   tracking: { label: "TRACKING SHEETS", color: "text-pink-500", bgColor: "bg-pink-500/20", icon: FileSpreadsheet },
+  team_onboarding: { label: "TEAM ONBOARDING", color: "text-emerald-500", bgColor: "bg-emerald-500/20", icon: Users },
   client_onboarding: { label: "PROSPECT ONBOARDING", color: "text-primary", bgColor: "bg-primary/20", icon: Briefcase },
 };
 
@@ -460,7 +462,7 @@ export function TeamHubOverview() {
 
   // Resources first (full width), then others in grid
   const topCategory = 'resources';
-  const gridCategories = ['client_onboarding', 'team_onboarding', 'tracking', 'training'];
+  const gridCategories = ['offer', 'scripts', 'training', 'tracking', 'team_onboarding', 'client_onboarding'];
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
