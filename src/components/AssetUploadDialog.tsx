@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -31,12 +32,21 @@ interface AssetUploadDialogProps {
   onSuccess: () => void;
 }
 
-const CATEGORIES = [
-  { value: 'training', label: 'Training' },
-  { value: 'team_onboarding', label: 'Team Onboarding' },
-  { value: 'client_onboarding', label: 'Client Onboarding' },
-  { value: 'tracking', label: 'Tracking Sheets' },
-  { value: 'resources', label: 'Resources & Scripts' },
+interface AssetCategory {
+  id: string;
+  label: string;
+  icon: string;
+  order_index: number;
+}
+
+const DEFAULT_CATEGORIES: AssetCategory[] = [
+  { id: "resources", label: "Resources", icon: "BookOpen", order_index: 0 },
+  { id: "offer", label: "Offer", icon: "Briefcase", order_index: 1 },
+  { id: "scripts", label: "Scripts & SOPs", icon: "FileText", order_index: 2 },
+  { id: "training", label: "Training", icon: "Video", order_index: 3 },
+  { id: "tracking", label: "Tracking Sheets", icon: "FileSpreadsheet", order_index: 4 },
+  { id: "team_onboarding", label: "Team Onboarding", icon: "Users", order_index: 5 },
+  { id: "client_onboarding", label: "Prospect Onboarding", icon: "Briefcase", order_index: 6 },
 ];
 
 export default function AssetUploadDialog({
@@ -56,6 +66,25 @@ export default function AssetUploadDialog({
   const [externalUrl, setExternalUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Fetch team categories
+  const { data: categories } = useQuery({
+    queryKey: ["team-categories-upload", teamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("teams")
+        .select("asset_categories")
+        .eq("id", teamId)
+        .single();
+      
+      if (error) throw error;
+      if (data?.asset_categories) {
+        return (data.asset_categories as unknown as AssetCategory[]).sort((a, b) => a.order_index - b.order_index);
+      }
+      return DEFAULT_CATEGORIES;
+    },
+    enabled: !!teamId && open,
+  });
 
   // Update category when defaultCategory changes
   useEffect(() => {
@@ -128,6 +157,8 @@ export default function AssetUploadDialog({
     }
   };
 
+  const categoryOptions = categories || DEFAULT_CATEGORIES;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -167,8 +198,8 @@ export default function AssetUploadDialog({
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
+                {categoryOptions.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
                     {cat.label}
                   </SelectItem>
                 ))}

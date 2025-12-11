@@ -1849,6 +1849,7 @@ export type Database = {
         Row: {
           action_pipeline_mappings: Json | null
           allow_setter_pipeline_updates: boolean
+          asset_categories: Json | null
           auto_create_tasks: boolean | null
           calendly_access_token: string | null
           calendly_event_types: string[] | null
@@ -1882,6 +1883,7 @@ export type Database = {
         Insert: {
           action_pipeline_mappings?: Json | null
           allow_setter_pipeline_updates?: boolean
+          asset_categories?: Json | null
           auto_create_tasks?: boolean | null
           calendly_access_token?: string | null
           calendly_event_types?: string[] | null
@@ -1915,6 +1917,7 @@ export type Database = {
         Update: {
           action_pipeline_mappings?: Json | null
           allow_setter_pipeline_updates?: boolean
+          asset_categories?: Json | null
           auto_create_tasks?: boolean | null
           calendly_access_token?: string | null
           calendly_event_types?: string[] | null

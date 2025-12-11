@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,14 @@ interface TeamAsset {
   file_type: string | null;
   loom_url: string | null;
   external_url: string | null;
+  team_id?: string;
+}
+
+interface AssetCategory {
+  id: string;
+  label: string;
+  icon: string;
+  order_index: number;
 }
 
 interface EditAssetDialogProps {
@@ -26,6 +35,16 @@ interface EditAssetDialogProps {
   onSuccess: () => void;
 }
 
+const DEFAULT_CATEGORIES: AssetCategory[] = [
+  { id: "resources", label: "Resources", icon: "BookOpen", order_index: 0 },
+  { id: "offer", label: "Offer", icon: "Briefcase", order_index: 1 },
+  { id: "scripts", label: "Scripts & SOPs", icon: "FileText", order_index: 2 },
+  { id: "training", label: "Training", icon: "Video", order_index: 3 },
+  { id: "tracking", label: "Tracking Sheets", icon: "FileSpreadsheet", order_index: 4 },
+  { id: "team_onboarding", label: "Team Onboarding", icon: "Users", order_index: 5 },
+  { id: "client_onboarding", label: "Prospect Onboarding", icon: "Briefcase", order_index: 6 },
+];
+
 export default function EditAssetDialog({ open, onOpenChange, asset, onSuccess }: EditAssetDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -33,6 +52,41 @@ export default function EditAssetDialog({ open, onOpenChange, asset, onSuccess }
   const [loomUrl, setLoomUrl] = useState('');
   const [externalUrl, setExternalUrl] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Get team_id from asset
+  const { data: assetData } = useQuery({
+    queryKey: ["asset-team", asset?.id],
+    queryFn: async () => {
+      if (!asset?.id) return null;
+      const { data, error } = await supabase
+        .from("team_assets")
+        .select("team_id")
+        .eq("id", asset.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!asset?.id && open,
+  });
+
+  // Fetch team categories
+  const { data: categories } = useQuery({
+    queryKey: ["team-categories-edit", assetData?.team_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("teams")
+        .select("asset_categories")
+        .eq("id", assetData?.team_id)
+        .single();
+      
+      if (error) throw error;
+      if (data?.asset_categories) {
+        return (data.asset_categories as unknown as AssetCategory[]).sort((a, b) => a.order_index - b.order_index);
+      }
+      return DEFAULT_CATEGORIES;
+    },
+    enabled: !!assetData?.team_id && open,
+  });
 
   useEffect(() => {
     if (asset) {
@@ -81,6 +135,7 @@ export default function EditAssetDialog({ open, onOpenChange, asset, onSuccess }
   };
 
   const assetType = asset?.file_path ? 'file' : asset?.loom_url ? 'loom' : 'link';
+  const categoryOptions = categories || DEFAULT_CATEGORIES;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -118,11 +173,11 @@ export default function EditAssetDialog({ open, onOpenChange, asset, onSuccess }
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="offer">Complete Offer</SelectItem>
-                <SelectItem value="scripts">Scripts</SelectItem>
-                <SelectItem value="onboarding">Onboarding</SelectItem>
-                <SelectItem value="tracking">Tracking Sheets</SelectItem>
-                <SelectItem value="training">Training</SelectItem>
+                {categoryOptions.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -135,7 +190,7 @@ export default function EditAssetDialog({ open, onOpenChange, asset, onSuccess }
 
           {assetType === 'loom' && (
             <div className="space-y-2">
-              <Label htmlFor="loomUrl">Loom URL</Label>
+              <Label htmlFor="loomUrl">Video URL</Label>
               <Input
                 id="loomUrl"
                 value={loomUrl}

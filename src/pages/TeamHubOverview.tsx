@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeamRole } from "@/hooks/useTeamRole";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,11 +23,14 @@ import {
   X,
   GripVertical,
   Pencil,
-  Trash2
+  Trash2,
+  Settings2
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AssetUploadDialog from "@/components/AssetUploadDialog";
 import EditAssetDialog from "@/components/EditAssetDialog";
+import { SectionManagerDialog } from "@/components/SectionManagerDialog";
+import { getIconComponent } from "@/components/IconPicker";
 import { toast } from "sonner";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
@@ -50,16 +53,39 @@ interface TeamAsset {
   order_index?: number;
 }
 
-// Category configs with colors
-const CATEGORY_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
-  resources: { label: "RESOURCES", color: "text-blue-500", bgColor: "bg-blue-500/20", icon: BookOpen },
-  offer: { label: "OFFER", color: "text-amber-500", bgColor: "bg-amber-500/20", icon: Briefcase },
-  scripts: { label: "SCRIPTS & SOPS", color: "text-purple-500", bgColor: "bg-purple-500/20", icon: FileText },
-  training: { label: "TRAINING", color: "text-orange-500", bgColor: "bg-orange-500/20", icon: Video },
-  tracking: { label: "TRACKING SHEETS", color: "text-pink-500", bgColor: "bg-pink-500/20", icon: FileSpreadsheet },
-  team_onboarding: { label: "TEAM ONBOARDING", color: "text-emerald-500", bgColor: "bg-emerald-500/20", icon: Users },
-  client_onboarding: { label: "PROSPECT ONBOARDING", color: "text-primary", bgColor: "bg-primary/20", icon: Briefcase },
-};
+interface AssetCategory {
+  id: string;
+  label: string;
+  icon: string;
+  order_index: number;
+}
+
+// Default categories fallback
+const DEFAULT_CATEGORIES: AssetCategory[] = [
+  { id: "resources", label: "Resources", icon: "BookOpen", order_index: 0 },
+  { id: "offer", label: "Offer", icon: "Briefcase", order_index: 1 },
+  { id: "scripts", label: "Scripts & SOPs", icon: "FileText", order_index: 2 },
+  { id: "training", label: "Training", icon: "Video", order_index: 3 },
+  { id: "tracking", label: "Tracking Sheets", icon: "FileSpreadsheet", order_index: 4 },
+  { id: "team_onboarding", label: "Team Onboarding", icon: "Users", order_index: 5 },
+  { id: "client_onboarding", label: "Prospect Onboarding", icon: "Briefcase", order_index: 6 },
+];
+
+// Color palette for categories
+const CATEGORY_COLORS = [
+  { color: "text-blue-500", bgColor: "bg-blue-500/20" },
+  { color: "text-amber-500", bgColor: "bg-amber-500/20" },
+  { color: "text-purple-500", bgColor: "bg-purple-500/20" },
+  { color: "text-orange-500", bgColor: "bg-orange-500/20" },
+  { color: "text-pink-500", bgColor: "bg-pink-500/20" },
+  { color: "text-emerald-500", bgColor: "bg-emerald-500/20" },
+  { color: "text-primary", bgColor: "bg-primary/20" },
+  { color: "text-rose-500", bgColor: "bg-rose-500/20" },
+  { color: "text-cyan-500", bgColor: "bg-cyan-500/20" },
+  { color: "text-indigo-500", bgColor: "bg-indigo-500/20" },
+];
+
+const getCategoryColor = (index: number) => CATEGORY_COLORS[index % CATEGORY_COLORS.length];
 
 // Get video embed URL helper
 const getVideoEmbedUrl = (url: string): string | null => {
@@ -242,63 +268,109 @@ function SortableAssetItem({
   );
 }
 
-// Category Section Component
-function CategorySection({ 
-  category, 
+// Sortable Category Section
+function SortableCategorySection({ 
+  category,
+  colorIndex,
   assets, 
   onPlayVideo,
   onAddAsset,
-  onEdit,
-  onDelete,
-  onReorder,
+  onEditAsset,
+  onDeleteAsset,
+  onReorderAssets,
+  onEditSection,
   canManage
 }: { 
-  category: typeof CATEGORY_CONFIG[string] & { id: string };
+  category: AssetCategory;
+  colorIndex: number;
   assets: TeamAsset[];
   onPlayVideo: (asset: TeamAsset) => void;
   onAddAsset: (categoryId: string) => void;
-  onEdit: (asset: TeamAsset) => void;
-  onDelete: (asset: TeamAsset) => void;
-  onReorder: (assets: TeamAsset[]) => void;
+  onEditAsset: (asset: TeamAsset) => void;
+  onDeleteAsset: (asset: TeamAsset) => void;
+  onReorderAssets: (assets: TeamAsset[]) => void;
+  onEditSection: (category: AssetCategory) => void;
   canManage: boolean;
 }) {
-  const Icon = category.icon;
+  const Icon = getIconComponent(category.icon);
+  const colors = getCategoryColor(colorIndex);
 
-  const sensors = useSensors(
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category.id, disabled: !canManage });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const assetSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleAssetDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = assets.findIndex((a) => a.id === active.id);
       const newIndex = assets.findIndex((a) => a.id === over.id);
-      onReorder(arrayMove(assets, oldIndex, newIndex));
+      onReorderAssets(arrayMove(assets, oldIndex, newIndex));
     }
   };
 
   return (
-    <Card className="border-border/50 bg-card/50">
+    <Card 
+      ref={setNodeRef}
+      style={style}
+      className="border-border/50 bg-card/50"
+    >
       <CardContent className="pt-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${category.bgColor}`}>
-              <Icon className={`h-5 w-5 ${category.color}`} />
+            {canManage && (
+              <button
+                type="button"
+                {...attributes}
+                {...listeners}
+                className="opacity-0 hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity touch-none"
+              >
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
+            <div className={`p-2 rounded-lg ${colors.bgColor}`}>
+              <Icon className={`h-5 w-5 ${colors.color}`} />
             </div>
-            <h3 className="font-bold tracking-wide">{category.label}</h3>
+            <h3 className="font-bold tracking-wide uppercase">{category.label}</h3>
           </div>
-          {canManage && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() => onAddAsset(category.id)}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {canManage && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 opacity-60 hover:opacity-100"
+                  onClick={() => onEditSection(category)}
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  onClick={() => onAddAsset(category.id)}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {assets.length === 0 ? (
@@ -307,9 +379,9 @@ function CategorySection({
           </p>
         ) : (
           <DndContext
-            sensors={sensors}
+            sensors={assetSensors}
             collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
+            onDragEnd={handleAssetDragEnd}
           >
             <SortableContext items={assets.map(a => a.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-0.5">
@@ -319,8 +391,8 @@ function CategorySection({
                     asset={asset}
                     canManage={canManage}
                     onPlayVideo={onPlayVideo}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
+                    onEdit={onEditAsset}
+                    onDelete={onDeleteAsset}
                   />
                 ))}
               </div>
@@ -335,6 +407,7 @@ function CategorySection({
 export function TeamHubOverview() {
   const { teamId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role, isAdmin } = useTeamRole(teamId || "");
   const { teamName, teamLogo } = useOutletContext<TeamContext>() || { teamName: "", teamLogo: null };
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -342,6 +415,34 @@ export function TeamHubOverview() {
   const [videoModal, setVideoModal] = useState<TeamAsset | null>(null);
   const [editAsset, setEditAsset] = useState<TeamAsset | null>(null);
   const [localAssets, setLocalAssets] = useState<TeamAsset[]>([]);
+  const [localCategories, setLocalCategories] = useState<AssetCategory[]>([]);
+  const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
+  const [editingSection, setEditingSection] = useState<AssetCategory | null>(null);
+
+  // Fetch team categories
+  const { data: teamData, isLoading: loadingTeam } = useQuery({
+    queryKey: ["team-categories", teamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("teams")
+        .select("asset_categories")
+        .eq("id", teamId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!teamId,
+  });
+
+  useEffect(() => {
+    if (teamData?.asset_categories) {
+      const cats = (teamData.asset_categories as unknown as AssetCategory[]);
+      setLocalCategories([...cats].sort((a, b) => a.order_index - b.order_index));
+    } else {
+      setLocalCategories(DEFAULT_CATEGORIES);
+    }
+  }, [teamData]);
 
   // Fetch team stats
   const { data: stats, isLoading: loadingStats } = useQuery({
@@ -414,7 +515,7 @@ export function TeamHubOverview() {
     setUploadDialogOpen(true);
   };
 
-  const handleDelete = async (asset: TeamAsset) => {
+  const handleDeleteAsset = async (asset: TeamAsset) => {
     if (!confirm("Are you sure you want to delete this asset?")) return;
 
     try {
@@ -436,14 +537,12 @@ export function TeamHubOverview() {
     }
   };
 
-  const handleReorder = async (reorderedAssets: TeamAsset[]) => {
-    // Optimistically update local state
+  const handleReorderAssets = async (reorderedAssets: TeamAsset[]) => {
     setLocalAssets(prev => {
       const otherAssets = prev.filter(a => a.category !== reorderedAssets[0]?.category);
       return [...otherAssets, ...reorderedAssets];
     });
 
-    // Persist to database
     try {
       for (let i = 0; i < reorderedAssets.length; i++) {
         await supabase
@@ -458,11 +557,114 @@ export function TeamHubOverview() {
     }
   };
 
+  const handleReorderSections = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = localCategories.findIndex(c => c.id === active.id);
+    const newIndex = localCategories.findIndex(c => c.id === over.id);
+    
+    const reordered = arrayMove(localCategories, oldIndex, newIndex).map((cat, i) => ({
+      ...cat,
+      order_index: i
+    }));
+    
+    setLocalCategories(reordered);
+
+    try {
+      const { error } = await supabase
+        .from("teams")
+        .update({ asset_categories: JSON.parse(JSON.stringify(reordered)) })
+        .eq("id", teamId);
+      
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["team-categories", teamId] });
+    } catch (error) {
+      console.error("Error reordering sections:", error);
+      toast.error("Failed to reorder sections");
+    }
+  };
+
+  const handleSaveSection = async (categoryData: Omit<AssetCategory, "order_index">) => {
+    let updatedCategories: AssetCategory[];
+    
+    if (editingSection) {
+      // Update existing
+      updatedCategories = localCategories.map(cat => 
+        cat.id === editingSection.id 
+          ? { ...cat, label: categoryData.label, icon: categoryData.icon }
+          : cat
+      );
+    } else {
+      // Add new
+      const newCategory: AssetCategory = {
+        ...categoryData,
+        order_index: localCategories.length
+      };
+      updatedCategories = [...localCategories, newCategory];
+    }
+    
+    setLocalCategories(updatedCategories);
+
+    try {
+      const { error } = await supabase
+        .from("teams")
+        .update({ asset_categories: JSON.parse(JSON.stringify(updatedCategories)) })
+        .eq("id", teamId);
+      
+      if (error) throw error;
+      toast.success(editingSection ? "Section updated" : "Section added");
+      queryClient.invalidateQueries({ queryKey: ["team-categories", teamId] });
+    } catch (error) {
+      console.error("Error saving section:", error);
+      toast.error("Failed to save section");
+    }
+    
+    setEditingSection(null);
+  };
+
+  const handleDeleteSection = async () => {
+    if (!editingSection) return;
+    
+    const assetsInSection = getAssetsByCategory(editingSection.id);
+    if (assetsInSection.length > 0) {
+      toast.error(`Cannot delete section with ${assetsInSection.length} assets. Move or delete them first.`);
+      return;
+    }
+
+    const updatedCategories = localCategories
+      .filter(cat => cat.id !== editingSection.id)
+      .map((cat, i) => ({ ...cat, order_index: i }));
+    
+    setLocalCategories(updatedCategories);
+
+    try {
+      const { error } = await supabase
+        .from("teams")
+        .update({ asset_categories: JSON.parse(JSON.stringify(updatedCategories)) })
+        .eq("id", teamId);
+      
+      if (error) throw error;
+      toast.success("Section deleted");
+      queryClient.invalidateQueries({ queryKey: ["team-categories", teamId] });
+    } catch (error) {
+      console.error("Error deleting section:", error);
+      toast.error("Failed to delete section");
+    }
+    
+    setEditingSection(null);
+  };
+
   const canManage = isAdmin || role === 'offer_owner' || role === 'admin';
 
-  // Resources first (full width), then others in grid
-  const topCategory = 'resources';
-  const gridCategories = ['offer', 'scripts', 'training', 'tracking', 'team_onboarding', 'client_onboarding'];
+  const sectionSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Split categories: first one full width, rest in grid
+  const topCategory = localCategories[0];
+  const gridCategories = localCategories.slice(1);
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
@@ -567,49 +769,83 @@ export function TeamHubOverview() {
           <p className="text-sm text-muted-foreground">Training materials, resources & onboarding</p>
         </div>
         {canManage && (
-          <Button onClick={() => setUploadDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Asset
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setEditingSection(null);
+                setSectionDialogOpen(true);
+              }}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Section
+            </Button>
+            <Button onClick={() => setUploadDialogOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Asset
+            </Button>
+          </div>
         )}
       </div>
 
       {/* Category Sections */}
-      {loadingAssets ? (
+      {loadingAssets || loadingTeam ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <>
-          {/* Resources - Full Width at Top */}
-          <CategorySection
-            category={{ ...CATEGORY_CONFIG[topCategory], id: topCategory }}
-            assets={getAssetsByCategory(topCategory)}
-            onPlayVideo={(asset) => setVideoModal(asset)}
-            onAddAsset={openUploadWithCategory}
-            onEdit={(asset) => setEditAsset(asset)}
-            onDelete={handleDelete}
-            onReorder={handleReorder}
-            canManage={canManage}
-          />
+        <DndContext
+          sensors={sectionSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleReorderSections}
+        >
+          <SortableContext items={localCategories.map(c => c.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-4">
+              {/* First category full width */}
+              {topCategory && (
+                <SortableCategorySection
+                  key={topCategory.id}
+                  category={topCategory}
+                  colorIndex={0}
+                  assets={getAssetsByCategory(topCategory.id)}
+                  onPlayVideo={(asset) => setVideoModal(asset)}
+                  onAddAsset={openUploadWithCategory}
+                  onEditAsset={(asset) => setEditAsset(asset)}
+                  onDeleteAsset={handleDeleteAsset}
+                  onReorderAssets={handleReorderAssets}
+                  onEditSection={(cat) => {
+                    setEditingSection(cat);
+                    setSectionDialogOpen(true);
+                  }}
+                  canManage={canManage}
+                />
+              )}
 
-          {/* 2x2 Grid for other categories */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {gridCategories.map((categoryId) => (
-              <CategorySection
-                key={categoryId}
-                category={{ ...CATEGORY_CONFIG[categoryId], id: categoryId }}
-                assets={getAssetsByCategory(categoryId)}
-                onPlayVideo={(asset) => setVideoModal(asset)}
-                onAddAsset={openUploadWithCategory}
-                onEdit={(asset) => setEditAsset(asset)}
-                onDelete={handleDelete}
-                onReorder={handleReorder}
-                canManage={canManage}
-              />
-            ))}
-          </div>
-        </>
+              {/* Rest in 2-column grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {gridCategories.map((category, idx) => (
+                  <SortableCategorySection
+                    key={category.id}
+                    category={category}
+                    colorIndex={idx + 1}
+                    assets={getAssetsByCategory(category.id)}
+                    onPlayVideo={(asset) => setVideoModal(asset)}
+                    onAddAsset={openUploadWithCategory}
+                    onEditAsset={(asset) => setEditAsset(asset)}
+                    onDeleteAsset={handleDeleteAsset}
+                    onReorderAssets={handleReorderAssets}
+                    onEditSection={(cat) => {
+                      setEditingSection(cat);
+                      setSectionDialogOpen(true);
+                    }}
+                    canManage={canManage}
+                  />
+                ))}
+              </div>
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Video Modal */}
@@ -617,7 +853,7 @@ export function TeamHubOverview() {
         <VideoModal asset={videoModal} onClose={() => setVideoModal(null)} />
       )}
 
-      {/* Edit Dialog */}
+      {/* Edit Asset Dialog */}
       {editAsset && (
         <EditAssetDialog
           open={!!editAsset}
@@ -626,6 +862,15 @@ export function TeamHubOverview() {
           onSuccess={() => refetchAssets()}
         />
       )}
+
+      {/* Section Manager Dialog */}
+      <SectionManagerDialog
+        open={sectionDialogOpen}
+        onOpenChange={setSectionDialogOpen}
+        category={editingSection}
+        onSave={handleSaveSection}
+        onDelete={editingSection ? handleDeleteSection : undefined}
+      />
 
       {/* Upload Dialog */}
       {teamId && (
