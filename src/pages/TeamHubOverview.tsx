@@ -296,7 +296,9 @@ export function TeamHubOverview() {
   const canManage = isAdmin || role === 'offer_owner' || role === 'admin';
 
   // Categories in display order
-  const categoryOrder = ['client_onboarding', 'team_onboarding', 'resources', 'tracking', 'training'];
+  // Resources first (full width), then others in grid
+  const topCategory = 'resources';
+  const gridCategories = ['client_onboarding', 'team_onboarding', 'tracking', 'training'];
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
@@ -415,10 +417,10 @@ export function TeamHubOverview() {
         </div>
       ) : (
         <>
-          {/* Prospect Onboarding - Full Width */}
+          {/* Resources - Full Width at Top */}
           <CategorySection
-            category={{ ...CATEGORY_CONFIG['client_onboarding'], id: 'client_onboarding' }}
-            assets={getAssetsByCategory('client_onboarding')}
+            category={{ ...CATEGORY_CONFIG[topCategory], id: topCategory }}
+            assets={getAssetsByCategory(topCategory)}
             onPlayVideo={(asset) => setVideoModal(asset)}
             onAddAsset={openUploadWithCategory}
             canManage={canManage}
@@ -426,7 +428,7 @@ export function TeamHubOverview() {
 
           {/* 2x2 Grid for other categories */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {categoryOrder.filter(id => id !== 'client_onboarding').map((categoryId) => (
+            {gridCategories.map((categoryId) => (
               <CategorySection
                 key={categoryId}
                 category={{ ...CATEGORY_CONFIG[categoryId], id: categoryId }}
