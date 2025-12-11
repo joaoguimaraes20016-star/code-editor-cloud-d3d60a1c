@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { getTeamPaymentsInRange, sumPayments } from "@/lib/payments";
 import { MetricCard } from "@/components/MetricCard";
 import { SalesTable, Sale } from "@/components/SalesTable";
 import { AddSaleDialog } from "@/components/AddSaleDialog";
@@ -21,13 +22,7 @@ import { MRRDashboard } from "@/components/MRRDashboard";
 import { MRRFollowUps } from "@/components/appointments/MRRFollowUps";
 import { CalendlyConfig } from "@/components/CalendlyConfig";
 import { AppointmentsHub } from "@/components/appointments/AppointmentsHub";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,6 +30,87 @@ import { DollarSign, TrendingUp, Users, Calendar, ArrowLeft, Settings } from "lu
 import { Logo } from "@/components/Logo";
 import { useToast } from "@/hooks/use-toast";
 import { useTeamRole } from "@/hooks/useTeamRole";
+const RevenueSummaryCard = ({ teamId }: { teamId: string }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [todayTotal, setTodayTotal] = useState(0);
+  const [weekTotal, setWeekTotal] = useState(0);
+  const [monthTotal, setMonthTotal] = useState(0);
+
+  useEffect(() => {
+    if (!teamId) return;
+
+    async function loadRevenue() {
+      try {
+        const now = new Date();
+
+        // Today
+        const startOfToday = new Date(now);
+        startOfToday.setHours(0, 0, 0, 0);
+        const endOfToday = new Date(now);
+        endOfToday.setHours(23, 59, 59, 999);
+
+        // Start of week (Sunday-based)
+        const startOfWeek = new Date(startOfToday);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+
+        // Start of month
+        const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
+
+        const [todayPayments, weekPayments, monthPayments] = await Promise.all([
+          getTeamPaymentsInRange(teamId, startOfToday.toISOString(), endOfToday.toISOString()),
+          getTeamPaymentsInRange(teamId, startOfWeek.toISOString(), endOfToday.toISOString()),
+          getTeamPaymentsInRange(teamId, startOfMonth.toISOString(), endOfToday.toISOString()),
+        ]);
+
+        setTodayTotal(sumPayments(todayPayments));
+        setWeekTotal(sumPayments(weekPayments));
+        setMonthTotal(sumPayments(monthPayments));
+      } catch (err) {
+        console.warn("[RevenueSummaryCard] Failed to load revenue:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadRevenue();
+  }, [teamId]);
+
+  return (
+    <Card className="p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground">Revenue overview</h2>
+          <p className="text-xs text-muted-foreground">Cash collected across this team</p>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="text-xs text-muted-foreground">Loading revenue…</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">Today</div>
+            <div className="text-xl font-semibold">
+              ${todayTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">This week</div>
+            <div className="text-xl font-semibold">
+              ${weekTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">This month</div>
+            <div className="text-xl font-semibold">
+              ${monthTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+};
 
 const Index = () => {
   const { teamId } = useParams();
@@ -42,12 +118,11 @@ const Index = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { role: userRole, isAdmin } = useTeamRole(teamId);
-  
+
   // Normalize role for UI purposes - owner, admin, and offer_owner should all show admin view
-  const normalizedRole = (userRole === 'owner' || userRole === 'admin' || userRole === 'offer_owner') 
-    ? 'admin' 
-    : userRole;
-  
+  const normalizedRole =
+    userRole === "owner" || userRole === "admin" || userRole === "offer_owner" ? "admin" : userRole;
+
   const [sales, setSales] = useState<Sale[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [selectedRep, setSelectedRep] = useState<string>("all");
@@ -62,7 +137,7 @@ const Index = () => {
   const [dateRange, setDateRange] = useState<{ from: Date | null; to: Date | null; preset: DateRangePreset }>({
     from: null,
     to: null,
-    preset: "alltime"
+    preset: "alltime",
   });
   const [setterCommissionPct, setSetterCommissionPct] = useState(5);
   const [closerCommissionPct, setCloserCommissionPct] = useState(10);
@@ -70,7 +145,7 @@ const Index = () => {
 
   useEffect(() => {
     if (!user || !teamId) {
-      navigate('/dashboard');
+      navigate("/dashboard");
       return;
     }
     loadUserProfile();
@@ -85,27 +160,27 @@ const Index = () => {
     const appointmentsChannel = supabase
       .channel(`appointments-dashboard-${teamId}-${channelId}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'appointments',
+          event: "*",
+          schema: "public",
+          table: "appointments",
           filter: `team_id=eq.${teamId}`,
         },
         (payload) => {
-          console.log('Appointment change detected:', payload);
+          console.log("Appointment change detected:", payload);
           // For DELETE events, immediately filter out the deleted appointment
-          if (payload.eventType === 'DELETE' && payload.old) {
-            setAppointments(prev => prev.filter(apt => apt.id !== payload.old.id));
+          if (payload.eventType === "DELETE" && payload.old) {
+            setAppointments((prev) => prev.filter((apt) => apt.id !== payload.old.id));
           } else {
             // For INSERT/UPDATE, reload all appointments
             loadAppointments();
           }
-        }
+        },
       )
       .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('Dashboard realtime subscription error:', status);
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error("Dashboard realtime subscription error:", status);
           setTimeout(() => loadAppointments(), 2000);
         }
       });
@@ -114,27 +189,27 @@ const Index = () => {
     const salesChannel = supabase
       .channel(`sales-dashboard-${teamId}-${Date.now()}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'sales',
+          event: "*",
+          schema: "public",
+          table: "sales",
           filter: `team_id=eq.${teamId}`,
         },
         (payload) => {
-          console.log('Sales change detected:', payload);
+          console.log("Sales change detected:", payload);
           // For DELETE events, immediately filter out the deleted sale
-          if (payload.eventType === 'DELETE' && payload.old) {
-            setSales(prev => prev.filter(sale => sale.id !== payload.old.id));
+          if (payload.eventType === "DELETE" && payload.old) {
+            setSales((prev) => prev.filter((sale) => sale.id !== payload.old.id));
           } else {
             // For INSERT/UPDATE, reload all sales
             loadSales();
           }
-        }
+        },
       )
       .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('Sales realtime subscription error:', status);
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error("Sales realtime subscription error:", status);
           setTimeout(() => loadSales(), 2000);
         }
       });
@@ -145,44 +220,41 @@ const Index = () => {
     };
   }, [user, teamId, navigate]);
 
-
   const loadUserProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user?.id)
-        .maybeSingle();
+      const { data, error } = await supabase.from("profiles").select("full_name").eq("id", user?.id).maybeSingle();
 
       if (error) throw error;
       setCurrentUserName(data?.full_name || null);
     } catch (error: any) {
-      console.error('Error loading user profile:', error);
+      console.error("Error loading user profile:", error);
     }
   };
 
   const loadTeamData = async () => {
     try {
       const { data, error } = await supabase
-        .from('teams')
-        .select('name, calendly_access_token, calendly_organization_uri, calendly_webhook_id, calendly_event_types')
-        .eq('id', teamId)
+        .from("teams")
+        .select("name, calendly_access_token, calendly_organization_uri, calendly_webhook_id, calendly_event_types")
+        .eq("id", teamId)
         .maybeSingle();
 
       if (error) throw error;
       if (data) {
-        setTeamName(prev => prev !== data.name ? data.name : prev);
-        setCalendlyAccessToken(prev => prev !== data.calendly_access_token ? data.calendly_access_token : prev);
-        setCalendlyOrgUri(prev => prev !== data.calendly_organization_uri ? data.calendly_organization_uri : prev);
-        setCalendlyWebhookId(prev => prev !== data.calendly_webhook_id ? data.calendly_webhook_id : prev);
-        setCalendlyEventTypes(prev => JSON.stringify(prev) !== JSON.stringify(data.calendly_event_types) ? data.calendly_event_types : prev);
+        setTeamName((prev) => (prev !== data.name ? data.name : prev));
+        setCalendlyAccessToken((prev) => (prev !== data.calendly_access_token ? data.calendly_access_token : prev));
+        setCalendlyOrgUri((prev) => (prev !== data.calendly_organization_uri ? data.calendly_organization_uri : prev));
+        setCalendlyWebhookId((prev) => (prev !== data.calendly_webhook_id ? data.calendly_webhook_id : prev));
+        setCalendlyEventTypes((prev) =>
+          JSON.stringify(prev) !== JSON.stringify(data.calendly_event_types) ? data.calendly_event_types : prev,
+        );
       }
     } catch (error: any) {
-      console.error('Error loading team:', error);
+      console.error("Error loading team:", error);
       toast({
-        title: 'Error loading team',
+        title: "Error loading team",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -190,9 +262,9 @@ const Index = () => {
   const loadTeamSettings = async () => {
     try {
       const { data, error } = await supabase
-        .from('teams')
-        .select('setter_commission_percentage, closer_commission_percentage')
-        .eq('id', teamId)
+        .from("teams")
+        .select("setter_commission_percentage, closer_commission_percentage")
+        .eq("id", teamId)
         .maybeSingle();
 
       if (error) throw error;
@@ -201,58 +273,60 @@ const Index = () => {
         setCloserCommissionPct(Number(data.closer_commission_percentage) || 10);
       }
     } catch (error: any) {
-      console.error('Error loading commission settings:', error);
+      console.error("Error loading commission settings:", error);
     }
   };
 
   const loadTeamMembers = async () => {
     try {
       const { data: members, error } = await supabase
-        .from('team_members')
-        .select('user_id, role')
-        .eq('team_id', teamId);
+        .from("team_members")
+        .select("user_id, role")
+        .eq("team_id", teamId);
 
       if (error) throw error;
 
       if (members && members.length > 0) {
-        const userIds = members.map(m => m.user_id);
+        const userIds = members.map((m) => m.user_id);
         const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', userIds);
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", userIds);
 
         if (profilesError) throw profilesError;
 
         if (profiles) {
-          setTeamMembers(profiles.map(p => {
-            const member = members.find(m => m.user_id === p.id);
-            return { 
-              id: p.id, 
-              name: p.full_name || 'Unknown',
-              role: member?.role || 'member'
-            };
-          }));
+          setTeamMembers(
+            profiles.map((p) => {
+              const member = members.find((m) => m.user_id === p.id);
+              return {
+                id: p.id,
+                name: p.full_name || "Unknown",
+                role: member?.role || "member",
+              };
+            }),
+          );
         }
       }
     } catch (error) {
-      console.error('Error loading team members:', error);
+      console.error("Error loading team members:", error);
     }
   };
 
   const loadSales = async () => {
     try {
       const { data, error } = await supabase
-        .from('sales')
-        .select('*')
-        .eq('team_id', teamId)
-        .order('date', { ascending: false });
+        .from("sales")
+        .select("*")
+        .eq("team_id", teamId)
+        .order("date", { ascending: false });
 
       if (error) throw error;
 
       const formattedSales: Sale[] = (data || []).map((sale: any) => ({
         id: sale.id,
         customerName: sale.customer_name,
-        offerOwner: sale.offer_owner || '',
+        offerOwner: sale.offer_owner || "",
         setter: sale.setter,
         salesRep: sale.sales_rep,
         date: sale.date,
@@ -260,18 +334,20 @@ const Index = () => {
         setterCommission: Number(sale.setter_commission),
         commission: Number(sale.commission),
         status: sale.status,
-        productName: sale.product_name || '',
+        productName: sale.product_name || "",
       }));
 
-      console.log(`Loaded ${formattedSales.length} sales, ${formattedSales.filter(s => s.status === 'closed').length} closed`);
+      console.log(
+        `Loaded ${formattedSales.length} sales, ${formattedSales.filter((s) => s.status === "closed").length} closed`,
+      );
 
       // Always update to ensure UI reflects latest data
       setSales(formattedSales);
     } catch (error: any) {
       toast({
-        title: 'Error loading sales',
+        title: "Error loading sales",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -282,20 +358,22 @@ const Index = () => {
     try {
       // Load ALL appointments (past and future) for comprehensive filtering
       const { data, error } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('team_id', teamId)
-        .order('start_at_utc', { ascending: false });
+        .from("appointments")
+        .select("*")
+        .eq("team_id", teamId)
+        .order("start_at_utc", { ascending: false });
 
       if (error) throw error;
-      
-      console.log(`Loaded ${data?.length || 0} appointments, ${data?.filter(a => a.status === 'CLOSED').length || 0} closed`);
-      console.log(`No-show count: ${data?.filter(a => a.status === 'NO_SHOW').length || 0}`);
-      
+
+      console.log(
+        `Loaded ${data?.length || 0} appointments, ${data?.filter((a) => a.status === "CLOSED").length || 0} closed`,
+      );
+      console.log(`No-show count: ${data?.filter((a) => a.status === "NO_SHOW").length || 0}`);
+
       // Force update state even if data looks the same to ensure metrics recalculate
-      setAppointments([...data || []]);
+      setAppointments([...(data || [])]);
     } catch (error: any) {
-      console.error('Error loading appointments:', error);
+      console.error("Error loading appointments:", error);
     }
   };
 
@@ -311,27 +389,42 @@ const Index = () => {
     ccCollected: number;
     mrrAmount: number;
     mrrMonths: number;
-    status: 'closed' | 'pending' | 'no-show';
+    status: "closed" | "pending" | "no-show";
     setterCommissionPct: number;
     closerCommissionPct: number;
   }) => {
     try {
-      console.log('Adding manual sale - CC:', newSale.ccCollected, 'MRR:', newSale.mrrAmount, 'Months:', newSale.mrrMonths);
-      
+      console.log(
+        "Adding manual sale - CC:",
+        newSale.ccCollected,
+        "MRR:",
+        newSale.mrrAmount,
+        "Months:",
+        newSale.mrrMonths,
+      );
+
       // Check if closer is the offer owner - if so, no closer commission
       const isCloserOfferOwner = newSale.salesRep === newSale.offerOwner;
       // Check if setter is the offer owner - if so, no setter commission
       const isSetterOfferOwner = newSale.setter === newSale.offerOwner;
-      
+
       // Calculate commissions on CC using configured percentages
       const closerCommission = isCloserOfferOwner ? 0 : newSale.ccCollected * (newSale.closerCommissionPct / 100);
-      const setterCommission = (newSale.setterId && !isSetterOfferOwner) ? newSale.ccCollected * (newSale.setterCommissionPct / 100) : 0;
-      
-      console.log('Calculated commissions - Closer:', closerCommission, 'Setter:', setterCommission, 'Is offer owner:', isCloserOfferOwner);
+      const setterCommission =
+        newSale.setterId && !isSetterOfferOwner ? newSale.ccCollected * (newSale.setterCommissionPct / 100) : 0;
+
+      console.log(
+        "Calculated commissions - Closer:",
+        closerCommission,
+        "Setter:",
+        setterCommission,
+        "Is offer owner:",
+        isCloserOfferOwner,
+      );
 
       // Insert sale record with CC as revenue
       const { data: saleData, error } = await supabase
-        .from('sales')
+        .from("sales")
         .insert({
           team_id: teamId,
           customer_name: newSale.customerName,
@@ -352,12 +445,12 @@ const Index = () => {
 
       // Create MRR commission records if MRR exists
       if (newSale.mrrAmount > 0 && newSale.mrrMonths > 0 && saleData) {
-        const { startOfMonth, addMonths, format } = await import('date-fns');
+        const { startOfMonth, addMonths, format } = await import("date-fns");
         const mrrCommissions = [];
-        
+
         for (let i = 1; i <= newSale.mrrMonths; i++) {
           const monthDate = startOfMonth(addMonths(new Date(), i));
-          
+
           // Closer MRR commission - only if closer is not the offer owner
           if (!isCloserOfferOwner) {
             mrrCommissions.push({
@@ -365,10 +458,10 @@ const Index = () => {
               sale_id: saleData.id, // Link to the sale
               team_member_id: newSale.salesRepId,
               team_member_name: newSale.salesRep,
-              role: 'closer',
+              role: "closer",
               prospect_name: newSale.customerName,
-              prospect_email: '', // Not available for manual sales
-              month_date: format(monthDate, 'yyyy-MM-dd'),
+              prospect_email: "", // Not available for manual sales
+              month_date: format(monthDate, "yyyy-MM-dd"),
               mrr_amount: newSale.mrrAmount,
               commission_amount: newSale.mrrAmount * (newSale.closerCommissionPct / 100),
               commission_percentage: newSale.closerCommissionPct,
@@ -382,10 +475,10 @@ const Index = () => {
               sale_id: saleData.id, // Link to the sale
               team_member_id: newSale.setterId,
               team_member_name: newSale.setter,
-              role: 'setter',
+              role: "setter",
               prospect_name: newSale.customerName,
-              prospect_email: '', // Not available for manual sales
-              month_date: format(monthDate, 'yyyy-MM-dd'),
+              prospect_email: "", // Not available for manual sales
+              month_date: format(monthDate, "yyyy-MM-dd"),
               mrr_amount: newSale.mrrAmount,
               commission_amount: newSale.mrrAmount * (newSale.setterCommissionPct / 100),
               commission_percentage: newSale.setterCommissionPct,
@@ -393,31 +486,29 @@ const Index = () => {
           }
         }
 
-        const { error: mrrError } = await supabase
-          .from('mrr_commissions')
-          .insert(mrrCommissions);
+        const { error: mrrError } = await supabase.from("mrr_commissions").insert(mrrCommissions);
 
         if (mrrError) throw mrrError;
       }
 
       toast({
-        title: 'Sale added',
-        description: 'New sale has been added successfully with all commissions',
+        title: "Sale added",
+        description: "New sale has been added successfully with all commissions",
       });
 
       loadSales();
     } catch (error: any) {
       toast({
-        title: 'Error adding sale',
+        title: "Error adding sale",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
 
-  const handleImport = async (importedSales: Omit<Sale, 'id'>[]) => {
+  const handleImport = async (importedSales: Omit<Sale, "id">[]) => {
     try {
-      const salesData = importedSales.map(sale => ({
+      const salesData = importedSales.map((sale) => ({
         team_id: teamId,
         customer_name: sale.customerName,
         offer_owner: sale.offerOwner,
@@ -430,58 +521,56 @@ const Index = () => {
         status: sale.status,
       }));
 
-      const { error } = await supabase
-        .from('sales')
-        .insert(salesData);
+      const { error } = await supabase.from("sales").insert(salesData);
 
       if (error) throw error;
 
       toast({
-        title: 'Sales imported',
+        title: "Sales imported",
         description: `${importedSales.length} sales have been imported successfully`,
       });
 
       loadSales();
     } catch (error: any) {
       toast({
-        title: 'Error importing sales',
+        title: "Error importing sales",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
 
   // Get unique sales reps - use Map to deduplicate, match partial names to full names
   const allNamesMap = new Map<string, string>();
-  
+
   // First, add all team members with their full names (canonical source)
-  teamMembers.forEach(member => {
+  teamMembers.forEach((member) => {
     const nameLower = member.name.toLowerCase();
     allNamesMap.set(nameLower, member.name);
   });
-  
+
   // Helper function to find best match for a name
   const findBestMatch = (name: string): string => {
     const nameLower = name.toLowerCase();
-    
+
     // Check for exact match first
     if (allNamesMap.has(nameLower)) {
       return allNamesMap.get(nameLower)!;
     }
-    
+
     // Check if this name is a partial match (first name only) of a team member
     for (const [fullNameLower, fullName] of allNamesMap.entries()) {
-      const firstName = fullNameLower.split(' ')[0];
+      const firstName = fullNameLower.split(" ")[0];
       if (firstName === nameLower || fullNameLower.includes(nameLower)) {
         return fullName; // Return the full name from team members
       }
     }
-    
+
     return name; // Return original if no match found
   };
-  
+
   // Add names from sales, matching to full names where possible
-  sales.forEach(s => {
+  sales.forEach((s) => {
     if (s.salesRep) {
       const bestMatch = findBestMatch(s.salesRep);
       const nameLower = bestMatch.toLowerCase();
@@ -497,9 +586,9 @@ const Index = () => {
       }
     }
   });
-  
+
   // Add names from appointments, matching to full names where possible
-  appointments.forEach(apt => {
+  appointments.forEach((apt) => {
     if (apt.closer_name) {
       const bestMatch = findBestMatch(apt.closer_name);
       const nameLower = bestMatch.toLowerCase();
@@ -515,21 +604,21 @@ const Index = () => {
       }
     }
   });
-  
-  const salesReps = ['all', ...Array.from(allNamesMap.values()).sort()];
+
+  const salesReps = ["all", ...Array.from(allNamesMap.values()).sort()];
 
   // Filter appointments with deposits/closes by the date they were updated (closed/deposited)
   // This ensures revenue shows based on WHEN the close happened, not appointment date
-  const filteredAppointments = appointments.filter(apt => {
+  const filteredAppointments = appointments.filter((apt) => {
     // For deposits/closes, use updated_at for date filtering
-    const hasDeposit = (apt.pipeline_stage?.toLowerCase().includes('deposit') || apt.status === 'CLOSED') && Number(apt.cc_collected || 0) > 0;
-    
+    const hasDeposit =
+      (apt.pipeline_stage?.toLowerCase().includes("deposit") || apt.status === "CLOSED") &&
+      Number(apt.cc_collected || 0) > 0;
+
     if (!dateRange.from && !dateRange.to) return true;
-    
+
     // Use updated_at for deposits/closes (when the action happened), otherwise use start_at_utc
-    const relevantDate = hasDeposit && apt.updated_at 
-      ? new Date(apt.updated_at) 
-      : new Date(apt.start_at_utc);
+    const relevantDate = hasDeposit && apt.updated_at ? new Date(apt.updated_at) : new Date(apt.start_at_utc);
     relevantDate.setHours(0, 0, 0, 0);
 
     const fromDate = dateRange.from ? new Date(dateRange.from) : null;
@@ -551,62 +640,68 @@ const Index = () => {
   // Combine sales from sales table AND appointments in deposit/closed stages
   // BUT exclude appointments that already have a sale record (to prevent duplicates)
   const depositsAsSales: Sale[] = filteredAppointments
-    .filter(apt => {
-      const hasDeposit = (apt.pipeline_stage?.toLowerCase().includes('deposit') || apt.status === 'CLOSED') && Number(apt.cc_collected || 0) > 0;
-      const repMatch = selectedRep === 'all' || apt.closer_name === selectedRep || apt.setter_name === selectedRep;
-      
+    .filter((apt) => {
+      const hasDeposit =
+        (apt.pipeline_stage?.toLowerCase().includes("deposit") || apt.status === "CLOSED") &&
+        Number(apt.cc_collected || 0) > 0;
+      const repMatch = selectedRep === "all" || apt.closer_name === selectedRep || apt.setter_name === selectedRep;
+
       // Check if a sale record already exists for this appointment by name + closer
-      const hasSaleRecord = sales.some(sale => {
+      const hasSaleRecord = sales.some((sale) => {
         if (!apt.closer_name || !sale.salesRep) return false;
-        return sale.customerName.toLowerCase().trim() === apt.lead_name.toLowerCase().trim() && 
-               sale.salesRep.toLowerCase().trim() === apt.closer_name.toLowerCase().trim() &&
-               sale.status === 'closed';
+        return (
+          sale.customerName.toLowerCase().trim() === apt.lead_name.toLowerCase().trim() &&
+          sale.salesRep.toLowerCase().trim() === apt.closer_name.toLowerCase().trim() &&
+          sale.status === "closed"
+        );
       });
-      
+
       return hasDeposit && repMatch && !hasSaleRecord;
     })
-    .map(apt => {
+    .map((apt) => {
       // Use updated_at for both deposits and closed deals (when the action was taken)
       // This ensures revenue shows on the day the deposit was collected, not appointment day
       let saleDate: string;
       if (apt.updated_at) {
-        saleDate = apt.updated_at.split('T')[0];
+        saleDate = apt.updated_at.split("T")[0];
       } else {
-        saleDate = new Date().toISOString().split('T')[0];
+        saleDate = new Date().toISOString().split("T")[0];
       }
-      
+
       return {
         id: apt.id,
         customerName: apt.lead_name,
-        offerOwner: apt.closer_name || '',
-        setter: apt.setter_name || '',
-        salesRep: apt.closer_name || '',
+        offerOwner: apt.closer_name || "",
+        setter: apt.setter_name || "",
+        salesRep: apt.closer_name || "",
         date: saleDate,
         revenue: Number(apt.cc_collected) || 0,
         // Commission is only on Cash Collected, not MRR
         setterCommission: apt.setter_id ? (Number(apt.cc_collected) || 0) * (setterCommissionPct / 100) : 0,
         commission: (() => {
           if (!apt.closer_id) return 0;
-          const closerMember = teamMembers.find(m => m.id === apt.closer_id);
+          const closerMember = teamMembers.find((m) => m.id === apt.closer_id);
           if (!closerMember) return 0;
-          return (closerMember.role !== 'offer_owner') ? (Number(apt.cc_collected) || 0) * (closerCommissionPct / 100) : 0;
+          return closerMember.role !== "offer_owner"
+            ? (Number(apt.cc_collected) || 0) * (closerCommissionPct / 100)
+            : 0;
         })(),
-        status: apt.pipeline_stage?.toLowerCase().includes('deposit') ? 'pending' as const : 'closed' as const,
+        status: apt.pipeline_stage?.toLowerCase().includes("deposit") ? ("pending" as const) : ("closed" as const),
         isAppointment: true, // Flag this as an appointment
-        productName: apt.product_name || '',
+        productName: apt.product_name || "",
       };
     });
 
   // Filter sales by selected rep and date range
-  const filteredSalesFromTable = sales.filter(s => {
-    const repMatch = selectedRep === 'all' || s.salesRep === selectedRep;
-    
+  const filteredSalesFromTable = sales.filter((s) => {
+    const repMatch = selectedRep === "all" || s.salesRep === selectedRep;
+
     // Date range filtering
     let dateMatch = true;
     if (dateRange.from || dateRange.to) {
       const saleDate = new Date(s.date);
       saleDate.setHours(0, 0, 0, 0);
-      
+
       if (dateRange.from && dateRange.to) {
         dateMatch = saleDate >= dateRange.from && saleDate <= dateRange.to;
       } else if (dateRange.from) {
@@ -615,34 +710,35 @@ const Index = () => {
         dateMatch = saleDate <= dateRange.to;
       }
     }
-    
+
     return repMatch && dateMatch;
   });
 
   // Combine both sources - deposits and manual sales
-  const filteredSales = [...depositsAsSales, ...filteredSalesFromTable]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const filteredSales = [...depositsAsSales, ...filteredSalesFromTable].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
 
   // SIMPLIFIED METRICS CALCULATION
   // Sales table is source of truth for CC Revenue and Commissions (created by close_deal_transaction)
   // Appointments are source of truth for MRR
-  
+
   // For MRR: Filter closed appointments by updated_at (when deal was closed), not start_at_utc
-  const closedAppointmentsForMRR = appointments.filter(apt => {
-    if (apt.status !== 'CLOSED') return false;
-    
+  const closedAppointmentsForMRR = appointments.filter((apt) => {
+    if (apt.status !== "CLOSED") return false;
+
     // Filter by updated_at (when deal was closed) instead of start_at_utc
     if (!dateRange.from && !dateRange.to) return true;
-    
+
     const closedDate = apt.updated_at ? new Date(apt.updated_at) : new Date(apt.start_at_utc);
     closedDate.setHours(0, 0, 0, 0);
-    
+
     const fromDate = dateRange.from ? new Date(dateRange.from) : null;
     if (fromDate) fromDate.setHours(0, 0, 0, 0);
-    
+
     const toDate = dateRange.to ? new Date(dateRange.to) : null;
     if (toDate) toDate.setHours(0, 0, 0, 0);
-    
+
     if (fromDate && toDate) {
       return closedDate >= fromDate && closedDate <= toDate;
     } else if (fromDate) {
@@ -652,50 +748,46 @@ const Index = () => {
     }
     return true;
   });
-  
+
   // Total CC Revenue: From BOTH sales table AND deposits from appointments
   // filteredSales already combines depositsAsSales + filteredSalesFromTable without duplicates
   const totalCCRevenue = filteredSales.reduce((sum, sale) => sum + sale.revenue, 0);
-  
+
   // Total MRR: From closed appointments
   const totalMRR = closedAppointmentsForMRR.reduce((sum, apt) => sum + (Number(apt.mrr_amount) || 0), 0);
-  
+
   // Total Commissions: Closer + Setter from both sources
   const totalCommissions = filteredSales.reduce((sum, sale) => sum + sale.commission + (sale.setterCommission || 0), 0);
-  
+
   // Keep closedAppointments for other metrics (show rate, close rate, etc.)
-  const closedAppointments = filteredAppointments.filter(apt => {
-    const isClosedStatus = apt.status === 'CLOSED';
-    const hasDeposit = apt.pipeline_stage?.toLowerCase().includes('deposit') && Number(apt.cc_collected || 0) > 0;
+  const closedAppointments = filteredAppointments.filter((apt) => {
+    const isClosedStatus = apt.status === "CLOSED";
+    const hasDeposit = apt.pipeline_stage?.toLowerCase().includes("deposit") && Number(apt.cc_collected || 0) > 0;
     return isClosedStatus || hasDeposit;
   });
-  
+
   // Calculate appointment-based metrics
-  const showedAppointments = filteredAppointments.filter(apt => apt.status === 'SHOWED' || apt.status === 'CLOSED');
-  const noShowAppointments = filteredAppointments.filter(apt => apt.status === 'NO_SHOW');
+  const showedAppointments = filteredAppointments.filter((apt) => apt.status === "SHOWED" || apt.status === "CLOSED");
+  const noShowAppointments = filteredAppointments.filter((apt) => apt.status === "NO_SHOW");
   const totalScheduledAppointments = filteredAppointments.length;
-  
+
   // Count closed deals from sales table (source of truth)
-  const totalClosedDeals = filteredSalesFromTable.filter(s => s.status === 'closed').length;
-  
+  const totalClosedDeals = filteredSalesFromTable.filter((s) => s.status === "closed").length;
+
   // Close Rate: Closed deals / Showed appointments (appointments that actually happened)
-  const closeRate = showedAppointments.length > 0 
-    ? ((totalClosedDeals / showedAppointments.length) * 100).toFixed(1)
-    : '0';
-  
+  const closeRate =
+    showedAppointments.length > 0 ? ((totalClosedDeals / showedAppointments.length) * 100).toFixed(1) : "0";
+
   // Show-Up Rate: Appointments that SHOWED / Total SCHEDULED
-  const showUpRate = totalScheduledAppointments > 0
-    ? ((showedAppointments.length / totalScheduledAppointments) * 100).toFixed(1)
-    : '0';
+  const showUpRate =
+    totalScheduledAppointments > 0 ? ((showedAppointments.length / totalScheduledAppointments) * 100).toFixed(1) : "0";
 
   // No-Show Rate: NO_SHOW appointments / Total SCHEDULED
-  const noShowRate = totalScheduledAppointments > 0
-    ? ((noShowAppointments.length / totalScheduledAppointments) * 100).toFixed(1)
-    : '0';
+  const noShowRate =
+    totalScheduledAppointments > 0 ? ((noShowAppointments.length / totalScheduledAppointments) * 100).toFixed(1) : "0";
 
   // Deals that showed but didn't close
   const showedButNotClosed = showedAppointments.length - closedAppointments.length;
-
 
   // Prepare chart data (last 7 days) - include ALL closed sales (from appointments + manual)
   const chartData = Array.from({ length: 7 }, (_, i) => {
@@ -704,22 +796,22 @@ const Index = () => {
     date.setHours(0, 0, 0, 0); // Normalize to start of day
     // Use local date format for comparison to avoid timezone issues
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     const dateStr = `${year}-${month}-${day}`;
-    
+
     // Use filteredSales which already combines appointments with deposits AND manual sales
     const dayRevenue = filteredSales
-      .filter(s => {
+      .filter((s) => {
         // Parse sale date and compare as local dates
-        const saleDateParts = s.date.split('T')[0].split('-');
-        const saleDateStr = saleDateParts.slice(0, 3).join('-');
-        return saleDateStr === dateStr && s.status === 'closed';
+        const saleDateParts = s.date.split("T")[0].split("-");
+        const saleDateStr = saleDateParts.slice(0, 3).join("-");
+        return saleDateStr === dateStr && s.status === "closed";
       })
       .reduce((sum, s) => sum + s.revenue, 0);
 
     return {
-      name: date.toLocaleDateString('en-US', { weekday: 'short' }),
+      name: date.toLocaleDateString("en-US", { weekday: "short" }),
       revenue: dayRevenue,
     };
   });
@@ -732,7 +824,7 @@ const Index = () => {
     );
   }
 
-  const canViewSetterScheduling = userRole === 'setter' || userRole === 'admin' || isAdmin;
+  const canViewSetterScheduling = userRole === "setter" || userRole === "admin" || isAdmin;
 
   return (
     <div className="h-full bg-background overflow-auto">
@@ -741,11 +833,12 @@ const Index = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Sales CRM</h1>
-            <p className="text-muted-foreground text-sm">
-              Track performance, pipeline, and commissions
-            </p>
+            <p className="text-muted-foreground text-sm">Track performance, pipeline, and commissions</p>
           </div>
-          <AddSaleDialog onAddSale={handleAddSale} preselectedOfferOwner={userRole === 'offer_owner' ? currentUserName : undefined} />
+          <AddSaleDialog
+            onAddSale={handleAddSale}
+            preselectedOfferOwner={userRole === "offer_owner" ? currentUserName : undefined}
+          />
         </div>
 
         {/* Navigation Tabs */}
@@ -760,128 +853,146 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                <label className="text-[10px] sm:text-sm font-medium">Date:</label>
+                <DateRangeFilter onRangeChange={setDateRange} />
+              </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-            <label className="text-[10px] sm:text-sm font-medium">Date:</label>
-            <DateRangeFilter onRangeChange={setDateRange} />
-          </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                <label className="text-[10px] sm:text-sm font-medium">Rep:</label>
+                <Select value={selectedRep} onValueChange={setSelectedRep}>
+                  <SelectTrigger className="w-full sm:w-[200px] bg-card text-[11px] sm:text-sm h-8 sm:h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-border z-50">
+                    {salesReps.map((rep) => (
+                      <SelectItem key={rep} value={rep} className="text-[11px] sm:text-sm">
+                        {rep === "all" ? "All Reps" : rep}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-            <label className="text-[10px] sm:text-sm font-medium">Rep:</label>
-            <Select value={selectedRep} onValueChange={setSelectedRep}>
-              <SelectTrigger className="w-full sm:w-[200px] bg-card text-[11px] sm:text-sm h-8 sm:h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border-border z-50">
-                {salesReps.map((rep) => (
-                  <SelectItem key={rep} value={rep} className="text-[11px] sm:text-sm">
-                    {rep === 'all' ? 'All Reps' : rep}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-6">
-          <MetricCard
-            title="CC Revenue"
-            value={`$${totalCCRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            icon={DollarSign}
-            trend={`${totalClosedDeals} deals closed`}
-            trendUp
-          />
-          <MetricCard
-            title="Total MRR"
-            value={`$${totalMRR.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            icon={DollarSign}
-            trend="All recurring revenue"
-            trendUp
-          />
-          <MetricCard
-            title="Total Commissions"
-            value={`$${totalCommissions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            icon={TrendingUp}
-            trend="From closed deals"
-            trendUp
-          />
-          <MetricCard
-            title="Close Rate"
-            value={`${closeRate}%`}
-            icon={Users}
-            trend={`${totalClosedDeals}/${showedAppointments.length} showed closed`}
-            trendUp={Number(closeRate) >= 30}
-          />
-          <MetricCard
-            title="Show Up Rate"
-            value={`${showUpRate}%`}
-            icon={Calendar}
-            trend={`${showedAppointments.length}/${totalScheduledAppointments} showed`}
-            trendUp={Number(showUpRate) >= 70}
-          />
-          <MetricCard
-            title="No-Show Rate"
-            value={`${noShowRate}%`}
-            icon={Calendar}
-            trend={`${noShowAppointments.length}/${totalScheduledAppointments} no-shows`}
-            trendUp={false}
-          />
-        </div>
+            {/* Revenue summary from payments table */}
+            {teamId && <RevenueSummaryCard teamId={teamId!} />}
 
-        {/* Not Closed Deals Alert */}
-        {showedButNotClosed > 0 && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              ⚠️ <strong>{showedButNotClosed}</strong> appointment{showedButNotClosed !== 1 ? 's' : ''} showed up but {showedButNotClosed !== 1 ? 'were' : 'was'} not closed yet
-            </p>
-          </div>
-        )}
+            <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-6">
+              <MetricCard
+                title="CC Revenue"
+                value={`$${totalCCRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                icon={DollarSign}
+                trend={`${totalClosedDeals} deals closed`}
+                trendUp
+              />
+              <MetricCard
+                title="Total MRR"
+                value={`$${totalMRR.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                icon={DollarSign}
+                trend="All recurring revenue"
+                trendUp
+              />
+              <MetricCard
+                title="Total Commissions"
+                value={`$${totalCommissions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                icon={TrendingUp}
+                trend="From closed deals"
+                trendUp
+              />
+              <MetricCard
+                title="Close Rate"
+                value={`${closeRate}%`}
+                icon={Users}
+                trend={`${totalClosedDeals}/${showedAppointments.length} showed closed`}
+                trendUp={Number(closeRate) >= 30}
+              />
+              <MetricCard
+                title="Show Up Rate"
+                value={`${showUpRate}%`}
+                icon={Calendar}
+                trend={`${showedAppointments.length}/${totalScheduledAppointments} showed`}
+                trendUp={Number(showUpRate) >= 70}
+              />
+              <MetricCard
+                title="No-Show Rate"
+                value={`${noShowRate}%`}
+                icon={Calendar}
+                trend={`${noShowAppointments.length}/${totalScheduledAppointments} no-shows`}
+                trendUp={false}
+              />
+            </div>
 
-        {/* Commission Breakdown */}
-        <CommissionBreakdown sales={filteredSales} teamId={teamId} />
+            {/* Not Closed Deals Alert */}
+            {showedButNotClosed > 0 && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  ⚠️ <strong>{showedButNotClosed}</strong> appointment{showedButNotClosed !== 1 ? "s" : ""} showed up
+                  but {showedButNotClosed !== 1 ? "were" : "was"} not closed yet
+                </p>
+              </div>
+            )}
 
-        {/* Chart */}
-        <RevenueChart data={chartData} />
+            {/* Commission Breakdown */}
+            <CommissionBreakdown sales={filteredSales} teamId={teamId} />
+
+            {/* Chart */}
+            <RevenueChart data={chartData} />
 
             {/* Sales Table */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-semibold">
-                  {selectedRep === 'all' ? 'All Sales' : `${selectedRep}'s Sales`}
+                  {selectedRep === "all" ? "All Sales" : `${selectedRep}'s Sales`}
                 </h2>
                 <div className="flex gap-2">
-                  {(isAdmin || userRole === 'offer_owner') && <FixCommissionsButton teamId={teamId || ''} onComplete={loadSales} />}
-                  <ImportSpreadsheet teamId={teamId!} onImport={() => {
-                    loadSales();
-                    loadAppointments();
-                  }} />
-                  <SyncFromUrl teamId={teamId!} onSync={() => {
-                    loadSales();
-                    loadAppointments();
-                  }} />
+                  {(isAdmin || userRole === "offer_owner") && (
+                    <FixCommissionsButton teamId={teamId || ""} onComplete={loadSales} />
+                  )}
+                  <ImportSpreadsheet
+                    teamId={teamId!}
+                    onImport={() => {
+                      loadSales();
+                      loadAppointments();
+                    }}
+                  />
+                  <SyncFromUrl
+                    teamId={teamId!}
+                    onSync={() => {
+                      loadSales();
+                      loadAppointments();
+                    }}
+                  />
                 </div>
               </div>
               {filteredSales.length === 0 ? (
                 <Card className="p-12">
                   <div className="text-center">
                     <p className="text-muted-foreground mb-4 text-lg">
-                      No sales recorded yet. Sales appear here when appointments reach the "Deposit Collected" or "Won" stages.
+                      No sales recorded yet. Sales appear here when appointments reach the "Deposit Collected" or "Won"
+                      stages.
                     </p>
                     <p className="text-sm text-muted-foreground mb-6">
                       Go to the <strong>Appointments</strong> tab to manage your pipeline and close deals.
                     </p>
-                    <Button variant="outline" onClick={() => {
-                      const tabTrigger = document.querySelector('[data-state="inactive"][value="appointments"]') as HTMLElement;
-                      if (tabTrigger) tabTrigger.click();
-                    }}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const tabTrigger = document.querySelector(
+                          '[data-state="inactive"][value="appointments"]',
+                        ) as HTMLElement;
+                        if (tabTrigger) tabTrigger.click();
+                      }}
+                    >
                       View Appointments
                     </Button>
                   </div>
                 </Card>
               ) : (
-                <SalesTable 
-                  sales={filteredSales} 
+                <SalesTable
+                  sales={filteredSales}
                   userRole={normalizedRole || userRole}
                   currentUserName={currentUserName}
                   teamMembers={teamMembers}
@@ -895,7 +1006,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="appointments" className="space-y-6 mt-6">
-            <AppointmentsHub 
+            <AppointmentsHub
               teamId={teamId!}
               userRole={normalizedRole || userRole}
               closerCommissionPct={closerCommissionPct}
