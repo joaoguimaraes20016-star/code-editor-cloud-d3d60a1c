@@ -1,3 +1,4 @@
+import { hasClosedWithRevenue } from "@/lib/dealStatus";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,17 +32,13 @@ import { Logo } from "@/components/Logo";
 import { useToast } from "@/hooks/use-toast";
 import { useTeamRole } from "@/hooks/useTeamRole";
 // Helper: check if an appointment is "closed with revenue"
-const hasClosedWithRevenue = (apt: any): boolean => {
+const isAppointmentClosedWithRevenue = (apt: any): boolean => {
   if (!apt) return false;
-
   const stage = apt.pipeline_stage?.toLowerCase() ?? "";
   const status = (apt.status ?? "").toString().toUpperCase();
   const revenue = Number(apt.cc_collected ?? 0);
-
   const isDepositStage = stage.includes("deposit");
   const isClosedStatus = status === "CLOSED" || status === "CLOSED_WON";
-
-  // "Closed with revenue" = in deposit/closed stage AND some cash collected
   return (isDepositStage || isClosedStatus) && revenue > 0;
 };
 
