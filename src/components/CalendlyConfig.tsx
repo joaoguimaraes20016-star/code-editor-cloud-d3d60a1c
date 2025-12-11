@@ -369,11 +369,25 @@ export function CalendlyConfig({
     
     setSelectedEventTypes(uniqueSelection);
     
-    // Auto-save the selection
+    // Find the scheduling_url for the first selected event type (for funnel use)
+    // This allows the team-level Calendly URL to be used in funnels when enabled
+    let funnelSchedulingUrl: string | null = null;
+    if (uniqueSelection.length > 0) {
+      const firstSelectedUri = uniqueSelection[0];
+      const matchingEventType = availableEventTypes.find(et => et.uri === firstSelectedUri);
+      if (matchingEventType?.scheduling_url) {
+        funnelSchedulingUrl = matchingEventType.scheduling_url;
+      }
+    }
+    
+    // Auto-save the selection along with the funnel scheduling URL
     try {
       const { error } = await supabase
         .from("teams")
-        .update({ calendly_event_types: uniqueSelection })
+        .update({ 
+          calendly_event_types: uniqueSelection,
+          calendly_funnel_scheduling_url: funnelSchedulingUrl 
+        })
         .eq("id", teamId);
 
       if (error) throw error;

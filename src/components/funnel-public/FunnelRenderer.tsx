@@ -43,6 +43,12 @@ interface Funnel {
   settings: FunnelSettings;
 }
 
+// Team Calendly settings for funnel override
+interface TeamCalendlySettings {
+  calendly_enabled_for_funnels: boolean;
+  calendly_funnel_scheduling_url: string | null;
+}
+
 interface FunnelRendererProps {
   funnel: Funnel;
   steps: FunnelStep[];
@@ -57,11 +63,41 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
+  const [teamCalendlySettings, setTeamCalendlySettings] = useState<TeamCalendlySettings | null>(null);
   const calendlyBookingRef = useRef<CalendlyBookingData | null>(null);
   const pendingSaveRef = useRef(false);
   const pixelsInitializedRef = useRef(false);
   const firedEventsRef = useRef<Set<string>>(new Set()); // Track fired events to prevent duplicates
   const externalIdRef = useRef<string>(crypto.randomUUID()); // Consistent ID for cross-device tracking
+
+  // Fetch team's Calendly settings for funnel embed override
+  // This is read-only and uses safe fallback if fetch fails
+  useEffect(() => {
+    const fetchTeamCalendlySettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('teams')
+          .select('calendly_enabled_for_funnels, calendly_funnel_scheduling_url')
+          .eq('id', funnel.team_id)
+          .single();
+
+        if (error) {
+          console.warn('Failed to fetch team Calendly settings, using step defaults:', error.message);
+          return; // Keep null - will use step's embed_url
+        }
+
+        setTeamCalendlySettings({
+          calendly_enabled_for_funnels: data.calendly_enabled_for_funnels ?? false,
+          calendly_funnel_scheduling_url: data.calendly_funnel_scheduling_url ?? null,
+        });
+      } catch (err) {
+        console.warn('Error fetching team Calendly settings:', err);
+        // Keep null - will use step's embed_url as fallback
+      }
+    };
+
+    fetchTeamCalendlySettings();
+  }, [funnel.team_id]);
 
   const currentStep = steps[currentStepIndex];
   const isLastStep = currentStepIndex === steps.length - 1;
@@ -394,7 +430,11 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       case 'video':
         return <VideoStep {...commonProps} />;
       case 'embed':
-        return <EmbedStep {...commonProps} />;
+        // Pass team Calendly URL if calendly_enabled_for_funnels is true and URL is configured
+        const teamCalendlyUrl = teamCalendlySettings?.calendly_enabled_for_funnels 
+          ? teamCalendlySettings.calendly_funnel_scheduling_url 
+          : null;
+        return <EmbedStep {...commonProps} teamCalendlyUrl={teamCalendlyUrl} />;
       case 'thank_you':
         return <ThankYouStep {...commonProps} />;
       default:

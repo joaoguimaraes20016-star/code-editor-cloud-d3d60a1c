@@ -1921,6 +1921,7 @@ export type Database = {
           calendly_enabled_for_crm: boolean | null
           calendly_enabled_for_funnels: boolean | null
           calendly_event_types: string[] | null
+          calendly_funnel_scheduling_url: string | null
           calendly_organization_uri: string | null
           calendly_refresh_token: string | null
           calendly_token_expires_at: string | null
@@ -1957,6 +1958,7 @@ export type Database = {
           calendly_enabled_for_crm?: boolean | null
           calendly_enabled_for_funnels?: boolean | null
           calendly_event_types?: string[] | null
+          calendly_funnel_scheduling_url?: string | null
           calendly_organization_uri?: string | null
           calendly_refresh_token?: string | null
           calendly_token_expires_at?: string | null
@@ -1993,6 +1995,7 @@ export type Database = {
           calendly_enabled_for_crm?: boolean | null
           calendly_enabled_for_funnels?: boolean | null
           calendly_event_types?: string[] | null
+          calendly_funnel_scheduling_url?: string | null
           calendly_organization_uri?: string | null
           calendly_refresh_token?: string | null
           calendly_token_expires_at?: string | null

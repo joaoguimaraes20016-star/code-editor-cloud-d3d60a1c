@@ -12,10 +12,24 @@ interface EmbedStepProps {
   currentStep?: number;
   totalSteps?: number;
   onCalendlyBooking?: (bookingData?: CalendlyBookingData) => void;
+  // Optional team-level Calendly URL override (when calendly_enabled_for_funnels is true)
+  teamCalendlyUrl?: string | null;
 }
 
-export function EmbedStep({ content, settings, onNext, isActive, onCalendlyBooking }: EmbedStepProps) {
-  const embedUrl = content.embed_url || '';
+export function EmbedStep({ content, settings, onNext, isActive, onCalendlyBooking, teamCalendlyUrl }: EmbedStepProps) {
+  // Determine which URL to use:
+  // 1. If teamCalendlyUrl is provided (calendly_enabled_for_funnels = true), use it for Calendly embeds
+  // 2. Otherwise, fall back to the step's configured embed_url (existing behavior)
+  const stepEmbedUrl = content.embed_url || '';
+  const isStepCalendly = stepEmbedUrl.includes('calendly.com');
+  
+  // Use team Calendly URL if:
+  // - teamCalendlyUrl is provided (team has calendly_enabled_for_funnels = true AND has a configured URL)
+  // - AND the step's embed is a Calendly embed OR has no URL (meaning it expects Calendly)
+  const embedUrl = (teamCalendlyUrl && (isStepCalendly || !stepEmbedUrl)) 
+    ? teamCalendlyUrl 
+    : stepEmbedUrl;
+  
   const embedScale = content.embed_scale || 0.75;
   const iframeHeight = 700;
   const scaledHeight = iframeHeight * embedScale;
