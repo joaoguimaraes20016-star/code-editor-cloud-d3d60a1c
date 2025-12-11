@@ -170,6 +170,22 @@ export function CloseDealDialog({
         return;
       }
 
+      // Record payment (additive logging - failure doesn't break main flow)
+      const { recordPayment } = await import('@/lib/payments');
+      await recordPayment({
+        teamId,
+        appointmentId: appointment.id,
+        amount: cc,
+        paymentMethod: 'credit_card',
+        type: 'initial',
+        metadata: { 
+          mrr_amount: mrr, 
+          mrr_months: months, 
+          product_name: productName,
+          closer_name: effectiveCloserName 
+        }
+      });
+
       const successMessage = `Closed deal - CC: $${cc.toLocaleString()}${mrr > 0 ? `, MRR: $${mrr.toLocaleString()}/mo for ${months} months` : ''}`;
       
       if (onShowUndoToast) {

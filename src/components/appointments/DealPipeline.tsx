@@ -909,6 +909,17 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
           note: `$${depositAmount} deposit collected`
         });
 
+        // Record payment (additive logging - failure doesn't break main flow)
+        const { recordPayment } = await import('@/lib/payments');
+        await recordPayment({
+          teamId: appointment.team_id,
+          appointmentId: depositDialog.appointmentId,
+          amount: depositAmount,
+          paymentMethod: 'credit_card',
+          type: 'deposit',
+          metadata: { notes, followUpDate: followUpDate.toISOString() }
+        });
+
         if (error) {
           console.error("❌ Deposit update error:", error);
           throw error;

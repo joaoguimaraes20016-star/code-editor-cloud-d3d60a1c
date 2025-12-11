@@ -453,6 +453,17 @@ export function TodaysDashboard({ teamId, userRole, viewingAsCloserId, viewingAs
         note: `$${depositAmount} deposit collected`
       });
 
+      // Record payment (additive logging - failure doesn't break main flow)
+      const { recordPayment } = await import('@/lib/payments');
+      await recordPayment({
+        teamId,
+        appointmentId: depositAppointment.id,
+        amount: depositAmount,
+        paymentMethod: 'credit_card',
+        type: 'deposit',
+        metadata: { notes, followUpDate: followUpDate.toISOString() }
+      });
+
       // Create follow-up task if needed
       await supabase
         .from('confirmation_tasks')

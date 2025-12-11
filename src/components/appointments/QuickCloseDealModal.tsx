@@ -101,6 +101,23 @@ export function QuickCloseDealModal({
         return;
       }
 
+      // Record payment (additive logging - failure doesn't break main flow)
+      const { recordPayment } = await import('@/lib/payments');
+      await recordPayment({
+        teamId: appointment.team_id,
+        appointmentId: appointment.id,
+        amount: cc,
+        paymentMethod: 'credit_card',
+        type: 'initial',
+        metadata: { 
+          mrr_amount: mrr, 
+          mrr_months: months, 
+          product_name: productName,
+          notes,
+          closer_name: appointment.closer_name 
+        }
+      });
+
       toast.success("Deal closed successfully!", {
         description: `Transaction completed successfully`,
       });
