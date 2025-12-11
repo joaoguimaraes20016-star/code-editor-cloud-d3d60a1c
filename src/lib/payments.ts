@@ -48,6 +48,7 @@ export async function recordPayment(
     return { success: false, error: err?.message || "Unknown error" };
   }
 }
+
 /**
  * Safely converts unknown metadata into a JSONB-storable object.
  */
@@ -138,19 +139,17 @@ export function sumPayments(payments: { amount: number }[] | null | undefined): 
   if (!Array.isArray(payments)) return 0;
   return payments.reduce((acc, p) => acc + (p.amount || 0), 0);
 }
+
 /**
- * Fetches all payments for a team between two timestamps (ISO strings).
+ * Fetches all payments for a team within a date range (by processed_at).
+ * Used for dashboard "Today / This Week / This Month" revenue.
  * Read-only. Errors return [] and never break flows.
  */
-export async function getTeamPaymentsInRange(
-  teamId: string,
-  fromIso: string,
-  toIso: string,
-): Promise<{ amount: number; type: string; processed_at: string }[]> {
+export async function getTeamPaymentsInRange(teamId: string, fromIso: string, toIso: string) {
   try {
     const { data, error } = await supabase
       .from("payments")
-      .select("amount, type, processed_at")
+      .select(`id, amount, currency, payment_method, type, processed_at, metadata`)
       .eq("team_id", teamId)
       .gte("processed_at", fromIso)
       .lte("processed_at", toIso)
@@ -161,7 +160,17 @@ export async function getTeamPaymentsInRange(
       return [];
     }
 
-    return (data || []) as { amount: number; type: string; processed_at: string }[];
+    return (
+      data?.map((p) => ({
+        id: p.id,
+        amount: p.amount,
+        currency: p.currency,
+        paymentMethod: p.payment_method,
+        type: p.type,
+        processedAt: p.processed_at,
+        metadata: p.metadata || {},
+      })) || []
+    );
   } catch (err) {
     console.warn("[payments] Exception fetching team payments in range:", err);
     return [];
