@@ -377,10 +377,12 @@ export default function FunnelList() {
   const optedInContacts = contacts?.filter(c => c.opt_in).length || 0;
   const bookedContacts = contacts?.filter(c => c.calendly_booked_at).length || 0;
 
-  // Filter funnels by search
-  const filteredFunnels = funnels?.filter(f => 
-    f.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter funnels by search and role (non-admins only see published)
+  const filteredFunnels = funnels?.filter(f => {
+    const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const canSee = isAdmin || f.status === 'published';
+    return matchesSearch && canSee;
+  });
 
   // Export functions
   const exportLeads = () => {
@@ -397,13 +399,14 @@ export default function FunnelList() {
     toast({ title: 'Contacts exported' });
   };
 
+  // Tabs - only admins see domains/integrations
   const tabs = [
-    { id: 'funnels' as const, label: 'Funnels', icon: LayoutGrid },
-    { id: 'performance' as const, label: 'Performance', icon: BarChart3 },
-    { id: 'contacts' as const, label: 'Contacts', icon: Users },
-    { id: 'domains' as const, label: 'Domains', icon: Globe },
-    { id: 'integrations' as const, label: 'Integrations', icon: Plug },
-  ];
+    { id: 'funnels' as const, label: 'Funnels', icon: LayoutGrid, adminOnly: false },
+    { id: 'performance' as const, label: 'Performance', icon: BarChart3, adminOnly: false },
+    { id: 'contacts' as const, label: 'Contacts', icon: Users, adminOnly: false },
+    { id: 'domains' as const, label: 'Domains', icon: Globe, adminOnly: true },
+    { id: 'integrations' as const, label: 'Integrations', icon: Plug, adminOnly: true },
+  ].filter(tab => !tab.adminOnly || isAdmin);
 
   return (
     <div className="min-h-screen bg-background">
@@ -500,8 +503,11 @@ export default function FunnelList() {
                 {filteredFunnels?.map((funnel) => (
                   <div
                     key={funnel.id}
-                    className="group bg-card border rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer"
-                    onClick={() => navigate(`/team/${teamId}/funnels/${funnel.id}`)}
+                    className={cn(
+                      "group bg-card border rounded-xl overflow-hidden transition-all",
+                      isAdmin ? "hover:shadow-lg cursor-pointer" : ""
+                    )}
+                    onClick={() => isAdmin && navigate(`/team/${teamId}/funnels/${funnel.id}`)}
                   >
                     {/* Thumbnail */}
                     <div 
@@ -517,12 +523,14 @@ export default function FunnelList() {
                       ) : (
                         <span className="text-white/50 text-lg font-bold">{funnel.name.charAt(0)}</span>
                       )}
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); }}
-                        className="absolute top-3 right-3 p-1.5 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                      >
-                        <Star className="h-4 w-4" />
-                      </button>
+                      {isAdmin && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); }}
+                          className="absolute top-3 right-3 p-1.5 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <Star className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                     
                     {/* Info */}
@@ -558,168 +566,20 @@ export default function FunnelList() {
                           </Badge>
                         </div>
                         
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <button className="p-1 rounded hover:bg-muted">
-                              <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedFunnelId(funnel.id);
-                              setActiveTab('contacts');
-                            }}>
-                              <Users className="h-4 w-4 mr-2" /> Contacts
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedFunnelId(funnel.id);
-                              setActiveTab('performance');
-                            }}>
-                              <BarChart3 className="h-4 w-4 mr-2" /> Metrics
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedFunnelId(funnel.id);
-                              setActiveTab('integrations');
-                            }}>
-                              <AppWindow className="h-4 w-4 mr-2" /> Apps
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              setSettingsFunnel(funnel);
-                            }}>
-                              <Settings className="h-4 w-4 mr-2" /> Settings
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              setRenameFunnel(funnel);
-                              setRenameValue(funnel.name);
-                            }}>
-                              <Edit className="h-4 w-4 mr-2" /> Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              duplicateMutation.mutate(funnel);
-                            }}>
-                              <Copy className="h-4 w-4 mr-2" /> Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem disabled>
-                              <FolderInput className="h-4 w-4 mr-2" /> Move to
-                              <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {isAdmin && (
-                              <DropdownMenuItem 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setFunnelToDelete(funnel);
-                                }}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Archive className="h-4 w-4 mr-2" /> Archive
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* List View */}
-            {viewMode === 'list' && (
-              <div className="bg-card border rounded-xl overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[300px]">Name</TableHead>
-                      <TableHead>Favorite</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Contacts</TableHead>
-                      <TableHead className="w-[200px]">Progress</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredFunnels?.map((funnel) => (
-                      <TableRow 
-                        key={funnel.id} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/team/${teamId}/funnels/${funnel.id}`)}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div 
-                              className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden"
-                              style={{ backgroundColor: funnel.settings.background_color || '#1a1a2e' }}
-                            >
-                              {funnel.settings.logo_url ? (
-                                <img src={funnel.settings.logo_url} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="text-white/50 text-sm font-bold">{funnel.name.charAt(0)}</span>
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium">{funnel.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Last updated {formatDistanceToNow(new Date(funnel.updated_at), { addSuffix: true })}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <button className="text-amber-400 hover:text-amber-500">
-                            <Star className="h-4 w-4" />
-                          </button>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Badge 
-                              variant="outline" 
-                              className={cn(
-                                "text-xs",
-                                funnel.status === 'published' 
-                                  ? "border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10" 
-                                  : "border-muted"
-                              )}
-                            >
-                              {funnel.status === 'published' ? 'Live' : 'Draft'}
-                            </Badge>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); copyFunnelUrl(funnel.slug); }}
-                              className="p-1 rounded hover:bg-muted"
-                            >
-                              <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
-                            </button>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            <Users className="h-3 w-3 mr-1" />
-                            {funnel.lead_count}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                            <div 
-                              className="h-full bg-emerald-500 rounded-full transition-all"
-                              style={{ width: `${Math.min(100, (funnel.lead_count || 0) * 5)}%` }}
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+                        {isAdmin && (
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <button className="p-1 rounded hover:bg-muted">
                                 <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/team/${teamId}/funnels/${funnel.id}`);
+                              }}>
+                                <Edit className="h-4 w-4 mr-2" /> Edit Funnel
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedFunnelId(funnel.id);
@@ -766,7 +626,168 @@ export default function FunnelList() {
                                 <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {isAdmin && (
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFunnelToDelete(funnel);
+                                }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* List View */}
+            {viewMode === 'list' && (
+              <div className="bg-card border rounded-xl overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[300px]">Name</TableHead>
+                      <TableHead>Favorite</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Contacts</TableHead>
+                      <TableHead className="w-[200px]">Progress</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredFunnels?.map((funnel) => (
+                      <TableRow 
+                        key={funnel.id} 
+                        className={cn(
+                          "hover:bg-muted/50",
+                          isAdmin ? "cursor-pointer" : ""
+                        )}
+                        onClick={() => isAdmin && navigate(`/team/${teamId}/funnels/${funnel.id}`)}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden"
+                              style={{ backgroundColor: funnel.settings.background_color || '#1a1a2e' }}
+                            >
+                              {funnel.settings.logo_url ? (
+                                <img src={funnel.settings.logo_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-white/50 text-sm font-bold">{funnel.name.charAt(0)}</span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium">{funnel.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Last updated {formatDistanceToNow(new Date(funnel.updated_at), { addSuffix: true })}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {isAdmin && (
+                            <button className="text-amber-400 hover:text-amber-500">
+                              <Star className="h-4 w-4" />
+                            </button>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant="outline" 
+                              className={cn(
+                                "text-xs",
+                                funnel.status === 'published' 
+                                  ? "border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10" 
+                                  : "border-muted"
+                              )}
+                            >
+                              {funnel.status === 'published' ? 'Live' : 'Draft'}
+                            </Badge>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); copyFunnelUrl(funnel.slug); }}
+                              className="p-1 rounded hover:bg-muted"
+                            >
+                              <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            </button>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            <Users className="h-3 w-3 mr-1" />
+                            {funnel.lead_count}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                            <div 
+                              className="h-full bg-emerald-500 rounded-full transition-all"
+                              style={{ width: `${Math.min(100, (funnel.lead_count || 0) * 5)}%` }}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {isAdmin && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-1 rounded hover:bg-muted">
+                                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/team/${teamId}/funnels/${funnel.id}`);
+                                }}>
+                                  <Edit className="h-4 w-4 mr-2" /> Edit Funnel
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedFunnelId(funnel.id);
+                                  setActiveTab('contacts');
+                                }}>
+                                  <Users className="h-4 w-4 mr-2" /> Contacts
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedFunnelId(funnel.id);
+                                  setActiveTab('performance');
+                                }}>
+                                  <BarChart3 className="h-4 w-4 mr-2" /> Metrics
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedFunnelId(funnel.id);
+                                  setActiveTab('integrations');
+                                }}>
+                                  <AppWindow className="h-4 w-4 mr-2" /> Apps
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSettingsFunnel(funnel);
+                                }}>
+                                  <Settings className="h-4 w-4 mr-2" /> Settings
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRenameFunnel(funnel);
+                                  setRenameValue(funnel.name);
+                                }}>
+                                  <Edit className="h-4 w-4 mr-2" /> Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  duplicateMutation.mutate(funnel);
+                                }}>
+                                  <Copy className="h-4 w-4 mr-2" /> Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -774,11 +795,11 @@ export default function FunnelList() {
                                   }}
                                   className="text-destructive focus:text-destructive"
                                 >
-                                  <Archive className="h-4 w-4 mr-2" /> Archive
+                                  <Trash2 className="h-4 w-4 mr-2" /> Delete
                                 </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

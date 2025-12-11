@@ -763,28 +763,50 @@ export function TeamHubOverview() {
       </div>
 
       {/* Team Assets Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">Team Assets</h2>
-          <p className="text-sm text-muted-foreground">Training materials, resources & onboarding</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">Team Assets</h2>
+            <p className="text-sm text-muted-foreground">Training materials, resources & onboarding</p>
+          </div>
         </div>
+        
+        {/* Admin Section Management Panel */}
         {canManage && (
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setEditingSection(null);
-                setSectionDialogOpen(true);
-              }}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add Section
-            </Button>
-            <Button onClick={() => setUploadDialogOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Asset
-            </Button>
+          <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Settings2 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Admin Controls</h3>
+                  <p className="text-xs text-muted-foreground">Manage sections, add assets, and reorder content</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setEditingSection(null);
+                    setSectionDialogOpen(true);
+                  }}
+                  className="gap-1.5 border-primary/30 hover:bg-primary/10"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Section
+                </Button>
+                <Button 
+                  size="sm"
+                  onClick={() => setUploadDialogOpen(true)} 
+                  className="gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Asset
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>

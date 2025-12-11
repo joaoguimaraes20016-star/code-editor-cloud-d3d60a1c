@@ -23,6 +23,7 @@ import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFunnelHistory } from '@/hooks/useFunnelHistory';
+import { useTeamRole } from '@/hooks/useTeamRole';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -182,6 +183,14 @@ export default function FunnelEditor() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { isAdmin, loading: roleLoading } = useTeamRole(teamId);
+
+  // Redirect non-admins back to funnel list
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
+      navigate(`/team/${teamId}/funnels`, { replace: true });
+    }
+  }, [roleLoading, isAdmin, teamId, navigate]);
 
   // Use the history hook for undo/redo
   const {
