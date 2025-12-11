@@ -15,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { PaymentHistory } from "./PaymentHistory";
 
 const editSchema = z.object({
   lead_name: z.string().min(1, "Name is required"),
@@ -312,6 +313,11 @@ export function EditAppointmentDialog({
           <div>
             <Label htmlFor="setter_notes">Notes</Label>
             <Textarea id="setter_notes" {...register("setter_notes")} rows={3} />
+          </div>
+
+          {/* Payment History - Read-only section */}
+          <div className="pt-4 border-t">
+            <PaymentHistory appointmentId={appointment.id} teamId={teamId} />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
