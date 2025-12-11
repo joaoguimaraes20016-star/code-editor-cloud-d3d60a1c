@@ -1766,30 +1766,39 @@ export type Database = {
       team_messages: {
         Row: {
           created_at: string
+          file_type: string | null
+          file_url: string | null
           id: string
           is_edited: boolean
           message: string
           team_id: string
           updated_at: string | null
           user_id: string
+          voice_duration: number | null
         }
         Insert: {
           created_at?: string
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           is_edited?: boolean
           message: string
           team_id: string
           updated_at?: string | null
           user_id: string
+          voice_duration?: number | null
         }
         Update: {
           created_at?: string
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           is_edited?: boolean
           message?: string
           team_id?: string
           updated_at?: string | null
           user_id?: string
+          voice_duration?: number | null
         }
         Relationships: [
           {
