@@ -2,7 +2,7 @@ import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeamRole } from "@/hooks/useTeamRole";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,6 @@ import {
   Layers, 
   Users, 
   FileText,
-  ExternalLink,
   Play,
   ChevronRight,
   Loader2,
@@ -21,10 +20,18 @@ import {
   Briefcase,
   BookOpen,
   Link as LinkIcon,
-  X
+  X,
+  GripVertical,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { useState } from "react";
 import AssetUploadDialog from "@/components/AssetUploadDialog";
+import EditAssetDialog from "@/components/EditAssetDialog";
+import { toast } from "sonner";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface TeamContext {
   teamName: string;
@@ -40,6 +47,7 @@ interface TeamAsset {
   file_type: string | null;
   loom_url: string | null;
   external_url: string | null;
+  order_index?: number;
 }
 
 // Category configs with colors
@@ -124,34 +132,147 @@ function VideoModal({ asset, onClose }: { asset: TeamAsset; onClose: () => void 
   );
 }
 
+// Sortable Asset Item
+function SortableAssetItem({ 
+  asset, 
+  canManage,
+  onPlayVideo,
+  onEdit,
+  onDelete
+}: { 
+  asset: TeamAsset;
+  canManage: boolean;
+  onPlayVideo: (asset: TeamAsset) => void;
+  onEdit: (asset: TeamAsset) => void;
+  onDelete: (asset: TeamAsset) => void;
+}) {
+  const videoUrl = asset.loom_url || asset.external_url || "";
+  const isVideo = getVideoEmbedUrl(videoUrl) !== null;
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: asset.id, disabled: !canManage });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleClick = () => {
+    if (isVideo) {
+      onPlayVideo(asset);
+    } else if (asset.external_url) {
+      window.open(asset.external_url, "_blank");
+    } else if (asset.loom_url) {
+      window.open(asset.loom_url, "_blank");
+    }
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group flex items-center gap-2 py-2.5 px-2 hover:bg-muted/40 rounded-lg transition-all"
+    >
+      {canManage && (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity touch-none shrink-0"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+      )}
+      
+      <div 
+        className="flex-1 flex items-center gap-3 cursor-pointer min-w-0"
+        onClick={handleClick}
+      >
+        {isVideo ? (
+          <Play className="h-4 w-4 text-primary shrink-0" />
+        ) : (
+          <LinkIcon className="h-4 w-4 text-primary shrink-0" />
+        )}
+        <span className="flex-1 text-sm font-medium group-hover:text-primary transition-colors truncate">
+          {asset.title}
+        </span>
+        {isVideo && (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 opacity-60 group-hover:opacity-100 shrink-0">
+            VIDEO
+          </Badge>
+        )}
+      </div>
+
+      {canManage && (
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(asset);
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(asset);
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Category Section Component
 function CategorySection({ 
   category, 
   assets, 
   onPlayVideo,
   onAddAsset,
+  onEdit,
+  onDelete,
+  onReorder,
   canManage
 }: { 
   category: typeof CATEGORY_CONFIG[string] & { id: string };
   assets: TeamAsset[];
   onPlayVideo: (asset: TeamAsset) => void;
   onAddAsset: (categoryId: string) => void;
+  onEdit: (asset: TeamAsset) => void;
+  onDelete: (asset: TeamAsset) => void;
+  onReorder: (assets: TeamAsset[]) => void;
   canManage: boolean;
 }) {
   const Icon = category.icon;
 
-  const isVideo = (asset: TeamAsset) => {
-    const url = asset.loom_url || asset.external_url || "";
-    return getVideoEmbedUrl(url) !== null;
-  };
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
-  const handleAssetClick = (asset: TeamAsset) => {
-    if (isVideo(asset)) {
-      onPlayVideo(asset);
-    } else if (asset.external_url) {
-      window.open(asset.external_url, "_blank");
-    } else if (asset.loom_url) {
-      window.open(asset.loom_url, "_blank");
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = assets.findIndex((a) => a.id === active.id);
+      const newIndex = assets.findIndex((a) => a.id === over.id);
+      onReorder(arrayMove(assets, oldIndex, newIndex));
     }
   };
 
@@ -183,32 +304,26 @@ function CategorySection({
             No {category.label.toLowerCase()} materials yet.
           </p>
         ) : (
-          <div className="space-y-1">
-            {assets.map((asset) => {
-              const videoAsset = isVideo(asset);
-              return (
-                <div
-                  key={asset.id}
-                  className="group flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-muted/40 rounded-lg transition-all"
-                  onClick={() => handleAssetClick(asset)}
-                >
-                  {videoAsset ? (
-                    <Play className="h-4 w-4 text-primary shrink-0" />
-                  ) : (
-                    <LinkIcon className="h-4 w-4 text-primary shrink-0" />
-                  )}
-                  <span className="flex-1 text-sm font-medium group-hover:text-primary transition-colors truncate">
-                    {asset.title}
-                  </span>
-                  {videoAsset && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 opacity-60 group-hover:opacity-100">
-                      VIDEO
-                    </Badge>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={assets.map(a => a.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-0.5">
+                {assets.map((asset) => (
+                  <SortableAssetItem
+                    key={asset.id}
+                    asset={asset}
+                    canManage={canManage}
+                    onPlayVideo={onPlayVideo}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
       </CardContent>
     </Card>
@@ -223,6 +338,8 @@ export function TeamHubOverview() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("training");
   const [videoModal, setVideoModal] = useState<TeamAsset | null>(null);
+  const [editAsset, setEditAsset] = useState<TeamAsset | null>(null);
+  const [localAssets, setLocalAssets] = useState<TeamAsset[]>([]);
 
   // Fetch team stats
   const { data: stats, isLoading: loadingStats } = useQuery({
@@ -252,9 +369,11 @@ export function TeamHubOverview() {
         .from("team_assets")
         .select("*")
         .eq("team_id", teamId)
+        .order("category")
         .order("order_index", { ascending: true });
       
       if (error) throw error;
+      setLocalAssets(data as TeamAsset[]);
       return data as TeamAsset[];
     },
     enabled: !!teamId,
@@ -285,7 +404,7 @@ export function TeamHubOverview() {
   };
 
   const getAssetsByCategory = (categoryId: string) => {
-    return (assets || []).filter(a => a.category === categoryId);
+    return (localAssets || []).filter(a => a.category === categoryId);
   };
 
   const openUploadWithCategory = (categoryId: string) => {
@@ -293,9 +412,52 @@ export function TeamHubOverview() {
     setUploadDialogOpen(true);
   };
 
+  const handleDelete = async (asset: TeamAsset) => {
+    if (!confirm("Are you sure you want to delete this asset?")) return;
+
+    try {
+      if (asset.file_path) {
+        await supabase.storage.from("team-assets").remove([asset.file_path]);
+      }
+
+      const { error } = await supabase
+        .from("team_assets")
+        .delete()
+        .eq("id", asset.id);
+
+      if (error) throw error;
+      toast.success("Asset deleted");
+      refetchAssets();
+    } catch (error) {
+      console.error("Error deleting asset:", error);
+      toast.error("Failed to delete asset");
+    }
+  };
+
+  const handleReorder = async (reorderedAssets: TeamAsset[]) => {
+    // Optimistically update local state
+    setLocalAssets(prev => {
+      const otherAssets = prev.filter(a => a.category !== reorderedAssets[0]?.category);
+      return [...otherAssets, ...reorderedAssets];
+    });
+
+    // Persist to database
+    try {
+      for (let i = 0; i < reorderedAssets.length; i++) {
+        await supabase
+          .from("team_assets")
+          .update({ order_index: i })
+          .eq("id", reorderedAssets[i].id);
+      }
+    } catch (error) {
+      console.error("Error reordering assets:", error);
+      toast.error("Failed to reorder assets");
+      refetchAssets();
+    }
+  };
+
   const canManage = isAdmin || role === 'offer_owner' || role === 'admin';
 
-  // Categories in display order
   // Resources first (full width), then others in grid
   const topCategory = 'resources';
   const gridCategories = ['client_onboarding', 'team_onboarding', 'tracking', 'training'];
@@ -423,6 +585,9 @@ export function TeamHubOverview() {
             assets={getAssetsByCategory(topCategory)}
             onPlayVideo={(asset) => setVideoModal(asset)}
             onAddAsset={openUploadWithCategory}
+            onEdit={(asset) => setEditAsset(asset)}
+            onDelete={handleDelete}
+            onReorder={handleReorder}
             canManage={canManage}
           />
 
@@ -435,6 +600,9 @@ export function TeamHubOverview() {
                 assets={getAssetsByCategory(categoryId)}
                 onPlayVideo={(asset) => setVideoModal(asset)}
                 onAddAsset={openUploadWithCategory}
+                onEdit={(asset) => setEditAsset(asset)}
+                onDelete={handleDelete}
+                onReorder={handleReorder}
                 canManage={canManage}
               />
             ))}
@@ -445,6 +613,16 @@ export function TeamHubOverview() {
       {/* Video Modal */}
       {videoModal && (
         <VideoModal asset={videoModal} onClose={() => setVideoModal(null)} />
+      )}
+
+      {/* Edit Dialog */}
+      {editAsset && (
+        <EditAssetDialog
+          open={!!editAsset}
+          onOpenChange={(open) => !open && setEditAsset(null)}
+          asset={editAsset}
+          onSuccess={() => refetchAssets()}
+        />
       )}
 
       {/* Upload Dialog */}
