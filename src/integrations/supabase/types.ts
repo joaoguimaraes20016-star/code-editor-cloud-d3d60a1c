@@ -1159,6 +1159,69 @@ export type Database = {
           },
         ]
       }
+      message_logs: {
+        Row: {
+          automation_id: string | null
+          channel: string
+          created_at: string
+          error_message: string | null
+          from_address: string | null
+          id: string
+          payload: Json
+          provider: string
+          run_id: string | null
+          status: string
+          team_id: string
+          template: string | null
+          to_address: string
+        }
+        Insert: {
+          automation_id?: string | null
+          channel: string
+          created_at?: string
+          error_message?: string | null
+          from_address?: string | null
+          id?: string
+          payload?: Json
+          provider: string
+          run_id?: string | null
+          status?: string
+          team_id: string
+          template?: string | null
+          to_address: string
+        }
+        Update: {
+          automation_id?: string | null
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          from_address?: string | null
+          id?: string
+          payload?: Json
+          provider?: string
+          run_id?: string | null
+          status?: string
+          team_id?: string
+          template?: string | null
+          to_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_logs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_logs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mrr_commissions: {
         Row: {
           appointment_id: string | null

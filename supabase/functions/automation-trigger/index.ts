@@ -88,6 +88,10 @@ interface StepExecutionLog {
   ownerId?: string;
   stageId?: string;
   error?: string;
+  // SMS fields
+  to?: string;
+  messageId?: string;
+  renderedBody?: string;
 }
 
 interface TriggerResponse {
@@ -310,37 +314,106 @@ async function getAutomationsForTrigger(
   }
 }
 
-// --- Log Automation Run ---
-async function logAutomationRun(
+// --- Create Automation Run (returns run_id) ---
+async function createAutomationRun(
   supabase: any,
   params: {
     automationId: string;
     teamId: string;
     triggerType: TriggerType;
-    status: "success" | "error";
-    errorMessage?: string;
-    stepsExecuted: StepExecutionLog[];
     context?: AutomationContext;
   }
-): Promise<void> {
+): Promise<string | null> {
   try {
-    const { error } = await supabase.from("automation_runs").insert([{
+    const { data, error } = await supabase.from("automation_runs").insert([{
       automation_id: params.automationId,
       team_id: params.teamId,
       trigger_type: params.triggerType,
+      status: "running",
+      steps_executed: [],
+      context_snapshot: params.context ? JSON.parse(JSON.stringify(params.context)) : null,
+    }]).select('id').single();
+
+    if (error) {
+      console.error("[Automation Trigger] Error creating run:", error);
+      return null;
+    }
+    return data?.id || null;
+  } catch (err) {
+    console.error("[Automation Trigger] Unexpected error creating run:", err);
+    return null;
+  }
+}
+
+// --- Update Automation Run ---
+async function updateAutomationRun(
+  supabase: any,
+  runId: string,
+  params: {
+    status: "success" | "error";
+    errorMessage?: string;
+    stepsExecuted: StepExecutionLog[];
+  }
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from("automation_runs")
+      .update({
+        status: params.status,
+        error_message: params.errorMessage || null,
+        steps_executed: JSON.parse(JSON.stringify(params.stepsExecuted)),
+      })
+      .eq('id', runId);
+
+    if (error) {
+      console.error("[Automation Trigger] Error updating run:", error);
+    } else {
+      console.log(`[Automation Trigger] Updated run ${runId}`);
+    }
+  } catch (err) {
+    console.error("[Automation Trigger] Unexpected error updating run:", err);
+  }
+}
+
+// --- Log Message to message_logs ---
+async function logMessage(
+  supabase: any,
+  params: {
+    teamId: string;
+    automationId: string;
+    runId: string | null;
+    channel: string;
+    provider: string;
+    toAddress: string;
+    fromAddress?: string;
+    template?: string;
+    payload: Record<string, any>;
+    status: "queued" | "sent" | "failed";
+    errorMessage?: string;
+  }
+): Promise<void> {
+  try {
+    const { error } = await supabase.from("message_logs").insert([{
+      team_id: params.teamId,
+      automation_id: params.automationId,
+      run_id: params.runId,
+      channel: params.channel,
+      provider: params.provider,
+      to_address: params.toAddress,
+      from_address: params.fromAddress || null,
+      template: params.template || null,
+      payload: params.payload,
       status: params.status,
       error_message: params.errorMessage || null,
-      steps_executed: JSON.parse(JSON.stringify(params.stepsExecuted)),
-      context_snapshot: params.context ? JSON.parse(JSON.stringify(params.context)) : null,
     }]);
 
     if (error) {
-      console.error("[Automation Trigger] Error logging run:", error);
+      console.error("[Automation Trigger] Error logging message:", error);
     } else {
-      console.log(`[Automation Trigger] Logged run for automation ${params.automationId}`);
+      console.log(`[Automation Trigger] Logged ${params.channel} message to ${params.toAddress}`);
     }
   } catch (err) {
-    console.error("[Automation Trigger] Unexpected error logging run:", err);
+    console.error("[Automation Trigger] Unexpected error logging message:", err);
   }
 }
 
@@ -358,11 +431,20 @@ function extractTemplateVariables(
   return variables;
 }
 
+// --- Render Template ---
+function renderTemplate(template: string, context: AutomationContext): string {
+  return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+    const value = getFieldValue(context, path.trim());
+    return value !== undefined ? String(value) : match;
+  });
+}
+
 // --- Run Automation ---
 async function runAutomation(
   automation: AutomationDefinition,
   context: AutomationContext,
-  supabase: any
+  supabase: any,
+  runId: string | null
 ): Promise<StepExecutionLog[]> {
   const logs: StepExecutionLog[] = [];
 
@@ -391,17 +473,59 @@ async function runAutomation(
     switch (step.type) {
       case "send_message": {
         const channel = step.config.channel || "sms";
-        const template = step.config.template || "";
-        const provider = channel === "sms" ? "twilio" : channel === "email" ? "resend" : "noop";
+        const template = step.config.template || step.config.body || "";
+        
+        // Use stub provider for now (no external API calls)
+        const provider = "stub";
+        
+        // Get recipient phone from context
+        const toPhone = context.lead?.phone || context.appointment?.lead_phone || step.config.to || "";
+        
+        // Render the template with context variables
+        const renderedBody = renderTemplate(template, context);
+        
+        // Generate fake message ID for stub mode
+        const messageId = `stub_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
         log.channel = channel;
         log.provider = provider;
+        log.to = toPhone;
+        log.messageId = messageId;
+        log.renderedBody = renderedBody;
         log.templateVariables = extractTemplateVariables(template, context);
 
-        console.log(`[Automation] WOULD send ${channel} via ${provider}:`, {
+        console.log(`[Automation] Sending ${channel} via ${provider}:`, {
+          to: toPhone,
           template,
-          variables: log.templateVariables,
+          renderedBody,
+          messageId,
         });
+
+        // Log to message_logs table (non-blocking)
+        if (channel === "sms" && toPhone) {
+          try {
+            await logMessage(supabase, {
+              teamId: context.teamId,
+              automationId: automation.id,
+              runId,
+              channel: "sms",
+              provider,
+              toAddress: toPhone,
+              template,
+              payload: {
+                to: toPhone,
+                body: renderedBody,
+                templateVariables: log.templateVariables,
+                leadId: context.lead?.id,
+                appointmentId: context.appointment?.id,
+              },
+              status: "sent",
+            });
+          } catch (msgErr) {
+            console.error("[Automation] Error logging SMS to message_logs:", msgErr);
+            // Non-blocking: don't fail the step
+          }
+        }
         break;
       }
 
@@ -621,8 +745,16 @@ Deno.serve(async (req) => {
       let errorMessage: string | undefined;
       let stepLogs: StepExecutionLog[] = [];
 
+      // Create run first to get run_id
+      const runId = await createAutomationRun(supabase, {
+        automationId: automation.id,
+        teamId,
+        triggerType,
+        context,
+      });
+
       try {
-        stepLogs = await runAutomation(automation, context, supabase);
+        stepLogs = await runAutomation(automation, context, supabase, runId);
         allStepsExecuted.push(...stepLogs);
       } catch (err) {
         status = "error";
@@ -630,16 +762,14 @@ Deno.serve(async (req) => {
         console.error(`[Automation Trigger] Error running automation ${automation.id}:`, err);
       }
 
-      // Log the automation run to the database
-      await logAutomationRun(supabase, {
-        automationId: automation.id,
-        teamId,
-        triggerType,
-        status,
-        errorMessage,
-        stepsExecuted: stepLogs,
-        context,
-      });
+      // Update the automation run with final status and steps
+      if (runId) {
+        await updateAutomationRun(supabase, runId, {
+          status,
+          errorMessage,
+          stepsExecuted: stepLogs,
+        });
+      }
     }
 
     const response: TriggerResponse = {

@@ -1,11 +1,12 @@
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Zap, GitBranch, Workflow, Bot, History } from "lucide-react";
+import { Zap, GitBranch, Workflow, Bot, History, MessageSquare } from "lucide-react";
 import { TaskFlowBuilder } from "@/components/TaskFlowBuilder";
 import { FollowUpSettings } from "@/components/FollowUpSettings";
 import { ActionPipelineMappings } from "@/components/ActionPipelineMappings";
 import { AutomationsList } from "@/components/automations/AutomationsList";
 import { AutomationRunsList } from "@/components/automations/AutomationRunsList";
+import { MessageLogsList } from "@/components/automations/MessageLogsList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Workflows() {
@@ -32,9 +33,13 @@ export default function Workflows() {
             <Bot className="h-4 w-4" />
             Automations
           </TabsTrigger>
-          <TabsTrigger value="history" className="gap-2">
+        <TabsTrigger value="history" className="gap-2">
             <History className="h-4 w-4" />
             History
+          </TabsTrigger>
+          <TabsTrigger value="messages" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Messages
           </TabsTrigger>
           <TabsTrigger value="confirmations" className="gap-2">
             <Zap className="h-4 w-4" />
@@ -58,6 +63,11 @@ export default function Workflows() {
         {/* History Tab */}
         <TabsContent value="history" className="space-y-4">
           <AutomationRunsList teamId={teamId} />
+        </TabsContent>
+
+        {/* Messages Tab */}
+        <TabsContent value="messages" className="space-y-4">
+          <MessageLogsList teamId={teamId} />
         </TabsContent>
 
         {/* Call Confirmation Flow */}
