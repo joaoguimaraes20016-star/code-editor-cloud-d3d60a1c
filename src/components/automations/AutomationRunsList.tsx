@@ -84,6 +84,9 @@ export default function AutomationRunsList({ teamId }: { teamId: string }) {
               return (
                 <div key={r.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
                   <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-white/70">
+                      {r.automation_id ? r.automation_id.slice(0, 8) : "Template Automation"}
+                    </span>
                     <span className="text-xs rounded-full bg-white/10 px-2 py-1">{r.trigger_type}</span>
                     <span
                       className={`text-xs rounded-full px-2 py-1 ${
@@ -91,7 +94,9 @@ export default function AutomationRunsList({ teamId }: { teamId: string }) {
                           ? "bg-emerald-500/20 text-emerald-200"
                           : r.status === "error"
                             ? "bg-red-500/20 text-red-200"
-                            : "bg-white/10 text-white/80"
+                            : r.status === "running"
+                              ? "bg-yellow-500/20 text-yellow-200"
+                              : "bg-white/10 text-white/80"
                       }`}
                     >
                       {r.status}

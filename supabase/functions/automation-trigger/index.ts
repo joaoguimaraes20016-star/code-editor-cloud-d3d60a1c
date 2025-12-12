@@ -326,7 +326,7 @@ async function createAutomationRun(
           automation_id: params.automationId ?? null, // IMPORTANT: allow null
           team_id: params.teamId,
           trigger_type: params.triggerType,
-          status: "success", // IMPORTANT: don't use "running" unless DB allows it
+          status: "running", // Set to running initially, update to success/error after completion
           steps_executed: [],
           context_snapshot: params.context ? JSON.parse(JSON.stringify(params.context)) : null,
         },
