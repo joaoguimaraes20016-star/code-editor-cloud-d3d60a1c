@@ -570,4 +570,13 @@ const Dashboard = () => {
                       className="gap-2 bg-slate-50 text-slate-950 hover:bg-slate-200"
                       onClick={() => setDialogOpen(true)}
                     >
-                      <Plus className="
+<Plus className="h-3.5 w-3.5" />
+      Create your first team
+    </Button>
+  ) : (
+    <p className="text-xs text-slate-500">
+      You don't have permission to create teams. Ask your operator for access.
+    </p>
+  )}
+</CardContent>
+</Card>
