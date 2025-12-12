@@ -1,10 +1,10 @@
-import { runAutomationsForTrigger } from "@/lib/automations/engine";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Zap, GitBranch, Workflow } from "lucide-react";
+import { Zap, GitBranch, Workflow, Bot } from "lucide-react";
 import { TaskFlowBuilder } from "@/components/TaskFlowBuilder";
 import { FollowUpSettings } from "@/components/FollowUpSettings";
 import { ActionPipelineMappings } from "@/components/ActionPipelineMappings";
+import { AutomationsList } from "@/components/automations/AutomationsList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Workflows() {
@@ -13,30 +13,9 @@ export default function Workflows() {
   if (!teamId) {
     return <div className="p-8 text-center text-muted-foreground">Team not found</div>;
   }
-  // TEMP DEV BUTTON: Fire a test automation trigger manually
-  const handleTestAutomation = async () => {
-    await runAutomationsForTrigger({
-      teamId,
-      triggerType: "appointment_booked",
-      eventPayload: {
-        appointment: {
-          id: "test-appointment",
-          lead_name: "Test Lead",
-          start_at_utc: new Date().toISOString(),
-        },
-      },
-    });
-
-    console.log("[DEV] Test automation trigger fired.");
-  };
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <button onClick={handleTestAutomation} className="border px-3 py-1 text-xs rounded-md bg-muted hover:bg-muted/70">
-        Run test automation trigger
-      </button>
-
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold flex items-center gap-2">
           <Workflow className="h-6 w-6 text-primary" />
@@ -46,8 +25,12 @@ export default function Workflows() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="confirmations" className="space-y-6">
+      <Tabs defaultValue="automations" className="space-y-6">
         <TabsList className="bg-muted/50">
+          <TabsTrigger value="automations" className="gap-2">
+            <Bot className="h-4 w-4" />
+            Automations
+          </TabsTrigger>
           <TabsTrigger value="confirmations" className="gap-2">
             <Zap className="h-4 w-4" />
             Call Confirmations
@@ -61,6 +44,11 @@ export default function Workflows() {
             Pipeline Actions
           </TabsTrigger>
         </TabsList>
+
+        {/* Automations Tab */}
+        <TabsContent value="automations" className="space-y-4">
+          <AutomationsList teamId={teamId} />
+        </TabsContent>
 
         {/* Call Confirmation Flow */}
         <TabsContent value="confirmations" className="space-y-4">
