@@ -68,3 +68,6 @@ verify_jwt = true
 
 [functions.caddy-verify-domain]
 verify_jwt = false
+
+[functions.automation-trigger]
+verify_jwt = false
