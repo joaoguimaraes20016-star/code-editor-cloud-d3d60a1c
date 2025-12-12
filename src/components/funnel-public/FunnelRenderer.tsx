@@ -283,6 +283,10 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       return;
     }
     pendingSaveRef.current = true;
+    
+    // Generate unique client request ID for debugging duplicate calls
+    const clientRequestId = crypto.randomUUID();
+    console.log(`[saveLead] clientRequestId=${clientRequestId}, isComplete=${isComplete}`);
 
     try {
       const { data, error } = await supabase.functions.invoke('submit-funnel-lead', {
@@ -295,6 +299,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
           utm_campaign: utmCampaign,
           calendly_booking: calendlyBookingRef.current,
           is_complete: isComplete,
+          clientRequestId, // For debugging
         },
       });
 

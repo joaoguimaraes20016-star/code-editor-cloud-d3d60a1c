@@ -48,6 +48,9 @@ Deno.serve(async (req) => {
     const body: FunnelLeadRequest = await req.json();
     const { funnel_id, lead_id, answers, utm_source, utm_medium, utm_campaign, is_complete, last_step_index } = body;
     const calendly_booking = body.calendly_booking || body.calendly_booking_data;
+    
+    // Client request ID for debugging duplicate calls
+    const clientRequestId = (body as any).clientRequestId || "no-id";
 
     // Extract direct fields sent from serve-funnel client
     const directEmail = body.email;
@@ -55,16 +58,14 @@ Deno.serve(async (req) => {
     const directName = body.name;
     const directOptIn = body.opt_in;
 
-    console.log("Received funnel lead submission:", {
+    console.log("[submit-funnel-lead] called", {
+      clientRequestId,
       funnel_id,
       lead_id,
-      utm_source,
-      has_calendly: !!calendly_booking,
       is_complete,
-      directEmail,
-      directPhone,
-      directName,
-      directOptIn,
+      email: directEmail,
+      phone: directPhone,
+      ts: new Date().toISOString(),
     });
 
     if (!funnel_id || !answers) {
@@ -289,24 +290,28 @@ Deno.serve(async (req) => {
           });
         }
         lead = newLead;
-        console.log("Lead created successfully:", lead.id);
+        console.log("Lead created successfully:", lead.id, "is_complete:", is_complete);
 
-        // Trigger lead_created automation for NEW leads only (not deduped ones)
-        try {
-          const eventId = `lead_created:${newLead.id}`;
+        // ONLY trigger lead_created automation on FINAL complete submission
+        // Progressive saves (is_complete=false) do NOT trigger automations
+        // This prevents 3x triggers from progressive saves + final save
+        if (is_complete) {
+          try {
+            const eventId = `lead_created:${newLead.id}`;
 
-          await supabase.functions.invoke("automation-trigger", {
-            body: {
-              triggerType: "lead_created",
-              teamId: funnel.team_id,
-              eventId,
-              eventPayload: { lead: newLead },
-            },
-          });
+            await supabase.functions.invoke("automation-trigger", {
+              body: {
+                triggerType: "lead_created",
+                teamId: funnel.team_id,
+                eventId,
+                eventPayload: { lead: newLead },
+              },
+            });
 
-          console.log("Lead created automation triggered for:", newLead.id);
-        } catch (automationError) {
-          console.error("Automation trigger error (non-blocking):", automationError);
+            console.log("Lead created automation triggered for:", newLead.id);
+          } catch (automationError) {
+            console.error("Automation trigger error (non-blocking):", automationError);
+          }
         }
       }
     }
