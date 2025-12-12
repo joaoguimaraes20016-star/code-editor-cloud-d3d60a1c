@@ -689,6 +689,13 @@ Deno.serve(async (req) => {
     const body: TriggerRequest = await req.json();
 
     const { triggerType, teamId, automationId, eventPayload, eventId } = body as any;
+    console.log("[automation-trigger] incoming", {
+      triggerType,
+      teamId,
+      automationId,
+      eventId,
+      leadId: (eventPayload as any)?.lead?.id,
+    });
 
     if (!triggerType || !teamId) {
       return new Response(
