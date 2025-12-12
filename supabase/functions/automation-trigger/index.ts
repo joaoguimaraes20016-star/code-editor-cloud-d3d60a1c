@@ -110,10 +110,7 @@ function getSupabaseClient() {
 }
 
 // --- Context Builder ---
-function buildAutomationContext(
-  triggerType: TriggerType,
-  payload: Record<string, any>
-): AutomationContext {
+function buildAutomationContext(triggerType: TriggerType, payload: Record<string, any>): AutomationContext {
   const { teamId } = payload;
   return {
     teamId,
@@ -138,10 +135,7 @@ function getFieldValue(context: Record<string, any>, path: string): any {
   return value;
 }
 
-function evaluateCondition(
-  condition: AutomationCondition,
-  context: Record<string, any>
-): boolean {
+function evaluateCondition(condition: AutomationCondition, context: Record<string, any>): boolean {
   const actual = getFieldValue(context, condition.field);
   const expected = condition.value;
 
@@ -166,7 +160,7 @@ function evaluateCondition(
 function evaluateConditions(
   conditions: AutomationCondition[] | undefined,
   context: Record<string, any>,
-  logic: "AND" | "OR" = "AND"
+  logic: "AND" | "OR" = "AND",
 ): boolean {
   if (!conditions || conditions.length === 0) return true;
   if (logic === "AND") {
@@ -268,7 +262,7 @@ function getDefaultTemplateAutomations(teamId: string): AutomationDefinition[] {
 async function getAutomationsForTrigger(
   supabase: any,
   teamId: string,
-  triggerType: TriggerType
+  triggerType: TriggerType,
 ): Promise<AutomationDefinition[]> {
   try {
     const { data, error } = await supabase
@@ -281,7 +275,7 @@ async function getAutomationsForTrigger(
     if (error) {
       console.error("[Automation Trigger] Error fetching automations:", error);
       return getDefaultTemplateAutomations(teamId).filter(
-        (a) => a.trigger?.type === triggerType || a.triggerType === triggerType
+        (a) => a.trigger?.type === triggerType || a.triggerType === triggerType,
       );
     }
 
@@ -304,12 +298,12 @@ async function getAutomationsForTrigger(
 
     console.log("[Automation Trigger] No DB automations found, using templates");
     return getDefaultTemplateAutomations(teamId).filter(
-      (a) => a.trigger?.type === triggerType || a.triggerType === triggerType
+      (a) => a.trigger?.type === triggerType || a.triggerType === triggerType,
     );
   } catch (err) {
     console.error("[Automation Trigger] Unexpected error fetching automations:", err);
     return getDefaultTemplateAutomations(teamId).filter(
-      (a) => a.trigger?.type === triggerType || a.triggerType === triggerType
+      (a) => a.trigger?.type === triggerType || a.triggerType === triggerType,
     );
   }
 }
@@ -318,26 +312,33 @@ async function getAutomationsForTrigger(
 async function createAutomationRun(
   supabase: any,
   params: {
-    automationId: string;
+    automationId?: string | null;
     teamId: string;
     triggerType: TriggerType;
     context?: AutomationContext;
-  }
+  },
 ): Promise<string | null> {
   try {
-    const { data, error } = await supabase.from("automation_runs").insert([{
-      automation_id: params.automationId,
-      team_id: params.teamId,
-      trigger_type: params.triggerType,
-      status: "running",
-      steps_executed: [],
-      context_snapshot: params.context ? JSON.parse(JSON.stringify(params.context)) : null,
-    }]).select('id').single();
+    const { data, error } = await supabase
+      .from("automation_runs")
+      .insert([
+        {
+          automation_id: params.automationId ?? null, // IMPORTANT: allow null
+          team_id: params.teamId,
+          trigger_type: params.triggerType,
+          status: "success", // IMPORTANT: don't use "running" unless DB allows it
+          steps_executed: [],
+          context_snapshot: params.context ? JSON.parse(JSON.stringify(params.context)) : null,
+        },
+      ])
+      .select("id")
+      .single();
 
     if (error) {
       console.error("[Automation Trigger] Error creating run:", error);
       return null;
     }
+
     return data?.id || null;
   } catch (err) {
     console.error("[Automation Trigger] Unexpected error creating run:", err);
@@ -353,7 +354,7 @@ async function updateAutomationRun(
     status: "success" | "error";
     errorMessage?: string;
     stepsExecuted: StepExecutionLog[];
-  }
+  },
 ): Promise<void> {
   try {
     const { error } = await supabase
@@ -363,7 +364,7 @@ async function updateAutomationRun(
         error_message: params.errorMessage || null,
         steps_executed: JSON.parse(JSON.stringify(params.stepsExecuted)),
       })
-      .eq('id', runId);
+      .eq("id", runId);
 
     if (error) {
       console.error("[Automation Trigger] Error updating run:", error);
@@ -390,22 +391,24 @@ async function logMessage(
     payload: Record<string, any>;
     status: "queued" | "sent" | "failed";
     errorMessage?: string;
-  }
+  },
 ): Promise<void> {
   try {
-    const { error } = await supabase.from("message_logs").insert([{
-      team_id: params.teamId,
-      automation_id: params.automationId,
-      run_id: params.runId,
-      channel: params.channel,
-      provider: params.provider,
-      to_address: params.toAddress,
-      from_address: params.fromAddress || null,
-      template: params.template || null,
-      payload: params.payload,
-      status: params.status,
-      error_message: params.errorMessage || null,
-    }]);
+    const { error } = await supabase.from("message_logs").insert([
+      {
+        team_id: params.teamId,
+        automation_id: params.automationId,
+        run_id: params.runId,
+        channel: params.channel,
+        provider: params.provider,
+        to_address: params.toAddress,
+        from_address: params.fromAddress || null,
+        template: params.template || null,
+        payload: params.payload,
+        status: params.status,
+        error_message: params.errorMessage || null,
+      },
+    ]);
 
     if (error) {
       console.error("[Automation Trigger] Error logging message:", error);
@@ -418,10 +421,7 @@ async function logMessage(
 }
 
 // --- Template Variable Extraction (for logging) ---
-function extractTemplateVariables(
-  template: string,
-  context: AutomationContext
-): Record<string, any> {
+function extractTemplateVariables(template: string, context: AutomationContext): Record<string, any> {
   const matches = template.match(/\{\{([^}]+)\}\}/g) || [];
   const variables: Record<string, any> = {};
   for (const match of matches) {
@@ -444,7 +444,7 @@ async function runAutomation(
   automation: AutomationDefinition,
   context: AutomationContext,
   supabase: any,
-  runId: string | null
+  runId: string | null,
 ): Promise<StepExecutionLog[]> {
   const logs: StepExecutionLog[] = [];
 
@@ -574,10 +574,7 @@ async function runAutomation(
             log.skipReason = "no_lead_id_in_context";
           } else {
             try {
-              const { error } = await supabase
-                .from("contacts")
-                .update({ owner_id: ownerId })
-                .eq("id", leadId);
+              const { error } = await supabase.from("contacts").update({ owner_id: ownerId }).eq("id", leadId);
               if (error) {
                 console.error(`[Automation] assign_owner lead update error:`, error);
                 log.error = error.message;
@@ -597,10 +594,7 @@ async function runAutomation(
             log.skipReason = "no_deal_id_in_context";
           } else {
             try {
-              const { error } = await supabase
-                .from("appointments")
-                .update({ closer_id: ownerId })
-                .eq("id", dealId);
+              const { error } = await supabase.from("appointments").update({ closer_id: ownerId }).eq("id", dealId);
               if (error) {
                 console.error(`[Automation] assign_owner deal update error:`, error);
                 log.error = error.message;
@@ -630,10 +624,7 @@ async function runAutomation(
             log.skipReason = "no_lead_id_in_context";
           } else {
             try {
-              const { error } = await supabase
-                .from("contacts")
-                .update({ stage_id: stageId })
-                .eq("id", leadId);
+              const { error } = await supabase.from("contacts").update({ stage_id: stageId }).eq("id", leadId);
               if (error) {
                 console.error(`[Automation] update_stage lead update error:`, error);
                 log.error = error.message;
@@ -700,7 +691,7 @@ Deno.serve(async (req) => {
           status: "error",
           error: "Missing triggerType or teamId",
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -723,7 +714,7 @@ Deno.serve(async (req) => {
     // Run each automation and log the run
     for (const automation of automations) {
       automationsRun.push(automation.id);
-      
+
       let status: "success" | "error" = "success";
       let errorMessage: string | undefined;
       let stepLogs: StepExecutionLog[] = [];
@@ -774,7 +765,7 @@ Deno.serve(async (req) => {
         status: "error",
         error: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
