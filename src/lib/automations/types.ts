@@ -17,7 +17,21 @@ export type ActionType =
   | 'notify_team'
   | 'enqueue_dialer'      // generic power dialer
   | 'time_delay'          // wait before next action
-  | 'custom_webhook';
+  | 'custom_webhook'
+  | 'assign_owner'        // set owner_id on lead or deal
+  | 'update_stage';       // set stage_id on lead or deal
+
+export type CrmEntity = 'lead' | 'deal';
+
+export interface AssignOwnerConfig {
+  entity: CrmEntity;
+  ownerId: string;
+}
+
+export interface UpdateStageConfig {
+  entity: CrmEntity;
+  stageId: string;
+}
 
 export interface AutomationCondition {
   field: string; // e.g. 'lead.status'

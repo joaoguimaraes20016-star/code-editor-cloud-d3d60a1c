@@ -24,7 +24,11 @@ type ActionType =
   | "notify_team"
   | "enqueue_dialer"
   | "time_delay"
-  | "custom_webhook";
+  | "custom_webhook"
+  | "assign_owner"
+  | "update_stage";
+
+type CrmEntity = "lead" | "deal";
 
 interface AutomationCondition {
   field: string;
@@ -79,6 +83,11 @@ interface StepExecutionLog {
   templateVariables?: Record<string, any>;
   skipped: boolean;
   skipReason?: string;
+  // CRM action fields
+  entity?: CrmEntity;
+  ownerId?: string;
+  stageId?: string;
+  error?: string;
 }
 
 interface TriggerResponse {
@@ -350,10 +359,11 @@ function extractTemplateVariables(
 }
 
 // --- Run Automation ---
-function runAutomation(
+async function runAutomation(
   automation: AutomationDefinition,
-  context: AutomationContext
-): StepExecutionLog[] {
+  context: AutomationContext,
+  supabase: any
+): Promise<StepExecutionLog[]> {
   const logs: StepExecutionLog[] = [];
 
   console.log(`[Automation] Running "${automation.name}" (${automation.id})`);
@@ -439,6 +449,122 @@ function runAutomation(
         break;
       }
 
+      case "assign_owner": {
+        const entity = step.config.entity as CrmEntity;
+        const ownerId = step.config.ownerId as string;
+        log.entity = entity;
+        log.ownerId = ownerId;
+
+        if (entity === "lead") {
+          const leadId = context.lead?.id;
+          if (!leadId) {
+            console.warn(`[Automation] assign_owner: No lead.id in context, skipping`);
+            log.skipped = true;
+            log.skipReason = "no_lead_id_in_context";
+          } else {
+            try {
+              const { error } = await supabase
+                .from("contacts")
+                .update({ owner_id: ownerId })
+                .eq("id", leadId);
+
+              if (error) {
+                console.error(`[Automation] assign_owner lead update error:`, error);
+                log.error = error.message;
+              } else {
+                console.log(`[Automation] assign_owner: Set lead ${leadId} owner to ${ownerId}`);
+              }
+            } catch (err) {
+              log.error = err instanceof Error ? err.message : "Unknown error";
+              console.error(`[Automation] assign_owner exception:`, err);
+            }
+          }
+        } else if (entity === "deal") {
+          const dealId = context.deal?.id || context.appointment?.id;
+          if (!dealId) {
+            console.warn(`[Automation] assign_owner: No deal/appointment id in context, skipping`);
+            log.skipped = true;
+            log.skipReason = "no_deal_id_in_context";
+          } else {
+            try {
+              const { error } = await supabase
+                .from("appointments")
+                .update({ closer_id: ownerId })
+                .eq("id", dealId);
+
+              if (error) {
+                console.error(`[Automation] assign_owner deal update error:`, error);
+                log.error = error.message;
+              } else {
+                console.log(`[Automation] assign_owner: Set deal ${dealId} owner to ${ownerId}`);
+              }
+            } catch (err) {
+              log.error = err instanceof Error ? err.message : "Unknown error";
+              console.error(`[Automation] assign_owner exception:`, err);
+            }
+          }
+        }
+        break;
+      }
+
+      case "update_stage": {
+        const entity = step.config.entity as CrmEntity;
+        const stageId = step.config.stageId as string;
+        log.entity = entity;
+        log.stageId = stageId;
+
+        if (entity === "lead") {
+          const leadId = context.lead?.id;
+          if (!leadId) {
+            console.warn(`[Automation] update_stage: No lead.id in context, skipping`);
+            log.skipped = true;
+            log.skipReason = "no_lead_id_in_context";
+          } else {
+            try {
+              const { error } = await supabase
+                .from("contacts")
+                .update({ stage_id: stageId })
+                .eq("id", leadId);
+
+              if (error) {
+                console.error(`[Automation] update_stage lead update error:`, error);
+                log.error = error.message;
+              } else {
+                console.log(`[Automation] update_stage: Set lead ${leadId} stage to ${stageId}`);
+              }
+            } catch (err) {
+              log.error = err instanceof Error ? err.message : "Unknown error";
+              console.error(`[Automation] update_stage exception:`, err);
+            }
+          }
+        } else if (entity === "deal") {
+          const dealId = context.deal?.id || context.appointment?.id;
+          if (!dealId) {
+            console.warn(`[Automation] update_stage: No deal/appointment id in context, skipping`);
+            log.skipped = true;
+            log.skipReason = "no_deal_id_in_context";
+          } else {
+            try {
+              const { error } = await supabase
+                .from("appointments")
+                .update({ pipeline_stage: stageId })
+                .eq("id", dealId);
+
+              if (error) {
+                console.error(`[Automation] update_stage deal update error:`, error);
+                log.error = error.message;
+              } else {
+                console.log(`[Automation] update_stage: Set deal ${dealId} stage to ${stageId}`);
+              }
+            } catch (err) {
+              log.error = err instanceof Error ? err.message : "Unknown error";
+              console.error(`[Automation] update_stage exception:`, err);
+            }
+          }
+        }
+        break;
+      }
+
       default:
         console.log(`[Automation] Unknown action type: ${step.type}`);
     }
@@ -496,7 +622,7 @@ Deno.serve(async (req) => {
       let stepLogs: StepExecutionLog[] = [];
 
       try {
-        stepLogs = runAutomation(automation, context);
+        stepLogs = await runAutomation(automation, context, supabase);
         allStepsExecuted.push(...stepLogs);
       } catch (err) {
         status = "error";
