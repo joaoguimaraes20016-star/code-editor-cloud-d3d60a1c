@@ -29,13 +29,30 @@ export interface AutomationActionConfig {
   params: Record<string, any>;
 }
 
+export interface AutomationTrigger {
+  type: TriggerType;
+  config: Record<string, any>;
+}
+
+export interface AutomationStep {
+  id: string;
+  order: number;
+  type: ActionType;
+  config: Record<string, any>;
+  conditions?: AutomationCondition[];
+}
+
 export interface AutomationDefinition {
   id: string;
   teamId: string;
   name: string;
+  description?: string;
   isActive: boolean;
-  triggerType: TriggerType;
-  triggerConfig: Record<string, any>;
-  conditions: AutomationCondition[];
-  actions: AutomationActionConfig[];
+  trigger: AutomationTrigger;
+  steps: AutomationStep[];
+  // Legacy fields for backwards compatibility
+  triggerType?: TriggerType;
+  triggerConfig?: Record<string, any>;
+  conditions?: AutomationCondition[];
+  actions?: AutomationActionConfig[];
 }
