@@ -83,12 +83,10 @@ interface StepExecutionLog {
   templateVariables?: Record<string, any>;
   skipped: boolean;
   skipReason?: string;
-  // CRM action fields
   entity?: CrmEntity;
   ownerId?: string;
   stageId?: string;
   error?: string;
-  // SMS fields
   to?: string;
   messageId?: string;
   renderedBody?: string;
@@ -169,96 +167,7 @@ function evaluateConditions(
   return conditions.some((c) => evaluateCondition(c, context));
 }
 
-// --- Default Template Automations (fallback) ---
-function getDefaultTemplateAutomations(teamId: string): AutomationDefinition[] {
-  return [
-    {
-      id: "template-lead-nurture",
-      teamId,
-      name: "New Lead – 2-Day Nurture",
-      description: "Sends a welcome SMS and a follow-up reminder for new leads.",
-      isActive: true,
-      trigger: { type: "lead_created", config: {} },
-      triggerType: "lead_created",
-      steps: [
-        {
-          id: "step_0",
-          order: 0,
-          type: "send_message",
-          config: {
-            channel: "sms",
-            template: "Hey {{lead.first_name}}, it's {{team.name}}. Got your info – reply YES to confirm.",
-          },
-        },
-        {
-          id: "step_1",
-          order: 1,
-          type: "time_delay",
-          config: { delayHours: 24 },
-        },
-        {
-          id: "step_2",
-          order: 2,
-          type: "send_message",
-          config: {
-            channel: "sms",
-            template: "Still interested in working with us, {{lead.first_name}}?",
-          },
-        },
-      ],
-    },
-    {
-      id: "template-appointment-confirmation",
-      teamId,
-      name: "Appointment Booked – Confirmation",
-      description: "Sends confirmation when appointment is booked.",
-      isActive: true,
-      trigger: { type: "appointment_booked", config: {} },
-      triggerType: "appointment_booked",
-      steps: [
-        {
-          id: "step_0",
-          order: 0,
-          type: "send_message",
-          config: {
-            channel: "sms",
-            template: "Your appointment is confirmed for {{appointment.start_at_utc}}. See you then!",
-          },
-        },
-        {
-          id: "step_1",
-          order: 1,
-          type: "notify_team",
-          config: {
-            message: "New appointment booked: {{lead.name}} at {{appointment.start_at_utc}}",
-          },
-        },
-      ],
-    },
-    {
-      id: "template-no-show-follow-up",
-      teamId,
-      name: "No-Show Follow-Up",
-      description: "Follows up with leads who missed their appointment.",
-      isActive: true,
-      trigger: { type: "appointment_no_show", config: {} },
-      triggerType: "appointment_no_show",
-      steps: [
-        {
-          id: "step_0",
-          order: 0,
-          type: "send_message",
-          config: {
-            channel: "sms",
-            template: "Hey {{lead.first_name}}, we missed you! Want to reschedule?",
-          },
-        },
-      ],
-    },
-  ];
-}
-
-// --- Get Automations from DB ---
+// --- Get Automations from DB ONLY (no templates to prevent duplicates) ---
 async function getAutomationsForTrigger(
   supabase: any,
   teamId: string,
@@ -274,12 +183,11 @@ async function getAutomationsForTrigger(
 
     if (error) {
       console.error("[Automation Trigger] Error fetching automations:", error);
-      // On DB error, return empty - do NOT fall back to templates (prevents duplicates)
       return [];
     }
 
     if (data && data.length > 0) {
-      console.log(`[Automation Trigger] Found ${data.length} automations in DB for ${triggerType}`);
+      console.log(`[Automation Trigger] Found ${data.length} DB automations for ${triggerType}`);
       return data.map((row: any) => {
         const definition = row.definition || {};
         return {
@@ -295,12 +203,50 @@ async function getAutomationsForTrigger(
       });
     }
 
-    // No saved automations - return empty (do NOT use templates to prevent duplicates)
-    console.log(`[Automation Trigger] No DB automations found for ${triggerType}, returning empty`);
+    console.log(`[Automation Trigger] No DB automations found for ${triggerType}`);
     return [];
   } catch (err) {
     console.error("[Automation Trigger] Unexpected error fetching automations:", err);
     return [];
+  }
+}
+
+/**
+ * Per-automation idempotency check.
+ * Composite key: teamId + triggerType + automationKey + eventId
+ * This ensures each automation runs EXACTLY ONCE per event, even if trigger is called multiple times.
+ */
+async function hasAutomationAlreadyRunForEvent(
+  supabase: any,
+  teamId: string,
+  triggerType: TriggerType,
+  automationKey: string,
+  eventId: string,
+): Promise<{ alreadyRan: boolean; existingRunId?: string }> {
+  try {
+    // Query for existing run with matching automationKey AND eventId in context_snapshot
+    const { data, error } = await supabase
+      .from("automation_runs")
+      .select("id")
+      .eq("team_id", teamId)
+      .eq("trigger_type", triggerType)
+      .filter("context_snapshot->>eventId", "eq", eventId)
+      .filter("context_snapshot->>automationKey", "eq", automationKey)
+      .limit(1);
+
+    if (error) {
+      console.error("[Automation Trigger] Idempotency check failed:", error);
+      return { alreadyRan: false }; // On error, allow run (fail open)
+    }
+
+    if (data && data.length > 0) {
+      return { alreadyRan: true, existingRunId: data[0].id };
+    }
+
+    return { alreadyRan: false };
+  } catch (err) {
+    console.error("[Automation Trigger] Idempotency check exception:", err);
+    return { alreadyRan: false };
   }
 }
 
@@ -312,10 +258,18 @@ async function createAutomationRun(
     teamId: string;
     triggerType: TriggerType;
     context?: AutomationContext;
-    eventId?: string | null;
+    eventId: string;
+    automationKey: string;
   },
 ): Promise<string | null> {
   try {
+    // Build context_snapshot with eventId and automationKey for idempotency
+    const contextSnapshot = {
+      ...(params.context ? JSON.parse(JSON.stringify(params.context)) : {}),
+      eventId: params.eventId,
+      automationKey: params.automationKey,
+    };
+
     const { data, error } = await supabase
       .from("automation_runs")
       .insert([
@@ -325,10 +279,7 @@ async function createAutomationRun(
           trigger_type: params.triggerType,
           status: "running",
           steps_executed: [],
-          context_snapshot: (() => {
-            const base = params.context ? JSON.parse(JSON.stringify(params.context)) : {};
-            return params.eventId ? { ...base, eventId: params.eventId } : base;
-          })(),
+          context_snapshot: contextSnapshot,
         },
       ])
       .select("id")
@@ -368,8 +319,6 @@ async function updateAutomationRun(
 
     if (error) {
       console.error("[Automation Trigger] Error updating run:", error);
-    } else {
-      console.log(`[Automation Trigger] Updated run ${runId}`);
     }
   } catch (err) {
     console.error("[Automation Trigger] Unexpected error updating run:", err);
@@ -412,8 +361,6 @@ async function logMessage(
 
     if (error) {
       console.error("[Automation Trigger] Error logging message:", error);
-    } else {
-      console.log(`[Automation Trigger] Logged ${params.channel} message to ${params.toAddress}`);
     }
   } catch (err) {
     console.error("[Automation Trigger] Unexpected error logging message:", err);
@@ -454,7 +401,6 @@ async function runAutomation(
     const conditionsMet = evaluateConditions(step.conditions, context);
 
     if (!conditionsMet) {
-      console.log(`[Automation] Skipping step ${step.id} – conditions not met`);
       logs.push({
         stepId: step.id,
         actionType: step.type,
@@ -486,13 +432,6 @@ async function runAutomation(
         log.renderedBody = renderedBody;
         log.templateVariables = extractTemplateVariables(template, context);
 
-        console.log(`[Automation] Sending ${channel} via ${provider}:`, {
-          to: toPhone,
-          template,
-          renderedBody,
-          messageId,
-        });
-
         if (channel === "sms" && toPhone) {
           try {
             await logMessage(supabase, {
@@ -521,7 +460,6 @@ async function runAutomation(
 
       case "time_delay": {
         const delayHours = step.config.delayHours || 0;
-        console.log(`[Automation] WOULD wait ${delayHours} hours before next step`);
         log.templateVariables = { delayHours };
         break;
       }
@@ -530,18 +468,15 @@ async function runAutomation(
         const message = step.config.message || "";
         log.channel = "in_app";
         log.templateVariables = extractTemplateVariables(message, context);
-        console.log(`[Automation] WOULD notify team:`, { message, variables: log.templateVariables });
         break;
       }
 
       case "add_task": {
-        console.log(`[Automation] WOULD add task:`, step.config);
         log.templateVariables = step.config;
         break;
       }
 
       case "add_tag": {
-        console.log(`[Automation] WOULD add tag:`, step.config);
         log.templateVariables = step.config;
         break;
       }
@@ -549,13 +484,11 @@ async function runAutomation(
       case "enqueue_dialer": {
         log.channel = "voice";
         log.provider = "power_dialer";
-        console.log(`[Automation] WOULD enqueue for dialer:`, step.config);
         log.templateVariables = step.config;
         break;
       }
 
       case "custom_webhook": {
-        console.log(`[Automation] WOULD call webhook:`, step.config);
         log.templateVariables = step.config;
         break;
       }
@@ -569,41 +502,31 @@ async function runAutomation(
         if (entity === "lead") {
           const leadId = context.lead?.id;
           if (!leadId) {
-            console.warn(`[Automation] assign_owner: No lead.id in context, skipping`);
             log.skipped = true;
             log.skipReason = "no_lead_id_in_context";
           } else {
             try {
               const { error } = await supabase.from("contacts").update({ owner_id: ownerId }).eq("id", leadId);
               if (error) {
-                console.error(`[Automation] assign_owner lead update error:`, error);
                 log.error = error.message;
-              } else {
-                console.log(`[Automation] assign_owner: Set lead ${leadId} owner to ${ownerId}`);
               }
             } catch (err) {
               log.error = err instanceof Error ? err.message : "Unknown error";
-              console.error(`[Automation] assign_owner exception:`, err);
             }
           }
         } else if (entity === "deal") {
           const dealId = context.deal?.id || context.appointment?.id;
           if (!dealId) {
-            console.warn(`[Automation] assign_owner: No deal/appointment id in context, skipping`);
             log.skipped = true;
             log.skipReason = "no_deal_id_in_context";
           } else {
             try {
               const { error } = await supabase.from("appointments").update({ closer_id: ownerId }).eq("id", dealId);
               if (error) {
-                console.error(`[Automation] assign_owner deal update error:`, error);
                 log.error = error.message;
-              } else {
-                console.log(`[Automation] assign_owner: Set deal ${dealId} owner to ${ownerId}`);
               }
             } catch (err) {
               log.error = err instanceof Error ? err.message : "Unknown error";
-              console.error(`[Automation] assign_owner exception:`, err);
             }
           }
         }
@@ -619,44 +542,31 @@ async function runAutomation(
         if (entity === "lead") {
           const leadId = context.lead?.id;
           if (!leadId) {
-            console.warn(`[Automation] update_stage: No lead.id in context, skipping`);
             log.skipped = true;
             log.skipReason = "no_lead_id_in_context";
           } else {
             try {
               const { error } = await supabase.from("contacts").update({ stage_id: stageId }).eq("id", leadId);
               if (error) {
-                console.error(`[Automation] update_stage lead update error:`, error);
                 log.error = error.message;
-              } else {
-                console.log(`[Automation] update_stage: Set lead ${leadId} stage to ${stageId}`);
               }
             } catch (err) {
               log.error = err instanceof Error ? err.message : "Unknown error";
-              console.error(`[Automation] update_stage exception:`, err);
             }
           }
         } else if (entity === "deal") {
           const dealId = context.deal?.id || context.appointment?.id;
           if (!dealId) {
-            console.warn(`[Automation] update_stage: No deal/appointment id in context, skipping`);
             log.skipped = true;
             log.skipReason = "no_deal_id_in_context";
           } else {
             try {
-              const { error } = await supabase
-                .from("appointments")
-                .update({ pipeline_stage: stageId })
-                .eq("id", dealId);
+              const { error } = await supabase.from("appointments").update({ pipeline_stage: stageId }).eq("id", dealId);
               if (error) {
-                console.error(`[Automation] update_stage deal update error:`, error);
                 log.error = error.message;
-              } else {
-                console.log(`[Automation] update_stage: Set deal ${dealId} stage to ${stageId}`);
               }
             } catch (err) {
               log.error = err instanceof Error ? err.message : "Unknown error";
-              console.error(`[Automation] update_stage exception:`, err);
             }
           }
         }
@@ -684,57 +594,31 @@ Deno.serve(async (req) => {
   try {
     const body: TriggerRequest = await req.json();
 
-    const { triggerType, teamId, automationId, eventPayload, eventId } = body as any;
+    const { triggerType, teamId, eventPayload, eventId } = body as any;
     console.log("[automation-trigger] incoming", {
       triggerType,
       teamId,
-      automationId,
       eventId,
       leadId: (eventPayload as any)?.lead?.id,
     });
 
     if (!triggerType || !teamId) {
       return new Response(
-        JSON.stringify({
-          status: "error",
-          error: "Missing triggerType or teamId",
-        }),
+        JSON.stringify({ status: "error", error: "Missing triggerType or teamId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // ---- Idempotency / de-dupe guard ----
-    // Generate a stable eventId from incoming data or lead.id
-    const stableEventId =
+    // Compute stable eventId from request or derive from lead/appointment
+    // This is the canonical event identifier for idempotency
+    const stableEventId: string =
       eventId ??
       (eventPayload as any)?.eventId ??
       (triggerType === "lead_created" && (eventPayload as any)?.lead?.id
         ? `lead_created:${(eventPayload as any).lead.id}`
-        : null);
+        : `${triggerType}:${Date.now()}`);
 
-    // Check if we already processed this exact event (prevents duplicate runs on retries)
-    if (stableEventId) {
-      // Use textSearch on context_snapshot->>'eventId' for reliable deduplication
-      const { data: existingRuns, error: existingErr } = await supabase
-        .from("automation_runs")
-        .select("id, created_at")
-        .eq("team_id", teamId)
-        .eq("trigger_type", triggerType)
-        .filter("context_snapshot->>eventId", "eq", stableEventId)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (existingErr) {
-        console.error("[automation-trigger] idempotency lookup failed:", existingErr);
-      } else if (existingRuns && existingRuns.length > 0) {
-        console.log(`[automation-trigger] Deduped: eventId=${stableEventId} already processed as run ${existingRuns[0].id}`);
-        return new Response(JSON.stringify({ ok: true, deduped: true, runId: existingRuns[0].id }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
-
-    console.log(`[Automation Trigger] Received ${triggerType} for team ${teamId}`);
+    console.log(`[Automation Trigger] stableEventId=${stableEventId}`);
 
     // Build context
     const context = buildAutomationContext(triggerType, {
@@ -742,30 +626,68 @@ Deno.serve(async (req) => {
       ...eventPayload,
     });
 
-    // Get matching automations from DB (with template fallback)
+    // Get matching automations from DB ONLY (no templates - prevents duplicates)
     const automations = await getAutomationsForTrigger(supabase, teamId, triggerType);
+
+    if (automations.length === 0) {
+      console.log(`[Automation Trigger] No matching automations, exiting`);
+      return new Response(
+        JSON.stringify({ status: "ok", automationsRun: [], stepsExecuted: [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     console.log(`[Automation Trigger] Found ${automations.length} matching automations`);
 
     const automationsRun: string[] = [];
+    const automationsSkipped: string[] = [];
     const allStepsExecuted: StepExecutionLog[] = [];
 
-    // Run each automation and log the run
+    // Run each automation with PER-AUTOMATION idempotency check
     for (const automation of automations) {
-      automationsRun.push(automation.id);
+      // Generate automationKey: unique identifier for this automation
+      // For DB automations, use the database ID
+      const automationKey = `db:${automation.id}`;
 
-      let status: "success" | "error" = "success";
-      let errorMessage: string | undefined;
-      let stepLogs: StepExecutionLog[] = [];
+      // PER-AUTOMATION IDEMPOTENCY CHECK
+      // Prevents duplicate runs when trigger is called multiple times for same event
+      // Composite key: teamId + triggerType + automationKey + eventId
+      const { alreadyRan, existingRunId } = await hasAutomationAlreadyRunForEvent(
+        supabase,
+        teamId,
+        triggerType,
+        automationKey,
+        stableEventId,
+      );
 
-      // Create run first to get run_id
+      if (alreadyRan) {
+        console.log(
+          `[Automation Trigger] SKIPPED automation ${automation.id} - already ran for event ${stableEventId} (run ${existingRunId})`,
+        );
+        automationsSkipped.push(automation.id);
+        continue;
+      }
+
+      // Create automation run with eventId and automationKey stored in context_snapshot
       const runId = await createAutomationRun(supabase, {
         automationId: automation.id,
         teamId,
         triggerType,
         context,
         eventId: stableEventId,
+        automationKey,
       });
+
+      if (!runId) {
+        console.error(`[Automation Trigger] Failed to create run for automation ${automation.id}`);
+        continue;
+      }
+
+      automationsRun.push(automation.id);
+
+      let status: "success" | "error" = "success";
+      let errorMessage: string | undefined;
+      let stepLogs: StepExecutionLog[] = [];
 
       try {
         stepLogs = await runAutomation(automation, context, supabase, runId);
@@ -777,13 +699,11 @@ Deno.serve(async (req) => {
       }
 
       // Update the automation run with final status and steps
-      if (runId) {
-        await updateAutomationRun(supabase, runId, {
-          status,
-          errorMessage,
-          stepsExecuted: stepLogs,
-        });
-      }
+      await updateAutomationRun(supabase, runId, {
+        status,
+        errorMessage,
+        stepsExecuted: stepLogs,
+      });
     }
 
     const response: TriggerResponse = {
@@ -793,7 +713,7 @@ Deno.serve(async (req) => {
       stepsExecuted: allStepsExecuted,
     };
 
-    console.log(`[Automation Trigger] Complete:`, response);
+    console.log(`[Automation Trigger] Complete: ran=${automationsRun.length}, skipped=${automationsSkipped.length}`);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
