@@ -254,6 +254,20 @@ Deno.serve(async (req) => {
       }
       lead = newLead
       console.log('Lead created successfully:', lead.id)
+
+      // Trigger lead_created automation for new leads
+      try {
+        await supabase.functions.invoke('automation-trigger', {
+          body: {
+            triggerType: 'lead_created',
+            teamId: funnel.team_id,
+            eventPayload: { lead: newLead }
+          }
+        })
+        console.log('Lead created automation triggered for:', lead.id)
+      } catch (automationError) {
+        console.error('Automation trigger error (non-blocking):', automationError)
+      }
     }
 
     // Only create/update contact and send webhooks on complete submission
