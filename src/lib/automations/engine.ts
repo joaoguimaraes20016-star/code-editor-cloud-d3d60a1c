@@ -27,16 +27,30 @@ export async function runAutomationsForTrigger({ teamId, triggerType, eventPaylo
     for (const automation of automations) {
       if (!automation.isActive) continue;
 
-      const passed = evaluateConditions(automation.conditions, eventPayload ?? {});
+      // Get conditions from automation (legacy or from steps)
+      const conditions = automation.conditions ?? [];
+      const passed = evaluateConditions(conditions, eventPayload ?? {});
       if (!passed) continue;
 
-      for (const action of automation.actions) {
-        await runAction({
-          teamId,
-          automationId: automation.id,
-          actionConfig: action,
-          eventPayload,
-        });
+      // Execute steps (new structure) or legacy actions
+      if (automation.steps && automation.steps.length > 0) {
+        for (const step of automation.steps) {
+          await runAction({
+            teamId,
+            automationId: automation.id,
+            actionConfig: { type: step.type, params: step.config },
+            eventPayload,
+          });
+        }
+      } else if (automation.actions) {
+        for (const action of automation.actions) {
+          await runAction({
+            teamId,
+            automationId: automation.id,
+            actionConfig: action,
+            eventPayload,
+          });
+        }
       }
     }
   } catch (error) {
@@ -63,13 +77,16 @@ async function fetchAutomationsForTeamAndTrigger(
       teamId,
       name: "Dev Test – Appointment booked",
       isActive: true,
-      triggerType,
-      triggerConfig: {},
-      conditions: [], // no conditions = always runs
-      actions: [
+      trigger: {
+        type: triggerType,
+        config: {},
+      },
+      steps: [
         {
+          id: "step-1",
+          order: 0,
           type: "send_message",
-          params: {
+          config: {
             channel: "sms",
             text: "Dev test: appointment_booked automation fired.",
           },
