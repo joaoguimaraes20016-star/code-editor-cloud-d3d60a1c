@@ -454,114 +454,6 @@ async function runAutomation(
     const conditionsMet = evaluateConditions(step.conditions, context);
 
     if (!conditionsMet) {
-      logs.push({
-        stepId: step.id,
-        actionType: step.type,
-        skipped: true,
-        skipReason: "conditions_not_met",
-      });
-      continue;
-    }
-
-    const log: StepExecutionLog = {
-      stepId: step.id,
-      actionType: step.type,
-      skipped: false,
-    };
-
-    try {
-      switch (step.type) {
-        case "send_message": {
-          const channel = step.config.channel || "sms";
-          const template = step.config.template || "";
-          const provider = "stub";
-
-          const toPhone =
-            context.lead?.phone ||
-            context.appointment?.lead_phone ||
-            step.config.to ||
-            "";
-
-          const renderedBody = renderTemplate(template, context);
-          const messageId = `stub_${Date.now()}_${Math.random()
-            .toString(36)
-            .substring(7)}`;
-
-          log.channel = channel;
-          log.provider = provider;
-          log.to = toPhone;
-          log.messageId = messageId;
-          log.renderedBody = renderedBody;
-          log.templateVariables = extractTemplateVariables(
-            template,
-            context
-          );
-
-          if (channel === "sms" && toPhone) {
-            await logMessage(supabase, {
-              teamId: context.teamId,
-              automationId: automation.id,
-              runId,
-              channel: "sms",
-              provider,
-              toAddress: toPhone,
-              template,
-              payload: {
-                renderedBody,
-                messageId,
-              },
-            });
-          }
-
-          break;
-        }
-
-        case "time_delay": {
-          // Stubbed delay (no blocking)
-          break;
-        }
-
-        case "assign_owner": {
-          // Already implemented elsewhere
-          break;
-        }
-
-        case "update_stage": {
-          // Already implemented elsewhere
-          break;
-        }
-
-        default:
-          console.warn(`[Automation] Unknown step type: ${step.type}`);
-      }
-    } catch (err: any) {
-      log.error = err?.message || "step_execution_failed";
-    }
-
-    logs.push(log);
-  }
-
-  // 🔑 THIS IS THE MISSING PIECE
-  await supabase.from("automation_runs").insert({
-    automation_id: automation.id ?? null,
-    team_id: context.teamId,
-    trigger_type: automation.trigger.type,
-    status: "success",
-    steps_executed: logs,
-    context_snapshot: context,
-  });
-
-  return logs;
-}
-
-  const logs: StepExecutionLog[] = [];
-
-  console.log(`[Automation] Running "${automation.name}" (${automation.id})`);
-
-  for (const step of automation.steps.sort((a, b) => a.order - b.order)) {
-    const conditionsMet = evaluateConditions(step.conditions, context);
-
-    if (!conditionsMet) {
       console.log(`[Automation] Skipping step ${step.id} – conditions not met`);
       logs.push({
         stepId: step.id,
@@ -582,17 +474,9 @@ async function runAutomation(
       case "send_message": {
         const channel = step.config.channel || "sms";
         const template = step.config.template || step.config.body || "";
-        
-        // Use stub provider for now (no external API calls)
         const provider = "stub";
-        
-        // Get recipient phone from context
         const toPhone = context.lead?.phone || context.appointment?.lead_phone || step.config.to || "";
-        
-        // Render the template with context variables
         const renderedBody = renderTemplate(template, context);
-        
-        // Generate fake message ID for stub mode
         const messageId = `stub_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
         log.channel = channel;
@@ -609,7 +493,6 @@ async function runAutomation(
           messageId,
         });
 
-        // Log to message_logs table (non-blocking)
         if (channel === "sms" && toPhone) {
           try {
             await logMessage(supabase, {
@@ -631,7 +514,6 @@ async function runAutomation(
             });
           } catch (msgErr) {
             console.error("[Automation] Error logging SMS to message_logs:", msgErr);
-            // Non-blocking: don't fail the step
           }
         }
         break;
@@ -648,10 +530,7 @@ async function runAutomation(
         const message = step.config.message || "";
         log.channel = "in_app";
         log.templateVariables = extractTemplateVariables(message, context);
-        console.log(`[Automation] WOULD notify team:`, {
-          message,
-          variables: log.templateVariables,
-        });
+        console.log(`[Automation] WOULD notify team:`, { message, variables: log.templateVariables });
         break;
       }
 
@@ -699,7 +578,6 @@ async function runAutomation(
                 .from("contacts")
                 .update({ owner_id: ownerId })
                 .eq("id", leadId);
-
               if (error) {
                 console.error(`[Automation] assign_owner lead update error:`, error);
                 log.error = error.message;
@@ -723,7 +601,6 @@ async function runAutomation(
                 .from("appointments")
                 .update({ closer_id: ownerId })
                 .eq("id", dealId);
-
               if (error) {
                 console.error(`[Automation] assign_owner deal update error:`, error);
                 log.error = error.message;
@@ -757,7 +634,6 @@ async function runAutomation(
                 .from("contacts")
                 .update({ stage_id: stageId })
                 .eq("id", leadId);
-
               if (error) {
                 console.error(`[Automation] update_stage lead update error:`, error);
                 log.error = error.message;
@@ -781,7 +657,6 @@ async function runAutomation(
                 .from("appointments")
                 .update({ pipeline_stage: stageId })
                 .eq("id", dealId);
-
               if (error) {
                 console.error(`[Automation] update_stage deal update error:`, error);
                 log.error = error.message;
