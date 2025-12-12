@@ -149,9 +149,15 @@ export function AutomationRunsList({ teamId }: AutomationRunsListProps) {
                     </TableCell>
                     <TableCell>
                       {run.automation?.name || (
-                        <span className="text-muted-foreground text-xs font-mono">
-                          {run.automation_id.slice(0, 8)}...
-                        </span>
+                        run.automation_id ? (
+                          <span className="text-muted-foreground text-xs font-mono">
+                            {run.automation_id.slice(0, 8)}...
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs italic">
+                            Inline Automation
+                          </span>
+                        )
                       )}
                     </TableCell>
                     <TableCell>
