@@ -202,7 +202,7 @@ const Dashboard = () => {
       .from("teams")
       .insert({
         name: newTeamName.trim(),
-        owner_id: user.id,
+        created_by: user.id,
       })
       .select("id, name, created_at, logo_url")
       .single();
@@ -570,13 +570,85 @@ const Dashboard = () => {
                       className="gap-2 bg-slate-50 text-slate-950 hover:bg-slate-200"
                       onClick={() => setDialogOpen(true)}
                     >
-<Plus className="h-3.5 w-3.5" />
-      Create your first team
-    </Button>
-  ) : (
-    <p className="text-xs text-slate-500">
-      You don't have permission to create teams. Ask your operator for access.
-    </p>
-  )}
-</CardContent>
-</Card>
+                      <Plus className="h-3.5 w-3.5" />
+                      Create your first team
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      You don't have permission to create teams. Ask your operator for access.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              teams.map((team) => (
+                <Card
+                  key={team.id}
+                  className="cursor-pointer border-slate-800/70 bg-slate-950/60 transition-colors hover:border-slate-700"
+                  onClick={() => handleEnterTeam(team.id)}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <div className="flex items-center gap-3">
+                      {team.logo_url ? (
+                        <img
+                          src={team.logo_url}
+                          alt={team.name}
+                          className="h-8 w-8 rounded-md object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-800 text-xs font-semibold text-slate-200">
+                          {team.name[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <CardTitle className="text-sm font-medium text-slate-100">
+                          {team.name}
+                        </CardTitle>
+                        <p className="text-[11px] text-slate-400">
+                          Created {new Date(team.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-slate-500 hover:text-red-400"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="border-slate-800 bg-slate-950 text-slate-50">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete team?</AlertDialogTitle>
+                          <AlertDialogDescription className="text-slate-400">
+                            This will permanently delete "{team.name}" and all associated data.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800">
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-red-600 text-white hover:bg-red-700"
+                            onClick={() => handleDeleteTeam(team.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </CardHeader>
+                </Card>
+              ))
+            )}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+};
+
+export default Dashboard;
