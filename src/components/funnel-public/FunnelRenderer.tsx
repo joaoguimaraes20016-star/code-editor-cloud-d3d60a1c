@@ -391,10 +391,23 @@ const saveLead = useCallback(
       };
       setAnswers(updatedAnswers);
       
+      // Determine submitMode:
+      // - opt_in step = FINAL SUBMIT (triggers automations)
+      // - All other steps = DRAFT (progressive save, no automations)
+      const isOptInSubmit = currentStep.step_type === 'opt_in';
+      const submitMode = isOptInSubmit ? "submit" : "draft";
+
       // Progressive save on meaningful data
       if (hasMeaningfulData(value, currentStep.step_type)) {
-        // Don't wait for save to complete before moving to next step
-        saveLead(updatedAnswers, "draft");
+        if (isOptInSubmit) {
+          // Opt-in is a FINAL submit - wait for it and trigger automations
+          setIsSubmitting(true);
+          await saveLead(updatedAnswers, "submit");
+          setIsSubmitting(false);
+        } else {
+          // Draft save - don't wait, don't trigger automations
+          saveLead(updatedAnswers, "draft");
+        }
         
         // Fire Lead pixel event when contact info is captured (with deduplication)
         if (['opt_in', 'email_capture', 'phone_capture'].includes(currentStep.step_type)) {
@@ -412,9 +425,10 @@ const saveLead = useCallback(
       }
     }
 
-    // If this is the step before thank you, do final complete save
+    // If this is the step before thank you and we haven't already submitted (opt_in does its own submit)
     const nextStep = steps[currentStepIndex + 1];
-    if (nextStep?.step_type === 'thank_you') {
+    const alreadySubmitted = currentStep?.step_type === 'opt_in';
+    if (nextStep?.step_type === 'thank_you' && !alreadySubmitted) {
       setIsSubmitting(true);
       await saveLead(updatedAnswers, "submit");
       setIsSubmitting(false);
