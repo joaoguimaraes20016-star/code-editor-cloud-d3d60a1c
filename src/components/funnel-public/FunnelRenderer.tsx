@@ -386,10 +386,9 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
     return false;
   }, []);
 
-  const handleNext = useCallback(
-    async (value?: any) => {
-      let updatedAnswers = { ...answers };
-
+const handleNext = useCallback(async (value?: any) => {
+let updatedAnswers = answers;
+  
       // Save answer if value provided
      if (value !== undefined && currentStep) {
   updatedAnswers = {
@@ -422,37 +421,49 @@ if (isOptInStep) {
   }
 }
 
-
           // Fire Lead pixel event when contact info is captured (with deduplication)
-          if (["opt_in", "email_capture", "phone_capture"].includes(currentStep.step_type)) {
-            const eventData = typeof value === "object" ? value : { value };
-            // Use email or phone as deduplication key to prevent duplicate Lead events
-            const dedupeKey = eventData.email
-              ? `lead_${eventData.email}`
-              : eventData.phone
-                ? `lead_${eventData.phone}`
-                : `lead_step_${currentStepIndex}`;
-            firePixelEvent(
-              "Lead",
-              {
-                ...eventData,
-                value: 10, // Default lead value
-                currency: "USD",
-              },
-              dedupeKey,
-            );
+         if (currentStep && ["opt_in", "email_capture", "phone_capture"].includes(currentStep.step_type)) {
+
+                 const eventData = typeof value === "object" ? value : { value };
+
+      // Use email or phone as deduplication key to prevent duplicate Lead events
+      const dedupeKey = eventData.email
+        ? `lead_${eventData.email}`
+        : eventData.phone
+          ? `lead_${eventData.phone}`
+          : `lead_step_${currentStepIndex}`;
+
+      firePixelEvent(
+        "Lead",
+        {
+          ...eventData,
+          value: 10, // Default lead value
+          currency: "USD",
+        },
+        dedupeKey,
+      );
+
           }
         }
 
-      // Move to next step
-      if (!isLastStep) {
-        setCurrentStepIndex((prev) => prev + 1);
-      } else {
-        setIsComplete(true);
-      }
-    },
-    [currentStep, currentStepIndex, steps, answers, isLastStep, saveLead, hasMeaningfulData],
-  );
+  // Move to next step
+  if (!isLastStep) {
+    setCurrentStepIndex((prev) => prev + 1);
+  } else {
+    setIsComplete(true);
+  }
+}, [
+  currentStep,
+  currentStepIndex,
+  steps,
+  answers,
+  isLastStep,
+  saveLead,
+  hasMeaningfulData,
+  isSubmitting,
+]);
+
+
 
   // Calculate question number for multi_choice steps (excluding welcome, thank_you, video)
   const questionSteps = steps.filter((s) =>
