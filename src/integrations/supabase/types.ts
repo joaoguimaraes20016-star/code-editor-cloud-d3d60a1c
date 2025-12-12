@@ -248,6 +248,101 @@ export type Database = {
           },
         ]
       }
+      automation_runs: {
+        Row: {
+          automation_id: string
+          context_snapshot: Json | null
+          created_at: string
+          error_message: string | null
+          id: string
+          status: string
+          steps_executed: Json
+          team_id: string
+          trigger_type: string
+        }
+        Insert: {
+          automation_id: string
+          context_snapshot?: Json | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          status: string
+          steps_executed?: Json
+          team_id: string
+          trigger_type: string
+        }
+        Update: {
+          automation_id?: string
+          context_snapshot?: Json | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          status?: string
+          steps_executed?: Json
+          team_id?: string
+          trigger_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_runs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automations: {
+        Row: {
+          created_at: string
+          definition: Json
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          team_id: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          definition?: Json
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          team_id: string
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          definition?: Json
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          team_id?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_asset_audit_logs: {
         Row: {
           action: string

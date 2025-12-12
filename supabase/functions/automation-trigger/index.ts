@@ -89,6 +89,13 @@ interface TriggerResponse {
   error?: string;
 }
 
+// --- Supabase Client ---
+function getSupabaseClient() {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
+
 // --- Context Builder ---
 function buildAutomationContext(
   triggerType: TriggerType,
@@ -155,19 +162,16 @@ function evaluateConditions(
   return conditions.some((c) => evaluateCondition(c, context));
 }
 
-// --- Sample Automations (hardcoded for now, swap to DB later) ---
-function getSampleAutomations(teamId: string): AutomationDefinition[] {
+// --- Default Template Automations (fallback) ---
+function getDefaultTemplateAutomations(teamId: string): AutomationDefinition[] {
   return [
     {
-      id: "lead-nurture-new-lead",
+      id: "template-lead-nurture",
       teamId,
       name: "New Lead – 2-Day Nurture",
       description: "Sends a welcome SMS and a follow-up reminder for new leads.",
       isActive: true,
-      trigger: {
-        type: "lead_created",
-        config: {},
-      },
+      trigger: { type: "lead_created", config: {} },
       triggerType: "lead_created",
       steps: [
         {
@@ -183,9 +187,7 @@ function getSampleAutomations(teamId: string): AutomationDefinition[] {
           id: "step_1",
           order: 1,
           type: "time_delay",
-          config: {
-            delayHours: 24,
-          },
+          config: { delayHours: 24 },
         },
         {
           id: "step_2",
@@ -199,15 +201,12 @@ function getSampleAutomations(teamId: string): AutomationDefinition[] {
       ],
     },
     {
-      id: "appointment-booked-confirmation",
+      id: "template-appointment-confirmation",
       teamId,
       name: "Appointment Booked – Confirmation",
       description: "Sends confirmation when appointment is booked.",
       isActive: true,
-      trigger: {
-        type: "appointment_booked",
-        config: {},
-      },
+      trigger: { type: "appointment_booked", config: {} },
       triggerType: "appointment_booked",
       steps: [
         {
@@ -230,15 +229,12 @@ function getSampleAutomations(teamId: string): AutomationDefinition[] {
       ],
     },
     {
-      id: "no-show-follow-up",
+      id: "template-no-show-follow-up",
       teamId,
       name: "No-Show Follow-Up",
       description: "Follows up with leads who missed their appointment.",
       isActive: true,
-      trigger: {
-        type: "appointment_no_show",
-        config: {},
-      },
+      trigger: { type: "appointment_no_show", config: {} },
       triggerType: "appointment_no_show",
       steps: [
         {
@@ -255,17 +251,88 @@ function getSampleAutomations(teamId: string): AutomationDefinition[] {
   ];
 }
 
-// --- Get Automations for Trigger ---
-function getAutomationsForTrigger(
+// --- Get Automations from DB ---
+async function getAutomationsForTrigger(
+  supabase: any,
   teamId: string,
   triggerType: TriggerType
-): AutomationDefinition[] {
-  const automations = getSampleAutomations(teamId);
-  return automations.filter(
-    (a) =>
-      a.isActive &&
-      (a.triggerType === triggerType || a.trigger?.type === triggerType)
-  );
+): Promise<AutomationDefinition[]> {
+  try {
+    const { data, error } = await supabase
+      .from("automations")
+      .select("*")
+      .eq("team_id", teamId)
+      .eq("trigger_type", triggerType)
+      .eq("is_active", true);
+
+    if (error) {
+      console.error("[Automation Trigger] Error fetching automations:", error);
+      return getDefaultTemplateAutomations(teamId).filter(
+        (a) => a.trigger?.type === triggerType || a.triggerType === triggerType
+      );
+    }
+
+    if (data && data.length > 0) {
+      console.log(`[Automation Trigger] Found ${data.length} automations in DB`);
+      return data.map((row: any) => {
+        const definition = row.definition || {};
+        return {
+          id: row.id,
+          teamId: row.team_id,
+          name: row.name,
+          description: row.description || "",
+          isActive: row.is_active,
+          trigger: definition.trigger || { type: row.trigger_type, config: {} },
+          triggerType: row.trigger_type as TriggerType,
+          steps: definition.steps || [],
+        } as AutomationDefinition;
+      });
+    }
+
+    console.log("[Automation Trigger] No DB automations found, using templates");
+    return getDefaultTemplateAutomations(teamId).filter(
+      (a) => a.trigger?.type === triggerType || a.triggerType === triggerType
+    );
+  } catch (err) {
+    console.error("[Automation Trigger] Unexpected error fetching automations:", err);
+    return getDefaultTemplateAutomations(teamId).filter(
+      (a) => a.trigger?.type === triggerType || a.triggerType === triggerType
+    );
+  }
+}
+
+// --- Log Automation Run ---
+async function logAutomationRun(
+  supabase: any,
+  params: {
+    automationId: string;
+    teamId: string;
+    triggerType: TriggerType;
+    status: "success" | "error";
+    errorMessage?: string;
+    stepsExecuted: StepExecutionLog[];
+    context?: AutomationContext;
+  }
+): Promise<void> {
+  try {
+    const { error } = await supabase.from("automation_runs").insert([{
+      automation_id: params.automationId,
+      team_id: params.teamId,
+      trigger_type: params.triggerType,
+      status: params.status,
+      error_message: params.errorMessage || null,
+      steps_executed: JSON.parse(JSON.stringify(params.stepsExecuted)),
+      context_snapshot: params.context ? JSON.parse(JSON.stringify(params.context)) : null,
+    }]);
+
+    if (error) {
+      console.error("[Automation Trigger] Error logging run:", error);
+    } else {
+      console.log(`[Automation Trigger] Logged run for automation ${params.automationId}`);
+    }
+  } catch (err) {
+    console.error("[Automation Trigger] Unexpected error logging run:", err);
+  }
 }
 
 // --- Template Variable Extraction (for logging) ---
@@ -388,6 +455,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabase = getSupabaseClient();
+
   try {
     const body: TriggerRequest = await req.json();
     const { triggerType, teamId, eventPayload } = body;
@@ -410,19 +479,41 @@ Deno.serve(async (req) => {
       ...eventPayload,
     });
 
-    // Get matching automations
-    const automations = getAutomationsForTrigger(teamId, triggerType);
+    // Get matching automations from DB (with template fallback)
+    const automations = await getAutomationsForTrigger(supabase, teamId, triggerType);
 
     console.log(`[Automation Trigger] Found ${automations.length} matching automations`);
 
     const automationsRun: string[] = [];
     const allStepsExecuted: StepExecutionLog[] = [];
 
-    // Run each automation
+    // Run each automation and log the run
     for (const automation of automations) {
       automationsRun.push(automation.id);
-      const stepLogs = runAutomation(automation, context);
-      allStepsExecuted.push(...stepLogs);
+      
+      let status: "success" | "error" = "success";
+      let errorMessage: string | undefined;
+      let stepLogs: StepExecutionLog[] = [];
+
+      try {
+        stepLogs = runAutomation(automation, context);
+        allStepsExecuted.push(...stepLogs);
+      } catch (err) {
+        status = "error";
+        errorMessage = err instanceof Error ? err.message : "Unknown error";
+        console.error(`[Automation Trigger] Error running automation ${automation.id}:`, err);
+      }
+
+      // Log the automation run to the database
+      await logAutomationRun(supabase, {
+        automationId: automation.id,
+        teamId,
+        triggerType,
+        status,
+        errorMessage,
+        stepsExecuted: stepLogs,
+        context,
+      });
     }
 
     const response: TriggerResponse = {
