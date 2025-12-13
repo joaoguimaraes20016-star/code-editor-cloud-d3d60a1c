@@ -4,16 +4,18 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-echo "Checking supabase CLI..."
-if ! command -v supabase >/dev/null 2>&1; then
-  echo "supabase CLI not found. Install from https://supabase.com/docs/guides/cli"
-  exit 1
+echo "Using local supabase CLI via pnpm exec (falls back to pnpm dlx)"
+
+if command -v pnpm >/dev/null 2>&1; then
+  SUPABASE_CMD="pnpm exec supabase"
+else
+  SUPABASE_CMD="pnpm dlx supabase@latest"
 fi
 
 echo "Deploying Supabase migrations..."
-supabase migration deploy
+$SUPABASE_CMD migration deploy
 
 echo "Deploying record-funnel-event Edge Function..."
-supabase functions deploy record-funnel-event
+$SUPABASE_CMD functions deploy record-funnel-event
 
 echo "Finished deploying Supabase migrations and functions."

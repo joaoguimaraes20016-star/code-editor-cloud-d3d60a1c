@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "supabase:deploy:migrations": "supabase migration deploy",
-    "supabase:deploy:functions": "supabase functions deploy record-funnel-event",
+    "supabase:deploy:migrations": "pnpm exec supabase migration deploy",
+    "supabase:deploy:functions": "pnpm exec supabase functions deploy record-funnel-event",
     "supabase:deploy": "bash ./supabase/deploy-record-events.sh",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
@@ -69,6 +69,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "supabase": "^1.86.0",
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",
