@@ -13,6 +13,30 @@ import { ProgressDots } from "./ProgressDots";
 import { cn } from "@/lib/utils";
 import type { CalendlyBookingData } from "./DynamicElementRenderer";
 
+// Step Intent type - separates UI from semantics
+type StepIntent = 'capture' | 'collect' | 'schedule' | 'complete';
+
+// Get default intent based on step_type (for backward compatibility with older funnels)
+const getDefaultIntent = (stepType: string): StepIntent => {
+  switch (stepType) {
+    case 'opt_in':
+    case 'email_capture':
+    case 'phone_capture':
+      return 'capture';
+    case 'embed':
+      return 'schedule';
+    case 'thank_you':
+      return 'complete';
+    default:
+      return 'collect';
+  }
+};
+
+// Get step intent - uses content.intent if set, otherwise derives from step_type
+const getStepIntent = (step: FunnelStep): StepIntent => {
+  return (step.content?.intent as StepIntent) || getDefaultIntent(step.step_type);
+};
+
 interface FunnelStep {
   id: string;
   order_index: number;
@@ -295,7 +319,12 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
   type SubmitMode = "draft" | "submit";
 
   const saveLead = useCallback(
-    async (allAnswers: Record<string, any>, submitMode: SubmitMode = "draft") => {
+    async (
+      allAnswers: Record<string, any>, 
+      submitMode: SubmitMode = "draft",
+      stepId?: string,
+      stepIntent?: StepIntent
+    ) => {
       // Prevent duplicate submissions - if already submitting, ignore this call
       if (pendingSaveRef.current) {
         console.log("Ignoring duplicate save request - submission in progress");
@@ -315,23 +344,22 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         clientRequestId = crypto.randomUUID();
       }
 
-      console.log(`[saveLead] clientRequestId=${clientRequestId}, submitMode=${submitMode}`);
+      console.log(`[saveLead] stepId=${stepId}, stepIntent=${stepIntent}, submitMode=${submitMode}, clientRequestId=${clientRequestId}`);
 
       try {
         const { data, error } = await supabase.functions.invoke("submit-funnel-lead", {
           body: {
             funnel_id: funnel.id,
-            lead_id: leadId, // Pass existing lead ID for updates
+            lead_id: leadId,
             answers: allAnswers,
-
             utm_source: utmSource,
             utm_medium: utmMedium,
             utm_campaign: utmCampaign,
-
             calendly_booking: calendlyBookingRef.current,
-
             submitMode,
             clientRequestId,
+            step_id: stepId,
+            step_intent: stepIntent,
           },
         });
 
@@ -386,10 +414,12 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
   const handleNext = useCallback(
     async (value?: any) => {
+      if (!currentStep) return;
+      
       let updatedAnswers = answers;
 
       // Save answer if value provided
-      if (value !== undefined && currentStep) {
+      if (value !== undefined) {
         updatedAnswers = {
           ...answers,
           [currentStep.id]: {
@@ -402,44 +432,45 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         setAnswers(updatedAnswers);
       }
 
-      // FINAL: Opt-in step submit must NOT depend on `value`
-      const isOptInStep = currentStep?.step_type === "opt_in";
+      // INTENT-BASED LOGIC: Use step intent (not step_type) to decide submit vs draft
+      const stepIntent = getStepIntent(currentStep);
+      const stepId = currentStep.id;
+      
+      // Debug logging
+      console.log(`[handleNext] stepId=${stepId}, step_type=${currentStep.step_type}, intent=${stepIntent}`);
 
-      if (isOptInStep) {
+      if (stepIntent === "capture") {
+        // CAPTURE intent = real submit, triggers automations
         if (isSubmitting) return;
 
         try {
           setIsSubmitting(true);
-          await saveLead(updatedAnswers, "submit");
+          await saveLead(updatedAnswers, "submit", stepId, stepIntent);
         } finally {
           setIsSubmitting(false);
         }
-      } else {
-        if (currentStep && hasMeaningfulData(value, currentStep.step_type)) {
-          await saveLead(updatedAnswers, "draft");
-        }
-      }
-
-      // Fire Lead pixel event when contact info is captured (with deduplication)
-      if (currentStep && ["opt_in", "email_capture", "phone_capture"].includes(currentStep.step_type)) {
+        
+        // Fire Lead pixel event
         const eventData = typeof value === "object" ? value : { value };
-
-        // Use email or phone as deduplication key to prevent duplicate Lead events
         const dedupeKey = eventData.email
           ? `lead_${eventData.email}`
           : eventData.phone
             ? `lead_${eventData.phone}`
             : `lead_step_${currentStepIndex}`;
-
-        firePixelEvent(
-          "Lead",
-          {
-            ...eventData,
-            value: 10, // Default lead value
-            currency: "USD",
-          },
-          dedupeKey,
-        );
+        firePixelEvent("Lead", { ...eventData, value: 10, currency: "USD" }, dedupeKey);
+        
+      } else if (stepIntent === "schedule") {
+        // SCHEDULE intent = save draft + fire Schedule event
+        if (hasMeaningfulData(value, currentStep.step_type)) {
+          await saveLead(updatedAnswers, "draft", stepId, stepIntent);
+        }
+        firePixelEvent("Schedule", { step_id: stepId }, `schedule_${stepId}`);
+        
+      } else {
+        // COLLECT or COMPLETE intent = draft save only
+        if (hasMeaningfulData(value, currentStep.step_type)) {
+          await saveLead(updatedAnswers, "draft", stepId, stepIntent);
+        }
       }
 
       // Move to next step

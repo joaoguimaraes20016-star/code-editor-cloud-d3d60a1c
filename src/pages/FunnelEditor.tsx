@@ -122,6 +122,8 @@ export interface FunnelStep {
     design?: StepDesign;
     element_order?: string[];
     dynamic_elements?: Record<string, any>;
+    // Step intent for workflow triggering
+    intent?: 'capture' | 'collect' | 'schedule' | 'complete';
   };
 }
 

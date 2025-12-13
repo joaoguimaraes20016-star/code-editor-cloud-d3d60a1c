@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Plus, X, Type, Video, Image, Square, Minus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FunnelStep } from '@/pages/FunnelEditor';
 import { cn } from '@/lib/utils';
 import { EmojiPicker } from './EmojiPicker';
@@ -14,6 +15,43 @@ const stripHtml = (html: string): string => {
   if (!html) return '';
   const doc = new DOMParser().parseFromString(html, 'text/html');
   return doc.body.textContent || '';
+};
+
+// Step Intent Types - separates UI from semantics
+export type StepIntent = 'capture' | 'collect' | 'schedule' | 'complete';
+
+// Get default intent based on step_type (for backward compatibility)
+export const getDefaultIntent = (stepType: string): StepIntent => {
+  switch (stepType) {
+    case 'opt_in':
+    case 'email_capture':
+    case 'phone_capture':
+      return 'capture';
+    case 'embed':
+      return 'schedule'; // Calendly embeds typically schedule
+    case 'thank_you':
+      return 'complete';
+    case 'welcome':
+    case 'video':
+    case 'text_question':
+    case 'multi_choice':
+    default:
+      return 'collect';
+  }
+};
+
+const intentLabels: Record<StepIntent, string> = {
+  capture: 'Capture (Triggers Workflow)',
+  collect: 'Collect (Save Draft)',
+  schedule: 'Schedule (Booking)',
+  complete: 'Complete (End)',
+};
+
+const intentDescriptions: Record<StepIntent, string> = {
+  capture: 'Submits lead & triggers automations',
+  collect: 'Saves progress without triggering workflows',
+  schedule: 'For Calendly/scheduling embeds',
+  complete: 'Final step, no further action',
 };
 
 interface StepContentEditorProps {
@@ -73,6 +111,9 @@ export function StepContentEditor({
   const buttonRef = useRef<HTMLInputElement>(null);
   const placeholderRef = useRef<HTMLInputElement>(null);
 
+  // Current intent (from content or default)
+  const currentIntent: StepIntent = (content.intent as StepIntent) || getDefaultIntent(step.step_type);
+
   // Auto-focus based on selected element
   useEffect(() => {
     if (selectedElement === 'headline') headlineRef.current?.focus();
@@ -106,6 +147,31 @@ export function StepContentEditor({
         </h3>
         <p className="text-xs text-muted-foreground">
           {stepTypeLabels[step.step_type]}
+        </p>
+      </div>
+
+      {/* Step Intent Selector */}
+      <div className="space-y-2 p-3 -mx-3 rounded-lg bg-muted/50 border border-border/50">
+        <Label className="text-xs font-medium">Step Intent</Label>
+        <Select
+          value={currentIntent}
+          onValueChange={(value: StepIntent) => updateField('intent', value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(intentLabels) as StepIntent[]).map((intent) => (
+              <SelectItem key={intent} value={intent}>
+                <div className="flex flex-col">
+                  <span>{intentLabels[intent]}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {intentDescriptions[currentIntent]}
         </p>
       </div>
 
