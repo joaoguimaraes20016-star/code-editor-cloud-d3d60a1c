@@ -64,6 +64,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
   const [isComplete, setIsComplete] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [teamCalendlySettings, setTeamCalendlySettings] = useState<TeamCalendlySettings | null>(null);
+
   const calendlyBookingRef = useRef<CalendlyBookingData | null>(null);
   const pendingSaveRef = useRef(false);
   const pixelsInitializedRef = useRef(false);
@@ -290,7 +291,6 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
   // Progressive lead save - creates or updates lead
   // Uses pendingSaveRef as a mutex to prevent concurrent/duplicate submissions
-  // Progressive lead save - creates or updates lead
   // GHL-style: draft saves never trigger workflows; submit saves do.
   type SubmitMode = "draft" | "submit";
 
@@ -330,10 +330,8 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
             calendly_booking: calendlyBookingRef.current,
 
-            // NEW: use submitMode instead of is_complete gating
             submitMode,
-
-            clientRequestId, // For debugging + idempotency
+            clientRequestId,
           },
         });
 
@@ -356,7 +354,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         pendingSaveRef.current = false;
       }
     },
-    [funnel?.id, leadId, utmSource, utmMedium, utmCampaign, currentStepIndex],
+    [funnel.id, currentStepIndex, leadId, utmSource, utmMedium, utmCampaign],
   );
 
   // Check if answer contains meaningful data worth saving
@@ -417,8 +415,8 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
           setIsSubmitting(false);
         }
       } else {
-        if (hasMeaningfulData(value, currentStep?.step_type)) {
-          saveLead(updatedAnswers, "draft");
+        if (currentStep && hasMeaningfulData(value, currentStep.step_type)) {
+          await saveLead(updatedAnswers, "draft");
         }
       }
 
@@ -451,7 +449,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         setIsComplete(true);
       }
     },
-    [currentStep, currentStepIndex, steps, answers, isLastStep, saveLead, hasMeaningfulData, isSubmitting],
+    [answers, currentStep, currentStepIndex, firePixelEvent, hasMeaningfulData, isLastStep, isSubmitting, saveLead],
   );
 
   // Calculate question number for multi_choice steps (excluding welcome, thank_you, video)
@@ -490,12 +488,13 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         return <OptInStep {...commonProps} />;
       case "video":
         return <VideoStep {...commonProps} />;
-      case "embed":
+      case "embed": {
         // Pass team Calendly URL if calendly_enabled_for_funnels is true and URL is configured
         const teamCalendlyUrl = teamCalendlySettings?.calendly_enabled_for_funnels
           ? teamCalendlySettings.calendly_funnel_scheduling_url
           : null;
         return <EmbedStep {...commonProps} teamCalendlyUrl={teamCalendlyUrl} />;
+      }
       case "thank_you":
         return <ThankYouStep {...commonProps} />;
       default:
