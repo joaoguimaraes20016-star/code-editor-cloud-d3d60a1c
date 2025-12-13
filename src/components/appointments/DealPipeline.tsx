@@ -129,7 +129,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+      // reduce activation distance to make drag feel more responsive
+      activationConstraint: { distance: 4 },
     })
   );
 
@@ -364,8 +365,34 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     return grouped;
   }, [filteredAppointments, stages, sortBy, confirmationTasks]);
 
+  // Dev-only duplicate detection: warn when same appointment appears in multiple stage buckets
+  useEffect(() => {
+    try {
+      if (process.env.NODE_ENV === 'production') return;
+      const counts: Record<string, string[]> = {};
+      Object.keys(dealsByStage).forEach((stageKey) => {
+        (dealsByStage[stageKey] || []).forEach((apt) => {
+          counts[apt.id] = counts[apt.id] || [];
+          counts[apt.id].push(stageKey);
+        });
+      });
+      const duplicates = Object.entries(counts).filter(([, stages]) => stages.length > 1);
+      if (duplicates.length > 0) {
+        console.warn('[DealPipeline] Duplicate appointment ids found in multiple buckets:', duplicates.slice(0, 10));
+      }
+    } catch (err) {
+      // ignore
+    }
+  }, [dealsByStage]);
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+  };
+
+  const stripPrefix = (nsId: string | null | undefined) => {
+    if (!nsId) return nsId;
+    const parts = nsId.split(":");
+    return parts.length > 1 ? parts.slice(1).join(":") : nsId;
   };
 
   // Helper to get the logical stage for comparison (handles virtual stages)
@@ -382,23 +409,27 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
     if (!over) return;
 
+    console.log('[DRAG-END] userRole:', userRole, 'userId:', user?.id, 'active:', active.id, 'over:', over.id);
+
     // Check if setter is allowed to move deals in pipeline
     if (userRole === 'setter' && !allowSetterPipelineUpdates) {
       toast.error("Setters are not allowed to move leads in the pipeline. Contact your admin to enable this feature.");
       return;
     }
 
-    const appointmentId = active.id as string;
-    const overId = over.id as string;
+    const appointmentIdNs = active.id as string;
+    const overIdNs = over.id as string;
+    const appointmentId = stripPrefix(appointmentIdNs);
+    const overId = stripPrefix(overIdNs);
     
     // Check if we dropped over a stage or over another card
-    const targetStage = stages.find(s => s.stage_id === overId);
+    const targetStage = stages.find(s => s.stage_id === overIdNs || s.stage_id === overId);
     const targetCard = appointments.find(a => a.id === overId);
     
     // Determine the new stage - handle virtual "appointments_booked" stage
     let newStage: string | null = null;
     
-    if (overId === 'appointments_booked') {
+    if (overIdNs === 'appointments_booked' || overId === 'appointments_booked') {
       newStage = 'booked'; // Map virtual stage to actual db value
     } else if (targetStage) {
       newStage = targetStage.stage_id;
@@ -441,6 +472,9 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
         return;
       }
       
+      // Optimistically update UI immediately for snappier feel
+      setAppointments((prev) => prev.map((app) => (app.id === appointmentId ? { ...app, pipeline_stage: newStage } : app)));
+
       // Move to closed stage
       await performStageMove(appointmentId, newStage, appointment);
       
@@ -643,7 +677,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     } catch (error) {
       console.error("Error updating deal stage:", error);
       toast.error("Failed to move deal");
-      loadDeals();
+        // rollback optimistic change
+        await loadDeals();
     }
   };
 
@@ -660,6 +695,9 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     
     try {
       const updateData: any = { pipeline_stage: newStageId };
+
+      // optimistic UI update for immediate feedback
+      setAppointments((prev) => prev.map((app) => (app.id === appointmentId ? { ...app, pipeline_stage: newStageId } : app)));
       
       // Add retarget_date for rescheduled
       if (newStageId === "rescheduled" && additionalData?.rescheduleDate) {
@@ -676,13 +714,12 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
       }
 
       console.log('[STAGE-MOVE] Updating appointment with data:', updateData);
-      const { error } = await supabase
-        .from("appointments")
-        .update(updateData)
-        .eq("id", appointmentId);
+      const { error } = await supabase.from("appointments").update(updateData).eq("id", appointmentId);
 
       if (error) {
         console.error('[STAGE-MOVE] ❌ Error updating appointment:', error);
+        // rollback by reloading
+        await loadDeals();
         throw error;
       }
       console.log('[STAGE-MOVE] ✓ Appointment updated successfully');
@@ -755,7 +792,13 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
     } catch (error: any) {
       console.error("[STAGE-MOVE] ❌ Fatal error in performStageMove:", error);
       console.error("[STAGE-MOVE] Error stack:", error.stack);
-      toast.error(getUserFriendlyError(error));
+      // Show clear permission-specific message when applicable
+      const msg = (error && (error.message || String(error))).toLowerCase();
+      if (msg.includes('permission') || msg.includes('not authorized') || msg.includes('forbidden')) {
+        toast.error('Permission denied. You do not have rights to move this deal.');
+      } else {
+        toast.error(getUserFriendlyError(error));
+      }
     }
   };
 
@@ -1522,7 +1565,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
                   <ScrollArea className="p-3" style={{ height: 'calc(100vh - 400px)' }}>
                     <SortableContext
-                      items={(dealsByStage['appointments_booked'] || []).map((apt) => apt.id)}
+                      items={(dealsByStage['appointments_booked'] || []).map((apt) => `booked:${apt.id}`)}
                       strategy={verticalListSortingStrategy}
                       id="appointments_booked"
                     >
@@ -1534,8 +1577,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                         ) : (
                           dealsByStage['appointments_booked'].map((appointment) => (
                             <DealCard
-                              key={appointment.id}
-                              id={appointment.id}
+                              key={`booked:${appointment.id}`}
+                              id={`booked:${appointment.id}`}
                               teamId={teamId}
                               appointment={appointment}
                               confirmationTask={confirmationTasks.get(appointment.id)}
@@ -1580,7 +1623,7 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
                       <ScrollArea className="p-3" style={{ height: 'calc(100vh - 400px)' }}>
                         <SortableContext
-                          items={stageAppointments.map((apt) => apt.id)}
+                          items={stageAppointments.map((apt) => `pipeline:${apt.id}`)}
                           strategy={verticalListSortingStrategy}
                           id={stage.stage_id}
                         >
@@ -1592,8 +1635,8 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
                             ) : (
                               stageAppointments.map((appointment) => (
                                 <DealCard
-                                  key={appointment.id}
-                                  id={appointment.id}
+                                  key={`pipeline:${appointment.id}`}
+                                  id={`pipeline:${appointment.id}`}
                                   teamId={teamId}
                                   appointment={appointment}
                                   onCloseDeal={handleCloseDeal}
@@ -1618,23 +1661,12 @@ export function DealPipeline({ teamId, userRole, currentUserId, onCloseDeal, vie
 
             <DragOverlay dropAnimation={null}>
               {activeId && (() => {
-                const activeAppointment = appointments.find(a => a.id === activeId);
+                const activeAppointment = appointments.find(a => a.id === stripPrefix(activeId));
                 return activeAppointment ? (
-                  <div className="opacity-90 cursor-grabbing" style={{ width: '300px' }}>
-                    <DealCard
-                      id={activeId}
-                      teamId={teamId}
-                      appointment={activeAppointment}
-                      confirmationTask={confirmationTasks.get(activeId)}
-                      onCloseDeal={handleCloseDeal}
-                      onMoveTo={handleMoveTo}
-                      onDelete={handleDelete}
-                      onUndo={handleUndo}
-                      onChangeStatus={handleChangeStatus}
-                      onClearDealData={handleClearDealData}
-                      userRole={userRole}
-                      allowSetterPipelineUpdates={allowSetterPipelineUpdates}
-                    />
+                  <div className="opacity-95 cursor-grabbing bg-card p-3 rounded-md shadow-lg" style={{ width: '300px' }}>
+                    <div className="font-medium truncate">{activeAppointment.lead_name}</div>
+                    <div className="text-xs text-muted-foreground">{activeAppointment.lead_email}</div>
+                    <div className="mt-2 text-sm font-semibold">{(activeAppointment.cc_collected || 0) > 0 ? `$${(activeAppointment.cc_collected || 0).toLocaleString()}` : activeAppointment.mrr_amount ? `$${activeAppointment.mrr_amount}/mo` : ''}</div>
                   </div>
                 ) : null;
               })()}

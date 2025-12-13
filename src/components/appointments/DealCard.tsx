@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
@@ -125,7 +125,7 @@ function MeetingLinkDropdown({ meetingLink }: { meetingLink: string }) {
   );
 }
 
-export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDeal, onMoveTo, onDelete, onUndo, onChangeStatus, onClearDealData, userRole, allowSetterPipelineUpdates }: DealCardProps) {
+function DealCardComponent({ id, teamId, appointment, confirmationTask, onCloseDeal, onMoveTo, onDelete, onUndo, onChangeStatus, onClearDealData, userRole, allowSetterPipelineUpdates }: DealCardProps) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showRescheduleHistory, setShowRescheduleHistory] = useState(false);
@@ -178,15 +178,13 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
       <Card
         ref={setNodeRef}
         style={style}
+        {...attributes}
+        {...listeners}
         className="group relative bg-card p-3 sm:p-4 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-primary/40 transition-all duration-200 border border-border/50 overflow-hidden select-none"
       >
         <div className="relative z-10">
           {canDrag && (
-            <div 
-              {...attributes} 
-              {...listeners} 
-              className="opacity-0 group-hover:opacity-100 cursor-grab flex-shrink-0 transition-opacity"
-            >
+            <div className="opacity-0 group-hover:opacity-100 cursor-grab flex-shrink-0 transition-opacity pointer-events-none">
               <GripVertical className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </div>
           )}
@@ -218,11 +216,11 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
 
           <div className="flex items-center gap-0.5">
             {showUndoButton && (
-              <Button 
+                <Button 
                 variant="outline" 
                 size="sm"
                 className="h-5 sm:h-7 px-1 sm:px-2 gap-0.5 bg-warning/10 hover:bg-warning/20 border-warning/30"
-                onClick={() => onUndo!(id)}
+                onClick={() => onUndo!(appointment.id)}
               >
                 <Undo2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 <span className="text-[9px] sm:text-xs font-medium hidden sm:inline">Undo</span>
@@ -250,23 +248,23 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
                   Close Deal
                 </DropdownMenuItem>
                 {canDrag && (
-                  <DropdownMenuItem onClick={() => onMoveTo(id, 'lost')}>
+                  <DropdownMenuItem onClick={() => onMoveTo(appointment.id, 'lost')}>
                     Mark as Lost
                   </DropdownMenuItem>
                 )}
                 {onChangeStatus && (
-                  <DropdownMenuItem onClick={() => onChangeStatus(id, appointment.status, appointment.lead_name)}>
+                  <DropdownMenuItem onClick={() => onChangeStatus(appointment.id, appointment.status, appointment.lead_name)}>
                     Change Status
                   </DropdownMenuItem>
                 )}
                 {hasRevenue && onClearDealData && (
-                  <DropdownMenuItem onClick={() => onClearDealData(id)}>
+                  <DropdownMenuItem onClick={() => onClearDealData(appointment.id)}>
                     Clear Deal Data
                   </DropdownMenuItem>
                 )}
                 {canDelete && onDelete && (
                   <DropdownMenuItem 
-                    onClick={() => onDelete(id)}
+                    onClick={() => onDelete(appointment.id)}
                     className="text-destructive focus:text-destructive"
                   >
                     Delete Deal
@@ -282,19 +280,19 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
           {confirmationTask && (
             <>
               {confirmationTask.completed_confirmations >= confirmationTask.required_confirmations ? (
-                <Badge variant="confirmed" className="shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+                <Badge variant="confirmed" className="shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
                   <span className="flex items-center gap-0.5">
                     ✓ <span className="hidden sm:inline">Confirmed</span><span className="sm:hidden">Conf</span>
                   </span>
                 </Badge>
               ) : confirmationTask.completed_confirmations > 0 ? (
-                <Badge variant="confirmed" className="shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+                <Badge variant="confirmed" className="shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
                   <span className="flex items-center gap-0.5">
                     {confirmationTask.completed_confirmations}/{confirmationTask.required_confirmations}
                   </span>
                 </Badge>
               ) : (
-                <Badge variant="pending" className="shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+                <Badge variant="pending" className="shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
                   <span className="flex items-center gap-0.5">
                     Pending
                   </span>
@@ -304,28 +302,28 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
           )}
           
           {isNoShow && (
-            <Badge variant="default" className="bg-gradient-to-r from-red-600 to-rose-600 shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+            <Badge variant="default" className="bg-gradient-to-r from-red-600 to-rose-600 shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
               <span className="flex items-center gap-0.5">
                 ✗ No Show
               </span>
             </Badge>
           )}
           {isCancelled && (
-            <Badge variant="default" className="bg-gradient-to-r from-gray-600 to-slate-600 shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+            <Badge variant="default" className="bg-gradient-to-r from-gray-600 to-slate-600 shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
               <span className="flex items-center gap-0.5">
                 ✗ Cancelled
               </span>
             </Badge>
           )}
           {isConfirmed && !confirmationTask && (
-            <Badge variant="confirmed" className="shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+            <Badge variant="confirmed" className="shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
               <span className="flex items-center gap-0.5">
                 ✓ Confirmed
               </span>
             </Badge>
           )}
           {isRescheduled && !appointment.original_appointment_id && !appointment.rescheduled_to_appointment_id && (
-            <Badge variant="rescheduled" className="shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+            <Badge variant="rescheduled" className="shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
               <span className="flex items-center gap-0.5">
                 <RefreshCw className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 <span className="hidden sm:inline">Rescheduled</span><span className="sm:hidden">Resch</span>
@@ -334,7 +332,7 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
           )}
           {/* Closer Reassignment Warning */}
           {hasCloserReassignment && (
-            <Badge variant="outline" className="border-warning bg-warning/10 text-warning-foreground shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+            <Badge variant="outline" className="border-warning bg-warning/10 text-warning-foreground shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
               <span className="flex items-center gap-0.5">
                 <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 <span className="hidden sm:inline">Reassigned</span>
@@ -343,7 +341,7 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
           )}
           {/* Rebooking Type Badges */}
           {appointment.rebooking_type === 'rebooking' && (
-            <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+            <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
               <span className="flex items-center gap-0.5">
                 <RefreshCw className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 Rebook
@@ -351,7 +349,7 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
             </Badge>
           )}
           {appointment.rebooking_type === 'reschedule' && (
-            <Badge className="bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+            <Badge className="bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
               <span className="flex items-center gap-0.5">
                 <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 <span className="hidden sm:inline">Double Book</span><span className="sm:hidden">Dbl</span>
@@ -359,14 +357,14 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
             </Badge>
           )}
           {appointment.rebooking_type === 'returning_client' && (
-            <Badge className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+            <Badge className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
               <span className="flex items-center gap-0.5">
                 <span className="hidden sm:inline">Returning</span><span className="sm:hidden">Return</span>
               </span>
             </Badge>
           )}
           {appointment.rebooking_type === 'win_back' && (
-            <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5">
+            <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm text-[9px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 pointer-events-none">
               <span className="flex items-center gap-0.5">
                 Win-Back
               </span>
@@ -576,3 +574,4 @@ export function DealCard({ id, teamId, appointment, confirmationTask, onCloseDea
     </>
   );
 }
+export const DealCard = memo(DealCardComponent);
