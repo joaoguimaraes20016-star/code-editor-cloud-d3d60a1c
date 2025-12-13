@@ -51,11 +51,24 @@ serve(async (req) => {
     const calendly_booking = body.calendly_booking ?? null;
     const calendlyBookingData = body.calendly_booking_data ?? null;
 
-    // NEW: explicit submit mode (draft vs submit)
-    const submitMode: SubmitMode = (body.submitMode ?? "draft") as SubmitMode;
+  // NEW: explicit submit mode (draft vs submit)
+  const submitMode: SubmitMode = (body.submitMode ?? "draft") as SubmitMode;
+  
+  // NEW: step semantics for backend safety net
+  const step_id: string | null = body.step_id ?? null;
+  const step_intent: string | null = body.step_intent ?? null;
 
-    // For tracing + optional event id stability
-    const clientRequestId: string | null = body.clientRequestId ?? null;
+  // For tracing + optional event id stability
+  const clientRequestId: string | null = body.clientRequestId ?? null;
+  
+  // Compute effectiveSubmitMode: if submitMode is draft but step_intent is capture, upgrade to submit
+  let effectiveSubmitMode: SubmitMode = submitMode;
+  if (submitMode === "draft" && step_intent === "capture") {
+    effectiveSubmitMode = "submit";
+    console.log("[submit-funnel-lead] Safety net: upgrading draft->submit because step_intent=capture");
+  }
+  
+  console.log(`[submit-funnel-lead] step_id=${step_id}, step_intent=${step_intent}, submitMode=${submitMode}, effectiveSubmitMode=${effectiveSubmitMode}, clientRequestId=${clientRequestId}`);
 
     if (!funnel_id) {
       return new Response(JSON.stringify({ error: "Missing funnel_id" }), {
@@ -199,25 +212,25 @@ serve(async (req) => {
       }
     }
 
-    // NOW: check submitMode — only fire automation-trigger on explicit "submit"
-    if (submitMode === "submit") {
-      const eventId = `lead_created:${lead.id}`;
-      console.log("[submit-funnel-lead] Invoking automation-trigger with eventId:", eventId);
+  // NOW: check effectiveSubmitMode — only fire automation-trigger on "submit"
+  if (effectiveSubmitMode === "submit") {
+    const eventId = `lead_created:${lead.id}`;
+    console.log("[submit-funnel-lead] Invoking automation-trigger with eventId:", eventId);
 
-      // Fire-and-forget (we don't block the response on automation execution)
-      supabase.functions.invoke("automation-trigger", {
-        body: {
-          triggerType: "lead_created",
-          teamId: funnel.team_id,
-          eventId,
-          eventPayload: { lead },
-        },
-      }).catch((err: any) => {
-        console.error("Failed to invoke automation-trigger:", err);
-      });
-    } else {
-      console.log("[submit-funnel-lead] submitMode=draft, skipping automation-trigger");
-    }
+    // Fire-and-forget (we don't block the response on automation execution)
+    supabase.functions.invoke("automation-trigger", {
+      body: {
+        triggerType: "lead_created",
+        teamId: funnel.team_id,
+        eventId,
+        eventPayload: { lead },
+      },
+    }).catch((err: any) => {
+      console.error("Failed to invoke automation-trigger:", err);
+    });
+  } else {
+    console.log(`[submit-funnel-lead] effectiveSubmitMode=${effectiveSubmitMode}, skipping automation-trigger`);
+  }
 
     return new Response(
       JSON.stringify({
