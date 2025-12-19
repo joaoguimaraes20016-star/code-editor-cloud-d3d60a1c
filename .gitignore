@@ -26,3 +26,6 @@ package-lock.json
 *.sln
 *.sw?
 supabase/.temp/
+
+# Supabase local state
+supabase/.branches/
