@@ -364,6 +364,75 @@ serve(async (req) => {
     console.log(`[submit-funnel-lead] effectiveSubmitMode=${effectiveSubmitMode}, skipping automation-trigger`);
   }
 
+  // After lead upsert, write an audit log row for downstream history views.
+  // Uses a short dedupe window to avoid duplicate inserts for the same lead/step.
+  try {
+    const auditEventType = "lead_submitted";
+    const DEDUPE_WINDOW_MS = 10_000;
+    const since = new Date(Date.now() - DEDUPE_WINDOW_MS).toISOString();
+
+    const auditDetails: Record<string, any> = {
+      lead_id: lead.id,
+      funnel_id,
+      step_id,
+      step_type,
+      step_intent,
+      submitMode,
+    };
+
+    if (name) auditDetails.name = name;
+    if (email) auditDetails.email = email;
+    if (phone) auditDetails.phone = phone;
+
+    let duplicateExists = false;
+    try {
+      let auditQuery = supabase
+        .from("webhook_audit_logs")
+        .select("id")
+        .eq("team_id", funnel.team_id)
+        .eq("event_type", auditEventType)
+        .gte("created_at", since)
+        .eq("details->>lead_id", lead.id as string);
+
+      if (step_id) {
+        auditQuery = auditQuery.eq("details->>step_id", step_id as string);
+      }
+
+      const { data: existingLogs, error: existingError } = await auditQuery.limit(1);
+
+      if (!existingError && existingLogs && existingLogs.length > 0) {
+        duplicateExists = true;
+      } else if (existingError) {
+        console.error("[submit-funnel-lead] Failed checking webhook_audit_logs dedupe:", existingError);
+      }
+    } catch (checkErr) {
+      console.error("[submit-funnel-lead] Unexpected error during webhook_audit_logs dedupe check:", checkErr);
+    }
+
+    if (!duplicateExists) {
+      const { error: auditError } = await supabase.from("webhook_audit_logs").insert({
+        team_id: funnel.team_id,
+        event_type: auditEventType,
+        status: "success", // matches table constraint (success|error)
+        details: auditDetails,
+        received_at: new Date().toISOString(),
+      });
+
+      if (auditError) {
+        console.error("[submit-funnel-lead] Failed inserting webhook_audit_logs:", auditError);
+      }
+    } else {
+      console.log("[submit-funnel-lead] Skipping webhook_audit_logs insert due to recent duplicate", {
+        team_id: funnel.team_id,
+        event_type: auditEventType,
+        lead_id: lead.id,
+        step_id,
+      });
+    }
+  } catch (auditOuterErr) {
+    console.error("[submit-funnel-lead] Error while logging to webhook_audit_logs:", auditOuterErr);
+  }
+
     // Structured log line for tracing lead creation/update and contact enrichment
     console.log("[submit-funnel-lead] result", {
       leadId: lead?.id ?? null,
