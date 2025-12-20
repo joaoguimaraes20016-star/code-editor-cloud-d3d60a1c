@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.local
 
 # Lockfile: we use pnpm; ignore npm's package-lock
 package-lock.json
@@ -29,3 +31,5 @@ supabase/.temp/
 
 # Supabase local state
 supabase/.branches/
+.env.local
+.env.local

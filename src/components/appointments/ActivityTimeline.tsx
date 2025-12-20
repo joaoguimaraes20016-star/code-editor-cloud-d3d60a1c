@@ -63,55 +63,181 @@ export function ActivityTimeline({ appointmentId, teamId, onClose }: ActivityTim
     };
   }, [appointmentId]);
 
-  const loadActivities = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .eq('appointment_id', appointmentId)
-        .order('created_at', { ascending: false });
+ const loadActivities = async () => {
+  try {
+    if (!appointmentId) return;
 
-      if (error) throw error;
-      setActivities(data || []);
-    } catch (error) {
-      console.error('Error loading activities:', error);
-    }
-  };
+    console.info('[ActivityTimeline][dev] Fetching activity timeline', {
+      table: 'events',
+      appointmentIdPresent: Boolean(appointmentId),
+    });
 
-  const handleAddNote = async () => {
-    if (!newNote.trim()) return;
+    // 1) Get the appointment so we know which lead/session to load events for
+    const { data: appointment, error: apptError } = await supabase
+      .from('appointments')
+      .select('lead_id, session_id')
+      .eq('id', appointmentId)
+      .single();
 
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      const { error } = await supabase.from('activity_logs').insert({
-        team_id: teamId,
-        appointment_id: appointmentId,
-        actor_id: user.id,
-        actor_name: profile?.full_name || 'Unknown',
-        action_type: 'Note Added',
-        note: newNote
+    if (apptError) {
+      console.error('[ActivityTimeline][dev] Error loading appointment context', {
+        code: (apptError as any).code,
+        message: (apptError as any).message,
+        details: (apptError as any).details,
+        hint: (apptError as any).hint,
       });
-
-      if (error) throw error;
-
-      setNewNote('');
-      toast.success('Note added');
-    } catch (error) {
-      console.error('Error adding note:', error);
-      toast.error('Failed to add note');
-    } finally {
-      setLoading(false);
+      throw apptError;
     }
+
+    // 2) Build the events query (canonical timeline)
+    let query = supabase
+      .from('events')
+      .select('*')
+      .order('occurred_at', { ascending: false });
+
+    const usingLeadId = Boolean(appointment?.lead_id);
+    const usingSessionId = !usingLeadId && Boolean(appointment?.session_id);
+
+    if (usingLeadId && appointment?.lead_id) {
+      query = query.eq('lead_id', appointment.lead_id);
+    } else if (usingSessionId && appointment?.session_id) {
+      query = query.eq('session_id', appointment.session_id);
+    }
+
+    console.info('[ActivityTimeline][dev] Executing events query', {
+      table: 'events',
+      usingLeadId,
+      usingSessionId,
+    });
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('[ActivityTimeline][dev] Error loading events', {
+        code: (error as any).code,
+        message: error.message,
+        details: (error as any).details,
+        hint: (error as any).hint,
+      });
+      throw error;
+    }
+
+    const rowCount = Array.isArray(data) ? data.length : 0;
+    console.info('[ActivityTimeline][dev] Events query result', { rowCount });
+    if (rowCount === 0) {
+      console.info(
+        '[ActivityTimeline][dev] Empty result from events. Possible causes: RLS blocking this user, wrong Supabase project, or filters not matching any rows.'
+      );
+    }
+
+    const mapped: ActivityLog[] = (data || []).map((e: any) => {
+  const payload = e?.payload ?? {};
+
+  const actorName =
+    payload.actor_name ||
+    payload.user_name ||
+    payload.actor ||
+    'System';
+
+  const note =
+    payload.note ||
+    payload.message ||
+    payload.reason ||
+    null;
+
+  return {
+    id: e.id,
+    actor_name: String(actorName),
+    action_type: String(e.event_type),
+    note: note ? String(note) : null,
+    created_at: e.created_at,
   };
+});
+
+setActivities(mapped);
+
+  } catch (error: any) {
+    console.error('[ActivityTimeline][dev] Error loading activities', {
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    });
+  }
+};
+
+
+ const handleAddNote = async () => {
+  if (!newNote.trim()) return;
+
+  try {
+    if (!appointmentId) return;
+
+    // 1) Load appointment context
+    const { data: appointment, error: apptError } = await supabase
+      .from('appointments')
+      .select('lead_id, session_id')
+      .eq('id', appointmentId)
+      .single();
+
+    if (apptError) throw apptError;
+
+    const leadId = appointment?.lead_id ?? null;
+    const sessionId = appointment?.session_id ?? null;
+
+    if (!leadId) {
+      throw new Error('Missing lead_id for this appointment (cannot attach note to funnel context)');
+    }
+
+    // 2) Load funnel/step context from lead (required by record-funnel-event)
+    const { data: lead, error: leadError } = await supabase
+      .from('leads')
+      .select('funnel_id, step_id')
+      .eq('id', leadId)
+      .single();
+
+    if (leadError) throw leadError;
+
+    const funnelId = lead?.funnel_id ?? null;
+    const stepId = lead?.step_id ?? null;
+
+    if (!funnelId || !stepId) {
+      throw new Error('Missing funnel_id/step_id on lead (required by record-funnel-event)');
+    }
+
+    // 3) Dedupe key (unique per click)
+    const dedupeKey = `note_added:${appointmentId}:${Date.now()}`;
+
+    const payload = {
+      note: newNote.trim(),
+      appointment_id: appointmentId,
+      lead_id: leadId,
+      session_id: sessionId,
+      funnel_id: funnelId,
+      step_id: stepId,
+      client_event_id:
+        globalThis.crypto?.randomUUID?.() ??
+        `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    };
+
+    const { error } = await supabase.functions.invoke('record-funnel-event', {
+      body: {
+        event_type: 'note_added',
+        dedupe_key: dedupeKey,
+        funnel_id: funnelId,
+        step_id: stepId,
+        payload,
+      },
+    });
+
+    if (error) throw error;
+
+    setNewNote('');
+    await loadActivities();
+  } catch (error) {
+    console.error('Error adding note:', error);
+  }
+};
+
 
   const handleDeleteClick = (activity: ActivityLog) => {
     setActivityToDelete(activity);

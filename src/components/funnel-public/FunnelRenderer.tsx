@@ -434,7 +434,8 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       allAnswers: Record<string, any>, 
       submitMode: SubmitMode = "draft",
       stepId?: string,
-      stepIntent?: StepIntent
+      stepIntent?: StepIntent,
+      stepType?: string,
     ) => {
       // Prevent duplicate submissions - if already submitting, ignore this call
       if (pendingSaveRef.current) {
@@ -458,9 +459,22 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       console.log(`[saveLead] stepId=${stepId}, stepIntent=${stepIntent}, submitMode=${submitMode}, clientRequestId=${clientRequestId}`);
 
       try {
+        console.log("[submit-funnel-lead payload]", {
+          leadId,
+          funnelId: funnel?.id,
+          stepId,
+          stepType,
+          stepIntent,
+          submitMode,
+          answers: allAnswers,
+        });
+
         const { data, error } = await supabase.functions.invoke("submit-funnel-lead", {
           body: {
             funnel_id: funnel.id,
+            funnelId: funnel.id,
+            team_id: funnel.team_id,
+            teamId: funnel.team_id,
             lead_id: leadId,
             answers: allAnswers,
             utm_source: utmSource,
@@ -470,6 +484,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
             submitMode,
             clientRequestId,
             step_id: stepId,
+            step_type: stepType,
             step_intent: stepIntent,
           },
         });
@@ -546,6 +561,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       // INTENT-BASED LOGIC: Use step intent (not step_type) to decide submit vs draft
       const stepIntent = getStepIntent(currentStep);
       const stepId = currentStep.id;
+      const stepType = currentStep.step_type;
       
       // Debug logging
       console.log(`[handleNext] stepId=${stepId}, step_type=${currentStep.step_type}, intent=${stepIntent}`);
@@ -565,7 +581,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
             }
           }
 
-          await saveLead(updatedAnswers, "submit", stepId, stepIntent);
+          await saveLead(updatedAnswers, "submit", stepId, stepIntent, stepType);
         } finally {
           setIsSubmitting(false);
         }
@@ -600,7 +616,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       } else if (stepIntent === "schedule") {
         // SCHEDULE intent = save draft + fire Schedule event
         if (hasMeaningfulData(value, currentStep.step_type)) {
-          await saveLead(updatedAnswers, "draft", stepId, stepIntent);
+          await saveLead(updatedAnswers, "draft", stepId, stepIntent, stepType);
         }
         firePixelEvent("Schedule", { step_id: stepId }, `schedule_${stepId}`);
 
@@ -625,7 +641,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       } else {
         // COLLECT or COMPLETE intent = draft save only
         if (hasMeaningfulData(value, currentStep.step_type)) {
-          await saveLead(updatedAnswers, "draft", stepId, stepIntent);
+          await saveLead(updatedAnswers, "draft", stepId, stepIntent, stepType);
         }
       }
 

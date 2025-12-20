@@ -3,7 +3,12 @@ export type FunnelEventType =
   | "step_completed"
   | "lead_submitted"
   | "schedule"
-  | "pixel_fired";
+  | "pixel_fired"
+  | "funnel_step_intent"
+  | "lead_captured"
+  | "info_collected"
+  | "appointment_scheduled"
+  | "funnel_completed";
 
 export interface FunnelEvent {
   id?: string;

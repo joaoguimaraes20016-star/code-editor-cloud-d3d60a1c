@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0 --port 8080 --strictPort=false",
+    "doctor": "node scripts/dev-doctor.js",
     "build": "vite build",
     "supabase:deploy:migrations": "pnpm dlx supabase@latest migration deploy",
     "supabase:deploy:functions": "pnpm dlx supabase@latest functions deploy record-funnel-event",

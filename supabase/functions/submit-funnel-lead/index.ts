@@ -50,6 +50,91 @@ serve(async (req) => {
 
     const body = await req.json();
 
+    const normalizeString = (value: unknown): string | null => {
+      if (typeof value !== "string") return null;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    };
+
+    const firstNonEmpty = (...values: (unknown | null | undefined)[]): string | null => {
+      for (const v of values) {
+        const normalized = normalizeString(v as string | null);
+        if (normalized) return normalized;
+      }
+      return null;
+    };
+
+    const extractContactFromAnswers = (answers: any) => {
+      let nameFromAnswers: string | null = null;
+      let emailFromAnswers: string | null = null;
+      let phoneFromAnswers: string | null = null;
+
+      if (!answers || typeof answers !== "object") {
+        return { nameFromAnswers, emailFromAnswers, phoneFromAnswers };
+      }
+
+      // Case 1: flat answers.name / answers.email / answers.phone
+      nameFromAnswers = firstNonEmpty(
+        answers.name,
+        answers.full_name,
+        answers.contact_name,
+        answers.first_name && answers.last_name
+          ? `${answers.first_name} ${answers.last_name}`
+          : null,
+      );
+      emailFromAnswers = firstNonEmpty(
+        answers.email,
+        answers.email_address,
+        answers.contact_email,
+      );
+      phoneFromAnswers = firstNonEmpty(
+        answers.phone,
+        answers.phone_number,
+        answers.contact_phone,
+      );
+
+      // Case 2: per-step answers keyed by step id, with shape { value, ... }
+      if (!nameFromAnswers || !emailFromAnswers || !phoneFromAnswers) {
+        for (const key of Object.keys(answers)) {
+          const entry = (answers as any)[key];
+          if (!entry) continue;
+
+          const value = typeof entry === "object" && entry !== null && "value" in entry
+            ? (entry as any).value
+            : entry;
+
+          if (!value || typeof value !== "object") continue;
+
+          const maybeName = firstNonEmpty(
+            (value as any).name,
+            (value as any).full_name,
+            (value as any).contact_name,
+            (value as any).first_name && (value as any).last_name
+              ? `${(value as any).first_name} ${(value as any).last_name}`
+              : null,
+          );
+          const maybeEmail = firstNonEmpty(
+            (value as any).email,
+            (value as any).email_address,
+            (value as any).contact_email,
+          );
+          const maybePhone = firstNonEmpty(
+            (value as any).phone,
+            (value as any).phone_number,
+            (value as any).contact_phone,
+          );
+
+          if (!nameFromAnswers && maybeName) nameFromAnswers = maybeName;
+          if (!emailFromAnswers && maybeEmail) emailFromAnswers = maybeEmail;
+          if (!phoneFromAnswers && maybePhone) phoneFromAnswers = maybePhone;
+
+          if (nameFromAnswers && emailFromAnswers && phoneFromAnswers) break;
+        }
+      }
+
+      return { nameFromAnswers, emailFromAnswers, phoneFromAnswers };
+    };
+
     // REQUIRED-ish
     const funnel_id: string = body.funnel_id;
     const lead_id: string | null = body.lead_id ?? null;
@@ -60,10 +145,31 @@ serve(async (req) => {
     const optInTimestamp = body.opt_in_timestamp ?? null;
     const last_step_index = body.last_step_index ?? null;
 
-    // Contact info (may also be inferred from booking data)
-    let email: string | null = body.email ?? null;
-    let phone: string | null = body.phone ?? null;
-    let name: string | null = body.name ?? null;
+    // Contact info (may also be inferred from booking data and nested answers)
+    const { nameFromAnswers, emailFromAnswers, phoneFromAnswers } = extractContactFromAnswers(answers);
+
+    let name: string | null = firstNonEmpty(
+      body.name,
+      body.full_name,
+      body.contact_name,
+      body.first_name && body.last_name ? `${body.first_name} ${body.last_name}` : null,
+      (body.answers && (body.answers as any).name) || null,
+      nameFromAnswers,
+    );
+    let email: string | null = firstNonEmpty(
+      body.email,
+      body.email_address,
+      body.contact_email,
+      (body.answers && (body.answers as any).email) || null,
+      emailFromAnswers,
+    );
+    let phone: string | null = firstNonEmpty(
+      body.phone,
+      body.phone_number,
+      body.contact_phone,
+      (body.answers && (body.answers as any).phone) || null,
+      phoneFromAnswers,
+    );
 
     // Booking data (optional)
     const calendly_booking = body.calendly_booking ?? null;
@@ -124,22 +230,22 @@ serve(async (req) => {
     if (calendly_booking?.invitee_phone && !phone) phone = calendly_booking.invitee_phone;
     if (calendly_booking?.invitee_name && !name) name = calendly_booking.invitee_name;
 
-    // Determine lead status based on data captured (same logic you had)
+    // Determine lead status based on data captured
     // - 'visitor': Has answers but no contact info
     // - 'partial': Has some contact info but not all three
-    // - 'lead': Has ALL THREE
-    // - 'booked': Has booking AND is a real lead
+    // - 'lead': For submit/capture, we normalize to lead so Performance/Contacts can see it
     let leadStatus = "visitor";
     const hasAnyContactInfo = !!(email || phone || name);
-    const isRealLead = !!(name && phone && email);
 
-    if (hasAnyContactInfo && !isRealLead) leadStatus = "partial";
-    if (isRealLead) leadStatus = "lead";
-
-    if (calendly_booking && isRealLead) {
-      leadStatus = "booked";
-    } else if (calendly_booking) {
+    if (hasAnyContactInfo) {
       leadStatus = "partial";
+    }
+
+    const shouldForceLeadStatus =
+      effectiveSubmitMode === "submit" || step_intent === "capture";
+
+    if (shouldForceLeadStatus) {
+      leadStatus = "lead";
     }
 
     let lead: any = null;
@@ -257,6 +363,16 @@ serve(async (req) => {
   } else {
     console.log(`[submit-funnel-lead] effectiveSubmitMode=${effectiveSubmitMode}, skipping automation-trigger`);
   }
+
+    // Structured log line for tracing lead creation/update and contact enrichment
+    console.log("[submit-funnel-lead] result", {
+      leadId: lead?.id ?? null,
+      effectiveSubmitMode,
+      stepIntent: step_intent,
+      nameSet: !!name,
+      emailSet: !!email,
+      phoneSet: !!phone,
+    });
 
     return new Response(
       JSON.stringify({

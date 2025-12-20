@@ -3,6 +3,16 @@
 This is a minimal, dev-only test plan to validate funnel intent defaults, persistence, runtime emission, dedupe, and intent→trigger mapping. No production behavior is changed by these checks.
 
 Prerequisites
+- Configure your Supabase env vars:
+
+  1. Copy `.env.example` → `.env.local`.
+  2. Edit `.env.local` and set:
+
+     - `VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co`
+     - `VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>`
+
+     `VITE_SUPABASE_URL` **must** be your Supabase project URL (ending in `.supabase.co`), not a Codespaces URL like `*.app.github.dev`.
+
 - Run the dev server (project root). Common commands:
 
 ```bash
@@ -15,6 +25,52 @@ pnpm start
 
 - Open your browser to the app and use a team that has a funnel available.
 - Ensure `import.meta.env.DEV` is true (you're running the dev server).
+
+## Codespaces Setup (One-Time)
+
+When using GitHub Codespaces, you must let Codespaces manage the URL and ports. The app should always be opened on a `*.app.github.dev` URL, not `localhost`.
+
+1. **Start the dev server**
+  - From the project root, run `pnpm dev`.
+  - Wait until you see the Vite logs:
+    - `[Dev][Vite] Dev server is running.`
+    - One or more `Local URL:` / `Network URL:` lines.
+
+2. **Use the PORTS panel, not a hard-coded URL**
+  - In Codespaces, open the **PORTS** panel (usually at the bottom).
+  - Find the forwarded port for Vite (preferred `8080`, but it may be `8081–8084`).
+  - The URL column should show something like `https://<something>-8080.app.github.dev`.
+  - **Always open this URL**, never `http://localhost:8080` from your host.
+
+  <!-- Screenshot: PORTS panel with port 8080 highlighted and URL ending in .app.github.dev. -->
+
+3. **Make the Vite port Public and easy to see**
+  - Right-click the Vite port row → **Set Visibility → Public**.
+  - (Optional but recommended) Right-click again → **Set as Default Port** or **Auto open**.
+  - This ensures the correct `*.app.github.dev` URL pops open every time instead of a stale tab.
+
+  <!-- Screenshot: context menu showing "Set Visibility → Public" and "Set as Default Port". -->
+
+4. **Confirm origin matches Supabase project**
+  - With the app open, look at the **Dev diagnostics** panel in the bottom-right (only in dev):
+    - `Origin` should be your Codespaces `*.app.github.dev` URL.
+    - `Supabase host` should be the hostname from your `VITE_SUPABASE_URL`.
+  - If you see `Failed to fetch` in the console and `Origin` and `Supabase host` obviously don't belong together (wrong project, wrong env file, or different Codespace), fix that first.
+
+  <!-- Screenshot: DevDiagnostics panel showing Origin, env booleans, and Supabase host. -->
+
+## Codespaces Dev URL (Ports)
+
+When running this app in GitHub Codespaces, Vite may automatically switch ports if `8080` is already in use. This can make it look like the app "isn't fetching" data when the real issue is just that the wrong URL is open.
+
+- The dev server is started with a preferred port of `8080`, but if that is taken Vite will fall back to `8081`, `8082`, etc.
+- In Codespaces, always use the **forwarded** port shown in the **PORTS** panel, not a hard-coded URL.
+- To open the correct URL:
+  - Start the dev server (`pnpm dev` / `npm run dev`).
+  - Look at the PORTS panel and find the forwarded port for the Vite dev server (usually `8080`, but it may be `8081–8084`).
+  - Click the globe icon to open that forwarded URL in your browser.
+- You can set the port’s visibility (Public/Private) from the same panel if you need to share the URL.
+- The port only serves the **frontend** bundle. Whether the UI can "fetch" data depends on your Supabase env vars and project, not which forwarded port is used.
 
 Quick checks (general)
 - Open the browser console (DevTools) to watch for DEV-only debug logs.

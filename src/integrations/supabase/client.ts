@@ -3,12 +3,52 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const EXPECTED_PROJECT_REF = 'kqfyevdblvgxaycdvfxe';
+type SupabaseKeyType = 'publishable' | 'jwt' | 'unknown' | 'missing';
+
+function detectSupabaseKeyType(token: string | undefined | null): SupabaseKeyType {
+  if (!token) return 'missing';
+  if (token.startsWith('sb_publishable_')) return 'publishable';
+  if (token.split('.').length === 3) return 'jwt';
+  return 'unknown';
+}
+
+function decodeAnonKeyRefAndRole(token: string | undefined | null): { tokenRef: string | null; tokenRole: string | null; keyType: SupabaseKeyType } {
+  const keyType = detectSupabaseKeyType(token);
+  if (!token || keyType !== 'jwt') return { tokenRef: null, tokenRole: null, keyType };
+
+  const parts = token.split('.');
+  if (parts.length < 2) return { tokenRef: null, tokenRole: null, keyType };
+
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+
+    // atob is available in the browser; Buffer fallback for non-browser dev environments
+    let json: string;
+    if (typeof atob === 'function') {
+      json = atob(padded);
+    } else if (typeof Buffer !== 'undefined') {
+      json = Buffer.from(padded, 'base64').toString('utf-8');
+    } else {
+      return { tokenRef: null, tokenRole: null, keyType };
+    }
+
+    const payload = JSON.parse(json) as { ref?: string; role?: string; user_role?: string };
+    const tokenRef = payload.ref ?? null;
+    const tokenRole = payload.role ?? payload.user_role ?? null;
+
+    return { tokenRef, tokenRole, keyType };
+  } catch {
+    return { tokenRef: null, tokenRole: null, keyType };
+  }
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,
@@ -22,17 +62,57 @@ if (import.meta.env.DEV) {
     try {
       const rawUrl = SUPABASE_URL || (import.meta.env.NEXT_PUBLIC_SUPABASE_URL as string) || '';
       let projectRef = 'unset';
+      let urlHostRef: string | null = null;
+      let host: string | null = null;
       try {
         if (rawUrl) {
           const u = new URL(rawUrl);
-          projectRef = u.hostname.split('.')[0] || projectRef;
+          host = u.hostname;
+          projectRef = host.split('.')[0] || projectRef;
+          if (host.endsWith('.supabase.co')) {
+            urlHostRef = host.split('.')[0] || null;
+          }
         }
       } catch (e) {
         projectRef = rawUrl;
       }
 
+      const { tokenRef, tokenRole, keyType } = decodeAnonKeyRefAndRole(SUPABASE_ANON_KEY);
+
+      if (!SUPABASE_URL) {
+        console.error('[Supabase][dev] VITE_SUPABASE_URL is not set.');
+      }
+
+      if (!SUPABASE_ANON_KEY) {
+        console.error('[Supabase][dev] VITE_SUPABASE_ANON_KEY is not set.');
+      }
+
+      if (host && !host.endsWith('.supabase.co')) {
+        console.warn('[Supabase][dev] VITE_SUPABASE_URL host does not end with .supabase.co:', host);
+      }
+
       console.debug('[Supabase][dev] SUPABASE_URL=', rawUrl);
-      console.debug('[Supabase][dev] projectRef=', projectRef);
+      console.debug('[Supabase][dev] projectRef(from URL)=', projectRef);
+      console.debug('[Supabase][dev] anon key type=', keyType);
+      console.debug('[Supabase][dev] anon token ref=', tokenRef);
+      console.debug('[Supabase][dev] anon token role=', tokenRole);
+
+      if (keyType === 'jwt' && urlHostRef && tokenRef && urlHostRef !== tokenRef) {
+        console.error('[Supabase][dev] Anon key project ref does not match VITE_SUPABASE_URL project ref.', {
+          urlProjectRef: urlHostRef,
+          tokenProjectRef: tokenRef,
+        });
+        throw new Error(
+          '[Supabase][dev] Misconfigured Supabase anon key: token project ref does not match VITE_SUPABASE_URL. Update VITE_SUPABASE_ANON_KEY in .env.local to use the anon key from the correct project.'
+        );
+      }
+
+      if (keyType === 'jwt' && tokenRef && tokenRef !== EXPECTED_PROJECT_REF) {
+        console.warn('[Supabase][dev] Anon key ref does not match expected project ref.', {
+          expectedRef: EXPECTED_PROJECT_REF,
+          tokenRef,
+        });
+      }
 
       // Query information_schema.tables to detect available schemas/tables (may be restricted by PostgREST permissions)
       try {
