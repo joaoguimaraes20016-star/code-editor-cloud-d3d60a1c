@@ -560,20 +560,8 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       return value.trim().length > 0;
     }
 
-    // For multi-choice, always save selections
-    if (stepType === "multi_choice") {
-      return true;
-    }
-
-    return false;
-  }, []);
-
-  const handleConsentChange = useCallback(
-    (checked: boolean) => {
-      setConsentChecked(checked);
-      setConsentError(null);
-
-      // Persist consent into the shared answers payload so that legal
+    // For multi
+    // // Persist consent into the shared answers payload so that legal
       // information is deterministic and controlled from FunnelRenderer.
       setAnswers((prev) => {
         const prevAny = prev as any;

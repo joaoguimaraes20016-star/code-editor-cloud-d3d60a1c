@@ -7,6 +7,15 @@
  */
 
 (function() {
+  // If the React funnel runtime is active on this page,
+  // disable the legacy DOM-based funnel renderer entirely.
+  if (typeof window !== 'undefined' &&
+      (window.__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__ === true ||
+       window.__GRWTH_DISABLE_LEGACY_FUNNEL__ === true)) {
+    console.warn('Legacy funnel renderer disabled because React runtime is active.');
+    return;
+  }
+
   const SUPABASE_URL = 'https://inbvluddkutyfhsxfqco.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluYnZsdWRka3V0eWZoc3hmcWNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDc4MjQsImV4cCI6MjA3NjEyMzgyNH0.W0jGEgCTzcErhLHmlSXXknml0AwQH1nVgrWTukXXPYk';
 
