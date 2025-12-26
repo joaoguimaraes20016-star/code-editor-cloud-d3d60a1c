@@ -78,6 +78,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
   const calendlyBookingRef = useRef<CalendlyBookingData | null>(null);
   const pendingSaveRef = useRef(false);
+  const submitInFlightRef = useRef(false);
   const pixelsInitializedRef = useRef(false);
   const firedEventsRef = useRef<Set<string>>(new Set()); // Track fired events to prevent duplicates
   // Track funnel event timestamps to dedupe rapid duplicate emissions
@@ -114,29 +115,29 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
     fetchTeamCalendlySettings();
   }, [funnel.team_id]);
 
-  const currentStep = steps[currentStepIndex];
+  const currentStep = steps[currentStepIndex] ?? null;
   const isLastStep = currentStepIndex === steps.length - 1;
   const isThankYouStep = currentStep?.step_type === "thank_you";
   const domainOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
-  // Single source of truth for the active step's terms URL.
-  const activeTermsUrl = currentStep
-    ? resolvePrivacyPolicyUrl(currentStep, funnel, undefined, domainOrigin)
-    : "";
-  const activeShowConsent = currentStep
-    ? shouldShowConsentCheckbox(currentStep, activeTermsUrl)
-    : false;
-
-  useEffect(() => {
-    // When entering a step that shows the consent checkbox, always reset
-    // consent state so the user must explicitly re-accept. Also clear any
-    // previous consent error when the active step does not require consent.
-    if (activeShowConsent) {
-      setConsentChecked(false);
-      setConsentError(null);
-    } else {
-      setConsentError(null);
+  // Compute consent requirements for a specific step, keeping UI and gating logic in sync.
+  function getConsentRequirementForStep(step: FunnelStep | null): { termsUrl: string; requireConsent: boolean } {
+    if (!step) {
+      return { termsUrl: "", requireConsent: false };
     }
-  }, [currentStep?.id, activeShowConsent]);
+
+    const termsUrl = resolvePrivacyPolicyUrl(step, funnel, undefined, domainOrigin);
+    const requireConsent = shouldShowConsentCheckbox(step, termsUrl);
+    return { termsUrl, requireConsent };
+  }
+
+  // Single source of truth for the active step's terms URL and consent behavior.
+  const { termsUrl: activeTermsUrl, requireConsent: activeRequireConsent } = getConsentRequirementForStep(currentStep);
+
+  // Reset consent UI whenever the active step changes.
+  useEffect(() => {
+    setConsentError(null);
+    setConsentChecked(false);
+  }, [currentStep?.id]);
 
   // Generate unique event ID for deduplication
   const generateEventId = useCallback(() => {
@@ -543,7 +544,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
   // Check if answer contains meaningful data worth saving
   const hasMeaningfulData = useCallback((value: any, stepType: string): boolean => {
-    if (!value) return false;
+    if (value == null) return false;
 
     // Always save opt-in, email, phone captures immediately
     if (["opt_in", "email_capture", "phone_capture"].includes(stepType)) {
@@ -560,9 +561,28 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       return value.trim().length > 0;
     }
 
-    // For multi
-    // // Persist consent into the shared answers payload so that legal
-      // information is deterministic and controlled from FunnelRenderer.
+    // For multi choice steps, save if at least one option is selected
+    if (stepType === "multi_choice") {
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+      if (typeof value === "object" && Array.isArray((value as any).options)) {
+        return (value as any).options.length > 0;
+      }
+    }
+
+    // Default: treat as meaningful
+    return true;
+  }, []);
+
+  // Keep consent state and the canonical answers payload in sync when the
+  // checkbox is toggled. This ensures legal data used at submit-time
+  // matches the visual checkbox state.
+  const handleConsentChange = useCallback(
+    (checked: boolean) => {
+      setConsentChecked(checked);
+      setConsentError(null);
+
       setAnswers((prev) => {
         const prevAny = prev as any;
         const prevLegal = (prevAny.legal as any) || {};
@@ -570,7 +590,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         const nextLegal: any = {
           ...prevLegal,
           accepted: checked,
-          accepted_at: checked ? new Date().toISOString() : prevLegal.accepted_at ?? null,
+          accepted_at: checked ? new Date().toISOString() : null,
           privacy_policy_url: activeTermsUrl || prevLegal.privacy_policy_url,
           step_id: currentStep?.id ?? prevLegal.step_id,
         };
@@ -586,15 +606,20 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
   const handleNext = useCallback(
     async (value?: any) => {
-      console.log("[HANDLE_NEXT_CALLED]", {
-        stepId: currentStep?.id,
-        stepType: currentStep?.step_type,
-        consentChecked,
-        showConsentCheckbox: activeShowConsent,
-        activeTermsUrl,
-      });
-
       if (!currentStep) return;
+      const stepId = currentStep.id;
+      const stepType = currentStep.step_type;
+      const stepIntent = getStepIntent(currentStep);
+      const { termsUrl, requireConsent } = getConsentRequirementForStep(currentStep);
+
+      console.log("[HANDLE_NEXT]", {
+        stepId,
+        stepType,
+        stepIntent,
+        consentChecked,
+        requireConsent,
+        termsUrl,
+      });
       
       let updatedAnswers = answers;
 
@@ -612,19 +637,6 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         setAnswers(updatedAnswers);
       }
 
-      // INTENT-BASED LOGIC: Use step intent (not step_type) to decide submit vs draft
-      const stepIntent = getStepIntent(currentStep);
-      const stepId = currentStep.id;
-      const stepType = currentStep.step_type;
-
-      // Global, unbypassable consent gate for any step that shows the
-      // checkbox. This uses the precomputed showConsentCheckbox boolean
-      // so rendering and enforcement share a single source of truth.
-      if (activeShowConsent && !consentChecked) {
-        setConsentError("You must accept the privacy policy to continue.");
-        return;
-      }
-
       console.log("[HANDLE_NEXT_GATE_PASSED]");
 
       // Debug logging
@@ -635,18 +647,32 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
         // For opt-in steps, a Privacy Policy URL is mandatory in runtime as well.
         // If it's missing entirely, block submit even before consent checkbox state.
-        if (stepType === "opt_in" && !activeTermsUrl) {
+        if (stepType === "opt_in" && !termsUrl) {
           setConsentError("Add a Privacy Policy URL in Funnel Settings before publishing.");
           return;
         }
 
-        // Final defensive assertion before any submit/capture save path.
-        if (activeShowConsent && !consentChecked) {
+        // Hard consent gate for submit/capture based on the exact step being submitted.
+        if (requireConsent && !consentChecked) {
+          console.log("[CONSENT_BLOCKED]", {
+            stepId,
+            stepType,
+            stepIntent,
+            consentChecked,
+            requireConsent,
+            termsUrl,
+          });
           setConsentError("You must accept the privacy policy to continue.");
           return;
         }
 
-        if (isSubmitting) return;
+        // One-click dedupe guard for submit/capture.
+        if (submitInFlightRef.current) {
+          console.log("[SUBMIT_DEDUPE_BLOCK]", { stepId, stepType, stepIntent });
+          return;
+        }
+
+        submitInFlightRef.current = true;
 
         try {
           setIsSubmitting(true);
@@ -661,7 +687,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
           let submitAnswers = updatedAnswers;
 
-          if (activeShowConsent && consentChecked) {
+          if (activeShowConsentCheckbox && consentChecked) {
             const consentMode = getConsentMode(currentStep, activeTermsUrl);
             const existingLegal = (updatedAnswers as any).legal || {};
 
@@ -672,14 +698,28 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
                 ...existingLegal,
                 accepted: true,
                 accepted_at: new Date().toISOString(),
-                privacy_policy_url: activeTermsUrl,
+                privacy_policy_url: termsUrl,
                 consent_mode: consentMode,
               },
             };
             setAnswers(submitAnswers);
           }
 
-          await saveLead(submitAnswers, "submit", stepId, stepIntent, stepType);
+          try {
+            await saveLead(submitAnswers, "submit", stepId, stepIntent, stepType);
+          } catch (e) {
+            submitInFlightRef.current = false;
+            throw e;
+          }
+
+          await emitFunnelEvent({
+            funnel_id: funnel.id,
+            step_id: stepId,
+            lead_id: leadId,
+            intent: stepIntent,
+            payload: { answers: submitAnswers },
+          });
+
           updatedAnswers = submitAnswers;
         } finally {
           setIsSubmitting(false);
@@ -703,7 +743,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
               dedupe_key: dedupeKey,
               payload: {
                 step_id: stepId,
-                answers: updatedAnswers,
+                answers: submitInFlightRef.current ? updatedAnswers : updatedAnswers,
                 lead_id: leadId,
               },
             });
@@ -744,19 +784,6 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         }
       }
 
-      // Emit unified funnel event (internal only) once per step/intent
-      try {
-        await emitFunnelEvent({
-          funnel_id: funnel.id,
-          step_id: stepId,
-          lead_id: leadId,
-          intent: stepIntent,
-          payload: { answers: updatedAnswers },
-        });
-      } catch (err) {
-        if (import.meta.env.DEV) console.debug('[FunnelRenderer][dev] emitFunnelEvent error on next', err);
-      }
-
       // Move to next step
       if (!isLastStep) {
         console.log("[ADVANCE_STEP]", { from: currentStep?.id, stepType: currentStep?.step_type });
@@ -771,11 +798,9 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       currentStep,
       currentStepIndex,
       consentChecked,
-      activeShowConsent,
       firePixelEvent,
       hasMeaningfulData,
       isLastStep,
-      isSubmitting,
       saveLead,
       activeTermsUrl,
     ],
@@ -792,8 +817,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
     const currentQuestionNumber = questionIndex >= 0 ? questionIndex + 1 : undefined;
     const totalQuestions = questionSteps.length;
 
-    const stepTermsUrl = resolvePrivacyPolicyUrl(step, funnel, undefined, domainOrigin);
-    const stepShowConsent = shouldShowConsentCheckbox(step, stepTermsUrl);
+    const { termsUrl: stepTermsUrl, requireConsent: stepShowConsent } = getConsentRequirementForStep(step);
 
     const commonProps = {
       content: step.content,
@@ -857,12 +881,9 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
         // Use the globally resolved privacy policy URL for the active step.
         // Non-active steps still resolve independently for preview-only cases.
         const isActiveStep = step.id === currentStep?.id;
-        const stepTermsUrl = isActiveStep
-          ? activeTermsUrl
-          : resolvePrivacyPolicyUrl(step, funnel, undefined, domainOrigin);
-        const stepShowConsentCheckbox = isActiveStep
-          ? activeShowConsent
-          : shouldShowConsentCheckbox(step, stepTermsUrl);
+        const { termsUrl: baseTermsUrl, requireConsent: baseRequireConsent } = getConsentRequirementForStep(step);
+        const stepTermsUrl = isActiveStep ? activeTermsUrl : baseTermsUrl;
+        const stepShowConsentCheckbox = isActiveStep ? activeRequireConsent : baseRequireConsent;
         return (
           <>
             {debugBadge}

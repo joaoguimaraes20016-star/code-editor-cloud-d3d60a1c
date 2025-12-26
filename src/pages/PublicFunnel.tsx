@@ -49,20 +49,6 @@ export default function PublicFunnel() {
   const utmMedium = searchParams.get('utm_medium');
   const utmCampaign = searchParams.get('utm_campaign');
 
-  // Signal that the React funnel runtime is active so legacy
-  // DOM-based renderers can safely no-op.
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__ = true;
-    }
-
-    return () => {
-      if (typeof window !== 'undefined' && (window as any).__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__) {
-        delete (window as any).__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__;
-      }
-    };
-  }, []);
-
   // Check for custom domain resolution
   useEffect(() => {
     if (isCustomDomain() && !slug) {

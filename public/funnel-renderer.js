@@ -10,9 +10,10 @@
   // If the React funnel runtime is active on this page,
   // disable the legacy DOM-based funnel renderer entirely.
   if (typeof window !== 'undefined' &&
-      (window.__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__ === true ||
+      (window.GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE === true ||
+       window.__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__ === true ||
        window.__GRWTH_DISABLE_LEGACY_FUNNEL__ === true)) {
-    console.warn('Legacy funnel renderer disabled because React runtime is active.');
+    console.warn('[legacy funnel-renderer] disabled because React runtime is active');
     return;
   }
 
