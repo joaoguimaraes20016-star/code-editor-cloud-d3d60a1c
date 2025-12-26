@@ -1,3 +1,4 @@
+
 /**
  * Funnel Client-Side Renderer
  * This file is loaded by the VPS and handles all funnel rendering client-side.
@@ -6,21 +7,35 @@
  * IMPORTANT: This file must stay in sync with serve-funnel edge function for styling parity.
  */
 
-(function() {
-  // If the React funnel runtime is active on this page, disable
-  // the legacy renderer entirely so only one submission path exists.
-  if (window.__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__ === true) {
-    return;
+;(function () {
+  // HARD EXIT: if the React funnel runtime is active on this page,
+  // legacy must do absolutely nothing (no listeners, no saveLead, no DOM wiring).
+  try {
+    if (typeof window !== "undefined") {
+      const w = window;
+
+      const reactActive =
+        w.GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE === true ||
+        w.__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__ === true ||
+        w.__GRWTH_DISABLE_LEGACY_FUNNEL__ === true;
+
+      if (reactActive) {
+        console.warn("[LEGACY_FUNNEL_DISABLED]");
+        return;
+      }
+    }
+  } catch (e) {
+    // If something is weird, fail open (let legacy run) rather than breaking the page.
   }
-  // If the React funnel runtime is active on this page,
-  // disable the legacy DOM-based funnel renderer entirely.
-  if (typeof window !== 'undefined' &&
-      (window.GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE === true ||
-       window.__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__ === true ||
-       window.__GRWTH_DISABLE_LEGACY_FUNNEL__ === true)) {
-    console.warn('[legacy funnel-renderer] disabled because React runtime is active');
-    return;
-  }
+
+  // ↓↓↓ EVERYTHING legacy lives BELOW this line ↓↓↓
+  // KEEP ALL YOUR EXISTING LEGACY CODE HERE, unchanged.
+  // (Do not start another (function(){...}) wrapper below.)
+
+  // ... legacy code continues ...
+
+})();
+
 
   const SUPABASE_URL = 'https://inbvluddkutyfhsxfqco.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluYnZsdWRka3V0eWZoc3hmcWNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDc4MjQsImV4cCI6MjA3NjEyMzgyNH0.W0jGEgCTzcErhLHmlSXXknml0AwQH1nVgrWTukXXPYk';
