@@ -7,6 +7,11 @@
  */
 
 (function() {
+  // If the React funnel runtime is active on this page, disable
+  // the legacy renderer entirely so only one submission path exists.
+  if (window.__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__ === true) {
+    return;
+  }
   // If the React funnel runtime is active on this page,
   // disable the legacy DOM-based funnel renderer entirely.
   if (typeof window !== 'undefined' &&
@@ -828,11 +833,17 @@
         answers.email = email;
         answers.phone = phone;
         answers.opt_in = true;
+        const consentTs = new Date().toISOString();
         answers.legal = {
           consent_given: true,
           consent_mode: consentMode,
           terms_url: termsUrl || null,
-          consent_ts: new Date().toISOString()
+          consent_ts: consentTs,
+          // Backend-normalized legal payload
+          accepted: true,
+          accepted_at: consentTs,
+          privacy_policy_url: termsUrl || null,
+          step_id: step?.id || null,
         };
         saveLead();
         nextStep();

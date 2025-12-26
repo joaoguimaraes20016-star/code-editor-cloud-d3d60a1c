@@ -18,6 +18,8 @@ const corsHeaders = {
 
 type SubmitMode = "draft" | "submit";
 type StepIntent = "capture" | "collect" | "schedule" | "complete";
+type ConsentMode = "explicit" | "implicit";
+type ConsentMode = "explicit" | "implicit";
 
 // Canonical default intent derivation (mirrors frontend stepDefinitions.ts)
 function getDefaultIntent(stepType: string): StepIntent {
@@ -33,6 +35,140 @@ function getDefaultIntent(stepType: string): StepIntent {
     default:
       return 'collect';
   }
+}
+
+// Backend mirror of the public funnel consent helpers.
+// These helpers intentionally use `any` to avoid coupling to frontend types.
+
+function getDefaultPrivacyPolicyUrlBackend(funnel: any, team: any | null): string {
+  const funnelUrl = funnel?.settings?.privacy_policy_url;
+  if (typeof funnelUrl === "string" && funnelUrl.trim().length > 0) {
+    return funnelUrl.trim();
+  }
+
+  const teamUrl = team?.settings?.privacy_policy_url;
+  if (typeof teamUrl === "string" && teamUrl.trim().length > 0) {
+    return teamUrl.trim();
+  }
+
+  return "/legal/privacy";
+}
+
+function resolvePrivacyPolicyUrlBackend(
+  step: any | null,
+  funnel: any,
+  team: any | null,
+): string {
+  const content = step?.content || {};
+  const stepUrl =
+    content.privacy_link ||
+    content.terms_url ||
+    content.terms_link;
+
+  if (typeof stepUrl === "string" && stepUrl.trim().length > 0) {
+    return stepUrl.trim();
+  }
+
+  return getDefaultPrivacyPolicyUrlBackend(funnel, team);
+}
+
+function getConsentModeBackend(step: any | null, termsUrl: string | null): ConsentMode {
+  const raw = step?.content?.consent_mode as ConsentMode | undefined;
+  if (raw === "explicit" || raw === "implicit") return raw;
+  return termsUrl ? "implicit" : "explicit";
+}
+
+function shouldShowConsentCheckboxBackend(step: any | null, termsUrl: string | null): boolean {
+  if (!step || !termsUrl) return false;
+  const stepType = step.step_type || "";
+  const consentSteps = ["opt_in", "email_capture", "phone_capture", "contact_capture"];
+  return consentSteps.includes(stepType);
+}
+
+// Minimal consent step shape used on the backend. Matches the shape produced by
+// public.funnel-renderer.js and the React funnel renderer (step_type + content).
+interface ConsentStep {
+  id?: string;
+  step_type?: string | null;
+  content?: Record<string, any> | null;
+}
+
+// Resolve the privacy / terms URL for a step using the same precedence as the
+// frontend helpers: step-level overrides, then funnel-level default.
+function getTermsUrlFromStepAndFunnel(
+  step: ConsentStep | null,
+  funnel: any,
+): string | null {
+  const content = step?.content ?? {};
+  const rawStepUrl =
+    content.privacy_link ||
+    (content as any).terms_url ||
+    (content as any).terms_link ||
+    null;
+
+  if (typeof rawStepUrl === "string" && rawStepUrl.trim().length > 0) {
+    return rawStepUrl.trim();
+  }
+
+  const rawFunnelUrl = funnel?.settings?.privacy_policy_url ?? null;
+  if (typeof rawFunnelUrl === "string" && rawFunnelUrl.trim().length > 0) {
+    return rawFunnelUrl.trim();
+  }
+
+  return null;
+}
+
+// Mirror getConsentMode from src/components/funnel-public/consent.ts
+function getConsentModeForStep(
+  step: ConsentStep | null,
+  termsUrl: string | null,
+): ConsentMode {
+  const rawMode = step?.content?.consent_mode as ConsentMode | undefined;
+  if (rawMode === "explicit" || rawMode === "implicit") return rawMode;
+  return termsUrl ? "implicit" : "explicit";
+}
+
+// Backend version of shouldShowConsentCheckbox. This keeps the server-side
+// gating aligned with the UI but does not depend on any browser APIs.
+function shouldShowConsentCheckboxBackend(
+  step: ConsentStep | null,
+  termsUrl: string | null,
+): boolean {
+  if (!step || !termsUrl) return false;
+
+  const content = step.content ?? {};
+
+  if (content.requires_consent === true || content.show_consent_checkbox === true) {
+    return true;
+  }
+
+  const stepType = step.step_type || "";
+  const consentSteps = ["opt_in", "email_capture", "phone_capture", "contact_capture"];
+  return consentSteps.includes(stepType);
+}
+
+// Compute the consent requirement contract for the submission, mirroring the
+// intended UX rule:
+//   requireConsent = explicit_mode AND show_checkbox AND termsUrl exists
+function computeConsentRequirement(opts: {
+  step: ConsentStep | null;
+  funnel: any;
+}): {
+  termsUrl: string | null;
+  consentMode: ConsentMode;
+  requireConsent: boolean;
+  showConsentCheckbox: boolean;
+} {
+  const { step, funnel } = opts;
+
+  const termsUrl = getTermsUrlFromStepAndFunnel(step, funnel);
+  const consentMode = getConsentModeForStep(step, termsUrl);
+  const showConsentCheckbox = shouldShowConsentCheckboxBackend(step, termsUrl);
+
+  const requireConsent =
+    consentMode === "explicit" && showConsentCheckbox === true && !!termsUrl;
+
+  return { termsUrl, consentMode, requireConsent, showConsentCheckbox };
 }
 
 function normalizeEmail(value: unknown): string | null {
@@ -327,7 +463,7 @@ serve(async (req) => {
     const lead_id: string | null = body.lead_id ?? null;
 
     // Lead data
-    const answers = body.answers ?? {};
+    let answers: any = body.answers ?? {};
     const optInStatus = body.opt_in_status ?? null;
     const optInTimestamp = body.opt_in_timestamp ?? null;
     const last_step_index = body.last_step_index ?? null;
@@ -411,11 +547,268 @@ serve(async (req) => {
       });
     }
 
+    // Load the step being submitted (if provided) so we can mirror
+    // frontend consent rules and enforce them authoritatively here.
+    let stepRow: any | null = null;
+    if (step_id) {
+      try {
+        const { data: stepData, error: stepErr } = await supabase
+          .from("funnel_steps")
+          .select("id, step_type, content")
+          .eq("id", step_id)
+          .eq("funnel_id", funnel_id)
+          .maybeSingle();
+
+        if (stepErr) {
+          console.error("[submit-funnel-lead] Error loading funnel_step for consent evaluation", stepErr);
+        } else {
+          stepRow = stepData;
+        }
+      } catch (stepLoadErr) {
+        console.error("[submit-funnel-lead] Unexpected error loading funnel_step", stepLoadErr);
+      }
+    }
+
+    // Optionally load team settings if we need a fallback privacy URL.
+    let team: any | null = null;
+    try {
+      const { data: teamData, error: teamErr } = await supabase
+        .from("teams")
+        .select("id, settings")
+        .eq("id", funnel.team_id)
+        .maybeSingle();
+
+      if (teamErr) {
+        console.error("[submit-funnel-lead] Error loading team for consent evaluation", teamErr);
+      } else {
+        team = teamData;
+      }
+    } catch (teamLoadErr) {
+      console.error("[submit-funnel-lead] Unexpected error loading team for consent evaluation", teamLoadErr);
+    }
+
+    // Determine consent requirements for this submission based on the
+    // step being submitted. This mirrors the public funnel consent
+    // helpers while remaining backend-authoritative.
+    let termsUrl: string | null = null;
+    let consentMode: ConsentMode = "explicit";
+    let requireConsent = false;
+
+    if (stepRow) {
+      termsUrl = resolvePrivacyPolicyUrlBackend(stepRow, funnel, team);
+      const normalizedTermsUrl = termsUrl && termsUrl.trim().length > 0 ? termsUrl.trim() : null;
+      termsUrl = normalizedTermsUrl;
+
+      consentMode = getConsentModeBackend(stepRow, termsUrl);
+
+      const showConsentCheckboxExplicit =
+        stepRow.content?.requires_consent === true ||
+        stepRow.content?.show_consent_checkbox === true;
+
+      const showConsentCheckboxDerived = shouldShowConsentCheckboxBackend(stepRow, termsUrl);
+
+      // Authoritative rule: a step requires consent if a privacy/terms
+      // URL exists AND either the consent mode is explicit OR the
+      // step config indicates a consent checkbox should be shown.
+      requireConsent = !!termsUrl && (
+        consentMode === "explicit" ||
+        showConsentCheckboxExplicit ||
+        showConsentCheckboxDerived
+      );
+    }
+
+    // Load the funnel step (if provided) so we can enforce consent on the
+    // backend using the same configuration as the editor/runtime.
+    let consentStep: ConsentStep | null = null;
+    if (step_id) {
+      try {
+        const { data: stepData, error: stepError } = await supabase
+          .from("funnel_steps")
+          .select("id, step_type, content")
+          .eq("id", step_id)
+          .eq("funnel_id", funnel_id)
+          .maybeSingle();
+
+        if (stepError) {
+          console.error("[submit-funnel-lead] Error loading funnel_step for consent enforcement:", stepError);
+        } else if (stepData) {
+          consentStep = stepData as ConsentStep;
+        }
+      } catch (stepErr) {
+        console.error("[submit-funnel-lead] Unexpected error loading funnel_step for consent enforcement:", stepErr);
+      }
+    }
+
+    const {
+      termsUrl: consentTermsUrl,
+      consentMode,
+      requireConsent,
+      showConsentCheckbox,
+    } = computeConsentRequirement({ step: consentStep, funnel });
+
+    const existingLegal = answers && (answers as any).legal
+      ? (answers as any).legal as Record<string, any>
+      : null;
+    const nowIso = new Date().toISOString();
+
+    // We only hard-block capture / submit-style writes; draft progress saves
+    // for non-capture steps are allowed without explicit consent.
+    const isCaptureSubmission =
+      effectiveSubmitMode === "submit" || step_intent === "capture";
+
+    if (requireConsent && isCaptureSubmission) {
+      const accepted = !!(
+        existingLegal &&
+        (existingLegal.accepted === true || existingLegal.consent_given === true)
+      );
+
+      const rawPrivacy = existingLegal
+        ? (existingLegal.privacy_policy_url || existingLegal.terms_url)
+        : null;
+
+      const privacyFromPayload =
+        typeof rawPrivacy === "string" && rawPrivacy.trim().length > 0
+          ? rawPrivacy.trim()
+          : null;
+
+      const effectivePrivacyUrl = privacyFromPayload || consentTermsUrl;
+
+      if (!accepted || !effectivePrivacyUrl) {
+        console.log("[submit-funnel-lead] Blocking capture submission due to missing consent", {
+          step_id,
+          step_type,
+          step_intent,
+          requireConsent,
+          showConsentCheckbox,
+          accepted,
+          hasPrivacyUrl: !!effectivePrivacyUrl,
+        });
+
+        return new Response(
+          JSON.stringify({
+            error: "CONSENT_REQUIRED",
+            message:
+              "Consent is required to submit this form. Please accept the privacy policy to continue.",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Normalize the legal payload that will be stored with the lead so we
+      // have a consistent record of which policy was accepted and when.
+      (answers as any).legal = {
+        ...(existingLegal ?? {}),
+        accepted: true,
+        consent_given: true,
+        accepted_at: existingLegal?.accepted_at ?? nowIso,
+        consent_ts: existingLegal?.consent_ts ?? nowIso,
+        privacy_policy_url: effectivePrivacyUrl,
+        terms_url: effectivePrivacyUrl,
+        consent_mode:
+          (existingLegal?.consent_mode as ConsentMode | undefined) ?? consentMode,
+        step_id: step_id ?? existingLegal?.step_id ?? null,
+      };
+    } else if (!requireConsent && consentTermsUrl) {
+      // Implicit consent path: a terms URL exists but an explicit checkbox is
+      // not required. We still record a normalized legal payload so downstream
+      // systems can see which policy applied.
+      (answers as any).legal = {
+        ...(existingLegal ?? {}),
+        accepted: existingLegal?.accepted ?? true,
+        consent_given: existingLegal?.consent_given ?? true,
+        accepted_at: existingLegal?.accepted_at ?? nowIso,
+        consent_ts: existingLegal?.consent_ts ?? nowIso,
+        privacy_policy_url:
+          existingLegal?.privacy_policy_url ?? consentTermsUrl,
+        terms_url: existingLegal?.terms_url ?? consentTermsUrl,
+        consent_mode:
+          (existingLegal?.consent_mode as ConsentMode | undefined) ??
+          consentMode ??
+          "implicit",
+        step_id: step_id ?? existingLegal?.step_id ?? null,
+      };
+    }
+
     // Infer contact fields from booking if present
     // (keeps your existing behavior; safe if null)
     if (calendly_booking?.invitee_email && !email) email = calendly_booking.invitee_email;
     if (calendly_booking?.invitee_phone && !phone) phone = calendly_booking.invitee_phone;
     if (calendly_booking?.invitee_name && !name) name = calendly_booking.invitee_name;
+
+    // Before deriving lead status or writing any rows, enforce
+    // consent requirements for real submit/capture flows.
+    const isSubmitLike = effectiveSubmitMode === "submit" || step_intent === "capture";
+
+    let normalizedLegal: {
+      accepted: boolean;
+      accepted_at: string;
+      privacy_policy_url: string;
+      step_id: string | null;
+      consent_mode: ConsentMode;
+    } | null = null;
+
+    const existingLegal = (answers as any)?.legal ?? null;
+
+    if (isSubmitLike && termsUrl && requireConsent) {
+      const accepted = existingLegal?.accepted === true;
+
+      if (!accepted) {
+        console.warn("[submit-funnel-lead] Consent required but not accepted", {
+          funnel_id,
+          step_id,
+          step_type,
+          step_intent,
+          effectiveSubmitMode,
+        });
+
+        return new Response(
+          JSON.stringify({ success: false, code: "CONSENT_REQUIRED", message: "CONSENT_REQUIRED" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const acceptedAt: string =
+        typeof existingLegal?.accepted_at === "string" && existingLegal.accepted_at
+          ? existingLegal.accepted_at
+          : new Date().toISOString();
+
+      const privacy_policy_url: string =
+        typeof existingLegal?.privacy_policy_url === "string" && existingLegal.privacy_policy_url
+          ? existingLegal.privacy_policy_url
+          : termsUrl;
+
+      normalizedLegal = {
+        accepted: true,
+        accepted_at: acceptedAt,
+        privacy_policy_url,
+        step_id,
+        consent_mode: consentMode,
+      };
+    } else if (termsUrl && !requireConsent) {
+      // Implicit mode: record that the user progressed through a step
+      // with a privacy policy URL, even if an explicit checkbox was
+      // not required.
+      normalizedLegal = {
+        accepted: true,
+        accepted_at: new Date().toISOString(),
+        privacy_policy_url: termsUrl,
+        step_id,
+        consent_mode: "implicit",
+      };
+    }
+
+    if (normalizedLegal) {
+      answers = {
+        ...(answers || {}),
+        legal: normalizedLegal,
+      };
+    }
 
     // Determine lead status based on data captured
     // - 'visitor': Has answers but no contact info

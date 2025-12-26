@@ -133,6 +133,22 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
   // Single source of truth for the active step's terms URL and consent behavior.
   const { termsUrl: activeTermsUrl, requireConsent: activeRequireConsent } = getConsentRequirementForStep(currentStep);
 
+  // Signal to any legacy runtimes that the React funnel renderer
+  // is active, so they can disable their own submission handlers.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    (window as any).__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__ = true;
+    return () => {
+      try {
+        if ((window as any).__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__ === true) {
+          delete (window as any).__GRWTH_REACT_FUNNEL_RUNTIME_ACTIVE__;
+        }
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
   // Reset consent UI whenever the active step changes.
   useEffect(() => {
     setConsentError(null);
@@ -457,12 +473,12 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
   const saveLead = useCallback(
     async (
-      allAnswers: Record<string, any>, 
+      allAnswers: Record<string, any>,
       submitMode: SubmitMode = "draft",
       stepId?: string,
       stepIntent?: StepIntent,
       stepType?: string,
-    ) => {
+    ): Promise<{ data: any; error: any } | void> => {
       // Prevent duplicate submissions - if already submitting, ignore this call
       if (pendingSaveRef.current) {
         console.log("Ignoring duplicate save request - submission in progress");
@@ -533,6 +549,8 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
             console.log("Lead saved (no id returned)", data);
           }
         }
+
+        return { data, error };
       } catch (err) {
         console.error("Error saving lead:", err);
       } finally {
@@ -687,7 +705,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
 
           let submitAnswers = updatedAnswers;
 
-          if (activeShowConsentCheckbox && consentChecked) {
+          if (requireConsent && consentChecked) {
             const consentMode = getConsentMode(currentStep, activeTermsUrl);
             const existingLegal = (updatedAnswers as any).legal || {};
 
@@ -706,7 +724,27 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
           }
 
           try {
-            await saveLead(submitAnswers, "submit", stepId, stepIntent, stepType);
+            const result = await saveLead(submitAnswers, "submit", stepId, stepIntent, stepType);
+
+            const consentBlocked =
+              (result as any)?.error ||
+              ((result as any)?.data &&
+                (result as any).data.success === false &&
+                (result as any).data.code === "CONSENT_REQUIRED");
+
+            if (consentBlocked) {
+              console.log("[CONSENT_BLOCKED] backend", {
+                stepId,
+                stepType,
+                stepIntent,
+                consentChecked,
+                requireConsent,
+                termsUrl,
+              });
+              submitInFlightRef.current = false;
+              setConsentError("You must accept the privacy policy to continue.");
+              return;
+            }
           } catch (e) {
             submitInFlightRef.current = false;
             throw e;
