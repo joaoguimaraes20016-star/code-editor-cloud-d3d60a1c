@@ -15,14 +15,22 @@ const corsHeaders = {
 };
 
 interface PublishFunnelStepInput {
-  step_type: string;
-  content: any;
+  id?: string;
+  order_index?: number;
+  step_type?: string;
+  content?: unknown;
 }
 
 interface PublishFunnelInput {
   funnel_id: string;
   name?: string;
   steps: PublishFunnelStepInput[];
+}
+
+function isUuid(value: string): boolean {
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(value);
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -42,10 +50,10 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error("[publish-funnel] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env");
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.error("[publish-funnel] Missing SUPABASE_URL or SUPABASE_ANON_KEY env");
       return new Response(
         JSON.stringify({ error: "Server misconfigured" }),
         {
@@ -55,12 +63,8 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false },
-    });
-
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         {
@@ -70,11 +74,19 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+      auth: { persistSession: false },
+    });
+
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser(token);
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
       console.error("[publish-funnel] Auth failed", authError);
@@ -93,9 +105,19 @@ serve(async (req: Request): Promise<Response> => {
     const name = rawBody?.name;
     const steps = Array.isArray(rawBody?.steps) ? rawBody.steps : [];
 
-    if (!funnel_id || typeof funnel_id !== "string") {
+    if (!funnel_id || typeof funnel_id !== "string" || !isUuid(funnel_id)) {
       return new Response(
         JSON.stringify({ error: "Missing or invalid funnel_id" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    if (typeof name !== "string" || name.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid name" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -113,22 +135,47 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Upsert canonical funnel row; backend is source of truth.
-    const { error: funnelError } = await supabase
+    // Confirm funnel exists and is owned by the authenticated user
+    const { data: funnel, error: fetchFunnelError } = await supabase
       .from("funnels")
-      .upsert(
-        {
-          id: funnel_id,
-          name: name ?? null,
-          created_by: user.id,
-        },
-        { onConflict: "id" },
-      );
+      .select("id, created_by")
+      .eq("id", funnel_id)
+      .single();
 
-    if (funnelError) {
-      console.error("[publish-funnel] Error upserting funnel:", funnelError);
+    if (fetchFunnelError) {
+      console.error("[publish-funnel] Error fetching funnel:", fetchFunnelError);
       return new Response(
-        JSON.stringify({ error: "Failed to persist funnel" }),
+        JSON.stringify({ error: "Funnel not found" }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    if (!funnel || funnel.created_by !== user.id) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden" }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const { error: updateFunnelError } = await supabase
+      .from("funnels")
+      .update({
+        name: name.trim(),
+        status: "published",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", funnel_id);
+
+    if (updateFunnelError) {
+      console.error("[publish-funnel] Error updating funnel:", updateFunnelError);
+      return new Response(
+        JSON.stringify({ error: "Failed to update funnel" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -136,7 +183,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Idempotent publish of steps: delete existing, then insert new set.
+    // Normalize steps and publish: delete existing, then insert new set.
     const { error: deleteError } = await supabase
       .from("funnel_steps")
       .delete()
@@ -154,8 +201,16 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const stepRows = steps.map((step, index) => {
-      const step_type = step?.step_type;
-      const content = step?.content ?? null;
+      const step_type =
+        typeof step?.step_type === "string" && step.step_type.trim().length > 0
+          ? step.step_type
+          : "welcome";
+
+      const rawContent = step?.content;
+      const content =
+        rawContent && typeof rawContent === "object" && !Array.isArray(rawContent)
+          ? rawContent
+          : {};
 
       return {
         funnel_id,
@@ -182,10 +237,13 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(
+      JSON.stringify({ ok: true, funnel_id, updated_step_count: stepRows.length }),
+      {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (err) {
     console.error("[publish-funnel] Unhandled error:", err);
     return new Response(
