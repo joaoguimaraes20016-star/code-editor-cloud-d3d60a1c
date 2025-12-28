@@ -57,6 +57,7 @@ export type Database = {
           closer_id: string | null
           closer_name: string | null
           closer_notes: string | null
+          contact_id: string | null
           created_at: string | null
           event_type_name: string | null
           event_type_uri: string | null
@@ -99,6 +100,7 @@ export type Database = {
           closer_id?: string | null
           closer_name?: string | null
           closer_notes?: string | null
+          contact_id?: string | null
           created_at?: string | null
           event_type_name?: string | null
           event_type_uri?: string | null
@@ -141,6 +143,7 @@ export type Database = {
           closer_id?: string | null
           closer_name?: string | null
           closer_notes?: string | null
+          contact_id?: string | null
           created_at?: string | null
           event_type_name?: string | null
           event_type_uri?: string | null
@@ -175,6 +178,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "appointments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "appointments_original_appointment_id_fkey"
             columns: ["original_appointment_id"]
@@ -723,12 +733,15 @@ export type Database = {
           calendly_booked_at: string | null
           created_at: string
           custom_fields: Json | null
+          display_name: string | null
           email: string | null
           funnel_lead_id: string | null
           id: string
           name: string | null
           opt_in: boolean | null
           phone: string | null
+          primary_email_normalized: string | null
+          primary_phone_normalized: string | null
           source: string | null
           tags: string[] | null
           team_id: string
@@ -738,12 +751,15 @@ export type Database = {
           calendly_booked_at?: string | null
           created_at?: string
           custom_fields?: Json | null
+          display_name?: string | null
           email?: string | null
           funnel_lead_id?: string | null
           id?: string
           name?: string | null
           opt_in?: boolean | null
           phone?: string | null
+          primary_email_normalized?: string | null
+          primary_phone_normalized?: string | null
           source?: string | null
           tags?: string[] | null
           team_id: string
@@ -753,12 +769,15 @@ export type Database = {
           calendly_booked_at?: string | null
           created_at?: string
           custom_fields?: Json | null
+          display_name?: string | null
           email?: string | null
           funnel_lead_id?: string | null
           id?: string
           name?: string | null
           opt_in?: boolean | null
           phone?: string | null
+          primary_email_normalized?: string | null
+          primary_phone_normalized?: string | null
           source?: string | null
           tags?: string[] | null
           team_id?: string
@@ -984,16 +1003,21 @@ export type Database = {
         Row: {
           answers: Json
           calendly_booking_data: Json | null
+          contact_id: string | null
           created_at: string
           email: string | null
           funnel_id: string
           ghl_synced_at: string | null
           id: string
+          identity_match_type: string | null
+          identity_mismatch: boolean
+          identity_mismatch_reason: string | null
           last_step_index: number | null
           name: string | null
           opt_in_status: boolean | null
           opt_in_timestamp: string | null
           phone: string | null
+          pipeline_stage: string | null
           status: string | null
           tags: string[] | null
           team_id: string
@@ -1004,16 +1028,21 @@ export type Database = {
         Insert: {
           answers?: Json
           calendly_booking_data?: Json | null
+          contact_id?: string | null
           created_at?: string
           email?: string | null
           funnel_id: string
           ghl_synced_at?: string | null
           id?: string
+          identity_match_type?: string | null
+          identity_mismatch?: boolean
+          identity_mismatch_reason?: string | null
           last_step_index?: number | null
           name?: string | null
           opt_in_status?: boolean | null
           opt_in_timestamp?: string | null
           phone?: string | null
+          pipeline_stage?: string | null
           status?: string | null
           tags?: string[] | null
           team_id: string
@@ -1024,16 +1053,21 @@ export type Database = {
         Update: {
           answers?: Json
           calendly_booking_data?: Json | null
+          contact_id?: string | null
           created_at?: string
           email?: string | null
           funnel_id?: string
           ghl_synced_at?: string | null
           id?: string
+          identity_match_type?: string | null
+          identity_mismatch?: boolean
+          identity_mismatch_reason?: string | null
           last_step_index?: number | null
           name?: string | null
           opt_in_status?: boolean | null
           opt_in_timestamp?: string | null
           phone?: string | null
+          pipeline_stage?: string | null
           status?: string | null
           tags?: string[] | null
           team_id?: string
@@ -1042,6 +1076,13 @@ export type Database = {
           utm_source?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "funnel_leads_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "funnel_leads_funnel_id_fkey"
             columns: ["funnel_id"]
@@ -2338,6 +2379,7 @@ export type Database = {
           closer_id: string | null
           closer_name: string | null
           closer_notes: string | null
+          contact_id: string | null
           created_at: string | null
           event_type_name: string | null
           event_type_uri: string | null
