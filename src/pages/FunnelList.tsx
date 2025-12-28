@@ -243,23 +243,22 @@ export default function FunnelList() {
 
       const { data, error } = await supabase
         .from('contacts')
-        .select(`
-          id,
-          team_id,
-          display_name,
-          name:display_name,
-          primary_email_normalized,
-          email:primary_email_normalized,
-          primary_phone_normalized,
-          phone:primary_phone_normalized,
-          opt_in,
-          source,
-          calendly_booked_at,
-          custom_fields,
-          tags,
-          created_at,
-          updated_at
-        `)
+.select(`
+  id,
+  team_id,
+  name,
+  email,
+  phone,
+  opt_in,
+  source,
+  calendly_booked_at,
+  custom_fields,
+  tags,
+  funnel_lead_id,
+  created_at,
+  updated_at
+`)
+
         .eq('team_id', teamId)
         .order('created_at', { ascending: false });
 
