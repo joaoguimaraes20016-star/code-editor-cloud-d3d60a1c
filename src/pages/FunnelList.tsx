@@ -299,8 +299,10 @@ export default function FunnelList() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['funnels', teamId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'funnels',
+      });
       toast({ title: 'Funnel deleted' });
       setFunnelToDelete(null);
     },
@@ -318,7 +320,9 @@ export default function FunnelList() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['funnels', teamId] });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'funnels',
+      });
       toast({ title: 'Funnel renamed' });
       setRenameFunnel(null);
     },
@@ -370,7 +374,9 @@ export default function FunnelList() {
       return newFunnel;
     },
     onSuccess: (newFunnel) => {
-      queryClient.invalidateQueries({ queryKey: ['funnels', teamId] });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'funnels',
+      });
       toast({ title: 'Funnel duplicated' });
       navigate(`/team/${teamId}/funnels/${newFunnel.id}`);
     },
