@@ -290,26 +290,39 @@ export default function FunnelList() {
     enabled: !!teamId,
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (funnelId: string) => {
-      const { error } = await supabase
-        .from('funnels')
-        .delete()
-        .eq('id', funnelId);
+const deleteMutation = useMutation({
+  mutationFn: async (funnelId: string) => {
+    const { error } = await supabase
+      .from('funnels')
+      .delete()
+      .eq('id', funnelId);
 
-      if (error) throw error;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey[0] === 'funnels',
-      });
-      toast({ title: 'Funnel deleted' });
-      setFunnelToDelete(null);
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to delete funnel', description: error.message, variant: 'destructive' });
-    },
-  });
+    if (error) throw error;
+  },
+
+  onSuccess: async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ['funnels', teamId],
+      exact: true,
+    });
+
+    await queryClient.refetchQueries({
+      queryKey: ['funnels', teamId],
+      exact: true,
+    });
+
+    toast({ title: 'Funnel deleted' });
+    setFunnelToDelete(null);
+  },
+
+  onError: (error: Error) => {
+    toast({
+      title: 'Failed to delete funnel',
+      description: error.message,
+      variant: 'destructive',
+    });
+  },
+});
 
   const renameMutation = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
