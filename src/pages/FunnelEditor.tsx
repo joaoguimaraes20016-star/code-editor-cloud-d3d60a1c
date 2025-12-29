@@ -86,6 +86,7 @@ export default function FunnelEditor() {
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [showPublishPrompt, setShowPublishPrompt] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const bootstrapAttemptedRef = useRef<string | null>(null);
 
   /* ---------- DATA FETCH ---------- */
 
@@ -103,6 +104,28 @@ export default function FunnelEditor() {
     enabled: !!funnelId,
     staleTime: Infinity,
   });
+
+  useEffect(() => {
+    if (!funnelId || !steps || steps.length !== 0) return;
+    if (bootstrapAttemptedRef.current === funnelId) return;
+
+    bootstrapAttemptedRef.current = funnelId;
+
+    const insertDefaultStep = async () => {
+      const { error } = await supabase.from('funnel_steps').insert({
+        funnel_id: funnelId,
+        order_index: 0,
+        step_type: 'welcome',
+        content: {},
+      });
+
+      if (error) {
+        console.error('Failed to bootstrap default funnel step', error);
+      }
+    };
+
+    insertDefaultStep();
+  }, [funnelId, steps]);
 
   /* ---------- AUTOSAVE (SAFE) ---------- */
   const saveMutation = useMutation({
