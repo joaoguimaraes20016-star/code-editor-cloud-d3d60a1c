@@ -290,7 +290,7 @@ export default function FunnelList() {
     enabled: !!teamId,
   });
 
-  const deleteMutation = useMutation({
+ const deleteMutation = useMutation({
   mutationFn: async (funnelId: string) => {
     const { error } = await supabase
       .from('funnels')
@@ -298,29 +298,52 @@ export default function FunnelList() {
       .eq('id', funnelId);
 
     if (error) throw error;
+
+    return funnelId;
   },
 
-  onSuccess: async () => {
+  onMutate: async (funnelId: string) => {
+    await queryClient.cancelQueries({
+      queryKey: ['funnels', teamId],
+    });
+
+    const previousFunnels = queryClient.getQueryData<any[]>([
+      'funnels',
+      teamId,
+    ]);
+
+    queryClient.setQueryData<any[]>(
+      ['funnels', teamId],
+      (old) => old?.filter((f) => f.id !== funnelId) ?? []
+    );
+
+    return { previousFunnels };
+  },
+
+  onError: (_error, _funnelId, context) => {
+    if (context?.previousFunnels) {
+      queryClient.setQueryData(
+        ['funnels', teamId],
+        context.previousFunnels
+      );
+    }
+
+    toast({
+      title: 'Failed to delete funnel',
+      variant: 'destructive',
+    });
+  },
+
+  onSettled: async () => {
     await queryClient.invalidateQueries({
       queryKey: ['funnels', teamId],
       exact: true,
     });
-
-    await queryClient.refetchQueries({
-      queryKey: ['funnels', teamId],
-      exact: true,
-    });
-
-    toast({ title: 'Funnel deleted' });
-    setFunnelToDelete(null);
   },
 
-  onError: (error: Error) => {
-    toast({
-      title: 'Failed to delete funnel',
-      description: error.message,
-      variant: 'destructive',
-    });
+  onSuccess: () => {
+    toast({ title: 'Funnel deleted' });
+    setFunnelToDelete(null);
   },
 });
 
