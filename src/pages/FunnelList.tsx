@@ -152,7 +152,6 @@ export default function FunnelList() {
         .from('funnels')
         .select('*')
         .eq('team_id', teamId)
-        .is('deleted_at', null)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -293,14 +292,19 @@ export default function FunnelList() {
 
  const deleteMutation = useMutation({
   mutationFn: async (funnelId: string) => {
-    const { error } = await supabase
-      .from('funnels')
-      .delete()
-      .eq('id', funnelId);
+      const { data, error } = await supabase
+        .from('funnels')
+        .delete()
+        .eq('id', funnelId)
+        .eq('team_id', teamId)
+        .select('id');
 
-    if (error) throw error;
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('Delete blocked by RLS or insufficient permissions');
+      }
 
-    return funnelId;
+      return funnelId;
   },
 
   onMutate: async (funnelId: string) => {

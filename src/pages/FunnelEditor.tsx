@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { resolvePrivacyPolicyUrl } from "@/components/funnel-public/consent";
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +26,6 @@ import { useTeamRole } from '@/hooks/useTeamRole';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getDefaultIntent, validateFunnelStructure, countCaptureSteps } from '@/lib/funnel/stepDefinitions';
-import { getTermsUrl } from '@/components/funnel-public/consent';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +33,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import NotFound from './NotFound';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const sanitizeUUID = (v?: string | null) => typeof v === 'string' ? v.replace(/^"+|"+$/g, '') : v;
+const validateUuid = (value: string | null | undefined, label: string): string => {
+  const cleaned = sanitizeUUID(value);
+  if (!cleaned) throw new Error(`Missing ${label}`);
+  if (!UUID_RE.test(cleaned)) throw new Error(`Invalid ${label}`);
+  return cleaned;
+};
 
 type DeviceType = 'mobile' | 'tablet' | 'desktop';
 
@@ -188,10 +195,17 @@ interface FunnelState {
   elementOrders: Record<string, string[]>;
 }
 
+function LoadingState() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <span className="text-sm text-muted-foreground">Loading funnel editor...</span>
+    </div>
+  );
+}
+
 export default function FunnelEditor() {
   const { teamId, funnelId } = useParams<{ teamId: string; funnelId: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { isAdmin, loading: roleLoading } = useTeamRole(teamId);
 
@@ -225,6 +239,7 @@ export default function FunnelEditor() {
   const [showAddStep, setShowAddStep] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
@@ -238,24 +253,12 @@ export default function FunnelEditor() {
   const [dynamicElements, setDynamicElements] = useState<Record<string, Record<string, any>>>({});
   const [isInitialized, setIsInitialized] = useState(false); // Track if initial load happened
   const [showPublishPrompt, setShowPublishPrompt] = useState(false); // Domain prompt on publish
-  
-  // Auto-save timer ref
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const initializationRanRef = useRef(false);
+  const pendingFunnelRef = useRef<Funnel | null>(null);
+  const pendingStepsRef = useRef<FunnelStep[] | null>(null);
   
   // Destructure for convenience
   const { name, steps, stepDesigns, stepSettings, elementOrders } = funnelState;
-  
-  // Refs to track latest state values for save mutation (avoids stale closures)
-  const dynamicElementsRef = useRef(dynamicElements);
-  const stepDesignsRef = useRef(stepDesigns);
-  const elementOrdersRef = useRef(elementOrders);
-  const stepsRef = useRef(steps);
-  
-  // Keep refs in sync
-  useEffect(() => { dynamicElementsRef.current = dynamicElements; }, [dynamicElements]);
-  useEffect(() => { stepDesignsRef.current = stepDesigns; }, [stepDesigns]);
-  useEffect(() => { elementOrdersRef.current = elementOrders; }, [elementOrders]);
-  useEffect(() => { stepsRef.current = steps; }, [steps]);
 
   // Helper functions to update state through the history-tracked funnel state
   const setName = useCallback((newName: string) => {
@@ -290,17 +293,198 @@ export default function FunnelEditor() {
     }));
   }, [setFunnelState]);
 
+  const persistFunnel = useCallback(async (overrides?: {
+    steps?: FunnelStep[];
+    stepDesigns?: Record<string, StepDesign>;
+    elementOrders?: Record<string, string[]>;
+    dynamicElements?: Record<string, Record<string, any>>;
+    name?: string;
+  }) => {
+    if (isSaving) return;
+
+    setIsSaving(true);
+
+    try {
+      const cleanFunnelId = validateUuid(funnelId, 'funnel id');
+      const cleanTeamId = validateUuid(teamId, 'team id');
+
+      const stepsToPersist = overrides?.steps ?? steps;
+      const stepDesignsToPersist = overrides?.stepDesigns ?? stepDesigns;
+      const elementOrdersToPersist = overrides?.elementOrders ?? elementOrders;
+      const dynamicElementsToPersist = overrides?.dynamicElements ?? dynamicElements;
+      const funnelNameToPersist = overrides?.name ?? name;
+
+      const stepIds = stepsToPersist.map(s => validateUuid(s.id, 'step id'));
+
+      const { error: funnelError } = await supabase
+        .from('funnels')
+        .update({ name: funnelNameToPersist })
+        .eq('id', cleanFunnelId)
+        .eq('team_id', cleanTeamId);
+
+      if (funnelError) throw funnelError;
+
+      if (stepIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('funnel_steps')
+          .delete()
+          .eq('funnel_id', cleanFunnelId)
+          .not('id', 'in', stepIds);
+        if (deleteError) throw deleteError;
+      } else {
+        const { error: deleteError } = await supabase
+          .from('funnel_steps')
+          .delete()
+          .eq('funnel_id', cleanFunnelId);
+        if (deleteError) throw deleteError;
+      }
+
+      const stepsToInsert = stepsToPersist.map((step, index) => {
+        const stepId = validateUuid(step.id, 'step id');
+        const baseContent = { ...step.content } as FunnelStep['content'];
+        const termsUrl =
+          baseContent.privacy_link ||
+          (baseContent as any).terms_url ||
+          (baseContent as any).terms_link ||
+          '';
+
+        if (step.step_type === 'opt_in' && termsUrl && baseContent.requires_consent !== true) {
+          baseContent.requires_consent = true;
+        }
+
+        if (baseContent.requires_consent === true && baseContent.show_consent_checkbox !== true) {
+          baseContent.show_consent_checkbox = true;
+        }
+
+        const contentWithDesign = {
+          ...baseContent,
+          design: stepDesignsToPersist[step.id] || step.content.design || null,
+          element_order: elementOrdersToPersist[step.id] || step.content.element_order || null,
+          dynamic_elements: dynamicElementsToPersist[step.id] || step.content.dynamic_elements || null,
+        };
+
+        return {
+          id: stepId,
+          funnel_id: cleanFunnelId,
+          order_index: index,
+          step_type: step.step_type,
+          content: JSON.parse(JSON.stringify(contentWithDesign)),
+        };
+      });
+
+      const { error: upsertError } = await supabase
+        .from('funnel_steps')
+        .upsert(stepsToInsert, { onConflict: 'id' });
+
+      if (upsertError) throw upsertError;
+
+      setHasUnsavedChanges(false);
+      setLastSaved(new Date());
+    } catch (error) {
+      const err = error as Error;
+      toast({ title: 'Failed to save', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [dynamicElements, elementOrders, funnelId, isSaving, name, stepDesigns, steps, teamId]);
+
+  const tryInitialize = useCallback(async () => {
+    if (initializationRanRef.current) return;
+    if (!pendingFunnelRef.current || !pendingStepsRef.current) return;
+
+    const funnelData = pendingFunnelRef.current;
+    const dbSteps = pendingStepsRef.current;
+
+    const loadedDesigns: Record<string, StepDesign> = {};
+    const loadedOrders: Record<string, string[]> = {};
+    const loadedDynamicElements: Record<string, Record<string, any>> = {};
+
+    const migratedSteps = dbSteps.map(step => {
+      if (step.content.design) {
+        loadedDesigns[step.id] = step.content.design;
+      }
+      if (step.content.element_order) {
+        loadedOrders[step.id] = step.content.element_order;
+      }
+      if (step.content.dynamic_elements) {
+        loadedDynamicElements[step.id] = step.content.dynamic_elements;
+      }
+
+      if (!step.content.intent) {
+        const defaultIntent = getDefaultIntent(step.step_type);
+        return {
+          ...step,
+          content: {
+            ...step.content,
+            intent: defaultIntent,
+          },
+        };
+      }
+      return step;
+    });
+
+    const hasDbSteps = migratedSteps.length > 0;
+    const stepsToLoad = hasDbSteps
+      ? migratedSteps
+      : [{
+          id: crypto.randomUUID(),
+          funnel_id: funnelData.id,
+          order_index: 0,
+          step_type: 'welcome',
+          content: {},
+        }];
+
+    setDynamicElements(loadedDynamicElements);
+
+    resetHistory({
+      name: funnelData.name,
+      steps: stepsToLoad,
+      stepDesigns: loadedDesigns,
+      stepSettings: {},
+      elementOrders: loadedOrders,
+    });
+
+    if (stepsToLoad.length > 0 && !selectedStepId) {
+      setSelectedStepId(stepsToLoad[0].id);
+    }
+
+    setIsInitialized(true);
+    initializationRanRef.current = true;
+
+    const neededMigration = dbSteps.some(step => !step.content.intent);
+    if (neededMigration) {
+      console.log('[FunnelEditor] Auto-migrated step intents for',
+        dbSteps.filter(s => !s.content.intent).length, 'steps');
+      setHasUnsavedChanges(true);
+    }
+
+    const warnings = validateFunnelStructure(stepsToLoad);
+    if (warnings.length > 0 && process.env.NODE_ENV === 'development') {
+      console.warn('[FunnelEditor] Structure warnings:', warnings);
+    }
+
+  }, [resetHistory, selectedStepId, setDynamicElements, setHasUnsavedChanges, setIsInitialized]);
+
   const { data: funnel, isLoading: isFunnelLoading } = useQuery({
     queryKey: ['funnels', teamId, funnelId],
     queryFn: async () => {
+      if (!teamId) {
+        throw new Error('Missing team id');
+      }
+
+      const cleanFunnelId = validateUuid(funnelId, 'funnel id');
+      const cleanTeamId = validateUuid(teamId, 'team id');
       const { data, error } = await supabase
         .from('funnels')
         .select('*')
-        .eq('id', funnelId)
-        .single();
+        .eq('id', cleanFunnelId);
 
       if (error) throw error;
-      return { ...data, settings: data.settings as unknown as FunnelSettings } as Funnel;
+      if (!data || data.length === 0) {
+        throw new Error('Funnel not found');
+      }
+      const row = data[0];
+      return { ...row, settings: row.settings as unknown as FunnelSettings } as Funnel;
     },
     enabled: !!teamId && !!funnelId,
     // CRITICAL: Disable all refetching to prevent state reset
@@ -308,16 +492,21 @@ export default function FunnelEditor() {
     refetchOnMount: false,
     refetchOnReconnect: false,
     staleTime: Infinity,
+    onSuccess: (data) => {
+      pendingFunnelRef.current = data;
+      void tryInitialize();
+    },
   });
 
   // Fetch domains for publish prompt
   const { data: domains = [] } = useQuery({
     queryKey: ['funnel-domains', teamId],
     queryFn: async () => {
+      const cleanTeamId = validateUuid(teamId, 'team id');
       const { data, error } = await supabase
         .from('funnel_domains')
         .select('*')
-        .eq('team_id', teamId)
+        .eq('team_id', cleanTeamId)
         .eq('status', 'verified');
       if (error) throw error;
       return data;
@@ -330,13 +519,14 @@ export default function FunnelEditor() {
     ? domains.find(d => d.id === funnel.domain_id)?.domain 
     : null;
 
-  const { data: initialSteps, isLoading: isStepsLoading } = useQuery({
+  useQuery({
     queryKey: ['funnel-steps', funnelId],
     queryFn: async () => {
+      const cleanFunnelId = validateUuid(funnelId, 'funnel id');
       const { data, error } = await supabase
         .from('funnel_steps')
         .select('*')
-        .eq('funnel_id', funnelId)
+        .eq('funnel_id', cleanFunnelId)
         .order('order_index', { ascending: true });
 
       if (error) throw error;
@@ -348,240 +538,39 @@ export default function FunnelEditor() {
     refetchOnMount: false,
     refetchOnReconnect: false,
     staleTime: Infinity,
-  });
-
-  // Initialize the history state ONLY on first load - not on refetch
-  // Also auto-persist default intents for steps missing them (migration for old funnels)
-  useEffect(() => {
-    if (funnel && initialSteps && !isInitialized) {
-      // Load persisted designs, element orders, and dynamic elements from step content
-      const loadedDesigns: Record<string, StepDesign> = {};
-      const loadedOrders: Record<string, string[]> = {};
-      const loadedDynamicElements: Record<string, Record<string, any>> = {};
-      
-      // Auto-fill missing intents using the canonical Step Definitions
-      const migratedSteps = initialSteps.map(step => {
-        // Load designs, orders, dynamic elements
-        if (step.content.design) {
-          loadedDesigns[step.id] = step.content.design;
-        }
-        if (step.content.element_order) {
-          loadedOrders[step.id] = step.content.element_order;
-        }
-        if (step.content.dynamic_elements) {
-          loadedDynamicElements[step.id] = step.content.dynamic_elements;
-        }
-        
-        // If step is missing intent, derive and persist the default
-        if (!step.content.intent) {
-          const defaultIntent = getDefaultIntent(step.step_type);
-          return {
-            ...step,
-            content: {
-              ...step.content,
-              intent: defaultIntent,
-            },
-          };
-        }
-        return step;
-      });
-      
-      // Set dynamic elements state
-      setDynamicElements(loadedDynamicElements);
-      
-      // Reset the history with the loaded state (with migrated intents)
-      resetHistory({
-        name: funnel.name,
-        steps: migratedSteps,
-        stepDesigns: loadedDesigns,
-        stepSettings: {},
-        elementOrders: loadedOrders,
-      });
-      
-      if (migratedSteps.length > 0 && !selectedStepId) {
-        setSelectedStepId(migratedSteps[0].id);
-      }
-      
-      setIsInitialized(true);
-      
-      // Check for steps that needed migration and trigger auto-save
-      const neededMigration = initialSteps.some(step => !step.content.intent);
-      if (neededMigration) {
-        console.log('[FunnelEditor] Auto-migrated step intents for', 
-          initialSteps.filter(s => !s.content.intent).length, 'steps');
-        // Mark as having changes to trigger auto-save
-        setHasUnsavedChanges(true);
-      }
-      
-      // Validate funnel structure and show warnings
-      const warnings = validateFunnelStructure(migratedSteps);
-      if (warnings.length > 0 && process.env.NODE_ENV === 'development') {
-        console.warn('[FunnelEditor] Structure warnings:', warnings);
-      }
-    }
-  }, [funnel, initialSteps, resetHistory, isInitialized]);
-
-  // Guarantee editor bootstraps even when funnel has no steps
-  useEffect(() => {
-    if (!isFunnelLoading && funnel && steps && steps.length === 0) {
-      setSteps([
-        {
-          id: crypto.randomUUID(),
-          funnel_id: funnel.id,
-          order_index: 0,
-          step_type: 'welcome',
-          content: {},
-        },
-      ]);
-    }
-  }, [isFunnelLoading, funnel, steps, setSteps]);
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      // Use refs to get latest values (avoids stale closure)
-      const currentSteps = stepsRef.current;
-      const currentStepDesigns = stepDesignsRef.current;
-      const currentElementOrders = elementOrdersRef.current;
-      const currentDynamicElements = dynamicElementsRef.current;
-      
-      const { error: funnelError } = await supabase
-        .from('funnels')
-        .update({ name })
-        .eq('id', funnelId);
-
-      if (funnelError) throw funnelError;
-
-      const { error: deleteError } = await supabase
-        .from('funnel_steps')
-        .delete()
-        .eq('funnel_id', funnelId);
-
-      if (deleteError) throw deleteError;
-
-      const stepsToInsert = currentSteps.map((step, index) => {
-        // Normalize consent/opt-in contract before persisting
-        const baseContent = { ...step.content } as FunnelStep['content'];
-        const termsUrl =
-          baseContent.privacy_link ||
-          (baseContent as any).terms_url ||
-          (baseContent as any).terms_link ||
-          '';
-
-        // Auto-migrate opt-in steps: if step_type is opt_in and a termsUrl is present
-        // but requires_consent is not explicitly true, treat as consent-gated.
-        if (step.step_type === 'opt_in' && termsUrl && baseContent.requires_consent !== true) {
-          baseContent.requires_consent = true;
-        }
-
-        // When consent is required, always show the consent checkbox.
-        if (baseContent.requires_consent === true && baseContent.show_consent_checkbox !== true) {
-          baseContent.show_consent_checkbox = true;
-        }
-
-        // Merge current designs, element orders, and dynamic elements into content for persistence
-        const contentWithDesign = {
-          ...baseContent,
-          design: currentStepDesigns[step.id] || step.content.design || null,
-          element_order: currentElementOrders[step.id] || step.content.element_order || null,
-          dynamic_elements: currentDynamicElements[step.id] || step.content.dynamic_elements || null,
-        };
-        
-        return {
-          id: step.id,
-          funnel_id: funnelId,
-          order_index: index,
-          step_type: step.step_type,
-          content: JSON.parse(JSON.stringify(contentWithDesign)),
-        };
-      });
-
-      const { error: insertError } = await supabase
-        .from('funnel_steps')
-        .insert(stepsToInsert);
-
-      if (insertError) throw insertError;
-    },
-    onSuccess: () => {
-      // Silent background save - no state updates that cause re-renders
-      setLastSaved(new Date());
-
-      // DEV-only: log saved intents for verification
-      if (import.meta.env.DEV) {
-        try {
-          const intents = stepsRef.current.map(s => ({ id: s.id, intent: s.content?.intent }));
-          console.debug('[FunnelEditor][dev] saved step intents:', intents);
-        } catch (err) {
-          console.debug('[FunnelEditor][dev] failed to log saved intents', err);
-        }
-      }
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to save', description: error.message, variant: 'destructive' });
+    onSuccess: (stepsData) => {
+      pendingStepsRef.current = stepsData;
+      void tryInitialize();
     },
   });
 
-  // Immediate save on any change - completely silent
-  // Track dynamicElements changes to trigger saves
-  useEffect(() => {
-    if (isInitialized && Object.keys(dynamicElements).length > 0) {
-      setHasUnsavedChanges(true);
-    }
-  }, [dynamicElements, isInitialized]);
+  const handlePublish = useCallback(async () => {
+    if (isPublishing) return;
 
-  useEffect(() => {
-    if (hasUnsavedChanges && !saveMutation.isPending && steps.length > 0 && isInitialized) {
-      // Clear any existing timer
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
-      
-      // Save immediately with tiny debounce just to batch rapid changes
-      autoSaveTimerRef.current = setTimeout(() => {
-        setHasUnsavedChanges(false); // Reset before save to prevent loops
-        saveMutation.mutate();
-      }, 500);
-    }
-    
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
-    };
-  }, [hasUnsavedChanges, isInitialized, dynamicElements, stepDesigns, elementOrders]);
+    setIsPublishing(true);
 
-  const publishMutation = useMutation({
-    mutationFn: async () => {
-      // Validate that a Privacy Policy URL can be resolved globally before publishing.
-      // This relies on the same resolver used at runtime so that publishing
-      // succeeds whenever the runtime opt-in experience has a valid link.
-      const resolvedPrivacyUrl = resolvePrivacyPolicyUrl(
-        undefined,
-        funnel,
-        undefined,
-        typeof window !== "undefined" ? window.location.origin : undefined,
-      );
+    try {
+      await persistFunnel();
 
-      if (!resolvedPrivacyUrl) {
-        throw new Error("Privacy Policy URL could not be resolved");
-      }
-
-      await saveMutation.mutateAsync();
+      const cleanFunnelId = validateUuid(funnelId, 'funnel id');
+      const cleanTeamId = validateUuid(teamId, 'team id');
 
       const { error } = await supabase
         .from('funnels')
         .update({ status: 'published' })
-        .eq('id', funnelId);
+        .eq('id', cleanFunnelId)
+        .eq('team_id', cleanTeamId);
 
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      // Don't invalidate queries - it resets local state!
-      toast({ title: 'Funnel published' });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to publish funnel', description: error.message, variant: 'destructive' });
-    },
-  });
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      const err = error as Error;
+      toast({ title: 'Failed to publish', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [funnelId, isPublishing, persistFunnel, teamId]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -805,14 +794,12 @@ export default function FunnelEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedElement, selectedStep, elementOrders, dynamicElements, handleUpdateElementOrder, setDynamicElements, setHasUnsavedChanges]);
 
-  if (isFunnelLoading || isStepsLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <span className="text-sm text-muted-foreground">
-          Loading funnel editor
-        </span>
-      </div>
-    );
+  if (!isInitialized || isFunnelLoading) {
+    return <LoadingState />;
+  }
+
+  if (!funnel) {
+    return <NotFound />;
   }
 
   return (
@@ -857,8 +844,6 @@ export default function FunnelEditor() {
                 {linkedDomain}
               </Badge>
             )}
-
-            {/* Silent auto-save - no visible indicators */}
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
@@ -939,8 +924,10 @@ export default function FunnelEditor() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending}
+              onClick={() => {
+                void persistFunnel();
+              }}
+              disabled={isSaving || isPublishing}
             >
               <Save className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Save</span>
@@ -953,10 +940,10 @@ export default function FunnelEditor() {
                 if (!funnel.domain_id && domains.length > 0) {
                   setShowPublishPrompt(true);
                 } else {
-                  publishMutation.mutate();
+                  void handlePublish();
                 }
               }}
-              disabled={publishMutation.isPending}
+              disabled={isSaving || isPublishing}
             >
               <Globe className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">{funnel.status === 'published' ? 'Update' : 'Publish'}</span>
@@ -1020,7 +1007,7 @@ export default function FunnelEditor() {
 
         {/* Center - Device Preview - full scrollable area */}
         <div className="flex-1 flex flex-col items-center bg-zinc-900/50 overflow-x-auto overflow-y-auto py-6 px-4">
-          {selectedStep && (
+          {selectedStep ? (
             <>
               <DevicePreview 
                 backgroundColor={stepDesigns[selectedStep.id]?.backgroundColor || funnel.settings.background_color}
@@ -1069,6 +1056,10 @@ export default function FunnelEditor() {
                 className="mt-4"
               />
             </>
+          ) : (
+            <div className="text-muted-foreground text-center mt-12">
+              No steps yet. Add a step to get started.
+            </div>
           )}
         </div>
 
@@ -1230,8 +1221,9 @@ export default function FunnelEditor() {
               variant="ghost" 
               onClick={() => {
                 setShowPublishPrompt(false);
-                publishMutation.mutate();
+                void handlePublish();
               }}
+              disabled={isSaving || isPublishing}
             >
               Skip for now
             </Button>

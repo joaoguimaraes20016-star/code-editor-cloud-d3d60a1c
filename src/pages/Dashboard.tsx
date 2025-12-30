@@ -137,12 +137,6 @@ const Dashboard = () => {
 
       if (teamError) throw teamError;
 
-      const { error: memberError } = await supabase
-        .from('team_members')
-        .insert({ team_id: team.id, user_id: currentUser.id, role: 'owner' });
-
-      if (memberError) throw memberError;
-
       toast({
         title: 'Team created!',
         description: `${newTeamName} has been created successfully.`,
