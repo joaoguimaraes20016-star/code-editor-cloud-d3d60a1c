@@ -110,6 +110,7 @@ export function EmailCaptureStep({ content, settings, onNext, isActive }: EmailC
           settings={settings}
           design={content.design}
           stepType="email_capture"
+          onButtonClick={handleSubmit}
           renderInput={renderInput}
         />
       </div>

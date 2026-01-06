@@ -301,6 +301,7 @@ export function OptInStep({
           settings={settings}
           design={content.design}
           stepType="opt_in"
+          onButtonClick={handleSubmit}
           renderForm={renderForm}
         />
       </div>

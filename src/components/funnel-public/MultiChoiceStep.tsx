@@ -254,6 +254,7 @@ export function MultiChoiceStep({ content, settings, onNext, isActive, currentSt
           settings={settings}
           design={content.design}
           stepType="multi_choice"
+          onButtonClick={handleNextClick}
           renderOptions={renderOptions}
         />
       </div>

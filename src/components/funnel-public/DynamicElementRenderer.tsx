@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
+import { getDefaultElementOrder } from '@/lib/funnel/stepRegistry';
 
 export interface CalendlyBookingData {
   event_uri?: string;
@@ -135,17 +136,6 @@ interface DynamicElementRendererProps {
   isPreview?: boolean;
 }
 
-const DEFAULT_ELEMENT_ORDERS: Record<string, string[]> = {
-  welcome: ['image_top', 'headline', 'subtext', 'button', 'hint'],
-  text_question: ['image_top', 'headline', 'input', 'hint'],
-  multi_choice: ['image_top', 'headline', 'options'],
-  email_capture: ['image_top', 'headline', 'subtext', 'input', 'hint'],
-  phone_capture: ['image_top', 'headline', 'subtext', 'input', 'hint'],
-  video: ['headline', 'video', 'button'],
-  thank_you: ['image_top', 'headline', 'subtext'],
-  opt_in: ['image_top', 'headline', 'opt_in_form'],
-};
-
 const IMAGE_ASPECT_RATIOS: Record<string, string> = {
   S: '16/9',
   M: '4/3',
@@ -243,9 +233,9 @@ export function DynamicElementRenderer({
   };
 
   // Use element order from content or default
-  const currentOrder = elementOrder?.length > 0 
-    ? elementOrder 
-    : DEFAULT_ELEMENT_ORDERS[stepType] || ['headline', 'subtext', 'button'];
+  const currentOrder = elementOrder?.length > 0
+    ? elementOrder
+    : getDefaultElementOrder(stepType);
 
   const renderImage = () => {
     if (!design?.imageUrl || design?.imagePosition === 'background') return null;
