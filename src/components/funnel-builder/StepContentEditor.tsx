@@ -86,16 +86,18 @@ export function StepContentEditor({
   // Get allowed intents and locked status from step definition
   const allowedIntents = getAllowedIntents(step.step_type);
   const intentLocked = isIntentLocked(step.step_type);
-  const elementOrder = content.element_order && content.element_order.length > 0
-    ? content.element_order
-    : getPreviewElementOrder(step.step_type);
-  const hasHeadline = elementOrder.includes('headline') || elementOrder.some(id => id.startsWith('headline_'));
-  const hasSubtext = elementOrder.includes('subtext');
-  const hasButton = elementOrder.includes('button') || elementOrder.some(id => id.startsWith('button_'));
-  const hasInput = elementOrder.includes('input') || elementOrder.includes('opt_in_form');
-  const hasVideo = elementOrder.includes('video') || elementOrder.some(id => id.startsWith('video_'));
-  const hasOptions = elementOrder.includes('options');
-  const hasEmbed = elementOrder.includes('embed') || elementOrder.some(id => id.startsWith('embed_'));
+  const effectiveElementOrder = elementOrder.length > 0
+    ? elementOrder
+    : content.element_order && content.element_order.length > 0
+      ? content.element_order
+      : getPreviewElementOrder(step.step_type);
+  const hasHeadline = effectiveElementOrder.includes('headline') || effectiveElementOrder.some(id => id.startsWith('headline_'));
+  const hasSubtext = effectiveElementOrder.includes('subtext');
+  const hasButton = effectiveElementOrder.includes('button') || effectiveElementOrder.some(id => id.startsWith('button_'));
+  const hasInput = effectiveElementOrder.includes('input') || effectiveElementOrder.includes('opt_in_form');
+  const hasVideo = effectiveElementOrder.includes('video') || effectiveElementOrder.some(id => id.startsWith('video_'));
+  const hasOptions = effectiveElementOrder.includes('options');
+  const hasEmbed = effectiveElementOrder.includes('embed') || effectiveElementOrder.some(id => id.startsWith('embed_'));
   const requiresInput = stepDefinition?.validation?.requiresInput === true;
 
   // Auto-focus based on selected element
@@ -113,7 +115,7 @@ export function StepContentEditor({
   const isHighlighted = (field: string) => selectedElement === field;
 
   // Filter dynamic elements from the element order
-  const dynamicElementIds = elementOrder.filter(id => 
+  const dynamicElementIds = effectiveElementOrder.filter(id => 
     id.startsWith('text_') || 
     id.startsWith('headline_') || 
     id.startsWith('video_') || 
