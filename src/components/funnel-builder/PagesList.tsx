@@ -149,10 +149,6 @@ export function PagesList({
   onOpenPageSettings,
   onMoveStep,
 }: PagesListProps) {
-  // Separate regular steps and thank you steps
-  const regularSteps = steps.filter(s => s.step_type !== 'thank_you');
-  const thankYouSteps = steps.filter(s => s.step_type === 'thank_you');
-
   return (
     <div className="flex flex-col h-full">
       <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
@@ -170,13 +166,13 @@ export function PagesList({
       </Button>
       
       <div className="flex-1 overflow-y-auto space-y-1">
-        <SortableContext items={regularSteps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-          {regularSteps.map((step, index) => (
+        <SortableContext items={steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          {steps.map((step, index) => (
             <PageItem
               key={step.id}
               step={step}
               index={index}
-              totalSteps={regularSteps.length}
+              totalSteps={steps.length}
               isSelected={step.id === selectedStepId}
               onSelect={() => onSelectStep(step.id)}
               onDelete={() => onDeleteStep(step.id)}
@@ -185,36 +181,10 @@ export function PagesList({
               onOpenSettings={() => onOpenPageSettings?.(step.id)}
               onMoveUp={() => onMoveStep?.(step.id, 'up')}
               onMoveDown={() => onMoveStep?.(step.id, 'down')}
-               canDelete={regularSteps.length > 1}
+              canDelete={steps.length > 1}
             />
           ))}
         </SortableContext>
-
-        {/* Results Section */}
-        {thankYouSteps.length > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-              Results
-            </h4>
-            {thankYouSteps.map((step, index) => (
-              <PageItem
-                key={step.id}
-                step={step}
-                index={regularSteps.length + index}
-                totalSteps={steps.length}
-                isSelected={step.id === selectedStepId}
-                onSelect={() => onSelectStep(step.id)}
-                onDelete={() => onDeleteStep(step.id)}
-                onDuplicate={() => onDuplicateStep?.(step.id)}
-                onRename={(name) => onRenameStep?.(step.id, name)}
-                onOpenSettings={() => onOpenPageSettings?.(step.id)}
-                onMoveUp={() => {}}
-                onMoveDown={() => {}}
-                canDelete={thankYouSteps.length > 1}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
