@@ -21,6 +21,7 @@ import {
 } from '@/lib/funnel/stepDefinitions';
 import type { StepIntent } from '@/lib/funnel/types';
 import getStepIntent from '@/lib/funnels/stepIntent';
+import { getPreviewElementOrder } from '@/lib/funnel/stepRegistry';
 
 // Strip HTML tags and decode entities for display in input fields
 const stripHtml = (html: string): string => {
@@ -85,6 +86,17 @@ export function StepContentEditor({
   // Get allowed intents and locked status from step definition
   const allowedIntents = getAllowedIntents(step.step_type);
   const intentLocked = isIntentLocked(step.step_type);
+  const elementOrder = content.element_order && content.element_order.length > 0
+    ? content.element_order
+    : getPreviewElementOrder(step.step_type);
+  const hasHeadline = elementOrder.includes('headline') || elementOrder.some(id => id.startsWith('headline_'));
+  const hasSubtext = elementOrder.includes('subtext');
+  const hasButton = elementOrder.includes('button') || elementOrder.some(id => id.startsWith('button_'));
+  const hasInput = elementOrder.includes('input') || elementOrder.includes('opt_in_form');
+  const hasVideo = elementOrder.includes('video') || elementOrder.some(id => id.startsWith('video_'));
+  const hasOptions = elementOrder.includes('options');
+  const hasEmbed = elementOrder.includes('embed') || elementOrder.some(id => id.startsWith('embed_'));
+  const requiresInput = stepDefinition?.validation?.requiresInput === true;
 
   // Auto-focus based on selected element
   useEffect(() => {
@@ -174,24 +186,26 @@ export function StepContentEditor({
       </div>
 
       {/* Headline - all types */}
-      <div 
-        id="editor-section-headline"
-        className={cn(
-        "space-y-2 p-3 -mx-3 rounded-lg transition-colors",
-        isHighlighted('headline') && "bg-primary/10 ring-1 ring-primary/30"
-      )}>
-        <Label className="text-xs">Headline</Label>
-        <Input
-          ref={headlineRef}
-          // Display stripped text but preserve HTML on change
-          value={stripHtml(content.headline || '')}
-          onChange={(e) => updateField('headline', e.target.value)}
-          placeholder="Enter headline..."
-        />
-      </div>
+      {hasHeadline && (
+        <div 
+          id="editor-section-headline"
+          className={cn(
+          "space-y-2 p-3 -mx-3 rounded-lg transition-colors",
+          isHighlighted('headline') && "bg-primary/10 ring-1 ring-primary/30"
+        )}>
+          <Label className="text-xs">Headline</Label>
+          <Input
+            ref={headlineRef}
+            // Display stripped text but preserve HTML on change
+            value={stripHtml(content.headline || '')}
+            onChange={(e) => updateField('headline', e.target.value)}
+            placeholder="Enter headline..."
+          />
+        </div>
+      )}
 
       {/* Subtext - most types */}
-      {step.step_type !== 'multi_choice' && (
+      {hasSubtext && step.step_type !== 'multi_choice' && (
         <div 
           id="editor-section-subtext"
           className={cn(
@@ -210,7 +224,7 @@ export function StepContentEditor({
       )}
 
       {/* Button text - welcome, video */}
-      {(step.step_type === 'welcome' || step.step_type === 'video') && (
+      {hasButton && (step.step_type === 'welcome' || step.step_type === 'video') && (
         <div 
           id="editor-section-button"
           className={cn(
@@ -228,7 +242,7 @@ export function StepContentEditor({
       )}
 
       {/* Placeholder - text_question, email, phone */}
-      {(step.step_type === 'text_question' || step.step_type === 'email_capture' || step.step_type === 'phone_capture') && (
+      {hasInput && (step.step_type === 'text_question' || step.step_type === 'email_capture' || step.step_type === 'phone_capture') && (
         <div 
           id="editor-section-placeholder"
           className={cn(
@@ -246,7 +260,7 @@ export function StepContentEditor({
       )}
 
       {/* Submit Button Text - text_question, email, phone */}
-      {(step.step_type === 'text_question' || step.step_type === 'email_capture' || step.step_type === 'phone_capture') && (
+      {hasInput && (step.step_type === 'text_question' || step.step_type === 'email_capture' || step.step_type === 'phone_capture') && (
         <div 
           id="editor-section-submit-button"
           className={cn(
@@ -263,7 +277,7 @@ export function StepContentEditor({
       )}
 
       {/* Video URL */}
-      {step.step_type === 'video' && (
+      {hasVideo && step.step_type === 'video' && (
         <div 
           id="editor-section-video"
           className={cn(
@@ -283,7 +297,7 @@ export function StepContentEditor({
       )}
 
       {/* Multi Choice Options */}
-      {step.step_type === 'multi_choice' && (
+      {hasOptions && step.step_type === 'multi_choice' && (
         <div 
           id="editor-section-options"
           className={cn(
@@ -368,7 +382,7 @@ export function StepContentEditor({
       )}
 
       {/* Required toggle - questions only */}
-      {(step.step_type === 'text_question' || step.step_type === 'multi_choice' || step.step_type === 'email_capture' || step.step_type === 'phone_capture' || step.step_type === 'opt_in') && (
+      {requiresInput && (
         <div className="flex items-center justify-between p-3 -mx-3 rounded-lg">
           <Label className="text-xs">Required</Label>
           <Switch
@@ -379,7 +393,7 @@ export function StepContentEditor({
       )}
 
       {/* Opt-In Form Fields */}
-      {step.step_type === 'opt_in' && (
+      {step.step_type === 'opt_in' && hasInput && (
         <div 
           id="editor-section-optin"
           className={cn(
@@ -557,7 +571,7 @@ export function StepContentEditor({
       )}
 
       {/* Embed URL and Height - embed only */}
-      {step.step_type === 'embed' && (
+      {hasEmbed && step.step_type === 'embed' && (
         <div 
           id="editor-section-embed"
           className={cn(

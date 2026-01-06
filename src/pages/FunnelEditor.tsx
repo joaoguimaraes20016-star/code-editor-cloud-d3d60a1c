@@ -44,6 +44,7 @@ const validateUuid = (value: string | null | undefined, label: string): string =
   return cleaned;
 };
 const buildNotInFilter = (ids: string[]) => `(${ids.map(id => `"${id}"`).join(',')})`;
+// PostgREST expects UUIDs to be quoted inside the `in` filter list.
 
 type DeviceType = 'mobile' | 'tablet' | 'desktop';
 
@@ -454,16 +455,6 @@ export default function FunnelEditor() {
         });
 
         const { error: upsertError } = await supabase
-      if (stepIds.length > 0) {
-        const notInFilter = `(${stepIds.join(',')})`;
-        const { error: deleteError } = await supabase
-          .from('funnel_steps')
-          .delete()
-          .eq('funnel_id', cleanFunnelId)
-          .not('id', 'in', notInFilter);
-        if (deleteError) throw deleteError;
-      } else {
-        const { error: deleteError } = await supabase
           .from('funnel_steps')
           .upsert(stepsToInsert, { onConflict: 'id' });
 

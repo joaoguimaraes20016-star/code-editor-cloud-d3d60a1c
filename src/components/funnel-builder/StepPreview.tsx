@@ -940,7 +940,7 @@ export function StepPreview({
       )}
 
       {/* Elements Column Layout - constrained to center */}
-      <div className="flex flex-col items-center p-6 gap-3 relative z-10 min-h-[400px]">
+      <div className="flex flex-col items-center p-6 gap-3 relative z-10 min-h-[400px] w-full max-w-2xl mx-auto">
         {visibleElements.map((elementId, index) => {
           const elementContent = renderElementContent(elementId);
           if (!elementContent) return null;
