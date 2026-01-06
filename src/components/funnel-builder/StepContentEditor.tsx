@@ -31,7 +31,7 @@ const stripHtml = (html: string): string => {
 
 interface StepContentEditorProps {
   step: FunnelStep;
-  onUpdate: (content: FunnelStep['content']) => void;
+  onUpdate: (patch: Partial<FunnelStep['content']>) => void;
   selectedElement?: string | null;
   elementOrder?: string[];
   dynamicContent?: Record<string, any>;
@@ -95,7 +95,7 @@ export function StepContentEditor({
   }, [selectedElement]);
 
   const updateField = (field: string, value: any) => {
-    onUpdate({ ...content, [field]: value });
+    onUpdate({ [field]: value });
   };
 
   const isHighlighted = (field: string) => selectedElement === field;
@@ -463,7 +463,6 @@ export function StepContentEditor({
               onChange={(e) => {
                 const value = e.target.value;
                 const next = {
-                  ...content,
                   privacy_link: value,
                   // If a privacy link is provided on an opt-in step,
                   // treat it as consent-gated by default.
@@ -487,7 +486,6 @@ export function StepContentEditor({
               checked={content.requires_consent === true}
               onCheckedChange={(checked) => {
                 const next = {
-                  ...content,
                   requires_consent: checked,
                   // When consent is required, always show checkbox.
                   show_consent_checkbox: checked ? true : content.show_consent_checkbox,
@@ -509,7 +507,6 @@ export function StepContentEditor({
               disabled={content.requires_consent === true}
               onCheckedChange={(checked) => {
                 const next = {
-                  ...content,
                   show_consent_checkbox: checked,
                 };
                 onUpdate(next);

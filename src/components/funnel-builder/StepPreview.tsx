@@ -100,6 +100,8 @@ const ADD_ELEMENT_OPTIONS = [
   { id: 'embed', label: 'Embed/iFrame', icon: Square },
 ];
 
+const createElementId = (prefix: string) => `${prefix}_${crypto.randomUUID()}`;
+
 // Helper to convert video URLs to embed URLs
 function getVideoEmbedUrl(url?: string): string | null {
   if (!url) return null;
@@ -267,7 +269,7 @@ export function StepPreview({
   }, [elementOrder, content.element_order, step.step_type]);
 
   const handleAddElement = useCallback((elementType: string) => {
-    const newElementId = `${elementType}_${Date.now()}`;
+    const newElementId = createElementId(elementType);
     const newOrder = [...currentOrder, newElementId];
     
     // Initialize dynamic content for the new element
@@ -308,7 +310,7 @@ export function StepPreview({
 
   const handleDuplicate = useCallback((elementId: string) => {
     const index = currentOrder.indexOf(elementId);
-    const newElementId = `${elementId}_copy_${Date.now()}`;
+    const newElementId = `${elementId}_copy_${crypto.randomUUID()}`;
     const newOrder = [...currentOrder];
     newOrder.splice(index + 1, 0, newElementId);
     
