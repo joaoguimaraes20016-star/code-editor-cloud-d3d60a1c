@@ -470,7 +470,7 @@ export default function FunnelEditor() {
         if (pendingSaveRef.current) {
           pendingSaveRef.current = false;
           if (dirtyVersionRef.current !== saveVersion) {
-            void persistFunnel();
+            await persistFunnel();
           }
         }
       }
@@ -754,9 +754,6 @@ export default function FunnelEditor() {
 
     try {
       await persistFunnel();
-      if (hasUnsavedChanges) {
-        await persistFunnel();
-      }
 
       const cleanFunnelId = validateUuid(funnelId, 'funnel id');
       const cleanTeamId = validateUuid(teamId, 'team id');
@@ -776,7 +773,7 @@ export default function FunnelEditor() {
     } finally {
       setIsPublishing(false);
     }
-  }, [funnelId, hasUnsavedChanges, isPublishing, persistFunnel, teamId]);
+  }, [funnelId, isPublishing, persistFunnel, teamId]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
