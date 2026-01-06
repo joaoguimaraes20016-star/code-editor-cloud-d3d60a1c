@@ -185,6 +185,7 @@ export function PhoneCaptureStep({ content, settings, onNext, isActive }: PhoneC
           settings={settings}
           design={content.design}
           stepType="phone_capture"
+          onButtonClick={handleSubmit}
           renderInput={renderInput}
         />
       </div>

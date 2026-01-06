@@ -165,6 +165,7 @@ export function TextQuestionStep({ content, settings, onNext, isActive }: TextQu
           settings={settings}
           design={content.design}
           stepType="text_question"
+          onButtonClick={handleSubmit}
           renderInput={renderInput}
         />
       </div>

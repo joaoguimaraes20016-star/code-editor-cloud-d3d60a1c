@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { FunnelStep, FunnelSettings } from '@/pages/FunnelEditor';
 import { DynamicElementRenderer } from '@/components/funnel-public/DynamicElementRenderer';
 import { StepDesign } from '@/pages/FunnelEditor';
+import { getDefaultElementOrder } from '@/lib/funnel/stepRegistry';
 
 interface LivePreviewModeProps {
   open: boolean;
@@ -36,17 +37,6 @@ const DEVICE_SIZES: Record<DeviceType, { width: string; height: string; label: s
   mobile: { width: '375px', height: '667px', label: 'Mobile' },
   tablet: { width: '768px', height: '1024px', label: 'Tablet' },
   desktop: { width: '100%', height: '100%', label: 'Desktop' },
-};
-
-const DEFAULT_ELEMENT_ORDERS: Record<string, string[]> = {
-  welcome: ['headline', 'subtext', 'video', 'button'],
-  text_question: ['headline', 'input'],
-  multi_choice: ['headline', 'options'],
-  email_capture: ['headline', 'subtext', 'input'],
-  phone_capture: ['headline', 'subtext', 'input'],
-  video: ['headline', 'video', 'button'],
-  thank_you: ['headline', 'subtext'],
-  opt_in: ['headline', 'opt_in_form'],
 };
 
 export function LivePreviewMode({ 
@@ -95,7 +85,10 @@ export function LivePreviewMode({
   // Use external state if provided, fallback to step content
   const stepDesign = (externalStepDesigns?.[currentStep?.id] || stepContent.design || {}) as Record<string, any>;
   const currentDynamicElements = externalDynamicElements?.[currentStep?.id] || stepContent.dynamic_elements || {};
-  const elementOrder = externalElementOrders?.[currentStep?.id] || stepContent.element_order || DEFAULT_ELEMENT_ORDERS[currentStep?.step_type] || ['headline', 'subtext', 'button'];
+  const elementOrder =
+    externalElementOrders?.[currentStep?.id] ||
+    stepContent.element_order ||
+    getDefaultElementOrder(currentStep?.step_type);
   
   // Get background style for the step
   const getBackgroundStyle = () => {

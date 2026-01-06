@@ -171,3 +171,7 @@ export const getPreviewElementOrder = (stepType?: string): string[] => {
   const entry = getStepRegistryEntry(stepType);
   return entry?.previewElementOrder ?? ["headline", "subtext", "button"];
 };
+
+export const getDefaultElementOrder = (stepType?: string): string[] => {
+  return getPreviewElementOrder(stepType);
+};

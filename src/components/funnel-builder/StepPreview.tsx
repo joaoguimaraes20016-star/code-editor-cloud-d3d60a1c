@@ -18,7 +18,7 @@ import {
   Upload
 } from 'lucide-react';
 import { resolvePrivacyPolicyUrl, shouldShowConsentCheckbox } from '@/components/funnel-public/consent';
-import { getPreviewElementOrder } from '@/lib/funnel/stepRegistry';
+import { getDefaultElementOrder } from '@/lib/funnel/stepRegistry';
 
 interface StepDesign {
   backgroundColor?: string;
@@ -265,7 +265,7 @@ export function StepPreview({
     if (content.element_order && content.element_order.length > 0) {
       return content.element_order;
     }
-    return getPreviewElementOrder(step.step_type);
+    return getDefaultElementOrder(step.step_type);
   }, [elementOrder, content.element_order, step.step_type]);
 
   const handleAddElement = useCallback((elementType: string) => {
