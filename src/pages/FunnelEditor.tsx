@@ -43,6 +43,8 @@ const validateUuid = (value: string | null | undefined, label: string): string =
   if (!UUID_RE.test(cleaned)) throw new Error(`Invalid ${label}`);
   return cleaned;
 };
+const buildNotInFilter = (ids: string[]) => `(${ids.map(id => `"${id}"`).join(',')})`;
+// PostgREST expects UUIDs to be quoted inside the `in` filter list.
 
 type DeviceType = 'mobile' | 'tablet' | 'desktop';
 
