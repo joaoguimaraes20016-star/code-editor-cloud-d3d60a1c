@@ -912,13 +912,15 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
       )}
 
       {/* Steps Container - scrollable on each step */}
-      <div className="min-h-screen w-full pt-16 md:pt-20 pb-8">
+      <div className="min-h-screen w-full pt-16 md:pt-20 pb-8 relative">
         {steps.map((step, index) => (
           <div
             key={step.id}
             className={cn(
-              "min-h-[calc(100vh-5rem)] w-full flex flex-col items-center justify-start py-4 md:py-8 px-4 md:px-6 transition-all duration-500 ease-out",
-              index === currentStepIndex ? "block opacity-100" : "hidden opacity-0",
+              "min-h-[calc(100vh-5rem)] w-full flex flex-col items-center justify-start py-4 md:py-8 px-4 md:px-6 transition-opacity transition-transform duration-500 ease-out",
+              index === currentStepIndex
+                ? "relative opacity-100 translate-y-0 pointer-events-auto"
+                : "absolute inset-0 opacity-0 translate-y-4 pointer-events-none",
             )}
           >
             <div className="w-full max-w-2xl mx-auto">{renderStep(step, index === currentStepIndex, index)}</div>
