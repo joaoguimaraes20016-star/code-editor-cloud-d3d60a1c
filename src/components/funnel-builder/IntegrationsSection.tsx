@@ -16,6 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -523,7 +524,9 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
               <GHLIcon />
               <div>
                 <DialogTitle className="text-xl">Connect GoHighLevel</DialogTitle>
-                <p className="text-sm text-muted-foreground">Set up your GHL webhook in 5 simple steps</p>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Set up your GHL webhook in 5 simple steps
+                </DialogDescription>
               </div>
             </div>
           </DialogHeader>
@@ -709,7 +712,9 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
               </div>
               <div>
                 <DialogTitle>Connect Zapier</DialogTitle>
-                <p className="text-sm text-muted-foreground">Enter your Zapier webhook URL</p>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Enter your Zapier webhook URL
+                </DialogDescription>
               </div>
             </div>
           </DialogHeader>
@@ -756,7 +761,9 @@ export function IntegrationsSection({ teamId }: IntegrationsSectionProps) {
               </div>
               <div>
                 <DialogTitle>Add Custom Webhook</DialogTitle>
-                <p className="text-sm text-muted-foreground">Receive lead data at your endpoint</p>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Receive lead data at your endpoint
+                </DialogDescription>
               </div>
             </div>
           </DialogHeader>

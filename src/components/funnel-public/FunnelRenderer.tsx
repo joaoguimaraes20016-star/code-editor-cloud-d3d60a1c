@@ -1,24 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { WelcomeStep } from "./WelcomeStep";
-import { TextQuestionStep } from "./TextQuestionStep";
-import { MultiChoiceStep } from "./MultiChoiceStep";
-import { EmailCaptureStep } from "./EmailCaptureStep";
-import { PhoneCaptureStep } from "./PhoneCaptureStep";
-import { VideoStep } from "./VideoStep";
-import { ThankYouStep } from "./ThankYouStep";
-import { OptInStep } from "./OptInStep";
-import { EmbedStep } from "./EmbedStep";
 import { ProgressDots } from "./ProgressDots";
 import { cn } from "@/lib/utils";
 import type { CalendlyBookingData } from "./DynamicElementRenderer";
 import { getDefaultIntent, getStepDefinition } from "@/lib/funnel/stepDefinitions";
-import type { StepIntent } from "@/lib/funnel/types";
+import type { StepIntent, StepType } from "@/lib/funnel/types";
 import getStepIntent from '@/lib/funnels/stepIntent';
 import recordEvent from "@/lib/events/recordEvent";
 import elementDefinitions from "@/components/funnel/elementDefinitions";
 import { getConsentMode, shouldShowConsentCheckbox, resolvePrivacyPolicyUrl } from "./consent";
+import { getQuestionStepTypes, getStepRegistryEntry } from "@/lib/funnel/stepRegistry";
 
 // Use the shared getStepIntent helper (falls back to defaults).
 
@@ -829,9 +821,8 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
   );
 
   // Calculate question number for multi_choice steps (excluding welcome, thank_you, video)
-  const questionSteps = steps.filter((s) =>
-    ["text_question", "multi_choice", "email_capture", "phone_capture", "opt_in"].includes(s.step_type),
-  );
+  const questionStepTypes = getQuestionStepTypes();
+  const questionSteps = steps.filter((s) => questionStepTypes.includes(s.step_type as StepType));
 
   const renderStep = (step: FunnelStep, isActive: boolean, stepIndex: number) => {
     // Calculate current question number for this step
@@ -839,7 +830,7 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
     const currentQuestionNumber = questionIndex >= 0 ? questionIndex + 1 : undefined;
     const totalQuestions = questionSteps.length;
 
-    const { termsUrl: stepTermsUrl, requireConsent: stepShowConsent } = getConsentRequirementForStep(step);
+    const { termsUrl: resolvedStepTermsUrl, requireConsent: stepShowConsent } = getConsentRequirementForStep(step);
 
     const commonProps = {
       content: step.content,
@@ -859,95 +850,46 @@ export function FunnelRenderer({ funnel, steps, utmSource, utmMedium, utmCampaig
           <div>step_type: {step.step_type}</div>
           <div>showConsent: {String(stepShowConsent)}</div>
           <div>consentChecked: {String(consentChecked)}</div>
-          <div>termsUrl: {stepTermsUrl ? "yes" : "no"}</div>
+          <div>termsUrl: {resolvedStepTermsUrl ? "yes" : "no"}</div>
         </div>
       ) : null;
 
-    switch (step.step_type) {
-      case "welcome":
-        return (
-          <>
-            {debugBadge}
-            <WelcomeStep {...commonProps} />
-          </>
-        );
-      case "text_question":
-        return (
-          <>
-            {debugBadge}
-            <TextQuestionStep {...commonProps} />
-          </>
-        );
-      case "multi_choice":
-        return (
-          <>
-            {debugBadge}
-            <MultiChoiceStep {...commonProps} />
-          </>
-        );
-      case "email_capture":
-        return (
-          <>
-            {debugBadge}
-            <EmailCaptureStep {...commonProps} />
-          </>
-        );
-      case "phone_capture":
-        return (
-          <>
-            {debugBadge}
-            <PhoneCaptureStep {...commonProps} />
-          </>
-        );
-      case "opt_in":
-        // Use the globally resolved privacy policy URL for the active step.
-        // Non-active steps still resolve independently for preview-only cases.
-        const isActiveStep = step.id === currentStep?.id;
-        const { termsUrl: baseTermsUrl, requireConsent: baseRequireConsent } = getConsentRequirementForStep(step);
-        const stepTermsUrl = isActiveStep ? activeTermsUrl : baseTermsUrl;
-        const stepShowConsentCheckbox = isActiveStep ? activeRequireConsent : baseRequireConsent;
-        return (
-          <>
-            {debugBadge}
-            <OptInStep
-              {...commonProps}
-              termsUrl={stepTermsUrl}
-              showConsentCheckbox={stepShowConsentCheckbox}
-              consentChecked={consentChecked}
-              consentError={consentError}
-              onConsentChange={handleConsentChange}
-            />
-          </>
-        );
-      case "video":
-        return (
-          <>
-            {debugBadge}
-            <VideoStep {...commonProps} />
-          </>
-        );
-      case "embed": {
-        // Pass team Calendly URL if calendly_enabled_for_funnels is true and URL is configured
-        const teamCalendlyUrl = teamCalendlySettings?.calendly_enabled_for_funnels
-          ? teamCalendlySettings.calendly_funnel_scheduling_url
-          : null;
-        return (
-          <>
-            {debugBadge}
-            <EmbedStep {...commonProps} teamCalendlyUrl={teamCalendlyUrl} />
-          </>
-        );
-      }
-      case "thank_you":
-        return (
-          <>
-            {debugBadge}
-            <ThankYouStep {...commonProps} />
-          </>
-        );
-      default:
-        return null;
+    const registryEntry = getStepRegistryEntry(step.step_type);
+    if (!registryEntry) {
+      return null;
     }
+
+    const isActiveStep = step.id === currentStep?.id;
+    const { termsUrl: baseTermsUrl, requireConsent: baseRequireConsent } = getConsentRequirementForStep(step);
+    const activeStepTermsUrl = isActiveStep ? activeTermsUrl : baseTermsUrl;
+    const stepShowConsentCheckbox = isActiveStep ? activeRequireConsent : baseRequireConsent;
+
+    const consentContext =
+      step.step_type === "opt_in"
+        ? {
+            termsUrl: activeStepTermsUrl,
+            showConsentCheckbox: stepShowConsentCheckbox,
+            consentChecked,
+            consentError,
+            onConsentChange: handleConsentChange,
+          }
+        : undefined;
+
+    const embedContext =
+      step.step_type === "embed"
+        ? {
+            teamCalendlyUrl: teamCalendlySettings?.calendly_enabled_for_funnels
+              ? teamCalendlySettings.calendly_funnel_scheduling_url
+              : null,
+          }
+        : undefined;
+
+    return registryEntry.renderPublic({
+      commonProps,
+      debugBadge,
+      consent: consentContext,
+      embed: embedContext,
+    });
   };
 
   return (

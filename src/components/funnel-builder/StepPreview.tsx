@@ -1,4 +1,4 @@
-import { FunnelStep, FunnelSettings } from '@/pages/FunnelEditor';
+import { Funnel, FunnelStep, FunnelSettings } from '@/pages/FunnelEditor';
 import { cn } from '@/lib/utils';
 import { ElementActionMenu } from './ElementActionMenu';
 import { InlineTextEditor } from './InlineTextEditor';
@@ -17,7 +17,8 @@ import {
   AlignLeft,
   Upload
 } from 'lucide-react';
-import { getTermsUrl, shouldShowConsentCheckbox } from '@/components/funnel-public/consent';
+import { resolvePrivacyPolicyUrl, shouldShowConsentCheckbox } from '@/components/funnel-public/consent';
+import { getPreviewElementOrder } from '@/lib/funnel/stepRegistry';
 
 interface StepDesign {
   backgroundColor?: string;
@@ -65,6 +66,7 @@ interface StepDesign {
 interface StepPreviewProps {
   step: FunnelStep;
   settings: FunnelSettings;
+  funnel?: Funnel | null;
   selectedElement: string | null;
   onSelectElement: (element: string | null) => void;
   design?: StepDesign;
@@ -86,17 +88,6 @@ const FONT_SIZE_MAP = {
   small: { headline: 'text-lg', subtext: 'text-xs' },
   medium: { headline: 'text-xl', subtext: 'text-sm' },
   large: { headline: 'text-2xl', subtext: 'text-base' },
-};
-
-const DEFAULT_ELEMENT_ORDERS: Record<string, string[]> = {
-  welcome: ['image_top', 'headline', 'subtext', 'button', 'hint'],
-  text_question: ['image_top', 'headline', 'input', 'hint'],
-  multi_choice: ['image_top', 'headline', 'options'],
-  email_capture: ['image_top', 'headline', 'subtext', 'input', 'hint'],
-  phone_capture: ['image_top', 'headline', 'subtext', 'input', 'hint'],
-  video: ['headline', 'video', 'button'],
-  thank_you: ['image_top', 'headline', 'subtext'],
-  opt_in: ['image_top', 'headline', 'opt_in_form'],
 };
 
 const ADD_ELEMENT_OPTIONS = [
@@ -223,6 +214,7 @@ function ElementWrapper({
 export function StepPreview({ 
   step, 
   settings, 
+  funnel,
   selectedElement, 
   onSelectElement, 
   design,
@@ -271,7 +263,7 @@ export function StepPreview({
     if (content.element_order && content.element_order.length > 0) {
       return content.element_order;
     }
-    return DEFAULT_ELEMENT_ORDERS[step.step_type] || ['headline', 'subtext', 'button'];
+    return getPreviewElementOrder(step.step_type);
   }, [elementOrder, content.element_order, step.step_type]);
 
   const handleAddElement = useCallback((elementType: string) => {
@@ -802,7 +794,8 @@ export function StepPreview({
         const optInInputPlaceholderColor = design?.inputPlaceholderColor || '#9ca3af';
         const optInShowIcon = design?.inputShowIcon !== false;
         const optInSubmitText = content.submit_button_text || 'Submit and proceed';
-        const optInTermsUrl = getTermsUrl({ step_type: step.step_type, content });
+        const domainOrigin = typeof window !== 'undefined' ? window.location.origin : undefined;
+        const optInTermsUrl = resolvePrivacyPolicyUrl({ step_type: step.step_type, content }, funnel, undefined, domainOrigin);
         const optInShowConsentCheckbox = shouldShowConsentCheckbox({ step_type: step.step_type, content }, optInTermsUrl);
         
         return (

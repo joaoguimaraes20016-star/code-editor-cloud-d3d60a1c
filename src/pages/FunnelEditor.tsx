@@ -203,6 +203,22 @@ function LoadingState() {
   );
 }
 
+function ErrorState({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+      <div className="max-w-md space-y-3">
+        <div className="flex items-center justify-center gap-2 text-destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <span className="text-sm font-semibold">{title}</span>
+        </div>
+        {description ? (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export default function FunnelEditor() {
   const { teamId, funnelId } = useParams<{ teamId: string; funnelId: string }>();
   const navigate = useNavigate();
@@ -253,9 +269,8 @@ export default function FunnelEditor() {
   const [dynamicElements, setDynamicElements] = useState<Record<string, Record<string, any>>>({});
   const [isInitialized, setIsInitialized] = useState(false); // Track if initial load happened
   const [showPublishPrompt, setShowPublishPrompt] = useState(false); // Domain prompt on publish
+  const [initializationError, setInitializationError] = useState<string | null>(null);
   const initializationRanRef = useRef(false);
-  const pendingFunnelRef = useRef<Funnel | null>(null);
-  const pendingStepsRef = useRef<FunnelStep[] | null>(null);
   
   // Destructure for convenience
   const { name, steps, stepDesigns, stepSettings, elementOrders } = funnelState;
@@ -388,84 +403,97 @@ export default function FunnelEditor() {
     }
   }, [dynamicElements, elementOrders, funnelId, isSaving, name, stepDesigns, steps, teamId]);
 
-  const tryInitialize = useCallback(async () => {
+  const tryInitialize = useCallback((funnelData: Funnel, dbSteps: FunnelStep[]) => {
     if (initializationRanRef.current) return;
-    if (!pendingFunnelRef.current || !pendingStepsRef.current) return;
 
-    const funnelData = pendingFunnelRef.current;
-    const dbSteps = pendingStepsRef.current;
+    try {
 
-    const loadedDesigns: Record<string, StepDesign> = {};
-    const loadedOrders: Record<string, string[]> = {};
-    const loadedDynamicElements: Record<string, Record<string, any>> = {};
+      const loadedDesigns: Record<string, StepDesign> = {};
+      const loadedOrders: Record<string, string[]> = {};
+      const loadedDynamicElements: Record<string, Record<string, any>> = {};
 
-    const migratedSteps = dbSteps.map(step => {
-      if (step.content.design) {
-        loadedDesigns[step.id] = step.content.design;
-      }
-      if (step.content.element_order) {
-        loadedOrders[step.id] = step.content.element_order;
-      }
-      if (step.content.dynamic_elements) {
-        loadedDynamicElements[step.id] = step.content.dynamic_elements;
-      }
+      const migratedSteps = dbSteps.map(step => {
+        const safeContent = step.content ?? {};
 
-      if (!step.content.intent) {
-        const defaultIntent = getDefaultIntent(step.step_type);
+        if (safeContent.design) {
+          loadedDesigns[step.id] = safeContent.design;
+        }
+        if (safeContent.element_order) {
+          loadedOrders[step.id] = safeContent.element_order;
+        }
+        if (safeContent.dynamic_elements) {
+          loadedDynamicElements[step.id] = safeContent.dynamic_elements;
+        }
+
+        if (!safeContent.intent) {
+          const defaultIntent = getDefaultIntent(step.step_type);
+          return {
+            ...step,
+            content: {
+              ...safeContent,
+              intent: defaultIntent,
+            },
+          };
+        }
         return {
           ...step,
-          content: {
-            ...step.content,
-            intent: defaultIntent,
-          },
+          content: safeContent,
         };
+      });
+
+      const hasDbSteps = migratedSteps.length > 0;
+      const stepsToLoad = hasDbSteps
+        ? migratedSteps
+        : [{
+            id: crypto.randomUUID(),
+            funnel_id: funnelData.id,
+            order_index: 0,
+            step_type: 'welcome',
+            content: {},
+          }];
+
+      setDynamicElements(loadedDynamicElements);
+
+      resetHistory({
+        name: funnelData.name,
+        steps: stepsToLoad,
+        stepDesigns: loadedDesigns,
+        stepSettings: {},
+        elementOrders: loadedOrders,
+      });
+
+      if (stepsToLoad.length > 0 && !selectedStepId) {
+        setSelectedStepId(stepsToLoad[0].id);
       }
-      return step;
-    });
 
-    const hasDbSteps = migratedSteps.length > 0;
-    const stepsToLoad = hasDbSteps
-      ? migratedSteps
-      : [{
-          id: crypto.randomUUID(),
-          funnel_id: funnelData.id,
-          order_index: 0,
-          step_type: 'welcome',
-          content: {},
-        }];
+      setIsInitialized(true);
+      initializationRanRef.current = true;
 
-    setDynamicElements(loadedDynamicElements);
+      const neededMigration = dbSteps.some(step => !(step.content ?? {}).intent);
+      if (neededMigration) {
+        console.log('[FunnelEditor] Auto-migrated step intents for',
+          dbSteps.filter(s => !(s.content ?? {}).intent).length, 'steps');
+        setHasUnsavedChanges(true);
+      }
 
-    resetHistory({
-      name: funnelData.name,
-      steps: stepsToLoad,
-      stepDesigns: loadedDesigns,
-      stepSettings: {},
-      elementOrders: loadedOrders,
-    });
-
-    if (stepsToLoad.length > 0 && !selectedStepId) {
-      setSelectedStepId(stepsToLoad[0].id);
-    }
-
-    setIsInitialized(true);
-    initializationRanRef.current = true;
-
-    const neededMigration = dbSteps.some(step => !step.content.intent);
-    if (neededMigration) {
-      console.log('[FunnelEditor] Auto-migrated step intents for',
-        dbSteps.filter(s => !s.content.intent).length, 'steps');
-      setHasUnsavedChanges(true);
-    }
-
-    const warnings = validateFunnelStructure(stepsToLoad);
-    if (warnings.length > 0 && process.env.NODE_ENV === 'development') {
-      console.warn('[FunnelEditor] Structure warnings:', warnings);
+      const warnings = validateFunnelStructure(stepsToLoad);
+      if (warnings.length > 0 && process.env.NODE_ENV === 'development') {
+        console.warn('[FunnelEditor] Structure warnings:', warnings);
+      }
+    } catch (error) {
+      const err = error as Error;
+      console.error('[FunnelEditor] Initialization failed:', err);
+      setInitializationError(err.message || 'Failed to initialize editor.');
     }
 
   }, [resetHistory, selectedStepId, setDynamicElements, setHasUnsavedChanges, setIsInitialized]);
 
-  const { data: funnel, isLoading: isFunnelLoading } = useQuery({
+  const {
+    data: funnel,
+    isLoading: isFunnelLoading,
+    isError: isFunnelError,
+    error: funnelError,
+  } = useQuery({
     queryKey: ['funnels', teamId, funnelId],
     queryFn: async () => {
       if (!teamId) {
@@ -492,9 +520,8 @@ export default function FunnelEditor() {
     refetchOnMount: false,
     refetchOnReconnect: false,
     staleTime: Infinity,
-    onSuccess: (data) => {
-      pendingFunnelRef.current = data;
-      void tryInitialize();
+    onSuccess: () => {
+      setInitializationError(null);
     },
   });
 
@@ -519,7 +546,12 @@ export default function FunnelEditor() {
     ? domains.find(d => d.id === funnel.domain_id)?.domain 
     : null;
 
-  useQuery({
+  const {
+    data: stepsData,
+    isLoading: isStepsLoading,
+    isError: isStepsError,
+    error: stepsError,
+  } = useQuery({
     queryKey: ['funnel-steps', funnelId],
     queryFn: async () => {
       const cleanFunnelId = validateUuid(funnelId, 'funnel id');
@@ -538,11 +570,18 @@ export default function FunnelEditor() {
     refetchOnMount: false,
     refetchOnReconnect: false,
     staleTime: Infinity,
-    onSuccess: (stepsData) => {
-      pendingStepsRef.current = stepsData;
-      void tryInitialize();
+    onSuccess: () => {
+      setInitializationError(null);
     },
   });
+
+  useEffect(() => {
+    if (initializationRanRef.current) return;
+    if (!funnel || !stepsData) return;
+    if (initializationError) return;
+
+    tryInitialize(funnel, stepsData);
+  }, [funnel, stepsData, initializationError, tryInitialize]);
 
   const handlePublish = useCallback(async () => {
     if (isPublishing) return;
@@ -794,7 +833,34 @@ export default function FunnelEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedElement, selectedStep, elementOrders, dynamicElements, handleUpdateElementOrder, setDynamicElements, setHasUnsavedChanges]);
 
-  if (!isInitialized || isFunnelLoading) {
+  if (isFunnelError) {
+    return (
+      <ErrorState
+        title="Unable to load funnel"
+        description={(funnelError as Error)?.message || "Please try again."}
+      />
+    );
+  }
+
+  if (isStepsError) {
+    return (
+      <ErrorState
+        title="Unable to load funnel steps"
+        description={(stepsError as Error)?.message || "Please try again."}
+      />
+    );
+  }
+
+  if (initializationError) {
+    return (
+      <ErrorState
+        title="Unable to initialize the editor"
+        description={initializationError}
+      />
+    );
+  }
+
+  if (!isInitialized || isFunnelLoading || isStepsLoading) {
     return <LoadingState />;
   }
 
@@ -1025,6 +1091,7 @@ export default function FunnelEditor() {
                 <StepPreview
                   step={selectedStep}
                   settings={funnel.settings}
+                  funnel={funnel}
                   selectedElement={selectedElement}
                   onSelectElement={setSelectedElement}
                   design={stepDesigns[selectedStep.id]}

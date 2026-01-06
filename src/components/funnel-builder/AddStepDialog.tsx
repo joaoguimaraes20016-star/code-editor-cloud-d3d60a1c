@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Play, MessageSquare, List, Mail, Phone, Video, CheckCircle, UserCheck } from 'lucide-react';
 import { FunnelStep } from '@/pages/FunnelEditor';
@@ -31,6 +31,7 @@ export function AddStepDialog({ open, onOpenChange, onAddStep }: AddStepDialogPr
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Add Page</DialogTitle>
+          <DialogDescription>Select a step type to add to your funnel.</DialogDescription>
         </DialogHeader>
         
         <div className="grid grid-cols-2 gap-3 mt-4">

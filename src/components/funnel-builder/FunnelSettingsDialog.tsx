@@ -15,6 +15,9 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { Funnel, FunnelSettings } from '@/pages/FunnelEditor';
@@ -802,6 +805,10 @@ export function FunnelSettingsDialog({ open, onOpenChange, funnel, onSave }: Fun
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Funnel settings</DialogTitle>
+          <DialogDescription>Manage global settings for this funnel.</DialogDescription>
+        </DialogHeader>
         <div className="flex h-[600px]">
           {/* Sidebar */}
           <div className="w-56 border-r bg-muted/30 p-4 flex flex-col">

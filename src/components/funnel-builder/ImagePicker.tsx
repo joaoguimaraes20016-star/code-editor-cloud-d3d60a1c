@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Link, Image as ImageIcon, Search, Upload, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -137,6 +137,7 @@ export function ImagePicker({ open, onOpenChange, onSelect, aspectRatio = 'M' }:
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Image</DialogTitle>
+          <DialogDescription>Select or upload an image for this step.</DialogDescription>
         </DialogHeader>
 
         {/* Size Selector */}

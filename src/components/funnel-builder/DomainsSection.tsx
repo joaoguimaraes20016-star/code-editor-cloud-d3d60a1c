@@ -589,6 +589,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
               </div>
               <DialogTitle>Add your domain</DialogTitle>
             </div>
+            <DialogDescription>Connect a custom domain to publish your funnels.</DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
@@ -625,6 +626,7 @@ export function DomainsSection({ teamId }: DomainsSectionProps) {
               </div>
               <DialogTitle>Link Funnel to Domain</DialogTitle>
             </div>
+            <DialogDescription>Choose which funnel should appear on this domain.</DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">

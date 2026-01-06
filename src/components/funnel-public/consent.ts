@@ -9,6 +9,9 @@ export interface ConsentStep {
 export function getTermsUrl(step?: ConsentStep): string {
   // Legacy helper preserved for backward compatibility.
   // Delegate to the canonical privacy policy resolver using step-level data only.
+  if (typeof resolvePrivacyPolicyUrl !== "function") {
+    return "";
+  }
   return resolvePrivacyPolicyUrl(step, undefined, undefined);
 }
 
@@ -39,7 +42,7 @@ interface DefaultPrivacyContext {
   domainOrigin?: string | null;
 }
 
-export function getDefaultPrivacyPolicyUrl({ team, funnel, domainOrigin }: DefaultPrivacyContext): string {
+export function getDefaultPrivacyPolicyUrl({ team, funnel }: DefaultPrivacyContext): string {
   const funnelUrl = funnel?.settings?.privacy_policy_url;
   if (typeof funnelUrl === "string" && funnelUrl.trim().length > 0) {
     return funnelUrl.trim();
@@ -50,18 +53,7 @@ export function getDefaultPrivacyPolicyUrl({ team, funnel, domainOrigin }: Defau
     return teamUrl.trim();
   }
 
-  let origin = domainOrigin || null;
-
-  if (!origin && typeof window !== "undefined" && window.location?.origin) {
-    origin = window.location.origin;
-  }
-
-  if (!origin) {
-    return "/legal/privacy";
-  }
-
-  const normalizedOrigin = origin.replace(/\/$/, "");
-  return `${normalizedOrigin}/legal/privacy`;
+  return "";
 }
 
 export function resolvePrivacyPolicyUrl(
