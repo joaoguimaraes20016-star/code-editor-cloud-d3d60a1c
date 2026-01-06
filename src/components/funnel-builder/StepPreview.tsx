@@ -100,6 +100,8 @@ const ADD_ELEMENT_OPTIONS = [
   { id: 'embed', label: 'Embed/iFrame', icon: Square },
 ];
 
+const createElementId = (prefix: string) => `${prefix}_${crypto.randomUUID()}`;
+
 // Helper to convert video URLs to embed URLs
 function getVideoEmbedUrl(url?: string): string | null {
   if (!url) return null;
@@ -267,7 +269,7 @@ export function StepPreview({
   }, [elementOrder, content.element_order, step.step_type]);
 
   const handleAddElement = useCallback((elementType: string) => {
-    const newElementId = `${elementType}_${Date.now()}`;
+    const newElementId = createElementId(elementType);
     const newOrder = [...currentOrder, newElementId];
     
     // Initialize dynamic content for the new element
@@ -308,7 +310,7 @@ export function StepPreview({
 
   const handleDuplicate = useCallback((elementId: string) => {
     const index = currentOrder.indexOf(elementId);
-    const newElementId = `${elementId}_copy_${Date.now()}`;
+    const newElementId = `${elementId}_copy_${crypto.randomUUID()}`;
     const newOrder = [...currentOrder];
     newOrder.splice(index + 1, 0, newElementId);
     
@@ -860,8 +862,9 @@ export function StepPreview({
                   style={{ borderColor: 'rgba(255,255,255,0.3)' }}
                 />
                 <span className="text-xs" style={{ color: textColor, opacity: 0.8 }}>
-                  I have read and accept the{' '}
-                  <span className="underline">Privacy Policy</span>.
+                  {content.privacy_text || 'I have read and accept the'}{' '}
+                  <span className="underline">Privacy Policy</span>
+                  .
                 </span>
               </label>
             )}
@@ -937,7 +940,7 @@ export function StepPreview({
       )}
 
       {/* Elements Column Layout - constrained to center */}
-      <div className="flex flex-col items-center p-6 gap-3 relative z-10 min-h-[400px]">
+      <div className="flex flex-col items-center p-6 gap-3 relative z-10 min-h-[400px] w-full max-w-2xl mx-auto">
         {visibleElements.map((elementId, index) => {
           const elementContent = renderElementContent(elementId);
           if (!elementContent) return null;
