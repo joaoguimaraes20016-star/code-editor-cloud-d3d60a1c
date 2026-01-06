@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -978,7 +978,25 @@ export default function FunnelEditor() {
     }
   };
 
-  const selectedStep = steps.find((s) => s.id === selectedStepId);
+  const selectedStep = useMemo(
+    () => steps.find((s) => s.id === selectedStepId) || null,
+    [steps, selectedStepId]
+  );
+  const selectedBlock = useMemo(() => {
+    if (!selectedStepId || !selectedBlockId) return null;
+    return stepBlocks[selectedStepId]?.find((block) => block.id === selectedBlockId) || null;
+  }, [selectedBlockId, selectedStepId, stepBlocks]);
+
+  useEffect(() => {
+    if (steps.length === 0) {
+      setSelection({ type: 'funnel' });
+      return;
+    }
+
+    if (selectedStepId && steps.some((step) => step.id === selectedStepId)) return;
+
+    setSelection({ type: 'step', stepId: steps[0].id });
+  }, [selectedStepId, steps]);
 
   useEffect(() => {
     if (steps.length === 0) {
