@@ -21,6 +21,7 @@ import {
 } from '@/lib/funnel/stepDefinitions';
 import type { StepIntent } from '@/lib/funnel/types';
 import getStepIntent from '@/lib/funnels/stepIntent';
+import { getPreviewElementOrder } from '@/lib/funnel/stepRegistry';
 
 // Strip HTML tags and decode entities for display in input fields
 const stripHtml = (html: string): string => {
@@ -31,7 +32,7 @@ const stripHtml = (html: string): string => {
 
 interface StepContentEditorProps {
   step: FunnelStep;
-  onUpdate: (content: FunnelStep['content']) => void;
+  onUpdate: (patch: Partial<FunnelStep['content']>) => void;
   selectedElement?: string | null;
   elementOrder?: string[];
   dynamicContent?: Record<string, any>;
@@ -85,6 +86,19 @@ export function StepContentEditor({
   // Get allowed intents and locked status from step definition
   const allowedIntents = getAllowedIntents(step.step_type);
   const intentLocked = isIntentLocked(step.step_type);
+  const effectiveElementOrder = elementOrder.length > 0
+    ? elementOrder
+    : content.element_order && content.element_order.length > 0
+      ? content.element_order
+      : getPreviewElementOrder(step.step_type);
+  const hasHeadline = effectiveElementOrder.includes('headline') || effectiveElementOrder.some(id => id.startsWith('headline_'));
+  const hasSubtext = effectiveElementOrder.includes('subtext');
+  const hasButton = effectiveElementOrder.includes('button') || effectiveElementOrder.some(id => id.startsWith('button_'));
+  const hasInput = effectiveElementOrder.includes('input') || effectiveElementOrder.includes('opt_in_form');
+  const hasVideo = effectiveElementOrder.includes('video') || effectiveElementOrder.some(id => id.startsWith('video_'));
+  const hasOptions = effectiveElementOrder.includes('options');
+  const hasEmbed = effectiveElementOrder.includes('embed') || effectiveElementOrder.some(id => id.startsWith('embed_'));
+  const requiresInput = stepDefinition?.validation?.requiresInput === true;
 
   // Auto-focus based on selected element
   useEffect(() => {
@@ -95,13 +109,13 @@ export function StepContentEditor({
   }, [selectedElement]);
 
   const updateField = (field: string, value: any) => {
-    onUpdate({ ...content, [field]: value });
+    onUpdate({ [field]: value });
   };
 
   const isHighlighted = (field: string) => selectedElement === field;
 
   // Filter dynamic elements from the element order
-  const dynamicElementIds = elementOrder.filter(id => 
+  const dynamicElementIds = effectiveElementOrder.filter(id => 
     id.startsWith('text_') || 
     id.startsWith('headline_') || 
     id.startsWith('video_') || 
@@ -162,36 +176,38 @@ export function StepContentEditor({
           {INTENT_DESCRIPTIONS[currentIntent]}
         </p>
         
-        {/* Capture authority warning */}
+        {/* Submit authority warning */}
         {currentIntent === 'capture' && stepDefinition?.capabilities.canFinalizeLead && (
           <div className="flex items-start gap-2 mt-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/20">
             <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-600 dark:text-amber-400">
-              This step will trigger workflows when submitted. Only one step per funnel should have "Capture" intent.
+              This step will submit the lead. Only one step per funnel should be set to Submit.
             </p>
           </div>
         )}
       </div>
 
       {/* Headline - all types */}
-      <div 
-        id="editor-section-headline"
-        className={cn(
-        "space-y-2 p-3 -mx-3 rounded-lg transition-colors",
-        isHighlighted('headline') && "bg-primary/10 ring-1 ring-primary/30"
-      )}>
-        <Label className="text-xs">Headline</Label>
-        <Input
-          ref={headlineRef}
-          // Display stripped text but preserve HTML on change
-          value={stripHtml(content.headline || '')}
-          onChange={(e) => updateField('headline', e.target.value)}
-          placeholder="Enter headline..."
-        />
-      </div>
+      {hasHeadline && (
+        <div 
+          id="editor-section-headline"
+          className={cn(
+          "space-y-2 p-3 -mx-3 rounded-lg transition-colors",
+          isHighlighted('headline') && "bg-primary/10 ring-1 ring-primary/30"
+        )}>
+          <Label className="text-xs">Headline</Label>
+          <Input
+            ref={headlineRef}
+            // Display stripped text but preserve HTML on change
+            value={stripHtml(content.headline || '')}
+            onChange={(e) => updateField('headline', e.target.value)}
+            placeholder="Enter headline..."
+          />
+        </div>
+      )}
 
       {/* Subtext - most types */}
-      {step.step_type !== 'multi_choice' && (
+      {hasSubtext && step.step_type !== 'multi_choice' && (
         <div 
           id="editor-section-subtext"
           className={cn(
@@ -210,7 +226,7 @@ export function StepContentEditor({
       )}
 
       {/* Button text - welcome, video */}
-      {(step.step_type === 'welcome' || step.step_type === 'video') && (
+      {hasButton && (step.step_type === 'welcome' || step.step_type === 'video') && (
         <div 
           id="editor-section-button"
           className={cn(
@@ -228,7 +244,7 @@ export function StepContentEditor({
       )}
 
       {/* Placeholder - text_question, email, phone */}
-      {(step.step_type === 'text_question' || step.step_type === 'email_capture' || step.step_type === 'phone_capture') && (
+      {hasInput && (step.step_type === 'text_question' || step.step_type === 'email_capture' || step.step_type === 'phone_capture') && (
         <div 
           id="editor-section-placeholder"
           className={cn(
@@ -246,7 +262,7 @@ export function StepContentEditor({
       )}
 
       {/* Submit Button Text - text_question, email, phone */}
-      {(step.step_type === 'text_question' || step.step_type === 'email_capture' || step.step_type === 'phone_capture') && (
+      {hasInput && (step.step_type === 'text_question' || step.step_type === 'email_capture' || step.step_type === 'phone_capture') && (
         <div 
           id="editor-section-submit-button"
           className={cn(
@@ -263,7 +279,7 @@ export function StepContentEditor({
       )}
 
       {/* Video URL */}
-      {step.step_type === 'video' && (
+      {hasVideo && step.step_type === 'video' && (
         <div 
           id="editor-section-video"
           className={cn(
@@ -283,7 +299,7 @@ export function StepContentEditor({
       )}
 
       {/* Multi Choice Options */}
-      {step.step_type === 'multi_choice' && (
+      {hasOptions && step.step_type === 'multi_choice' && (
         <div 
           id="editor-section-options"
           className={cn(
@@ -368,7 +384,7 @@ export function StepContentEditor({
       )}
 
       {/* Required toggle - questions only */}
-      {(step.step_type === 'text_question' || step.step_type === 'multi_choice' || step.step_type === 'email_capture' || step.step_type === 'phone_capture' || step.step_type === 'opt_in') && (
+      {requiresInput && (
         <div className="flex items-center justify-between p-3 -mx-3 rounded-lg">
           <Label className="text-xs">Required</Label>
           <Switch
@@ -379,7 +395,7 @@ export function StepContentEditor({
       )}
 
       {/* Opt-In Form Fields */}
-      {step.step_type === 'opt_in' && (
+      {step.step_type === 'opt_in' && hasInput && (
         <div 
           id="editor-section-optin"
           className={cn(
@@ -463,7 +479,6 @@ export function StepContentEditor({
               onChange={(e) => {
                 const value = e.target.value;
                 const next = {
-                  ...content,
                   privacy_link: value,
                   // If a privacy link is provided on an opt-in step,
                   // treat it as consent-gated by default.
@@ -487,7 +502,6 @@ export function StepContentEditor({
               checked={content.requires_consent === true}
               onCheckedChange={(checked) => {
                 const next = {
-                  ...content,
                   requires_consent: checked,
                   // When consent is required, always show checkbox.
                   show_consent_checkbox: checked ? true : content.show_consent_checkbox,
@@ -509,7 +523,6 @@ export function StepContentEditor({
               disabled={content.requires_consent === true}
               onCheckedChange={(checked) => {
                 const next = {
-                  ...content,
                   show_consent_checkbox: checked,
                 };
                 onUpdate(next);
@@ -560,7 +573,7 @@ export function StepContentEditor({
       )}
 
       {/* Embed URL and Height - embed only */}
-      {step.step_type === 'embed' && (
+      {hasEmbed && step.step_type === 'embed' && (
         <div 
           id="editor-section-embed"
           className={cn(

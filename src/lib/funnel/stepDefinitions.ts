@@ -309,20 +309,20 @@ export function getStepTypeLabel(stepType: string): string {
  * Intent labels for UI display
  */
 export const INTENT_LABELS: Record<StepIntent, string> = {
-  capture: 'Capture (Triggers Workflow)',
-  collect: 'Collect (Save Draft)',
-  schedule: 'Schedule (Booking)',
-  complete: 'Complete (End)',
+  capture: 'Submit (Send Lead)',
+  collect: 'Save Progress',
+  schedule: 'Book a Time',
+  complete: 'Finish',
 };
 
 /**
  * Intent descriptions for UI display
  */
 export const INTENT_DESCRIPTIONS: Record<StepIntent, string> = {
-  capture: 'Submits lead & triggers automations',
-  collect: 'Saves progress without triggering workflows',
-  schedule: 'For Calendly/scheduling embeds',
-  complete: 'Final step, no further action',
+  capture: 'Sends the lead and starts any connected actions.',
+  collect: 'Saves progress without sending the lead yet.',
+  schedule: 'Use for scheduling or calendar embeds.',
+  complete: 'Final step with no further action.',
 };
 
 /**
@@ -344,9 +344,9 @@ export function validateFunnelStructure(steps: Array<{ step_type: string; conten
   const captureCount = countCaptureSteps(steps);
   
   if (captureCount === 0) {
-    warnings.push('No capture step found. Funnels should have at least one step that triggers workflows.');
+    warnings.push('No submit step found. Funnels should have at least one step that sends a lead.');
   } else if (captureCount > 1) {
-    warnings.push(`Multiple capture steps detected (${captureCount}). Only one step should trigger workflows to avoid duplicate automations.`);
+    warnings.push(`Multiple submit steps detected (${captureCount}). Keep only one submit step to avoid duplicate sends.`);
   }
   
   // Check if thank_you is last

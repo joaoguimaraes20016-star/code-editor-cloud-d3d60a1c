@@ -193,6 +193,9 @@ interface FunnelState {
   stepDesigns: Record<string, StepDesign>;
   stepSettings: Record<string, StepSettings>;
   elementOrders: Record<string, string[]>;
+  dynamicElements: Record<string, Record<string, any>>;
+  stepBlocks: Record<string, ContentBlock[]>;
+  pageSettings: Record<string, any>;
 }
 
 function LoadingState() {
@@ -247,13 +250,25 @@ export default function FunnelEditor() {
     stepDesigns: {},
     stepSettings: {},
     elementOrders: {},
+    dynamicElements: {},
+    stepBlocks: {},
+    pageSettings: {},
   });
 
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showAddStep, setShowAddStep] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [dirtyState, setDirtyState] = useState<{ funnel: boolean; steps: Record<string, boolean> }>({
+    funnel: false,
+    steps: {},
+  });
+  const hasUnsavedChanges = dirtyState.funnel || Object.keys(dirtyState.steps).length > 0;
+  const dirtyVersionRef = useRef(0);
+  const pendingSaveRef = useRef(false);
+  const isSavingRef = useRef(false);
+  const savePromiseRef = useRef<Promise<void> | null>(null);
+  const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -264,27 +279,50 @@ export default function FunnelEditor() {
   const [pageSettingsStepId, setPageSettingsStepId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
   const [devicePreview, setDevicePreview] = useState<DeviceType>('mobile');
-  const [stepBlocks, setStepBlocks] = useState<Record<string, ContentBlock[]>>({});
-  const [pageSettings, setPageSettingsState] = useState<Record<string, any>>({});
-  const [dynamicElements, setDynamicElements] = useState<Record<string, Record<string, any>>>({});
   const [isInitialized, setIsInitialized] = useState(false); // Track if initial load happened
   const [showPublishPrompt, setShowPublishPrompt] = useState(false); // Domain prompt on publish
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const initializationRanRef = useRef(false);
   
   // Destructure for convenience
-  const { name, steps, stepDesigns, stepSettings, elementOrders } = funnelState;
+  const { name, steps, stepDesigns, stepSettings, elementOrders, dynamicElements, stepBlocks, pageSettings } = funnelState;
+
+  const markDirty = useCallback((options?: { funnel?: boolean; stepIds?: string[] }) => {
+    dirtyVersionRef.current += 1;
+    setDirtyState((prev) => {
+      const nextSteps = options?.stepIds?.length
+        ? options.stepIds.reduce((acc, stepId) => {
+          acc[stepId] = true;
+          return acc;
+        }, { ...prev.steps } as Record<string, boolean>)
+        : prev.steps;
+
+      return {
+        funnel: options?.funnel ? true : prev.funnel,
+        steps: nextSteps,
+      };
+    });
+  }, []);
+
+  const clearDirty = useCallback((version: number) => {
+    if (dirtyVersionRef.current !== version) return;
+    setDirtyState({ funnel: false, steps: {} });
+  }, []);
 
   // Helper functions to update state through the history-tracked funnel state
   const setName = useCallback((newName: string) => {
     setFunnelState(prev => ({ ...prev, name: newName }));
-  }, [setFunnelState]);
+    markDirty({ funnel: true });
+  }, [markDirty, setFunnelState]);
 
   const setSteps = useCallback((newSteps: FunnelStep[] | ((prev: FunnelStep[]) => FunnelStep[])) => {
-    setFunnelState(prev => ({
-      ...prev,
-      steps: typeof newSteps === 'function' ? newSteps(prev.steps) : newSteps
-    }));
+    setFunnelState(prev => {
+      const resolvedSteps = typeof newSteps === 'function' ? newSteps(prev.steps) : newSteps;
+      return {
+        ...prev,
+        steps: resolvedSteps,
+      };
+    });
   }, [setFunnelState]);
 
   const setStepDesigns = useCallback((newDesigns: Record<string, StepDesign> | ((prev: Record<string, StepDesign>) => Record<string, StepDesign>)) => {
@@ -308,6 +346,27 @@ export default function FunnelEditor() {
     }));
   }, [setFunnelState]);
 
+  const setDynamicElementsState = useCallback((newElements: Record<string, Record<string, any>> | ((prev: Record<string, Record<string, any>>) => Record<string, Record<string, any>>)) => {
+    setFunnelState(prev => ({
+      ...prev,
+      dynamicElements: typeof newElements === 'function' ? newElements(prev.dynamicElements) : newElements
+    }));
+  }, [setFunnelState]);
+
+  const setStepBlocksState = useCallback((newBlocks: Record<string, ContentBlock[]> | ((prev: Record<string, ContentBlock[]>) => Record<string, ContentBlock[]>)) => {
+    setFunnelState(prev => ({
+      ...prev,
+      stepBlocks: typeof newBlocks === 'function' ? newBlocks(prev.stepBlocks) : newBlocks
+    }));
+  }, [setFunnelState]);
+
+  const setPageSettingsState = useCallback((newSettings: Record<string, any> | ((prev: Record<string, any>) => Record<string, any>)) => {
+    setFunnelState(prev => ({
+      ...prev,
+      pageSettings: typeof newSettings === 'function' ? newSettings(prev.pageSettings) : newSettings
+    }));
+  }, [setFunnelState]);
+
   const persistFunnel = useCallback(async (overrides?: {
     steps?: FunnelStep[];
     stepDesigns?: Record<string, StepDesign>;
@@ -315,95 +374,207 @@ export default function FunnelEditor() {
     dynamicElements?: Record<string, Record<string, any>>;
     name?: string;
   }) => {
-    if (isSaving) return;
-
-    setIsSaving(true);
-
-    try {
-      const cleanFunnelId = validateUuid(funnelId, 'funnel id');
-      const cleanTeamId = validateUuid(teamId, 'team id');
-
-      const stepsToPersist = overrides?.steps ?? steps;
-      const stepDesignsToPersist = overrides?.stepDesigns ?? stepDesigns;
-      const elementOrdersToPersist = overrides?.elementOrders ?? elementOrders;
-      const dynamicElementsToPersist = overrides?.dynamicElements ?? dynamicElements;
-      const funnelNameToPersist = overrides?.name ?? name;
-
-      const stepIds = stepsToPersist.map(s => validateUuid(s.id, 'step id'));
-
-      const { error: funnelError } = await supabase
-        .from('funnels')
-        .update({ name: funnelNameToPersist })
-        .eq('id', cleanFunnelId)
-        .eq('team_id', cleanTeamId);
-
-      if (funnelError) throw funnelError;
-
-      if (stepIds.length > 0) {
-        const formattedStepIds = stepIds.map(id => `"${id}"`).join(',');
-        const notInFilter = `(${formattedStepIds})`;
-        const { error: deleteError } = await supabase
-          .from('funnel_steps')
-          .delete()
-          .eq('funnel_id', cleanFunnelId)
-          .not('id', 'in', notInFilter);
-        if (deleteError) throw deleteError;
-      } else {
-        const { error: deleteError } = await supabase
-          .from('funnel_steps')
-          .delete()
-          .eq('funnel_id', cleanFunnelId);
-        if (deleteError) throw deleteError;
-      }
-
-      const stepsToInsert = stepsToPersist.map((step, index) => {
-        const stepId = validateUuid(step.id, 'step id');
-        const baseContent = { ...step.content } as FunnelStep['content'];
-        const termsUrl =
-          baseContent.privacy_link ||
-          (baseContent as any).terms_url ||
-          (baseContent as any).terms_link ||
-          '';
-
-        if (step.step_type === 'opt_in' && termsUrl && baseContent.requires_consent !== true) {
-          baseContent.requires_consent = true;
-        }
-
-        if (baseContent.requires_consent === true && baseContent.show_consent_checkbox !== true) {
-          baseContent.show_consent_checkbox = true;
-        }
-
-        const contentWithDesign = {
-          ...baseContent,
-          design: stepDesignsToPersist[step.id] || step.content.design || null,
-          element_order: elementOrdersToPersist[step.id] || step.content.element_order || null,
-          dynamic_elements: dynamicElementsToPersist[step.id] || step.content.dynamic_elements || null,
-        };
-
-        return {
-          id: stepId,
-          funnel_id: cleanFunnelId,
-          order_index: index,
-          step_type: step.step_type,
-          content: JSON.parse(JSON.stringify(contentWithDesign)),
-        };
-      });
-
-      const { error: upsertError } = await supabase
-        .from('funnel_steps')
-        .upsert(stepsToInsert, { onConflict: 'id' });
-
-      if (upsertError) throw upsertError;
-
-      setHasUnsavedChanges(false);
-      setLastSaved(new Date());
-    } catch (error) {
-      const err = error as Error;
-      toast({ title: 'Failed to save', description: err.message, variant: 'destructive' });
-    } finally {
-      setIsSaving(false);
+    if (isSavingRef.current) {
+      pendingSaveRef.current = true;
+      return savePromiseRef.current ?? Promise.resolve();
     }
-  }, [dynamicElements, elementOrders, funnelId, isSaving, name, stepDesigns, steps, teamId]);
+
+    const saveVersion = dirtyVersionRef.current;
+    setIsSaving(true);
+    isSavingRef.current = true;
+    const savePromise = (async () => {
+      try {
+        const cleanFunnelId = validateUuid(funnelId, 'funnel id');
+        const cleanTeamId = validateUuid(teamId, 'team id');
+
+        const stepsToPersist = overrides?.steps ?? steps;
+        const stepDesignsToPersist = overrides?.stepDesigns ?? stepDesigns;
+        const elementOrdersToPersist = overrides?.elementOrders ?? elementOrders;
+        const dynamicElementsToPersist = overrides?.dynamicElements ?? dynamicElements;
+        const funnelNameToPersist = overrides?.name ?? name;
+
+        const stepIds = stepsToPersist.map(s => validateUuid(s.id, 'step id'));
+
+        const { error: funnelError } = await supabase
+          .from('funnels')
+          .update({ name: funnelNameToPersist })
+          .eq('id', cleanFunnelId)
+          .eq('team_id', cleanTeamId);
+
+        if (funnelError) throw funnelError;
+
+        if (stepIds.length > 0) {
+          const { data: existingSteps, error: existingError } = await supabase
+            .from('funnel_steps')
+            .select('id')
+            .eq('funnel_id', cleanFunnelId);
+          if (existingError) throw existingError;
+
+          const idsToDelete = (existingSteps ?? [])
+            .map((step) => step.id)
+            .filter((id) => !stepIds.includes(id));
+
+          if (idsToDelete.length > 0) {
+            const { error: deleteError } = await supabase
+              .from('funnel_steps')
+              .delete()
+              .in('id', idsToDelete);
+            if (deleteError) throw deleteError;
+          }
+        } else {
+          const { error: deleteError } = await supabase
+            .from('funnel_steps')
+            .delete()
+            .eq('funnel_id', cleanFunnelId);
+          if (deleteError) throw deleteError;
+        }
+
+        const stepsToInsert = stepsToPersist.map((step, index) => {
+          const stepId = validateUuid(step.id, 'step id');
+          const baseContent = { ...step.content } as FunnelStep['content'];
+          const termsUrl =
+            baseContent.privacy_link ||
+            (baseContent as any).terms_url ||
+            (baseContent as any).terms_link ||
+            '';
+
+          if (step.step_type === 'opt_in' && termsUrl && baseContent.requires_consent !== true) {
+            baseContent.requires_consent = true;
+          }
+
+          if (baseContent.requires_consent === true && baseContent.show_consent_checkbox !== true) {
+            baseContent.show_consent_checkbox = true;
+          }
+
+          const contentWithDesign = {
+            ...baseContent,
+            design: stepDesignsToPersist[step.id] || step.content.design || null,
+            element_order: elementOrdersToPersist[step.id] || step.content.element_order || null,
+            dynamic_elements: dynamicElementsToPersist[step.id] || step.content.dynamic_elements || null,
+          };
+
+          return {
+            id: stepId,
+            funnel_id: cleanFunnelId,
+            order_index: index,
+            step_type: step.step_type,
+            content: JSON.parse(JSON.stringify(contentWithDesign)),
+          };
+        });
+
+        const { error: upsertError } = await supabase
+          .from('funnel_steps')
+          .upsert(stepsToInsert, { onConflict: 'id' });
+
+        if (upsertError) throw upsertError;
+
+        setLastSaved(new Date());
+        clearDirty(saveVersion);
+      } catch (error) {
+        const err = error as Error;
+        toast({ title: 'Failed to save', description: err.message, variant: 'destructive' });
+      } finally {
+        setIsSaving(false);
+        isSavingRef.current = false;
+        savePromiseRef.current = null;
+        if (pendingSaveRef.current) {
+          pendingSaveRef.current = false;
+          if (dirtyVersionRef.current !== saveVersion) {
+            await persistFunnel();
+          }
+        }
+      }
+    })();
+
+    savePromiseRef.current = savePromise;
+    return savePromise;
+  }, [clearDirty, dynamicElements, elementOrders, funnelId, name, stepDesigns, steps, teamId]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = setTimeout(() => {
+      void persistFunnel();
+    }, 1500);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+  }, [hasUnsavedChanges, persistFunnel]);
+
+  const markStepsDirty = useCallback((stepIds: string[]) => {
+    if (stepIds.length === 0) return;
+    markDirty({ stepIds });
+  }, [markDirty]);
+
+  const updateStepContent = useCallback((stepId: string, patch: Partial<FunnelStep['content']>) => {
+    setSteps((prev) => prev.map((step) => (
+      step.id === stepId
+        ? { ...step, content: { ...step.content, ...patch } }
+        : step
+    )));
+    markStepsDirty([stepId]);
+  }, [markStepsDirty, setSteps]);
+
+  const updateStepDesign = useCallback((stepId: string, design: StepDesign) => {
+    setStepDesigns((prev) => ({ ...prev, [stepId]: design }));
+    markStepsDirty([stepId]);
+  }, [markStepsDirty, setStepDesigns]);
+
+  const updateStepSettings = useCallback((stepId: string, settings: StepSettings) => {
+    setStepSettingsState((prev) => ({ ...prev, [stepId]: settings }));
+    markStepsDirty([stepId]);
+  }, [markStepsDirty, setStepSettingsState]);
+
+  const updateStepBlocks = useCallback((stepId: string, blocks: ContentBlock[]) => {
+    setStepBlocksState((prev) => ({ ...prev, [stepId]: blocks }));
+    markStepsDirty([stepId]);
+  }, [markStepsDirty, setStepBlocksState]);
+
+  const updateElementOrder = useCallback((stepId: string, order: string[]) => {
+    setElementOrders((prev) => ({ ...prev, [stepId]: order }));
+    markStepsDirty([stepId]);
+  }, [markStepsDirty, setElementOrders]);
+
+  const updateDynamicElement = useCallback((stepId: string, elementId: string, patch: Record<string, any>) => {
+    setDynamicElementsState((prev) => ({
+      ...prev,
+      [stepId]: {
+        ...(prev[stepId] || {}),
+        [elementId]: { ...(prev[stepId]?.[elementId] || {}), ...patch },
+      },
+    }));
+    markStepsDirty([stepId]);
+  }, [markStepsDirty, setDynamicElementsState]);
+
+  const replaceDynamicElement = useCallback((stepId: string, elementId: string, value: Record<string, any>) => {
+    setDynamicElementsState((prev) => ({
+      ...prev,
+      [stepId]: {
+        ...(prev[stepId] || {}),
+        [elementId]: value,
+      },
+    }));
+    markStepsDirty([stepId]);
+  }, [markStepsDirty, setDynamicElementsState]);
+
+  const updatePageSettings = useCallback((stepId: string, settings: Record<string, any>) => {
+    setPageSettingsState((prev) => ({ ...prev, [stepId]: settings }));
+    markStepsDirty([stepId]);
+  }, [markStepsDirty, setPageSettingsState]);
 
   const tryInitialize = useCallback((funnelData: Funnel, dbSteps: FunnelStep[]) => {
     if (initializationRanRef.current) return;
@@ -454,14 +625,15 @@ export default function FunnelEditor() {
             content: {},
           }];
 
-      setDynamicElements(loadedDynamicElements);
-
       resetHistory({
         name: funnelData.name,
         steps: stepsToLoad,
         stepDesigns: loadedDesigns,
         stepSettings: {},
         elementOrders: loadedOrders,
+        dynamicElements: loadedDynamicElements,
+        stepBlocks: {},
+        pageSettings: {},
       });
 
       if (stepsToLoad.length > 0 && !selectedStepId) {
@@ -475,7 +647,7 @@ export default function FunnelEditor() {
       if (neededMigration) {
         console.log('[FunnelEditor] Auto-migrated step intents for',
           dbSteps.filter(s => !(s.content ?? {}).intent).length, 'steps');
-        setHasUnsavedChanges(true);
+        markDirty({ stepIds: stepsToLoad.map(step => step.id) });
       }
 
       const warnings = validateFunnelStructure(stepsToLoad);
@@ -488,7 +660,7 @@ export default function FunnelEditor() {
       setInitializationError(err.message || 'Failed to initialize editor.');
     }
 
-  }, [resetHistory, selectedStepId, setDynamicElements, setHasUnsavedChanges, setIsInitialized]);
+  }, [markDirty, resetHistory, selectedStepId, setIsInitialized]);
 
   const {
     data: funnel,
@@ -620,8 +792,9 @@ export default function FunnelEditor() {
       setSteps((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
-        setHasUnsavedChanges(true);
-        return arrayMove(items, oldIndex, newIndex);
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        markStepsDirty(reordered.map((step) => step.id));
+        return reordered;
       });
     }
   };
@@ -636,49 +809,59 @@ export default function FunnelEditor() {
     };
 
     const thankYouIndex = steps.findIndex((s) => s.step_type === 'thank_you');
+    const newSteps = [...steps];
     if (thankYouIndex !== -1) {
-      const newSteps = [...steps];
       newSteps.splice(thankYouIndex, 0, newStep);
-      setSteps(newSteps);
     } else {
-      setSteps([...steps, newStep]);
+      newSteps.push(newStep);
     }
+    setSteps(newSteps);
 
     setSelectedStepId(newStep.id);
-    setHasUnsavedChanges(true);
+    markStepsDirty(newSteps.map((step) => step.id));
   };
 
   const handleDeleteStep = (stepId: string) => {
-    setSteps(steps.filter((s) => s.id !== stepId));
-    if (selectedStepId === stepId) {
-      setSelectedStepId(steps[0]?.id || null);
-    }
-    setHasUnsavedChanges(true);
-  };
+    const remainingSteps = steps.filter((s) => s.id !== stepId);
+    setFunnelState((prev) => {
+      const { [stepId]: _removedDesign, ...nextDesigns } = prev.stepDesigns;
+      const { [stepId]: _removedSettings, ...nextSettings } = prev.stepSettings;
+      const { [stepId]: _removedOrder, ...nextOrders } = prev.elementOrders;
+      const { [stepId]: _removedDynamic, ...nextDynamic } = prev.dynamicElements;
+      const { [stepId]: _removedBlocks, ...nextBlocks } = prev.stepBlocks;
+      const { [stepId]: _removedPageSettings, ...nextPageSettings } = prev.pageSettings;
 
-  const handleUpdateStep = (stepId: string, content: FunnelStep['content']) => {
-    setSteps(steps.map((s) => (s.id === stepId ? { ...s, content } : s)));
-    setHasUnsavedChanges(true);
+      return {
+        ...prev,
+        steps: remainingSteps,
+        stepDesigns: nextDesigns,
+        stepSettings: nextSettings,
+        elementOrders: nextOrders,
+        dynamicElements: nextDynamic,
+        stepBlocks: nextBlocks,
+        pageSettings: nextPageSettings,
+      };
+    });
+    if (selectedStepId === stepId) {
+      setSelectedStepId(remainingSteps[0]?.id || null);
+    }
+    markStepsDirty(remainingSteps.map((step) => step.id));
   };
 
   const handleUpdateDesign = (stepId: string, design: StepDesign) => {
-    setStepDesigns((prev) => ({ ...prev, [stepId]: design }));
-    setHasUnsavedChanges(true);
+    updateStepDesign(stepId, design);
   };
 
   const handleUpdateSettings = (stepId: string, settings: StepSettings) => {
-    setStepSettingsState((prev) => ({ ...prev, [stepId]: settings }));
-    setHasUnsavedChanges(true);
+    updateStepSettings(stepId, settings);
   };
 
   const handleUpdateBlocks = (stepId: string, blocks: ContentBlock[]) => {
-    setStepBlocks((prev) => ({ ...prev, [stepId]: blocks }));
-    setHasUnsavedChanges(true);
+    updateStepBlocks(stepId, blocks);
   };
 
   const handleUpdateElementOrder = (stepId: string, order: string[]) => {
-    setElementOrders((prev) => ({ ...prev, [stepId]: order }));
-    setHasUnsavedChanges(true);
+    updateElementOrder(stepId, order);
   };
 
   const handlePreview = () => {
@@ -698,27 +881,51 @@ export default function FunnelEditor() {
     const stepToDuplicate = steps.find(s => s.id === stepId);
     if (!stepToDuplicate) return;
     
+    const newStepId = crypto.randomUUID();
     const newStep: FunnelStep = {
       ...stepToDuplicate,
-      id: crypto.randomUUID(),
+      id: newStepId,
       content: { ...stepToDuplicate.content, headline: `${stepToDuplicate.content.headline || 'Untitled'} (Copy)` },
     };
-    
+
     const stepIndex = steps.findIndex(s => s.id === stepId);
     const newSteps = [...steps];
     newSteps.splice(stepIndex + 1, 0, newStep);
-    setSteps(newSteps);
-    setSelectedStepId(newStep.id);
-    setHasUnsavedChanges(true);
+
+    setFunnelState((prev) => ({
+      ...prev,
+      steps: newSteps,
+      stepDesigns: {
+        ...prev.stepDesigns,
+        [newStepId]: prev.stepDesigns[stepId] ? { ...prev.stepDesigns[stepId] } : {},
+      },
+      stepSettings: {
+        ...prev.stepSettings,
+        [newStepId]: prev.stepSettings[stepId] ? { ...prev.stepSettings[stepId] } : {},
+      },
+      elementOrders: {
+        ...prev.elementOrders,
+        [newStepId]: prev.elementOrders[stepId] ? [...prev.elementOrders[stepId]] : [],
+      },
+      dynamicElements: {
+        ...prev.dynamicElements,
+        [newStepId]: prev.dynamicElements[stepId] ? { ...prev.dynamicElements[stepId] } : {},
+      },
+      stepBlocks: {
+        ...prev.stepBlocks,
+        [newStepId]: prev.stepBlocks[stepId] ? [...prev.stepBlocks[stepId]] : [],
+      },
+      pageSettings: {
+        ...prev.pageSettings,
+        [newStepId]: prev.pageSettings[stepId] ? { ...prev.pageSettings[stepId] } : {},
+      },
+    }));
+    setSelectedStepId(newStepId);
+    markStepsDirty(newSteps.map(step => step.id));
   };
 
   const handleRenameStep = (stepId: string, newName: string) => {
-    setSteps(steps.map(s => 
-      s.id === stepId 
-        ? { ...s, content: { ...s.content, headline: newName } }
-        : s
-    ));
-    setHasUnsavedChanges(true);
+    updateStepContent(stepId, { headline: newName });
   };
 
   const handleOpenPageSettings = (stepId: string) => {
@@ -733,8 +940,9 @@ export default function FunnelEditor() {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= steps.length) return;
     
-    setSteps(arrayMove(steps, index, newIndex));
-    setHasUnsavedChanges(true);
+    const reordered = arrayMove(steps, index, newIndex);
+    setSteps(reordered);
+    markStepsDirty(reordered.map((step) => step.id));
   };
 
   // Navigation between steps
@@ -803,25 +1011,18 @@ export default function FunnelEditor() {
         e.preventDefault();
         const index = currentOrder.indexOf(selectedElement);
         if (index !== -1) {
-          const newElementId = `${selectedElement}_copy_${Date.now()}`;
+          const newElementId = `${selectedElement}_copy_${crypto.randomUUID()}`;
           const newOrder = [...currentOrder];
           newOrder.splice(index + 1, 0, newElementId);
           
           // Copy dynamic content if exists
           const currentDynamic = dynamicElements[selectedStep.id]?.[selectedElement];
           if (currentDynamic) {
-            setDynamicElements(prev => ({
-              ...prev,
-              [selectedStep.id]: {
-                ...(prev[selectedStep.id] || {}),
-                [newElementId]: { ...currentDynamic }
-              }
-            }));
+            replaceDynamicElement(selectedStep.id, newElementId, { ...currentDynamic });
           }
           
           handleUpdateElementOrder(selectedStep.id, newOrder);
           setSelectedElement(newElementId);
-          setHasUnsavedChanges(true);
         }
       }
 
@@ -833,7 +1034,7 @@ export default function FunnelEditor() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedElement, selectedStep, elementOrders, dynamicElements, handleUpdateElementOrder, setDynamicElements, setHasUnsavedChanges]);
+  }, [selectedElement, selectedStep, elementOrders, dynamicElements, handleUpdateElementOrder, replaceDynamicElement]);
 
   if (isFunnelError) {
     return (
@@ -890,7 +1091,6 @@ export default function FunnelEditor() {
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
-                setHasUnsavedChanges(true);
               }}
               className="w-32 sm:w-64 font-semibold text-sm sm:text-base"
             />
@@ -1100,18 +1300,11 @@ export default function FunnelEditor() {
                   elementOrder={elementOrders[selectedStep.id]}
                   onReorderElements={(order) => handleUpdateElementOrder(selectedStep.id, order)}
                   onUpdateContent={(field, value) => {
-                    handleUpdateStep(selectedStep.id, { ...selectedStep.content, [field]: value });
+                    updateStepContent(selectedStep.id, { [field]: value });
                   }}
                   dynamicContent={dynamicElements[selectedStep.id] || {}}
                   onUpdateDynamicContent={(elementId, value) => {
-                    setDynamicElements(prev => ({
-                      ...prev,
-                      [selectedStep.id]: {
-                        ...(prev[selectedStep.id] || {}),
-                        [elementId]: { ...(prev[selectedStep.id]?.[elementId] || {}), ...value }
-                      }
-                    }));
-                    setHasUnsavedChanges(true);
+                    updateDynamicElement(selectedStep.id, elementId, value);
                   }}
                 />
               </DevicePreview>
@@ -1149,7 +1342,7 @@ export default function FunnelEditor() {
 
         {/* Right Sidebar - Editor Panel */}
         <div className={cn(
-          "border-l bg-card overflow-y-auto flex-shrink-0 transition-all duration-300 relative",
+          "border-l bg-card overflow-hidden flex flex-col flex-shrink-0 transition-all duration-300 relative",
           focusMode ? "w-0 p-0 overflow-hidden border-0" :
           showRightPanel ? "w-60 lg:w-72 p-2 sm:p-3" : "w-0 p-0 overflow-hidden border-0"
         )}>
@@ -1168,7 +1361,7 @@ export default function FunnelEditor() {
             <EditorSidebar
               step={selectedStep}
               selectedElement={selectedElement}
-              onUpdateContent={(content) => handleUpdateStep(selectedStep.id, content)}
+              onUpdateContent={(patch) => updateStepContent(selectedStep.id, patch)}
               onUpdateDesign={(design) => handleUpdateDesign(selectedStep.id, design)}
               onUpdateSettings={(settings) => handleUpdateSettings(selectedStep.id, settings)}
               onUpdateBlocks={(blocks) => handleUpdateBlocks(selectedStep.id, blocks)}
@@ -1178,14 +1371,7 @@ export default function FunnelEditor() {
               elementOrder={elementOrders[selectedStep.id] || []}
               dynamicContent={dynamicElements[selectedStep.id] || {}}
               onUpdateDynamicContent={(elementId, value) => {
-                setDynamicElements(prev => ({
-                  ...prev,
-                  [selectedStep.id]: {
-                    ...(prev[selectedStep.id] || {}),
-                    [elementId]: { ...(prev[selectedStep.id]?.[elementId] || {}), ...value }
-                  }
-                }));
-                setHasUnsavedChanges(true);
+                updateDynamicElement(selectedStep.id, elementId, value);
               }}
             />
           ) : (
@@ -1248,8 +1434,7 @@ export default function FunnelEditor() {
           allSteps={steps}
           settings={pageSettings[pageSettingsStepId] || {}}
           onSave={(settings) => {
-            setPageSettingsState(prev => ({ ...prev, [pageSettingsStepId]: settings }));
-            setHasUnsavedChanges(true);
+            updatePageSettings(pageSettingsStepId, settings);
           }}
         />
       )}

@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FunnelStep } from '@/pages/FunnelEditor';
+import { getPreviewElementOrder } from '@/lib/funnel/stepRegistry';
 import { cn } from '@/lib/utils';
 
 interface StepDesign {
@@ -135,6 +136,18 @@ const OPTION_HOVER_OPTIONS = [
 ];
 
 export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker, highlightedSection }: DesignEditorProps) {
+  const elementOrder =
+    step.content.element_order && step.content.element_order.length > 0
+      ? step.content.element_order
+      : getPreviewElementOrder(step.step_type);
+
+  const hasButton = elementOrder.includes('button') || elementOrder.some((id) => id.startsWith('button_'));
+  const hasInput = ['text_question', 'email_capture', 'phone_capture', 'opt_in'].includes(step.step_type)
+    || elementOrder.includes('input')
+    || elementOrder.includes('opt_in_form');
+  const hasOptions = step.step_type === 'multi_choice' || elementOrder.includes('options');
+  const hasImage = elementOrder.includes('image_top') || elementOrder.some((id) => id.startsWith('image_'));
+
   const updateField = (field: keyof StepDesign, value: any) => {
     onUpdateDesign({ ...design, [field]: value });
   };
@@ -291,74 +304,77 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker, 
       </div>
 
       {/* Button Styling Section */}
-      <div id="editor-section-button-styling" className={cn("space-y-4 border-t pt-4 p-3 -mx-3 rounded-lg transition-colors", isHighlighted('button') && "bg-primary/10 ring-1 ring-primary/30")}>
-        <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
-          Button Styling
-        </h4>
-        
-        {/* Button Gradient Toggle */}
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Use Button Gradient</Label>
-          <Switch
-            checked={design.useButtonGradient || false}
-            onCheckedChange={(checked) => updateField('useButtonGradient', checked)}
-          />
-        </div>
-
-        {/* Solid Button Color */}
-        {!design.useButtonGradient && (
-          <div className="space-y-3">
-            <Label className="text-xs">Button Color</Label>
-            <div className="flex flex-wrap gap-2">
-              {COLOR_PRESETS.slice(6).map((color) => (
-                <button
-                  key={color}
-                  className={cn(
-                    "w-8 h-8 rounded-lg border-2 transition-all",
-                    design.buttonColor === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
-                  )}
-                  style={{ backgroundColor: color }}
-                  onClick={() => updateField('buttonColor', color)}
-                />
-              ))}
-            </div>
-            <Input
-              type="color"
-              value={design.buttonColor || '#3b82f6'}
-              onChange={(e) => updateField('buttonColor', e.target.value)}
-              className="h-8 w-full"
+      {hasButton && (
+        <div id="editor-section-button-styling" className={cn("space-y-4 border-t pt-4 p-3 -mx-3 rounded-lg transition-colors", isHighlighted('button') && "bg-primary/10 ring-1 ring-primary/30")}>
+          <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
+            Button Styling
+          </h4>
+          
+          {/* Button Gradient Toggle */}
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Use Button Gradient</Label>
+            <Switch
+              checked={design.useButtonGradient || false}
+              onCheckedChange={(checked) => updateField('useButtonGradient', checked)}
             />
           </div>
-        )}
 
-        {/* Button Gradient Controls */}
-        {design.useButtonGradient && (
-          <div className="space-y-4 p-3 bg-secondary/50 rounded-lg">
-            <Label className="text-xs font-medium">Button Gradient Presets</Label>
-            <div className="grid grid-cols-4 gap-2">
-              {GRADIENT_PRESETS.map((preset, idx) => (
-                <button
-                  key={idx}
-                  className={cn(
-                    "w-full h-8 rounded-md border-2 transition-all",
-                    design.buttonGradientFrom === preset.from && design.buttonGradientTo === preset.to
-                      ? "ring-2 ring-primary ring-offset-1"
-                      : "border-border"
-                  )}
-                  style={{ 
-                    background: `linear-gradient(to right, ${preset.from}, ${preset.to})` 
-                  }}
-                  onClick={() => onUpdateDesign({ 
-                    ...design, 
-                    useButtonGradient: true,
-                    buttonGradientFrom: preset.from, 
-                    buttonGradientTo: preset.to,
-                    buttonGradientDirection: design.buttonGradientDirection || '135deg'
-                  })}
-                  title={preset.label}
-                />
-              ))}
+          {/* Solid Button Color */}
+          {!design.useButtonGradient && (
+            <div className="space-y-3">
+              <Label className="text-xs">Button Color</Label>
+              <div className="flex flex-wrap gap-2">
+                {COLOR_PRESETS.slice(6).map((color) => (
+                  <button
+                    key={color}
+                    className={cn(
+                      "w-8 h-8 rounded-lg border-2 transition-all",
+                      design.buttonColor === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border"
+                    )}
+                    style={{ backgroundColor: color }}
+                    onClick={() => updateField('buttonColor', color)}
+                  />
+                ))}
+              </div>
+              <Input
+                type="color"
+                value={design.buttonColor || '#3b82f6'}
+                onChange={(e) => updateField('buttonColor', e.target.value)}
+                className="h-8 w-full"
+              />
             </div>
+          )}
+
+          {/* Button Gradient Controls */}
+          {design.useButtonGradient && (
+            <div className="space-y-4 p-3 bg-secondary/50 rounded-lg">
+              <Label className="text-xs font-medium">Button Gradient Presets</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {GRADIENT_PRESETS.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    className={cn(
+                      "w-full h-8 rounded-md border-2 transition-all",
+                      design.buttonGradientFrom === preset.from && design.buttonGradientTo === preset.to
+                        ? "ring-2 ring-primary ring-offset-1"
+                        : "border-border"
+                    )}
+                    style={{ 
+                      background: `linear-gradient(to right, ${preset.from}, ${preset.to})` 
+                    }}
+                    onClick={() => onUpdateDesign({ 
+                      ...design, 
+                      useButtonGradient: true,
+                      buttonGradientFrom: preset.from, 
+                      buttonGradientTo: preset.to,
+                      buttonGradientDirection: design.buttonGradientDirection || '135deg'
+                    })}
+                    title={preset.label}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -467,27 +483,28 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker, 
           </div>
         )}
 
-        {/* Button Hover Effect */}
-        <div className="space-y-2">
-          <Label className="text-xs">Button Hover Effect</Label>
-          <div className="flex flex-wrap gap-1">
-            {BUTTON_HOVER_OPTIONS.map((effect) => (
-              <Button
-                key={effect.value}
-                variant={design.buttonHoverEffect === effect.value || (!design.buttonHoverEffect && effect.value === 'none') ? 'default' : 'outline'}
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => updateField('buttonHoverEffect', effect.value)}
-              >
-                {effect.label}
-              </Button>
-            ))}
+          {/* Button Hover Effect */}
+          <div className="space-y-2">
+            <Label className="text-xs">Button Hover Effect</Label>
+            <div className="flex flex-wrap gap-1">
+              {BUTTON_HOVER_OPTIONS.map((effect) => (
+                <Button
+                  key={effect.value}
+                  variant={design.buttonHoverEffect === effect.value || (!design.buttonHoverEffect && effect.value === 'none') ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => updateField('buttonHoverEffect', effect.value)}
+                >
+                  {effect.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Option Card Styling Section (for multi-choice) */}
-      {step.step_type === 'multi_choice' && (
+      {hasOptions && (
         <div id="editor-section-option-cards" className={cn("space-y-4 border-t pt-4 p-3 -mx-3 rounded-lg transition-colors", isHighlighted('options') && "bg-primary/10 ring-1 ring-primary/30")}>
           <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
             Option Cards
@@ -643,7 +660,7 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker, 
       )}
 
       {/* Input Field Styling Section (for text_question, email, phone, opt_in) */}
-      {['text_question', 'email_capture', 'phone_capture', 'opt_in'].includes(step.step_type) && (
+      {hasInput && (
         <div id="editor-section-input-styling" className={cn("space-y-4 border-t pt-4 p-3 -mx-3 rounded-lg transition-colors", isHighlighted('input') && "bg-primary/10 ring-1 ring-primary/30")}>
           <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
             Input Field Styling
@@ -873,114 +890,116 @@ export function DesignEditor({ step, design, onUpdateDesign, onOpenImagePicker, 
       </div>
 
       {/* Image */}
-      <div className="space-y-3">
-        <Label className="text-xs">Page Image</Label>
-        {design.imageUrl ? (
-          <div className="relative">
-            <img 
-              src={design.imageUrl} 
-              alt="Page" 
-              className="w-full h-24 object-cover rounded-lg"
-            />
-            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 hover:opacity-100 transition-opacity rounded-lg">
-              <Button size="sm" variant="secondary" onClick={onOpenImagePicker}>
-                Change
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => updateField('imageUrl', undefined)}>
-                Remove
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button 
-            variant="outline" 
-            className="w-full h-24 border-dashed"
-            onClick={onOpenImagePicker}
-          >
-            Add Image
-          </Button>
-        )}
-
-        {design.imageUrl && (
-          <>
-            <Label className="text-xs mt-3">Image Size</Label>
-            <div className="flex gap-1 p-1 bg-secondary rounded-lg">
-              {(['S', 'M', 'L', 'XL'] as const).map((size) => (
-                <Button
-                  key={size}
-                  variant={design.imageSize === size ? 'default' : 'ghost'}
-                  size="sm"
-                  className="flex-1 h-8"
-                  onClick={() => updateField('imageSize', size)}
-                >
-                  {size}
+      {hasImage && (
+        <div className="space-y-3">
+          <Label className="text-xs">Page Image</Label>
+          {design.imageUrl ? (
+            <div className="relative">
+              <img 
+                src={design.imageUrl} 
+                alt="Page" 
+                className="w-full h-24 object-cover rounded-lg"
+              />
+              <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 hover:opacity-100 transition-opacity rounded-lg">
+                <Button size="sm" variant="secondary" onClick={onOpenImagePicker}>
+                  Change
                 </Button>
-              ))}
-            </div>
-
-            <Label className="text-xs mt-3">Image Position</Label>
-            <div className="flex gap-1 p-1 bg-secondary rounded-lg">
-              {[
-                { value: 'top', label: 'Top' },
-                { value: 'bottom', label: 'Bottom' },
-                { value: 'background', label: 'Background' },
-              ].map((pos) => (
-                <Button
-                  key={pos.value}
-                  variant={design.imagePosition === pos.value ? 'default' : 'ghost'}
-                  size="sm"
-                  className="flex-1 h-8"
-                  onClick={() => updateField('imagePosition', pos.value as StepDesign['imagePosition'])}
-                >
-                  {pos.label}
+                <Button size="sm" variant="secondary" onClick={() => updateField('imageUrl', undefined)}>
+                  Remove
                 </Button>
-              ))}
-            </div>
-
-            {/* Image Overlay */}
-            {design.imagePosition === 'background' && (
-              <div className="space-y-3 p-3 bg-secondary/50 rounded-lg mt-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Image Overlay</Label>
-                  <Switch
-                    checked={design.imageOverlay || false}
-                    onCheckedChange={(checked) => updateField('imageOverlay', checked)}
-                  />
-                </div>
-                
-                {design.imageOverlay && (
-                  <>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Overlay Color</Label>
-                      <Input
-                        type="color"
-                        value={design.imageOverlayColor || '#000000'}
-                        onChange={(e) => updateField('imageOverlayColor', e.target.value)}
-                        className="h-8 w-full"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs">Opacity</Label>
-                        <span className="text-xs text-muted-foreground">
-                          {Math.round((design.imageOverlayOpacity || 0.5) * 100)}%
-                        </span>
-                      </div>
-                      <Slider
-                        value={[(design.imageOverlayOpacity || 0.5) * 100]}
-                        onValueChange={([value]) => updateField('imageOverlayOpacity', value / 100)}
-                        min={0}
-                        max={100}
-                        step={5}
-                      />
-                    </div>
-                  </>
-                )}
               </div>
-            )}
-          </>
-        )}
-      </div>
+            </div>
+          ) : (
+            <Button 
+              variant="outline" 
+              className="w-full h-24 border-dashed"
+              onClick={onOpenImagePicker}
+            >
+              Add Image
+            </Button>
+          )}
+
+          {design.imageUrl && (
+            <>
+              <Label className="text-xs mt-3">Image Size</Label>
+              <div className="flex gap-1 p-1 bg-secondary rounded-lg">
+                {(['S', 'M', 'L', 'XL'] as const).map((size) => (
+                  <Button
+                    key={size}
+                    variant={design.imageSize === size ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex-1 h-8"
+                    onClick={() => updateField('imageSize', size)}
+                  >
+                    {size}
+                  </Button>
+                ))}
+              </div>
+
+              <Label className="text-xs mt-3">Image Position</Label>
+              <div className="flex gap-1 p-1 bg-secondary rounded-lg">
+                {[
+                  { value: 'top', label: 'Top' },
+                  { value: 'bottom', label: 'Bottom' },
+                  { value: 'background', label: 'Background' },
+                ].map((pos) => (
+                  <Button
+                    key={pos.value}
+                    variant={design.imagePosition === pos.value ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex-1 h-8"
+                    onClick={() => updateField('imagePosition', pos.value as StepDesign['imagePosition'])}
+                  >
+                    {pos.label}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Image Overlay */}
+              {design.imagePosition === 'background' && (
+                <div className="space-y-3 p-3 bg-secondary/50 rounded-lg mt-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Image Overlay</Label>
+                    <Switch
+                      checked={design.imageOverlay || false}
+                      onCheckedChange={(checked) => updateField('imageOverlay', checked)}
+                    />
+                  </div>
+                  
+                  {design.imageOverlay && (
+                    <>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Overlay Color</Label>
+                        <Input
+                          type="color"
+                          value={design.imageOverlayColor || '#000000'}
+                          onChange={(e) => updateField('imageOverlayColor', e.target.value)}
+                          className="h-8 w-full"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">Opacity</Label>
+                          <span className="text-xs text-muted-foreground">
+                            {Math.round((design.imageOverlayOpacity || 0.5) * 100)}%
+                          </span>
+                        </div>
+                        <Slider
+                          value={[(design.imageOverlayOpacity || 0.5) * 100]}
+                          onValueChange={([value]) => updateField('imageOverlayOpacity', value / 100)}
+                          min={0}
+                          max={100}
+                          step={5}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

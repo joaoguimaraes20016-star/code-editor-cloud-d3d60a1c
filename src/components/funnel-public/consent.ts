@@ -33,7 +33,14 @@ export function shouldShowConsentCheckbox(step?: ConsentStep, termsUrl?: string)
   const stepType = step.step_type || "";
   const consentSteps = ["opt_in", "email_capture", "phone_capture", "contact_capture"];
 
-  return consentSteps.includes(stepType);
+  if (!consentSteps.includes(stepType)) return false;
+
+  const showConsentSetting = step.content?.show_consent_checkbox;
+  const requiresConsent = step.content?.requires_consent === true;
+
+  if (requiresConsent) return true;
+  if (showConsentSetting === false) return false;
+  return true;
 }
 
 interface DefaultPrivacyContext {
