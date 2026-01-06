@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StepContentEditor } from './StepContentEditor';
 import { DesignEditor } from './DesignEditor';
@@ -96,11 +96,26 @@ export function EditorSidebar({
   const contentRef = useRef<HTMLDivElement>(null);
   const designRef = useRef<HTMLDivElement>(null);
 
+  const scrollToSection = useCallback((sectionId: string) => {
+    requestAnimationFrame(() => {
+      const section = document.getElementById(sectionId);
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        const retrySection = document.getElementById(sectionId);
+        retrySection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }, []);
+
   // Get which tab has the selected element
   const selectedElementTab = getSelectedElementTab(selectedElement);
 
   // Auto-switch to correct tab and scroll to section when element is selected
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!selectedElement) return;
 
     // Check if it's a dynamic element
@@ -111,10 +126,7 @@ export function EditorSidebar({
         selectedElement.startsWith('button_') || 
         selectedElement.startsWith('divider_')) {
       setActiveTab('content');
-      setTimeout(() => {
-        const dynamicSection = document.getElementById('dynamic-elements-section');
-        dynamicSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+      scrollToSection('dynamic-elements-section');
       return;
     }
 
@@ -122,29 +134,23 @@ export function EditorSidebar({
     if (mapping) {
       setActiveTab(mapping.tab);
       if (mapping.section) {
-        setTimeout(() => {
-          const section = document.getElementById(`editor-section-${mapping.section}`);
-          section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+        scrollToSection(`editor-section-${mapping.section}`);
       }
     }
-  }, [selectedElement]);
+  }, [scrollToSection, selectedElement]);
 
   // Also respond to highlightedSection prop
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!highlightedSection) return;
     
     const mapping = ELEMENT_TO_TAB_MAP[highlightedSection];
     if (mapping) {
       setActiveTab(mapping.tab);
       if (mapping.section) {
-        setTimeout(() => {
-          const section = document.getElementById(`editor-section-${mapping.section}`);
-          section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+        scrollToSection(`editor-section-${mapping.section}`);
       }
     }
-  }, [highlightedSection]);
+  }, [highlightedSection, scrollToSection]);
 
   return (
     <>
@@ -176,7 +182,7 @@ export function EditorSidebar({
         </TabsList>
 
         <div className="flex-1 overflow-y-auto" ref={contentRef}>
-          <TabsContent value="design" className="mt-0 h-full" ref={designRef}>
+          <TabsContent value="design" className="mt-0 h-full" ref={designRef} forceMount>
             <DesignEditor
               step={step}
               design={design}
@@ -186,7 +192,7 @@ export function EditorSidebar({
             />
           </TabsContent>
 
-          <TabsContent value="content" className="mt-0 h-full">
+          <TabsContent value="content" className="mt-0 h-full" forceMount>
             <StepContentEditor
               step={step}
               onUpdate={onUpdateContent}
@@ -197,14 +203,14 @@ export function EditorSidebar({
             />
           </TabsContent>
 
-          <TabsContent value="blocks" className="mt-0 h-full">
+          <TabsContent value="blocks" className="mt-0 h-full" forceMount>
             <ContentBlockEditor
               blocks={blocks}
               onBlocksChange={onUpdateBlocks || (() => {})}
             />
           </TabsContent>
 
-          <TabsContent value="settings" className="mt-0 h-full">
+          <TabsContent value="settings" className="mt-0 h-full" forceMount>
             <SettingsEditor
               step={step}
               settings={settings}

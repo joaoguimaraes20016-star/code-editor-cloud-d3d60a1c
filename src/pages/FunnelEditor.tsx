@@ -340,11 +340,13 @@ export default function FunnelEditor() {
       if (funnelError) throw funnelError;
 
       if (stepIds.length > 0) {
+        const formattedStepIds = stepIds.map(id => `"${id}"`).join(',');
+        const notInFilter = `(${formattedStepIds})`;
         const { error: deleteError } = await supabase
           .from('funnel_steps')
           .delete()
           .eq('funnel_id', cleanFunnelId)
-          .not('id', 'in', stepIds);
+          .not('id', 'in', notInFilter);
         if (deleteError) throw deleteError;
       } else {
         const { error: deleteError } = await supabase
