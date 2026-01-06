@@ -959,13 +959,7 @@ export default function FunnelEditor() {
   };
 
   // Navigation between steps
-  const selectedStepId =
-    selection.type === 'step' ? selection.stepId :
-    selection.type === 'element' ? selection.stepId :
-    selection.type === 'block' ? selection.stepId :
-    null;
-  const selectedElement = selection.type === 'element' ? selection.elementId : null;
-  const selectedBlockId = selection.type === 'block' ? selection.blockId : null;
+  // Selection state is declared once near the top of the component to avoid duplicate symbols.
   const currentStepIndex = steps.findIndex((s) => s.id === selectedStepId);
   const handleNavigatePrevious = () => {
     if (currentStepIndex > 0) {
