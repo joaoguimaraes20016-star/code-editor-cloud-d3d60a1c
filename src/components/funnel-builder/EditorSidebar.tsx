@@ -1,13 +1,17 @@
-import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { StepContentEditor } from './StepContentEditor';
 import { DesignEditor } from './DesignEditor';
 import { SettingsEditor } from './SettingsEditor';
 import { ContentBlockEditor, ContentBlock } from './ContentBlockEditor';
 import { ImagePicker } from './ImagePicker';
-import { FunnelStep } from '@/pages/FunnelEditor';
-import { Type, Palette, Settings, LayoutGrid, Circle } from 'lucide-react';
+import { Funnel, FunnelStep } from '@/pages/FunnelEditor';
+import { LayoutGrid, Settings as SettingsIcon, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getStepDefinition, getStepTypeLabel } from '@/lib/funnel/stepDefinitions';
+import getStepIntent from '@/lib/funnels/stepIntent';
+import type { StepIntent } from '@/lib/funnel/types';
+import type { EditorSelection } from './editorSelection';
 
 interface StepDesign {
   backgroundColor?: string;
@@ -33,192 +37,173 @@ interface StepSettings {
   animationEasing?: 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'linear';
 }
 
-// Map element types to their editing tab and section
-const ELEMENT_TO_TAB_MAP: Record<string, { tab: string; section?: string }> = {
-  headline: { tab: 'content', section: 'headline' },
-  subtext: { tab: 'content', section: 'subtext' },
-  button: { tab: 'design', section: 'button-styling' },
-  button_text: { tab: 'content', section: 'button' },
-  input: { tab: 'design', section: 'input-styling' },
-  placeholder: { tab: 'content', section: 'placeholder' },
-  options: { tab: 'design', section: 'option-cards' },
-  video: { tab: 'content', section: 'video' },
-  image_top: { tab: 'design', section: 'image' },
-  background: { tab: 'design', section: 'background' },
-};
-
-// Get tab indicator for element
-const getSelectedElementTab = (element: string | null): string | null => {
-  if (!element) return null;
-  
-  // Check for dynamic elements
-  if (element.startsWith('text_') || element.startsWith('headline_')) return 'content';
-  if (element.startsWith('video_') || element.startsWith('image_')) return 'content';
-  if (element.startsWith('button_') || element.startsWith('divider_')) return 'content';
-  
-  const mapping = ELEMENT_TO_TAB_MAP[element];
-  return mapping?.tab || null;
-};
-
 interface EditorSidebarProps {
-  step: FunnelStep;
+  selection: EditorSelection;
+  funnel?: Funnel | null;
+  step?: FunnelStep | null;
   selectedElement: string | null;
+  selectedBlockId?: string | null;
   onUpdateContent: (patch: Partial<FunnelStep['content']>) => void;
   onUpdateDesign: (design: StepDesign) => void;
   onUpdateSettings: (settings: StepSettings) => void;
   onUpdateBlocks?: (blocks: ContentBlock[]) => void;
+  onSelectBlock?: (blockId: string) => void;
+  onOpenFunnelSettings?: () => void;
   design: StepDesign;
   settings: StepSettings;
   blocks?: ContentBlock[];
   elementOrder?: string[];
   dynamicContent?: Record<string, any>;
   onUpdateDynamicContent?: (elementId: string, value: any) => void;
-  highlightedSection?: string | null;
 }
 
 export function EditorSidebar({
+  selection,
+  funnel,
   step,
   selectedElement,
+  selectedBlockId,
   onUpdateContent,
   onUpdateDesign,
   onUpdateSettings,
   onUpdateBlocks,
+  onSelectBlock,
+  onOpenFunnelSettings,
   design,
   settings,
   blocks = [],
   elementOrder = [],
   dynamicContent = {},
   onUpdateDynamicContent,
-  highlightedSection,
 }: EditorSidebarProps) {
-  const [activeTab, setActiveTab] = useState('design'); // Design first
   const [showImagePicker, setShowImagePicker] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const designRef = useRef<HTMLDivElement>(null);
+  const isStepContext = selection.type === 'step' || selection.type === 'element' || selection.type === 'block';
+  const stepIntent: StepIntent | null = useMemo(() => {
+    if (!step) return null;
+    return (step.content.intent as StepIntent) || getStepIntent(step);
+  }, [step]);
+  const stepDefinition = step ? getStepDefinition(step.step_type) : null;
+  const showStructure = selection.type !== 'element';
+  const showBehavior = selection.type === 'step';
+  const showContent = isStepContext;
+  const showDesign = isStepContext;
+  const selectionLabel = useMemo(() => {
+    if (selection.type === 'funnel') return 'Funnel';
+    if (selection.type === 'step') return 'Step';
+    if (selection.type === 'block') return 'Block';
+    return 'Element';
+  }, [selection.type]);
 
-  const scrollToSection = useCallback((sectionId: string) => {
-    requestAnimationFrame(() => {
-      const section = document.getElementById(sectionId);
-      if (section) {
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        return;
-      }
-
-      requestAnimationFrame(() => {
-        const retrySection = document.getElementById(sectionId);
-        retrySection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    });
-  }, []);
-
-  // Get which tab has the selected element
-  const selectedElementTab = getSelectedElementTab(selectedElement);
-
-  // Auto-switch to correct tab and scroll to section when element is selected
-  useLayoutEffect(() => {
-    if (!selectedElement) return;
-
-    // Check if it's a dynamic element
-    if (selectedElement.startsWith('text_') || 
-        selectedElement.startsWith('headline_') || 
-        selectedElement.startsWith('video_') || 
-        selectedElement.startsWith('image_') || 
-        selectedElement.startsWith('button_') || 
-        selectedElement.startsWith('divider_')) {
-      setActiveTab('content');
-      scrollToSection('dynamic-elements-section');
-      return;
-    }
-
-    const mapping = ELEMENT_TO_TAB_MAP[selectedElement];
-    if (mapping) {
-      setActiveTab(mapping.tab);
-      if (mapping.section) {
-        scrollToSection(`editor-section-${mapping.section}`);
-      }
-    }
-  }, [scrollToSection, selectedElement]);
-
-  // Also respond to highlightedSection prop
-  useLayoutEffect(() => {
-    if (!highlightedSection) return;
-    
-    const mapping = ELEMENT_TO_TAB_MAP[highlightedSection];
-    if (mapping) {
-      setActiveTab(mapping.tab);
-      if (mapping.section) {
-        scrollToSection(`editor-section-${mapping.section}`);
-      }
-    }
-  }, [highlightedSection, scrollToSection]);
+  const inspectorHeader = step
+    ? `${selectionLabel}: ${step.content.headline || getStepTypeLabel(step.step_type)}`
+    : selectionLabel;
 
   return (
     <>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-        {/* Reordered: Design, Content, Blocks, Settings */}
-        <TabsList className="grid w-full grid-cols-4 mb-4 flex-shrink-0">
-          <TabsTrigger value="design" className="gap-1.5 text-xs relative">
-            <Palette className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Design</span>
-            {selectedElementTab === 'design' && (
-              <Circle className="h-2 w-2 fill-primary text-primary absolute -top-0.5 -right-0.5" />
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="content" className="gap-1.5 text-xs relative">
-            <Type className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Content</span>
-            {selectedElementTab === 'content' && (
-              <Circle className="h-2 w-2 fill-primary text-primary absolute -top-0.5 -right-0.5" />
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="blocks" className="gap-1.5 text-xs">
-            <LayoutGrid className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Blocks</span>
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="gap-1.5 text-xs">
-            <Settings className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Settings</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <div className="flex-1 overflow-y-auto" ref={contentRef}>
-          <TabsContent value="design" className="mt-0 h-full" ref={designRef} forceMount>
-            <DesignEditor
-              step={step}
-              design={design}
-              onUpdateDesign={onUpdateDesign}
-              onOpenImagePicker={() => setShowImagePicker(true)}
-              highlightedSection={selectedElement}
-            />
-          </TabsContent>
-
-          <TabsContent value="content" className="mt-0 h-full" forceMount>
-            <StepContentEditor
-              step={step}
-              onUpdate={onUpdateContent}
-              selectedElement={selectedElement}
-              elementOrder={elementOrder}
-              dynamicContent={dynamicContent}
-              onUpdateDynamicContent={onUpdateDynamicContent}
-            />
-          </TabsContent>
-
-          <TabsContent value="blocks" className="mt-0 h-full" forceMount>
-            <ContentBlockEditor
-              blocks={blocks}
-              onBlocksChange={onUpdateBlocks || (() => {})}
-            />
-          </TabsContent>
-
-          <TabsContent value="settings" className="mt-0 h-full" forceMount>
-            <SettingsEditor
-              step={step}
-              settings={settings}
-              onUpdateSettings={onUpdateSettings}
-            />
-          </TabsContent>
+      <div className="h-full flex flex-col">
+        <div className="px-2 pb-3 border-b">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Inspector
+          </p>
+          <h2 className="text-sm font-semibold text-foreground">
+            {inspectorHeader}
+          </h2>
+          {stepIntent && stepDefinition && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Intent: <span className="capitalize text-foreground">{stepIntent}</span> · {stepDefinition.description}
+            </p>
+          )}
         </div>
-      </Tabs>
+
+        <div className="flex-1 overflow-y-auto space-y-4 px-2 pt-4">
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Structure
+            </div>
+            {selection.type === 'funnel' && (
+              <div className="space-y-3 rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+                <p>Choose a step to edit its structure, or open funnel settings for global configuration.</p>
+                <div className="flex flex-col gap-2">
+                  <Button size="sm" variant="outline" onClick={onOpenFunnelSettings} disabled={!onOpenFunnelSettings}>
+                    Open Funnel Settings
+                  </Button>
+                  <div className="text-[11px] text-muted-foreground">
+                    {funnel ? `${funnel.name} · ${funnel.status}` : 'No funnel loaded'}
+                  </div>
+                </div>
+              </div>
+            )}
+            {showStructure && step && (
+              <ContentBlockEditor
+                blocks={blocks}
+                onBlocksChange={onUpdateBlocks || (() => {})}
+                selectedBlockId={selectedBlockId}
+                onSelectBlock={onSelectBlock}
+              />
+            )}
+          </section>
+
+          <section className={cn("space-y-3", !showContent && "opacity-60")}>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Wand2 className="h-3.5 w-3.5" />
+              Content
+            </div>
+            {showContent && step ? (
+              <StepContentEditor
+                step={step}
+                onUpdate={onUpdateContent}
+                selectedElement={selectedElement}
+                elementOrder={elementOrder}
+                dynamicContent={dynamicContent}
+                onUpdateDynamicContent={onUpdateDynamicContent}
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+                Select a step or element to edit content.
+              </div>
+            )}
+          </section>
+
+          <section className={cn("space-y-3", !showDesign && "opacity-60")}>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Design
+            </div>
+            {showDesign && step ? (
+              <DesignEditor
+                step={step}
+                design={design}
+                onUpdateDesign={onUpdateDesign}
+                onOpenImagePicker={() => setShowImagePicker(true)}
+                highlightedSection={selectedElement}
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+                Select a step or element to edit design.
+              </div>
+            )}
+          </section>
+
+          <section className={cn("space-y-3", !showBehavior && "opacity-60")}>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <SettingsIcon className="h-3.5 w-3.5" />
+              Behavior
+            </div>
+            {showBehavior && step ? (
+              <SettingsEditor
+                step={step}
+                settings={settings}
+                onUpdateSettings={onUpdateSettings}
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+                Behavior controls are available when a step is selected.
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
 
       <ImagePicker
         open={showImagePicker}

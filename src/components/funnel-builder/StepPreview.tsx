@@ -68,7 +68,8 @@ interface StepPreviewProps {
   settings: FunnelSettings;
   funnel?: Funnel | null;
   selectedElement: string | null;
-  onSelectElement: (element: string | null) => void;
+  onSelectElement: (element: string) => void;
+  onSelectStep: () => void;
   design?: StepDesign;
   onUpdateContent?: (field: string, value: any) => void;
   elementOrder?: string[];
@@ -218,7 +219,8 @@ export function StepPreview({
   settings, 
   funnel,
   selectedElement, 
-  onSelectElement, 
+  onSelectElement,
+  onSelectStep,
   design,
   onUpdateContent,
   elementOrder,
@@ -326,10 +328,10 @@ export function StepPreview({
       const newOrder = currentOrder.filter(id => id !== elementId);
       onReorderElements(newOrder);
       if (selectedElement === elementId) {
-        onSelectElement(null);
+        onSelectStep();
       }
     }
-  }, [currentOrder, onReorderElements, selectedElement, onSelectElement]);
+  }, [currentOrder, onReorderElements, selectedElement, onSelectStep]);
 
   const handleTextChange = useCallback((field: string, value: string) => {
     onUpdateContent?.(field, value);
@@ -910,7 +912,7 @@ export function StepPreview({
   return (
     <div 
       className="w-full h-full relative" 
-      onClick={() => onSelectElement(null)}
+      onClick={() => onSelectStep()}
       style={{ ...backgroundStyle, fontFamily }}
     >
       {/* Background image with optional overlay */}

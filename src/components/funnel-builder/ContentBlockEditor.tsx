@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,6 +34,8 @@ export interface ContentBlock {
 interface ContentBlockEditorProps {
   blocks: ContentBlock[];
   onBlocksChange: (blocks: ContentBlock[]) => void;
+  selectedBlockId?: string | null;
+  onSelectBlock?: (blockId: string) => void;
 }
 
 const blockTypeIcons = {
@@ -55,13 +57,17 @@ function SortableBlock({
   onUpdate, 
   onDelete,
   isExpanded,
-  onToggleExpand
+  onToggleExpand,
+  isSelected,
+  onSelect,
 }: { 
   block: ContentBlock; 
   onUpdate: (content: ContentBlock['content']) => void;
   onDelete: () => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  isSelected: boolean;
+  onSelect: () => void;
 }) {
   const [showImagePicker, setShowImagePicker] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
@@ -79,10 +85,11 @@ function SortableBlock({
       style={style}
       className={cn(
         "border rounded-lg bg-card transition-all",
+        isSelected && "ring-2 ring-primary/60",
         isDragging && "opacity-50 shadow-lg"
       )}
     >
-      <div className="flex items-center gap-2 p-2">
+      <div className="flex items-center gap-2 p-2" onClick={onSelect}>
         <button {...attributes} {...listeners} className="cursor-grab hover:text-primary p-1">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </button>
@@ -184,8 +191,23 @@ function SortableBlock({
   );
 }
 
-export function ContentBlockEditor({ blocks, onBlocksChange }: ContentBlockEditorProps) {
+export function ContentBlockEditor({
+  blocks,
+  onBlocksChange,
+  selectedBlockId,
+  onSelectBlock,
+}: ContentBlockEditorProps) {
   const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!selectedBlockId) return;
+    setExpandedBlocks((prev) => {
+      if (prev.has(selectedBlockId)) return prev;
+      const next = new Set(prev);
+      next.add(selectedBlockId);
+      return next;
+    });
+  }, [selectedBlockId]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -204,6 +226,7 @@ export function ContentBlockEditor({ blocks, onBlocksChange }: ContentBlockEdito
     };
     onBlocksChange([...blocks, newBlock]);
     setExpandedBlocks(new Set([...expandedBlocks, newBlock.id]));
+    onSelectBlock?.(newBlock.id);
   };
 
   const updateBlock = (id: string, content: ContentBlock['content']) => {
@@ -243,6 +266,8 @@ export function ContentBlockEditor({ blocks, onBlocksChange }: ContentBlockEdito
                 onDelete={() => deleteBlock(block.id)}
                 isExpanded={expandedBlocks.has(block.id)}
                 onToggleExpand={() => toggleExpand(block.id)}
+                isSelected={block.id === selectedBlockId}
+                onSelect={() => onSelectBlock?.(block.id)}
               />
             ))}
           </div>
