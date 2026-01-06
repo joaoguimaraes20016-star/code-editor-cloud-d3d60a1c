@@ -63,7 +63,7 @@ const getSelectedElementTab = (element: string | null): string | null => {
 interface EditorSidebarProps {
   step: FunnelStep;
   selectedElement: string | null;
-  onUpdateContent: (content: FunnelStep['content']) => void;
+  onUpdateContent: (patch: Partial<FunnelStep['content']>) => void;
   onUpdateDesign: (design: StepDesign) => void;
   onUpdateSettings: (settings: StepSettings) => void;
   onUpdateBlocks?: (blocks: ContentBlock[]) => void;

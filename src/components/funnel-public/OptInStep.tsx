@@ -248,7 +248,7 @@ export function OptInStep({
             className="mt-0.5 border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
           />
           <span className="text-sm text-white/80">
-            I have read and accept the{' '}
+            {content.privacy_text || 'I have read and accept the'}{' '}
             {termsUrl ? (
               <a
                 href={termsUrl}
