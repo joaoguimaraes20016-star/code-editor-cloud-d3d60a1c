@@ -1243,7 +1243,7 @@ export default function FunnelEditor() {
         <div className={cn(
           "border-r bg-card overflow-y-auto flex-shrink-0 transition-all duration-300 relative",
           focusMode ? "w-0 p-0 overflow-hidden border-0" :
-          showLeftPanel ? "w-44 lg:w-52 p-2 sm:p-3" : "w-0 p-0 overflow-hidden border-0"
+          showLeftPanel ? "w-44 lg:w-52 p-2 sm:p-3 pt-8" : "w-0 p-0 overflow-hidden border-0"
         )}>
           {/* Collapse button */}
           {showLeftPanel && !focusMode && (
@@ -1346,7 +1346,7 @@ export default function FunnelEditor() {
         <div className={cn(
           "border-l bg-card overflow-hidden flex flex-col flex-shrink-0 transition-all duration-300 relative",
           focusMode ? "w-0 p-0 overflow-hidden border-0" :
-          showRightPanel ? "w-60 lg:w-72 p-2 sm:p-3" : "w-0 p-0 overflow-hidden border-0"
+          showRightPanel ? "w-60 lg:w-72 p-2 sm:p-3 pt-8" : "w-0 p-0 overflow-hidden border-0"
         )}>
           {/* Collapse button */}
           {showRightPanel && !focusMode && (
