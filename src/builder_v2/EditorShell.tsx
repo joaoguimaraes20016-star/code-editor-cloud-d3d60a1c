@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import './EditorLayout.css';
 import { CanvasEditor } from './canvas/CanvasEditor';
 import { editorModes } from './editorMode';
+import { Inspector } from './inspector/Inspector';
 import { CanvasNode, EditorState, Page } from './types';
 
 /**
@@ -18,6 +19,25 @@ const sampleCanvasTree: CanvasNode = {
     gap: 12,
   },
   children: [
+    {
+      id: 'hero',
+      type: 'hero',
+      props: {
+        headline: 'Builder V2 Hero',
+        subheadline: 'Registry-driven components',
+        backgroundColor: '#1f2937',
+      },
+      children: [
+        {
+          id: 'hero-cta',
+          type: 'button',
+          props: {
+            label: 'Explore',
+          },
+          children: [],
+        },
+      ],
+    },
     {
       id: 'headline',
       type: 'text',
@@ -50,6 +70,26 @@ export function EditorShell() {
     selectedNodeId: null,
     mode: 'structure',
   });
+  const [page, setPage] = useState<Page>(samplePage);
+
+  const updateNodeProps = (node: CanvasNode, nodeId: string, partialProps: Record<string, unknown>) => {
+    if (node.id === nodeId) {
+      return {
+        ...node,
+        props: {
+          ...node.props,
+          ...partialProps,
+        },
+      };
+    }
+
+    return {
+      ...node,
+      children: node.children.map((child) =>
+        updateNodeProps(child, nodeId, partialProps),
+      ),
+    };
+  };
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -111,13 +151,13 @@ export function EditorShell() {
             className={editorState.mode === 'canvas' ? '' : 'builder-v2-hidden'}
           >
             <CanvasEditor
-              page={samplePage}
+              page={page}
               editorState={editorState}
               onSelectNode={(nodeId) =>
                 setEditorState((prev) => ({
                   ...prev,
                   selectedNodeId: nodeId,
-                  selectedPageId: prev.selectedPageId ?? samplePage.id,
+                  selectedPageId: prev.selectedPageId ?? page.id,
                 }))
               }
             />
@@ -142,10 +182,16 @@ export function EditorShell() {
       <section className="builder-v2-panel builder-v2-panel--right">
         <header className="builder-v2-panel-header">Inspector</header>
         <div className="builder-v2-panel-scroll">
-          <div className="builder-v2-placeholder">
-            <p>Inspector placeholder</p>
-            <p>Selection preserved across modes.</p>
-          </div>
+          <Inspector
+            selectedNodeId={editorState.selectedNodeId}
+            page={page}
+            onUpdateNode={(nodeId, partialProps) => {
+              setPage((prevPage) => ({
+                ...prevPage,
+                canvasRoot: updateNodeProps(prevPage.canvasRoot, nodeId, partialProps),
+              }));
+            }}
+          />
         </div>
       </section>
     </div>
