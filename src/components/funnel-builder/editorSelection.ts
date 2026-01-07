@@ -15,3 +15,18 @@ export const parseSelectionId = (id: string) => {
     childId: childId ?? null,
   };
 };
+
+export const getSelectionStepId = (selection: EditorSelection) => {
+  if (selection.type === 'step') return selection.id;
+  if (selection.type === 'element' || selection.type === 'block') {
+    return parseSelectionId(selection.id).parentId;
+  }
+  return null;
+};
+
+export const getSelectionChildId = (selection: EditorSelection) => {
+  if (selection.type === 'element' || selection.type === 'block') {
+    return parseSelectionId(selection.id).childId;
+  }
+  return null;
+};

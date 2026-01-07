@@ -22,6 +22,8 @@ import {
 import type { StepIntent } from '@/lib/funnel/types';
 import getStepIntent from '@/lib/funnels/stepIntent';
 import { getPreviewElementOrder } from '@/lib/funnel/stepRegistry';
+import type { EditorSelection } from './editorSelection';
+import { getSelectionChildId, getSelectionStepId } from './editorSelection';
 
 // Strip HTML tags and decode entities for display in input fields
 const stripHtml = (html: string): string => {
@@ -33,7 +35,7 @@ const stripHtml = (html: string): string => {
 interface StepContentEditorProps {
   step: FunnelStep;
   onUpdate: (patch: Partial<FunnelStep['content']>) => void;
-  selectedElement?: string | null;
+  selection: EditorSelection;
   elementOrder?: string[];
   dynamicContent?: Record<string, any>;
   onUpdateDynamicContent?: (elementId: string, value: any) => void;
@@ -64,7 +66,7 @@ const getElementIcon = (elementId: string) => {
 export function StepContentEditor({ 
   step, 
   onUpdate, 
-  selectedElement,
+  selection,
   elementOrder = [],
   dynamicContent = {},
   onUpdateDynamicContent
@@ -74,6 +76,10 @@ export function StepContentEditor({
   const subtextRef = useRef<HTMLTextAreaElement>(null);
   const buttonRef = useRef<HTMLInputElement>(null);
   const placeholderRef = useRef<HTMLInputElement>(null);
+  const selectionStepId = getSelectionStepId(selection);
+  const selectedElementId = selection.type === 'element' && selectionStepId === step.id
+    ? getSelectionChildId(selection)
+    : null;
 
   // Get step definition for this step type
   const stepDefinition = getStepDefinition(step.step_type);
@@ -102,17 +108,17 @@ export function StepContentEditor({
 
   // Auto-focus based on selected element
   useEffect(() => {
-    if (selectedElement === 'headline') headlineRef.current?.focus();
-    if (selectedElement === 'subtext') subtextRef.current?.focus();
-    if (selectedElement === 'button_text') buttonRef.current?.focus();
-    if (selectedElement === 'placeholder') placeholderRef.current?.focus();
-  }, [selectedElement]);
+    if (selectedElementId === 'headline') headlineRef.current?.focus();
+    if (selectedElementId === 'subtext') subtextRef.current?.focus();
+    if (selectedElementId === 'button_text') buttonRef.current?.focus();
+    if (selectedElementId === 'placeholder') placeholderRef.current?.focus();
+  }, [selectedElementId]);
 
   const updateField = (field: string, value: any) => {
     onUpdate({ [field]: value });
   };
 
-  const isHighlighted = (field: string) => selectedElement === field;
+  const isHighlighted = (field: string) => selectedElementId === field;
 
   // Filter dynamic elements from the element order
   const dynamicElementIds = effectiveElementOrder.filter(id => 

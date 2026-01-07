@@ -19,6 +19,8 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { ImagePicker } from './ImagePicker';
+import type { EditorSelection } from './editorSelection';
+import { getSelectionChildId, getSelectionStepId } from './editorSelection';
 
 export interface ContentBlock {
   id: string;
@@ -34,7 +36,8 @@ export interface ContentBlock {
 interface ContentBlockEditorProps {
   blocks: ContentBlock[];
   onBlocksChange: (blocks: ContentBlock[]) => void;
-  selectedBlockId?: string | null;
+  selection: EditorSelection;
+  stepId?: string | null;
   onSelectBlock?: (blockId: string) => void;
 }
 
@@ -194,10 +197,15 @@ function SortableBlock({
 export function ContentBlockEditor({
   blocks,
   onBlocksChange,
-  selectedBlockId,
+  selection,
+  stepId,
   onSelectBlock,
 }: ContentBlockEditorProps) {
   const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set());
+  const selectionStepId = getSelectionStepId(selection);
+  const selectedBlockId = selection.type === 'block' && selectionStepId === stepId
+    ? getSelectionChildId(selection)
+    : null;
 
   useEffect(() => {
     if (!selectedBlockId) return;

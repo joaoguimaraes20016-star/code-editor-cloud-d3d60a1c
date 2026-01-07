@@ -4,7 +4,10 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { GripVertical, Trash2, Play, MessageSquare, List, Mail, Phone, Video, CheckCircle, Plus, Copy, UserCheck, Code } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMemo } from 'react';
 import { FunnelStep } from '@/pages/FunnelEditor';
+import type { EditorSelection } from './editorSelection';
+import { getSelectionStepId } from './editorSelection';
 import { PageContextMenu } from './PageContextMenu';
 
 // Strip HTML tags and decode entities for display
@@ -16,7 +19,7 @@ const stripHtml = (html: string): string => {
 
 interface PagesListProps {
   steps: FunnelStep[];
-  selectedStepId: string | null;
+  selection: EditorSelection;
   onSelectStep: (stepId: string) => void;
   onDeleteStep: (stepId: string) => void;
   onAddStep: () => void;
@@ -140,7 +143,7 @@ function PageItem({
 
 export function PagesList({
   steps,
-  selectedStepId,
+  selection,
   onSelectStep,
   onDeleteStep,
   onAddStep,
@@ -149,6 +152,9 @@ export function PagesList({
   onOpenPageSettings,
   onMoveStep,
 }: PagesListProps) {
+  const selectedStepId = getSelectionStepId(selection);
+  const stepIds = useMemo(() => steps.map((step) => step.id), [steps]);
+
   return (
     <div className="flex flex-col h-full">
       <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
@@ -166,7 +172,7 @@ export function PagesList({
       </Button>
       
       <div className="flex-1 overflow-y-auto space-y-1">
-        <SortableContext items={steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={stepIds} strategy={verticalListSortingStrategy}>
           {steps.map((step, index) => (
             <PageItem
               key={step.id}

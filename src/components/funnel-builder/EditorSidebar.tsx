@@ -11,6 +11,7 @@ import { getStepDefinition, getStepTypeLabel } from '@/lib/funnel/stepDefinition
 import getStepIntent from '@/lib/funnels/stepIntent';
 import type { StepIntent } from '@/lib/funnel/types';
 import type { EditorSelection } from './editorSelection';
+import { getSelectionChildId, getSelectionStepId } from './editorSelection';
 
 interface StepDesign {
   backgroundColor?: string;
@@ -40,8 +41,6 @@ interface EditorSidebarProps {
   selection: EditorSelection;
   funnel?: Funnel | null;
   step?: FunnelStep | null;
-  selectedElement: string | null;
-  selectedBlockId?: string | null;
   onUpdateContent: (patch: Partial<FunnelStep['content']>) => void;
   onUpdateDesign: (design: StepDesign) => void;
   onUpdateSettings: (settings: StepSettings) => void;
@@ -60,8 +59,6 @@ export function EditorSidebar({
   selection,
   funnel,
   step,
-  selectedElement,
-  selectedBlockId,
   onUpdateContent,
   onUpdateDesign,
   onUpdateSettings,
@@ -76,6 +73,13 @@ export function EditorSidebar({
   onUpdateDynamicContent,
 }: EditorSidebarProps) {
   const [showImagePicker, setShowImagePicker] = useState(false);
+  const selectionStepId = getSelectionStepId(selection);
+  const selectedElementId = selection.type === 'element' && selectionStepId === step?.id
+    ? getSelectionChildId(selection)
+    : null;
+  const selectedBlockId = selection.type === 'block' && selectionStepId === step?.id
+    ? getSelectionChildId(selection)
+    : null;
   const stepIntent: StepIntent | null = useMemo(() => {
     if (!step) return null;
     return (step.content.intent as StepIntent) || getStepIntent(step);
@@ -100,23 +104,23 @@ export function EditorSidebar({
   );
   const blockLabel = selectedBlock ? `${selectedBlock.type.charAt(0).toUpperCase()}${selectedBlock.type.slice(1)}` : 'Block';
   const elementLabel = useMemo(() => {
-    if (!selectedElement) return 'Element';
-    if (selectedElement === 'headline') return 'Headline';
-    if (selectedElement === 'subtext') return 'Subtext';
-    if (selectedElement === 'button') return 'Button';
-    if (selectedElement === 'input') return 'Input Field';
-    if (selectedElement === 'options') return 'Options';
-    if (selectedElement === 'video') return 'Video';
-    if (selectedElement === 'opt_in_form') return 'Contact Form';
-    if (selectedElement.startsWith('text_')) return 'Text Block';
-    if (selectedElement.startsWith('headline_')) return 'Headline';
-    if (selectedElement.startsWith('video_')) return 'Video';
-    if (selectedElement.startsWith('image_')) return 'Image';
-    if (selectedElement.startsWith('button_')) return 'Button';
-    if (selectedElement.startsWith('divider_')) return 'Divider';
-    if (selectedElement.startsWith('embed_')) return 'Embed';
+    if (!selectedElementId) return 'Element';
+    if (selectedElementId === 'headline') return 'Headline';
+    if (selectedElementId === 'subtext') return 'Subtext';
+    if (selectedElementId === 'button') return 'Button';
+    if (selectedElementId === 'input') return 'Input Field';
+    if (selectedElementId === 'options') return 'Options';
+    if (selectedElementId === 'video') return 'Video';
+    if (selectedElementId === 'opt_in_form') return 'Contact Form';
+    if (selectedElementId.startsWith('text_')) return 'Text Block';
+    if (selectedElementId.startsWith('headline_')) return 'Headline';
+    if (selectedElementId.startsWith('video_')) return 'Video';
+    if (selectedElementId.startsWith('image_')) return 'Image';
+    if (selectedElementId.startsWith('button_')) return 'Button';
+    if (selectedElementId.startsWith('divider_')) return 'Divider';
+    if (selectedElementId.startsWith('embed_')) return 'Embed';
     return 'Element';
-  }, [selectedElement]);
+  }, [selectedElementId]);
   const inspectorHeader = useMemo(() => {
     if (selection.type === 'funnel') return 'Editing Funnel';
     if (selection.type === 'step') return 'Editing Step';
@@ -175,7 +179,8 @@ export function EditorSidebar({
               <ContentBlockEditor
                 blocks={blocks}
                 onBlocksChange={onUpdateBlocks || (() => {})}
-                selectedBlockId={selectedBlockId}
+                selection={selection}
+                stepId={step?.id}
                 onSelectBlock={onSelectBlock}
               />
             </section>
@@ -190,7 +195,7 @@ export function EditorSidebar({
               <StepContentEditor
                 step={step}
                 onUpdate={onUpdateContent}
-                selectedElement={selectedElement}
+                selection={selection}
                 elementOrder={elementOrder}
                 dynamicContent={dynamicContent}
                 onUpdateDynamicContent={onUpdateDynamicContent}
@@ -209,7 +214,7 @@ export function EditorSidebar({
                 design={design}
                 onUpdateDesign={onUpdateDesign}
                 onOpenImagePicker={() => setShowImagePicker(true)}
-                highlightedSection={selectedElement}
+                highlightedSection={selectedElementId}
               />
             </section>
           )}

@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { resolvePrivacyPolicyUrl, shouldShowConsentCheckbox } from '@/components/funnel-public/consent';
 import { getDefaultElementOrder } from '@/lib/funnel/stepRegistry';
+import type { EditorSelection } from './editorSelection';
+import { getSelectionChildId, getSelectionStepId } from './editorSelection';
 
 interface StepDesign {
   backgroundColor?: string;
@@ -67,7 +69,7 @@ interface StepPreviewProps {
   step: FunnelStep;
   settings: FunnelSettings;
   funnel?: Funnel | null;
-  selectedElement: string | null;
+  selection: EditorSelection;
   onSelectElement: (element: string) => void;
   onSelectStep: () => void;
   design?: StepDesign;
@@ -218,7 +220,7 @@ export function StepPreview({
   step, 
   settings, 
   funnel,
-  selectedElement, 
+  selection, 
   onSelectElement,
   onSelectStep,
   design,
@@ -232,6 +234,10 @@ export function StepPreview({
   const [showAddElement, setShowAddElement] = useState(false);
   const [editingElement, setEditingElement] = useState<string | null>(null);
   const [imagePickerOpen, setImagePickerOpen] = useState<string | null>(null);
+  const selectionStepId = getSelectionStepId(selection);
+  const selectedElementId = selection.type === 'element' && selectionStepId === step.id
+    ? getSelectionChildId(selection)
+    : null;
   
   // Use external dynamic content if provided, otherwise fallback to step.content.dynamic_elements
   const dynamicContent = useMemo(() => {
@@ -327,11 +333,11 @@ export function StepPreview({
     if (onReorderElements) {
       const newOrder = currentOrder.filter(id => id !== elementId);
       onReorderElements(newOrder);
-      if (selectedElement === elementId) {
+      if (selectedElementId === elementId) {
         onSelectStep();
       }
     }
-  }, [currentOrder, onReorderElements, selectedElement, onSelectStep]);
+  }, [currentOrder, onReorderElements, selectedElementId, onSelectStep]);
 
   const handleTextChange = useCallback((field: string, value: string) => {
     onUpdateContent?.(field, value);
@@ -371,7 +377,7 @@ export function StepPreview({
           onChange={(val) => handleDynamicContentChange(elementId, { text: val })}
           className={cn(FONT_SIZE_MAP[fontSize].subtext, "text-center")}
           style={{ color: textColor }}
-          isSelected={selectedElement === elementId}
+          isSelected={selectedElementId === elementId}
           onSelect={() => onSelectElement(elementId)}
           onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
         />
@@ -479,7 +485,7 @@ export function StepPreview({
             onChange={(val) => handleDynamicContentChange(elementId, { text: val })}
             className="text-center"
             style={{ color: buttonTextColor }}
-            isSelected={selectedElement === elementId}
+            isSelected={selectedElementId === elementId}
             onSelect={() => onSelectElement(elementId)}
             onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
           />
@@ -496,7 +502,7 @@ export function StepPreview({
           onChange={(val) => handleDynamicContentChange(elementId, { text: val })}
           className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold leading-tight text-center")}
           style={{ color: textColor }}
-          isSelected={selectedElement === elementId}
+          isSelected={selectedElementId === elementId}
           onSelect={() => onSelectElement(elementId)}
           onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
         />
@@ -567,7 +573,7 @@ export function StepPreview({
             placeholder="Add headline..."
             className={cn(FONT_SIZE_MAP[fontSize].headline, "font-bold leading-tight text-center")}
             style={{ color: textColor }}
-            isSelected={selectedElement === elementId}
+            isSelected={selectedElementId === elementId}
             onSelect={() => onSelectElement(elementId)}
             onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
           />
@@ -581,7 +587,7 @@ export function StepPreview({
             placeholder="Add subtext..."
             className={cn(FONT_SIZE_MAP[fontSize].subtext, "opacity-70 text-center")}
             style={{ color: textColor }}
-            isSelected={selectedElement === elementId}
+            isSelected={selectedElementId === elementId}
             onSelect={() => onSelectElement(elementId)}
             onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
           />
@@ -608,7 +614,7 @@ export function StepPreview({
               onChange={(val) => handleTextChange('button_text', val)}
               className="text-center"
               style={{ color: buttonTextColor }}
-              isSelected={selectedElement === elementId}
+              isSelected={selectedElementId === elementId}
               onSelect={() => onSelectElement(elementId)}
               onEditingChange={(editing) => setEditingElement(editing ? elementId : null)}
             />
@@ -668,7 +674,7 @@ export function StepPreview({
                 onChange={(val) => handleTextChange('submit_button_text', val)}
                 className="text-center"
                 style={{ color: buttonTextColor }}
-                isSelected={selectedElement === 'submit_button'}
+                isSelected={selectedElementId === 'submit_button'}
                 onSelect={() => onSelectElement('submit_button')}
                 onEditingChange={(editing) => setEditingElement(editing ? 'submit_button' : null)}
               />
@@ -887,7 +893,7 @@ export function StepPreview({
                 onChange={(val) => handleTextChange('submit_button_text', val)}
                 className="text-center"
                 style={{ color: buttonTextColor }}
-                isSelected={selectedElement === 'submit_button'}
+                isSelected={selectedElementId === 'submit_button'}
                 onSelect={() => onSelectElement('submit_button')}
                 onEditingChange={(editing) => setEditingElement(editing ? 'submit_button' : null)}
               />
@@ -951,7 +957,7 @@ export function StepPreview({
             <ElementWrapper
               key={elementId}
               id={elementId}
-              isSelected={selectedElement === elementId}
+              isSelected={selectedElementId === elementId}
               isEditing={editingElement === elementId}
               onSelect={() => onSelectElement(elementId)}
               onMoveUp={() => handleMoveUp(elementId)}

@@ -11,7 +11,7 @@ import { PagesList } from '@/components/funnel-builder/PagesList';
 import { EditorSidebar } from '@/components/funnel-builder/EditorSidebar';
 import { EditorShell } from '@/components/funnel-builder/EditorShell';
 import type { EditorSelection } from '@/components/funnel-builder/editorSelection';
-import { buildSelectionId, parseSelectionId } from '@/components/funnel-builder/editorSelection';
+import { buildSelectionId, getSelectionChildId, getSelectionStepId } from '@/components/funnel-builder/editorSelection';
 import { FunnelSettingsDialog } from '@/components/funnel-builder/FunnelSettingsDialog';
 import { DevicePreview } from '@/components/funnel-builder/DevicePreview';
 import { StepPreview } from '@/components/funnel-builder/StepPreview';
@@ -274,22 +274,8 @@ export default function FunnelEditor() {
     type: 'funnel',
     id: funnelId ?? 'funnel',
   });
-  // Selection is single-source-of-truth; derive step + element ids from it.
-  const selectedStepId = useMemo(() => {
-    if (selection.type === 'step') return selection.id;
-    if (selection.type === 'element' || selection.type === 'block') {
-      return parseSelectionId(selection.id).parentId;
-    }
-    return null;
-  }, [selection]);
-  const selectedElement = useMemo(() => {
-    if (selection.type !== 'element') return null;
-    return parseSelectionId(selection.id).childId;
-  }, [selection]);
-  const selectedBlockId = useMemo(() => {
-    if (selection.type !== 'block') return null;
-    return parseSelectionId(selection.id).childId;
-  }, [selection]);
+  const selectionStepId = useMemo(() => getSelectionStepId(selection), [selection]);
+  const selectionElementId = selection.type === 'element' ? getSelectionChildId(selection) : null;
   const [showSettings, setShowSettings] = useState(false);
   const [showAddStep, setShowAddStep] = useState(false);
   const [dirtyState, setDirtyState] = useState<{ funnel: boolean; steps: Record<string, boolean> }>({
@@ -669,7 +655,7 @@ export default function FunnelEditor() {
         pageSettings: {},
       });
 
-      if (stepsToLoad.length > 0 && !selectedStepId) {
+      if (stepsToLoad.length > 0 && !selectionStepId) {
         setSelection({ type: 'step', id: stepsToLoad[0].id });
       }
 
@@ -693,7 +679,7 @@ export default function FunnelEditor() {
       setInitializationError(err.message || 'Failed to initialize editor.');
     }
 
-  }, [markDirty, resetHistory, selectedStepId, setIsInitialized]);
+  }, [markDirty, resetHistory, selectionStepId, setIsInitialized]);
 
   const {
     data: funnel,
@@ -875,7 +861,7 @@ export default function FunnelEditor() {
         pageSettings: nextPageSettings,
       };
     });
-    if (selectedStepId === stepId) {
+    if (selectionStepId === stepId) {
       if (remainingSteps[0]?.id) {
         setSelection({ type: 'step', id: remainingSteps[0].id });
       } else {
@@ -984,7 +970,7 @@ export default function FunnelEditor() {
 
   // Navigation between steps
   // Selection state is declared once near the top of the component to avoid duplicate symbols.
-  const currentStepIndex = steps.findIndex((s) => s.id === selectedStepId);
+  const currentStepIndex = steps.findIndex((s) => s.id === selectionStepId);
   const handleNavigatePrevious = () => {
     if (currentStepIndex > 0) {
       setSelection({ type: 'step', id: steps[currentStepIndex - 1].id });
@@ -997,13 +983,9 @@ export default function FunnelEditor() {
   };
 
   const selectedStep = useMemo(
-    () => steps.find((s) => s.id === selectedStepId) || null,
-    [steps, selectedStepId]
+    () => steps.find((s) => s.id === selectionStepId) || null,
+    [steps, selectionStepId]
   );
-  const selectedBlock = useMemo(() => {
-    if (!selectedStepId || !selectedBlockId) return null;
-    return stepBlocks[selectedStepId]?.find((block) => block.id === selectedBlockId) || null;
-  }, [selectedBlockId, selectedStepId, stepBlocks]);
 
   useEffect(() => {
     if (steps.length === 0) {
@@ -1011,10 +993,10 @@ export default function FunnelEditor() {
       return;
     }
 
-    if (selectedStepId && steps.some((step) => step.id === selectedStepId)) return;
+    if (selectionStepId && steps.some((step) => step.id === selectionStepId)) return;
 
     setSelection({ type: 'step', id: steps[0].id });
-  }, [funnel?.id, selectedStepId, steps]);
+  }, [funnel?.id, selectionStepId, steps]);
 
   // Keyboard shortcuts for element navigation
   useEffect(() => {
@@ -1033,13 +1015,13 @@ export default function FunnelEditor() {
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
         
-        if (!selectedElement && currentOrder.length > 0) {
+        if (!selectionElementId && currentOrder.length > 0) {
           // Select first element if nothing selected
           setSelection({ type: 'element', id: buildSelectionId(selectedStep.id, currentOrder[0]) });
           return;
         }
         
-        const currentIndex = currentOrder.indexOf(selectedElement || '');
+        const currentIndex = currentOrder.indexOf(selectionElementId || '');
         if (currentIndex === -1) return;
         
         const newIndex = e.key === 'ArrowUp' 
@@ -1050,27 +1032,27 @@ export default function FunnelEditor() {
       }
 
       // Delete key - remove selected element
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElement) {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectionElementId) {
         // Only delete dynamic elements (not standard ones like headline, button)
-        if (selectedElement.includes('_') && /^\w+_\d+/.test(selectedElement)) {
+        if (selectionElementId.includes('_') && /^\w+_\d+/.test(selectionElementId)) {
           e.preventDefault();
-          const newOrder = currentOrder.filter(id => id !== selectedElement);
+          const newOrder = currentOrder.filter(id => id !== selectionElementId);
           handleUpdateElementOrder(selectedStep.id, newOrder);
           setSelection({ type: 'step', id: selectedStep.id });
         }
       }
 
       // Ctrl+D or Cmd+D - duplicate element
-      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedElement) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectionElementId) {
         e.preventDefault();
-        const index = currentOrder.indexOf(selectedElement);
+        const index = currentOrder.indexOf(selectionElementId);
         if (index !== -1) {
-          const newElementId = `${selectedElement}_copy_${crypto.randomUUID()}`;
+          const newElementId = `${selectionElementId}_copy_${crypto.randomUUID()}`;
           const newOrder = [...currentOrder];
           newOrder.splice(index + 1, 0, newElementId);
           
           // Copy dynamic content if exists
-          const currentDynamic = dynamicElements[selectedStep.id]?.[selectedElement];
+          const currentDynamic = dynamicElements[selectedStep.id]?.[selectionElementId];
           if (currentDynamic) {
             replaceDynamicElement(selectedStep.id, newElementId, { ...currentDynamic });
           }
@@ -1088,7 +1070,7 @@ export default function FunnelEditor() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedElement, selectedStep, elementOrders, dynamicElements, handleUpdateElementOrder, replaceDynamicElement]);
+  }, [selectionElementId, selectedStep, elementOrders, dynamicElements, handleUpdateElementOrder, replaceDynamicElement]);
 
   if (isFunnelError) {
     return (
@@ -1304,7 +1286,7 @@ export default function FunnelEditor() {
             <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <PagesList
                 steps={steps}
-                selectedStepId={selectedStepId}
+                selection={selection}
                 onSelectStep={(id) => {
                   setSelection({ type: 'step', id });
                 }}
@@ -1339,7 +1321,7 @@ export default function FunnelEditor() {
                     step={selectedStep}
                     settings={funnel.settings}
                     funnel={funnel}
-                    selectedElement={selectedElement}
+                    selection={selection}
                     onSelectElement={(elementId) => {
                       setSelection({ type: 'element', id: buildSelectionId(selectedStep.id, elementId) });
                     }}
@@ -1397,8 +1379,6 @@ export default function FunnelEditor() {
               selection={selection}
               funnel={funnel}
               step={selectedStep}
-              selectedElement={selectedElement}
-              selectedBlockId={selectedBlockId}
               onUpdateContent={(patch) => {
                 if (!selectedStep) return;
                 updateStepContent(selectedStep.id, patch);

@@ -1,20 +1,24 @@
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableStepItem } from './SortableStepItem';
+import type { EditorSelection } from './editorSelection';
+import { getSelectionStepId } from './editorSelection';
 import { FunnelStep } from '@/pages/FunnelEditor';
 
 interface SortableStepListProps {
   steps: FunnelStep[];
-  selectedStepId: string | null;
+  selection: EditorSelection;
   onSelectStep: (stepId: string) => void;
   onDeleteStep: (stepId: string) => void;
 }
 
 export function SortableStepList({
   steps,
-  selectedStepId,
+  selection,
   onSelectStep,
   onDeleteStep,
 }: SortableStepListProps) {
+  const selectedStepId = getSelectionStepId(selection);
+
   return (
     <SortableContext items={steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
       <div className="space-y-3">
