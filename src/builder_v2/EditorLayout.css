@@ -1,0 +1,153 @@
+.builder-v2-shell {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #0f1115;
+  color: #f5f7fa;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+.builder-v2-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.builder-v2-panel:last-child {
+  border-right: none;
+}
+
+.builder-v2-panel--left,
+.builder-v2-panel--right {
+  width: 280px;
+}
+
+.builder-v2-panel--center {
+  flex: 1;
+}
+
+.builder-v2-panel-header {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.builder-v2-panel-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.builder-v2-mode-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.builder-v2-mode-toggle button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent;
+  color: inherit;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.builder-v2-mode-toggle button[aria-pressed="true"] {
+  background: rgba(99, 102, 241, 0.4);
+  border-color: rgba(99, 102, 241, 0.8);
+}
+
+.builder-v2-placeholder {
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.builder-v2-hidden {
+  display: none;
+}
+
+.builder-v2-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.builder-v2-inspector-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.builder-v2-inspector-title {
+  font-size: 16px;
+  margin: 0;
+}
+
+.builder-v2-inspector-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.builder-v2-inspector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.builder-v2-inspector-section-title {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.builder-v2-inspector-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.builder-v2-inspector-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.builder-v2-inspector-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.builder-v2-inspector-input {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  color: #f8fafc;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.builder-v2-inspector-input:focus {
+  outline: 2px solid rgba(59, 130, 246, 0.6);
+  outline-offset: 1px;
+}
+
+.builder-v2-inspector-empty {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
