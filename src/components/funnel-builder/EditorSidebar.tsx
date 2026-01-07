@@ -7,7 +7,7 @@ import { SettingsEditor } from './SettingsEditor';
 import { ContentBlockEditor, ContentBlock } from './ContentBlockEditor';
 import { ImagePicker } from './ImagePicker';
 import { Funnel, FunnelStep } from '@/pages/FunnelEditor';
-import { LayoutGrid, Settings as SettingsIcon, Wand2, Palette } from 'lucide-react';
+import { ChevronDown, LayoutGrid, Settings as SettingsIcon, Wand2, Palette } from 'lucide-react';
 import { getStepDefinition, getStepTypeLabel } from '@/lib/funnel/stepDefinitions';
 import getStepIntent from '@/lib/funnels/stepIntent';
 import type { StepIntent } from '@/lib/funnel/types';
