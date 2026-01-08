@@ -3,7 +3,7 @@
  * Left panel for adding sections and elements to the canvas
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Type,
   AlignLeft,

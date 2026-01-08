@@ -3,7 +3,7 @@
  * Context-aware inspector that shows different controls based on selection
  */
 
-import React from 'react';
+import type { ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,7 +42,7 @@ interface PropertyEditorProps {
 
 interface PropertyFieldProps {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 function PropertyField({ label, children }: PropertyFieldProps) {
