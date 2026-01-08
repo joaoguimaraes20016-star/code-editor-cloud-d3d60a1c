@@ -698,3 +698,68 @@ export function ConsentCheckbox({
     </label>
   );
 }
+
+// ============================================================================
+// HEADER BAR - Dark header with optional logo
+// ============================================================================
+
+interface HeaderBarProps {
+  backgroundColor?: string;
+  logoUrl?: string;
+  logoAlt?: string;
+  className?: string;
+}
+
+export function HeaderBar({ 
+  backgroundColor = '#1a1a1a', 
+  logoUrl,
+  logoAlt = 'Logo',
+  className 
+}: HeaderBarProps) {
+  return (
+    <div 
+      className={cn('builder-header-bar', className)}
+      style={{ backgroundColor }}
+    >
+      {logoUrl ? (
+        <img src={logoUrl} alt={logoAlt} className="builder-header-logo" />
+      ) : (
+        <div className="builder-header-logo-placeholder">
+          <span>Logo</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// CONTENT CARD - White card container with shadow
+// ============================================================================
+
+interface ContentCardProps {
+  backgroundColor?: string;
+  borderRadius?: number;
+  shadow?: boolean;
+  children?: ReactNode;
+  className?: string;
+}
+
+export function ContentCard({ 
+  backgroundColor = '#ffffff', 
+  borderRadius = 16,
+  shadow = true,
+  children,
+  className 
+}: ContentCardProps) {
+  return (
+    <div 
+      className={cn('builder-content-card', shadow && 'builder-content-card--shadow', className)}
+      style={{ 
+        backgroundColor,
+        borderRadius: `${borderRadius}px`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}

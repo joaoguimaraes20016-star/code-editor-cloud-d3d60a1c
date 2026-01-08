@@ -90,6 +90,64 @@ export const heroWithButton: SectionTemplate = {
   }),
 };
 
+export const heroCardWithImage: SectionTemplate = {
+  id: 'hero-card-image',
+  name: 'Hero Card + Image',
+  description: 'Dark header, white card with CTA, and image below',
+  category: 'hero',
+  icon: 'layout',
+  createNode: () => ({
+    id: genId('section'),
+    type: 'section',
+    props: { variant: 'hero-card' },
+    children: [
+      {
+        id: genId('header'),
+        type: 'header_bar',
+        props: { backgroundColor: '#1a1a1a', logoUrl: '', logoAlt: 'Logo' },
+        children: [],
+      },
+      {
+        id: genId('card'),
+        type: 'content_card',
+        props: { backgroundColor: '#ffffff', borderRadius: 16, shadow: true },
+        children: [
+          {
+            id: genId('heading'),
+            type: 'heading',
+            props: { text: 'More Success with Less Effort', level: 'h1' },
+            children: [],
+          },
+          {
+            id: genId('paragraph'),
+            type: 'paragraph',
+            props: { text: 'With our tailored solutions, reach your goals faster. Let our experienced team support you and experience the difference.' },
+            children: [],
+          },
+          {
+            id: genId('spacer'),
+            type: 'spacer',
+            props: { height: 24 },
+            children: [],
+          },
+          {
+            id: genId('button'),
+            type: 'cta_button',
+            props: { label: 'Learn more now', variant: 'primary', action: 'next' },
+            children: [],
+          },
+        ],
+      },
+      {
+        id: genId('image'),
+        type: 'image',
+        props: { src: '', alt: 'Hero image', aspectRatio: '16/9' },
+        children: [],
+      },
+    ],
+  }),
+};
+
 // ============================================================================
 // CONTENT SECTIONS
 // ============================================================================
@@ -532,6 +590,7 @@ export const allSectionTemplates: SectionTemplate[] = [
   // Hero
   heroSimple,
   heroWithButton,
+  heroCardWithImage,
   // Content
   contentText,
   contentHeadingText,
@@ -556,7 +615,7 @@ export const allSectionTemplates: SectionTemplate[] = [
 ];
 
 export const sectionTemplatesByCategory = {
-  hero: [heroSimple, heroWithButton],
+  hero: [heroSimple, heroWithButton, heroCardWithImage],
   content: [contentText, contentHeadingText],
   cta: [ctaSimple, ctaWithText],
   media: [mediaVideo, mediaImage],
