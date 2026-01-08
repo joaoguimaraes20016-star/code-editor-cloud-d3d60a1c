@@ -35,7 +35,7 @@ import { TeamHubOverview } from "./pages/TeamHubOverview";
 import { TeamChatPage } from "./pages/TeamChat";
 import AppsPortal from "./pages/AppsPortal";
 import PersonalSettings from "./pages/PersonalSettings";
-import { DevDiagnostics } from "./components/DevDiagnostics";
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,7 +108,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-        {import.meta.env.DEV && <DevDiagnostics />}
+        
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
