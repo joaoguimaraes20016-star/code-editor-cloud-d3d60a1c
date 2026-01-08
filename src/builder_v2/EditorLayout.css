@@ -1,8 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import './canvas/canvas-experience.css';
 @import './components/primitives/primitives.css';
 
-/* Builder V2 - Clean, Modern, Framer-inspired */
+/* ============================================================================
+   DESIGN TOKENS
+   ============================================================================ */
+
 :root {
   --builder-bg: #f8fafc;
   --builder-panel-bg: #ffffff;
@@ -15,30 +17,32 @@
   --builder-accent-light: #eef2ff;
   --builder-hover-bg: #f1f5f9;
   --builder-active-bg: #e2e8f0;
-  --builder-shadow-phone: 0 25px 60px -12px rgba(0, 0, 0, 0.25);
   --builder-radius-sm: 6px;
   --builder-radius-md: 10px;
   --builder-radius-lg: 16px;
   --builder-font-size-xs: 11px;
   --builder-font-size-sm: 13px;
   --builder-font-size-base: 14px;
-  --builder-phone-width: 375px;
 }
 
-/* Phone Frame - Premium glass feel */
-.phone-frame {
+/* ============================================================================
+   DEVICE FRAMES
+   ============================================================================ */
+
+/* Phone Frame */
+.device-frame--phone {
   position: relative;
-  width: var(--builder-phone-width);
+  width: 375px;
   background: #0a0a0a;
   border-radius: 48px;
   padding: 12px;
   box-shadow: 
-    var(--builder-shadow-phone),
+    0 25px 60px -12px rgba(0, 0, 0, 0.35),
     0 0 0 1px rgba(255, 255, 255, 0.05) inset,
     0 -1px 0 0 rgba(255, 255, 255, 0.03) inset;
 }
 
-.phone-notch {
+.device-frame--phone .device-notch {
   position: absolute;
   top: 12px;
   left: 50%;
@@ -47,14 +51,14 @@
   padding: 8px 0;
 }
 
-.phone-notch-inner {
+.device-frame--phone .device-notch-inner {
   width: 100px;
   height: 28px;
   background: #0a0a0a;
   border-radius: 20px;
 }
 
-.phone-screen {
+.device-frame--phone .device-screen {
   background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
   border-radius: 40px;
   overflow: hidden;
@@ -62,25 +66,191 @@
   max-height: 720px;
 }
 
-.phone-screen-content {
-  height: 100%;
-  overflow-y: auto;
-}
-
-.phone-home-bar {
+.device-frame--phone .device-home-bar {
   display: flex;
   justify-content: center;
   padding: 8px 0 4px;
+  background: #0a0a0a;
 }
 
-.phone-home-indicator {
+.device-frame--phone .device-home-indicator {
   width: 120px;
   height: 4px;
   background: #333;
   border-radius: 2px;
 }
 
-/* Empty State */
+/* Tablet Frame */
+.device-frame--tablet {
+  position: relative;
+  width: 768px;
+  background: #0a0a0a;
+  border-radius: 24px;
+  padding: 16px;
+  box-shadow: 
+    0 25px 60px -12px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.device-frame--tablet .device-screen {
+  background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 560px;
+  max-height: 700px;
+}
+
+.device-frame--tablet .device-home-bar {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 6px;
+  background: #0a0a0a;
+}
+
+.device-frame--tablet .device-home-indicator {
+  width: 100px;
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+}
+
+/* Desktop Frame */
+.device-frame--desktop {
+  position: relative;
+  width: 100%;
+  max-width: 1024px;
+  background: #1a1a1a;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 
+    0 25px 60px -12px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+}
+
+.device-frame--desktop .device-browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #2a2a2a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.device-frame--desktop .device-browser-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.device-frame--desktop .device-browser-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.device-frame--desktop .device-browser-dot--red { background: #ff5f57; }
+.device-frame--desktop .device-browser-dot--yellow { background: #febc2e; }
+.device-frame--desktop .device-browser-dot--green { background: #28c840; }
+
+.device-frame--desktop .device-browser-url {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.device-frame--desktop .device-screen {
+  background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
+  min-height: 560px;
+  max-height: 700px;
+  overflow-y: auto;
+}
+
+/* Screen content wrapper */
+.device-screen-content {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* ============================================================================
+   CANVAS STRUCTURE
+   ============================================================================ */
+
+.builder-root,
+.builder-canvas-frame,
+.builder-page,
+.builder-v2-canvas {
+  height: 100%;
+  min-height: 100%;
+}
+
+.builder-v2-canvas {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.builder-v2-canvas--readonly {
+  pointer-events: none;
+}
+
+/* ============================================================================
+   NODE RENDERING
+   ============================================================================ */
+
+.builder-v2-node {
+  position: relative;
+  width: 100%;
+}
+
+.builder-v2-node-surface {
+  width: 100%;
+}
+
+.builder-v2-node-overlay {
+  position: absolute;
+  inset: -2px;
+  border-radius: 8px;
+  pointer-events: none;
+  border: 2px solid transparent;
+  transition: all 150ms ease;
+  z-index: 1;
+}
+
+/* Hover state */
+.builder-v2-node:not([data-readonly]):hover > .builder-v2-node-overlay {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+/* Selected state */
+.builder-v2-node[data-selected="true"] > .builder-v2-node-overlay {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+/* Highlighted state (for suggestions) */
+.builder-v2-node[data-highlighted="true"] > .builder-v2-node-overlay {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.15);
+  animation: pulse-highlight 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-highlight {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ============================================================================
+   EMPTY STATE
+   ============================================================================ */
+
 .builder-v2-empty-state {
   display: flex;
   flex-direction: column;
@@ -89,6 +259,7 @@
   height: 100%;
   padding: 48px 24px;
   text-align: center;
+  background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
 }
 
 .builder-v2-empty-icon {
@@ -110,71 +281,10 @@
   margin: 0;
 }
 
-/* Canvas */
-.builder-root,
-.builder-canvas-frame,
-.builder-page,
-.builder-v2-canvas {
-  height: 100%;
-  min-height: 100%;
-}
+/* ============================================================================
+   STRUCTURE TREE
+   ============================================================================ */
 
-.builder-v2-canvas {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-.builder-v2-canvas--readonly {
-  pointer-events: none;
-}
-
-/* Node Rendering */
-.builder-v2-node {
-  position: relative;
-  width: 100%;
-}
-
-.builder-v2-node-surface {
-  width: 100%;
-}
-
-.builder-v2-node-overlay {
-  position: absolute;
-  inset: -2px;
-  border-radius: 8px;
-  pointer-events: none;
-  border: 2px solid transparent;
-  transition: all 150ms ease;
-}
-
-/* Hover state */
-.builder-v2-node:not([data-readonly]):hover > .builder-v2-node-overlay {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(99, 102, 241, 0.05);
-}
-
-/* Selected state */
-.builder-v2-node[data-selected="true"] > .builder-v2-node-overlay {
-  border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.08);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
-
-/* Highlighted state (for suggestions) */
-.builder-v2-node[data-highlighted="true"] > .builder-v2-node-overlay {
-  border-color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.1);
-  animation: pulse-highlight 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-highlight {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-/* Structure Tree */
 .builder-v2-structure-tree {
   padding: 8px;
 }
@@ -220,20 +330,60 @@
   color: #94a3b8;
 }
 
-/* Legacy Preview Container */
-.builder-v2-legacy-preview {
-  min-height: 100%;
+/* ============================================================================
+   ELEMENT PALETTE
+   ============================================================================ */
+
+.element-palette {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 8px;
 }
 
-.builder-v2-legacy-empty {
+.element-palette-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  text-align: center;
+}
+
+.element-palette-item:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  transform: translateY(-1px);
+}
+
+.element-palette-item:active {
+  transform: translateY(0);
+}
+
+.element-palette-icon {
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #6366f1;
 }
 
-/* Canvas Guides (hidden by default) */
+.element-palette-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #475569;
+}
+
+/* ============================================================================
+   CANVAS GUIDES (optional)
+   ============================================================================ */
+
 .builder-v2-canvas-guides {
   display: none;
 }

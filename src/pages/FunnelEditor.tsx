@@ -15,11 +15,24 @@ import {
   Trash2,
   ArrowLeft,
   Smartphone,
+  Tablet,
   Monitor,
-  Zap,
+  Type,
+  Square,
+  Image,
+  Video,
+  Calendar,
+  Mail,
+  Phone,
+  CheckCircle,
+  AlignLeft,
+  Minus,
+  Layers,
+  PanelLeft,
   Sparkles,
-  MousePointer,
-  Hand,
+  GripVertical,
+  Copy,
+  MoreHorizontal,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -29,8 +42,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTeamRole } from '@/hooks/useTeamRole';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,13 +61,11 @@ import { cn } from '@/lib/utils';
 
 // Builder V2 imports
 import '@/builder_v2/EditorLayout.css';
-import { PhoneFrame } from '@/builder_v2/canvas/PhoneFrame';
 import { CanvasEditor } from '@/builder_v2/canvas/CanvasEditor';
-import { StructureTree } from '@/builder_v2/structure/StructureTree';
-import { EditorProvider, useEditorStore } from '@/builder_v2/state/editorStore';
+import { EditorProvider, useEditorStore, generateNodeId } from '@/builder_v2/state/editorStore';
 import { extractDocument, type EditorDocument } from '@/builder_v2/state/persistence';
 import { getDefaultTemplateForStepType, PAGE_TEMPLATES, type PageTemplate } from '@/builder_v2/templates/pageTemplates';
-import type { Page } from '@/builder_v2/types';
+import type { Page, CanvasNode } from '@/builder_v2/types';
 
 // Types
 type FunnelRow = {
@@ -59,25 +79,102 @@ type FunnelRow = {
   updated_at: string;
 };
 
-// Step type config with nice labels and icons
-const STEP_TYPES = [
-  { type: 'welcome', label: 'Welcome', icon: '👋', description: 'Introduce your funnel' },
-  { type: 'video', label: 'Video', icon: '🎬', description: 'Share a video message' },
-  { type: 'multi_choice', label: 'Question', icon: '❓', description: 'Multiple choice question' },
-  { type: 'text_question', label: 'Open Question', icon: '✏️', description: 'Open-ended response' },
-  { type: 'email_capture', label: 'Email', icon: '📧', description: 'Collect email address' },
-  { type: 'phone_capture', label: 'Phone', icon: '📱', description: 'Collect phone number' },
-  { type: 'opt_in', label: 'Contact Form', icon: '📋', description: 'Full contact form' },
-  { type: 'embed', label: 'Calendar', icon: '📅', description: 'Booking embed' },
-  { type: 'thank_you', label: 'Thank You', icon: '🎉', description: 'Confirmation page' },
+type DeviceType = 'phone' | 'tablet' | 'desktop';
+
+// Step type config
+const PAGE_TYPES = [
+  { type: 'welcome', label: 'Welcome', icon: '👋', description: 'Introduction screen' },
+  { type: 'video', label: 'Video', icon: '🎬', description: 'Video content' },
+  { type: 'multi_choice', label: 'Question', icon: '❓', description: 'Multiple choice' },
+  { type: 'text_question', label: 'Text Input', icon: '✏️', description: 'Open answer' },
+  { type: 'email_capture', label: 'Email', icon: '📧', description: 'Collect email' },
+  { type: 'phone_capture', label: 'Phone', icon: '📱', description: 'Collect phone' },
+  { type: 'opt_in', label: 'Form', icon: '📋', description: 'Contact form' },
+  { type: 'embed', label: 'Calendar', icon: '📅', description: 'Book a call' },
+  { type: 'thank_you', label: 'Thank You', icon: '🎉', description: 'Confirmation' },
 ];
 
+// Element types for adding to pages
+const ELEMENT_TYPES = [
+  { type: 'heading', label: 'Heading', icon: Type, category: 'text' },
+  { type: 'paragraph', label: 'Text', icon: AlignLeft, category: 'text' },
+  { type: 'cta_button', label: 'Button', icon: Square, category: 'action' },
+  { type: 'text_input', label: 'Text Input', icon: Type, category: 'form' },
+  { type: 'email_input', label: 'Email', icon: Mail, category: 'form' },
+  { type: 'phone_input', label: 'Phone', icon: Phone, category: 'form' },
+  { type: 'option_grid', label: 'Options', icon: CheckCircle, category: 'form' },
+  { type: 'video_embed', label: 'Video', icon: Video, category: 'media' },
+  { type: 'calendar_embed', label: 'Calendar', icon: Calendar, category: 'media' },
+  { type: 'image', label: 'Image', icon: Image, category: 'media' },
+  { type: 'spacer', label: 'Spacer', icon: Minus, category: 'layout' },
+  { type: 'divider', label: 'Divider', icon: Minus, category: 'layout' },
+];
+
+// Loading state component
 function LoadingState({ message }: { message: string }) {
   return (
     <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="flex flex-col items-center gap-4">
-        <div className="h-10 w-10 animate-spin rounded-full border-3 border-indigo-600 border-t-transparent" />
-        <p className="text-sm font-medium text-slate-600">{message}</p>
+        <div className="h-10 w-10 animate-spin rounded-full border-3 border-primary border-t-transparent" />
+        <p className="text-sm font-medium text-muted-foreground">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+// Device Frame Component
+function DeviceFrame({ 
+  device, 
+  children,
+  slug,
+}: { 
+  device: DeviceType; 
+  children: React.ReactNode;
+  slug?: string;
+}) {
+  if (device === 'phone') {
+    return (
+      <div className="device-frame--phone">
+        <div className="device-notch">
+          <div className="device-notch-inner" />
+        </div>
+        <div className="device-screen">
+          <div className="device-screen-content">{children}</div>
+        </div>
+        <div className="device-home-bar">
+          <div className="device-home-indicator" />
+        </div>
+      </div>
+    );
+  }
+  
+  if (device === 'tablet') {
+    return (
+      <div className="device-frame--tablet">
+        <div className="device-screen">
+          <div className="device-screen-content">{children}</div>
+        </div>
+        <div className="device-home-bar">
+          <div className="device-home-indicator" />
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="device-frame--desktop">
+      <div className="device-browser-bar">
+        <div className="device-browser-dots">
+          <div className="device-browser-dot device-browser-dot--red" />
+          <div className="device-browser-dot device-browser-dot--yellow" />
+          <div className="device-browser-dot device-browser-dot--green" />
+        </div>
+        <div className="device-browser-url">
+          {slug ? `yoursite.com/f/${slug}` : 'yoursite.com'}
+        </div>
+      </div>
+      <div className="device-screen">
+        <div className="device-screen-content">{children}</div>
       </div>
     </div>
   );
@@ -111,17 +208,17 @@ function SettingsDialog({
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Funnel Name</Label>
+            <Label>Funnel Name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label className="text-sm font-medium">URL Slug</Label>
-            <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2">
-              <span className="text-sm text-slate-500">{window.location.origin}/f/</span>
+            <Label>URL Slug</Label>
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2">
+              <span className="text-sm text-muted-foreground">/f/</span>
               <Input 
                 value={slug} 
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} 
-                className="border-0 bg-transparent p-0 text-sm font-medium focus-visible:ring-0"
+                className="border-0 bg-transparent p-0 text-sm font-medium shadow-none focus-visible:ring-0"
               />
             </div>
           </div>
@@ -135,15 +232,15 @@ function SettingsDialog({
   );
 }
 
-// Add Step Modal with templates
-function AddStepModal({
+// Add Page Modal
+function AddPageModal({
   open,
   onOpenChange,
-  onAddStep,
+  onAddPage,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddStep: (template: PageTemplate) => void;
+  onAddPage: (template: PageTemplate) => void;
 }) {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   
@@ -158,52 +255,58 @@ function AddStepModal({
       })
     : [];
 
+  const handleClose = () => {
+    onOpenChange(false);
+    setSelectedType(null);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            {selectedType ? 'Choose a Template' : 'Add New Step'}
+          <DialogTitle className="flex items-center gap-2">
+            {selectedType && (
+              <button 
+                onClick={() => setSelectedType(null)}
+                className="mr-1 rounded p-1 hover:bg-muted"
+              >
+                <ChevronLeft size={16} />
+              </button>
+            )}
+            {selectedType ? 'Choose Template' : 'Add New Page'}
           </DialogTitle>
         </DialogHeader>
         
         {!selectedType ? (
-          <div className="grid grid-cols-3 gap-3 py-4">
-            {STEP_TYPES.map((step) => (
+          <div className="grid grid-cols-3 gap-2 py-4">
+            {PAGE_TYPES.map((page) => (
               <button
-                key={step.type}
-                onClick={() => setSelectedType(step.type)}
-                className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-sm"
+                key={page.type}
+                onClick={() => setSelectedType(page.type)}
+                className="flex flex-col items-center gap-2 rounded-xl border bg-background p-4 text-center transition-all hover:border-primary/50 hover:bg-primary/5"
               >
-                <span className="text-2xl">{step.icon}</span>
-                <span className="text-sm font-medium text-slate-700">{step.label}</span>
+                <span className="text-2xl">{page.icon}</span>
+                <span className="text-sm font-medium">{page.label}</span>
               </button>
             ))}
           </div>
         ) : (
-          <div className="space-y-3 py-4">
-            <button 
-              onClick={() => setSelectedType(null)}
-              className="mb-2 flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
-            >
-              <ChevronLeft size={14} /> Back to step types
-            </button>
+          <div className="space-y-2 py-4">
             {templatesForType.map((template) => (
               <button
                 key={template.id}
                 onClick={() => {
-                  onAddStep(template);
-                  onOpenChange(false);
-                  setSelectedType(null);
+                  onAddPage(template);
+                  handleClose();
                 }}
-                className="flex w-full items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50"
+                className="flex w-full items-center gap-4 rounded-xl border bg-background p-4 text-left transition-all hover:border-primary/50 hover:bg-primary/5"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-                  <Sparkles size={20} />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600 text-white">
+                  <Sparkles size={18} />
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-slate-800">{template.name}</h4>
-                  <p className="text-sm text-slate-500">{template.description}</p>
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-medium">{template.name}</h4>
+                  <p className="truncate text-sm text-muted-foreground">{template.description}</p>
                 </div>
               </button>
             ))}
@@ -214,24 +317,169 @@ function AddStepModal({
   );
 }
 
-// Polished Inspector Panel
+// Pages List Sidebar
+function PagesSidebar({
+  pages,
+  activePageId,
+  onSelectPage,
+  onDeletePage,
+  onAddPage,
+}: {
+  pages: Page[];
+  activePageId: string;
+  onSelectPage: (id: string) => void;
+  onDeletePage: (id: string) => void;
+  onAddPage: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col border-r bg-background">
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Layers size={16} className="text-muted-foreground" />
+          <span className="text-sm font-semibold">Pages</span>
+        </div>
+        <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">{pages.length}</span>
+      </div>
+      
+      <ScrollArea className="flex-1">
+        <div className="space-y-1 p-2">
+          {pages.map((page, i) => {
+            const isActive = page.id === activePageId;
+            return (
+              <div
+                key={page.id}
+                className={cn(
+                  "group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all",
+                  isActive 
+                    ? "bg-primary/10 ring-1 ring-primary/20" 
+                    : "hover:bg-muted/50"
+                )}
+                onClick={() => onSelectPage(page.id)}
+              >
+                <span className={cn(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs font-semibold",
+                  isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                )}>
+                  {i + 1}
+                </span>
+                <span className={cn(
+                  "flex-1 truncate text-sm font-medium",
+                  isActive ? "text-primary" : "text-foreground"
+                )}>
+                  {page.name}
+                </span>
+                {pages.length > 1 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded p-1 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
+                      >
+                        <MoreHorizontal size={14} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); }}>
+                        <Copy size={14} className="mr-2" /> Duplicate
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={(e) => { e.stopPropagation(); onDeletePage(page.id); }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 size={14} className="mr-2" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+
+      <div className="border-t p-2">
+        <button
+          onClick={onAddPage}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed py-2.5 text-sm font-medium text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+        >
+          <Plus size={16} />
+          Add Page
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Elements Panel
+function ElementsPanel({
+  onAddElement,
+}: {
+  onAddElement: (type: string) => void;
+}) {
+  const categories = [
+    { id: 'text', label: 'Text' },
+    { id: 'action', label: 'Action' },
+    { id: 'form', label: 'Form' },
+    { id: 'media', label: 'Media' },
+    { id: 'layout', label: 'Layout' },
+  ];
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b px-4 py-3">
+        <span className="text-sm font-semibold">Elements</span>
+        <p className="text-xs text-muted-foreground">Click to add to page</p>
+      </div>
+      
+      <ScrollArea className="flex-1">
+        <div className="p-3">
+          {categories.map((cat) => {
+            const elements = ELEMENT_TYPES.filter(e => e.category === cat.id);
+            if (elements.length === 0) return null;
+            
+            return (
+              <div key={cat.id} className="mb-4">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {cat.label}
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {elements.map((el) => (
+                    <button
+                      key={el.type}
+                      onClick={() => onAddElement(el.type)}
+                      className="flex flex-col items-center gap-1.5 rounded-lg border bg-background p-3 text-center transition-all hover:border-primary/50 hover:bg-primary/5"
+                    >
+                      <el.icon size={18} className="text-primary" />
+                      <span className="text-xs font-medium">{el.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
+// Inspector Panel for editing selected elements
 function InspectorPanel() {
   const { pages, activePageId, selectedNodeId, updateNodeProps, updatePageProps } = useEditorStore();
   const page = pages.find((p) => p.id === activePageId);
   
   if (!page) {
     return (
-      <div className="flex h-full items-center justify-center p-8 text-center">
-        <div className="text-slate-400">
-          <Sparkles className="mx-auto mb-3 h-8 w-8 opacity-50" />
-          <p className="text-sm">Select a page to edit</p>
-        </div>
+      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+        <Sparkles className="mb-3 h-8 w-8 text-muted-foreground/50" />
+        <p className="text-sm text-muted-foreground">Select a page to edit</p>
       </div>
     );
   }
 
-  // Find selected node
-  const findNode = (node: any, id: string): any => {
+  // Find selected node recursively
+  const findNode = (node: CanvasNode, id: string): CanvasNode | null => {
     if (node.id === id) return node;
     for (const child of node.children || []) {
       const found = findNode(child, id);
@@ -243,25 +491,15 @@ function InspectorPanel() {
   const selectedNode = selectedNodeId ? findNode(page.canvasRoot, selectedNodeId) : null;
   const nodeProps = selectedNode?.props || {};
 
-  const handleChange = (key: string, value: any) => {
+  const handleChange = (key: string, value: unknown) => {
     if (selectedNode) {
       updateNodeProps(selectedNode.id, { [key]: value });
     }
   };
 
-  // Get readable type name
   const getTypeName = (type: string) => {
     const names: Record<string, string> = {
-      welcome_step: 'Welcome Screen',
-      text_question_step: 'Text Question',
-      multi_choice_step: 'Multiple Choice',
-      email_capture_step: 'Email Capture',
-      phone_capture_step: 'Phone Capture',
-      opt_in_step: 'Opt-in Form',
-      video_step: 'Video',
-      embed_step: 'Calendar Booking',
-      thank_you_step: 'Thank You',
-      frame: 'Page Frame',
+      frame: 'Page',
       section: 'Section',
       heading: 'Heading',
       paragraph: 'Text',
@@ -272,204 +510,178 @@ function InspectorPanel() {
       option_grid: 'Options',
       video_embed: 'Video',
       calendar_embed: 'Calendar',
+      spacer: 'Spacer',
+      divider: 'Divider',
+      icon: 'Icon',
+      image: 'Image',
     };
-    return names[type] || type;
+    return names[type] || type.replace(/_/g, ' ');
   };
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="border-b border-slate-200 bg-white px-4 py-3">
-        <h3 className="font-semibold text-slate-800">
+      <div className="border-b px-4 py-3">
+        <h3 className="font-semibold">
           {selectedNode ? getTypeName(selectedNode.type) : page.name}
         </h3>
-        <p className="text-xs text-slate-500">
-          {selectedNode ? 'Edit element' : 'Page settings'}
+        <p className="text-xs text-muted-foreground">
+          {selectedNode ? 'Edit element properties' : 'Page settings'}
         </p>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {selectedNode ? (
-          <div className="space-y-5">
-            {/* Text Content */}
-            {(nodeProps.headline !== undefined || nodeProps.text !== undefined) && (
-              <div className="space-y-3">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Text Content
-                </label>
-                {nodeProps.headline !== undefined && (
-                  <div>
-                    <label className="mb-1.5 block text-sm text-slate-600">Headline</label>
+      <ScrollArea className="flex-1">
+        <div className="p-4">
+          {selectedNode ? (
+            <div className="space-y-5">
+              {/* Text Content */}
+              {(nodeProps.text !== undefined) && (
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Content</Label>
+                  {selectedNode.type === 'heading' ? (
                     <Input
-                      value={nodeProps.headline || ''}
-                      onChange={(e) => handleChange('headline', e.target.value)}
-                      className="bg-slate-50"
-                    />
-                  </div>
-                )}
-                {nodeProps.text !== undefined && (
-                  <div>
-                    <label className="mb-1.5 block text-sm text-slate-600">Text</label>
-                    <Input
-                      value={nodeProps.text || ''}
+                      value={(nodeProps.text as string) || ''}
                       onChange={(e) => handleChange('text', e.target.value)}
-                      className="bg-slate-50"
+                      placeholder="Heading text..."
                     />
-                  </div>
-                )}
-                {nodeProps.subtext !== undefined && (
-                  <div>
-                    <label className="mb-1.5 block text-sm text-slate-600">Description</label>
+                  ) : (
                     <textarea
-                      value={nodeProps.subtext || ''}
-                      onChange={(e) => handleChange('subtext', e.target.value)}
-                      rows={2}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      value={(nodeProps.text as string) || ''}
+                      onChange={(e) => handleChange('text', e.target.value)}
+                      rows={3}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="Enter text..."
                     />
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
 
-            {/* Button */}
-            {(nodeProps.buttonText !== undefined || nodeProps.label !== undefined) && (
-              <div className="space-y-3">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Button
-                </label>
-                <div>
-                  <label className="mb-1.5 block text-sm text-slate-600">Button Text</label>
+              {/* Button Label */}
+              {nodeProps.label !== undefined && (
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Button Text</Label>
                   <Input
-                    value={nodeProps.buttonText || nodeProps.label || ''}
-                    onChange={(e) => handleChange(nodeProps.buttonText !== undefined ? 'buttonText' : 'label', e.target.value)}
-                    className="bg-slate-50"
+                    value={(nodeProps.label as string) || ''}
+                    onChange={(e) => handleChange('label', e.target.value)}
+                    placeholder="Button label..."
                   />
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Input Placeholder */}
-            {nodeProps.placeholder !== undefined && (
-              <div className="space-y-3">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Input Field
-                </label>
-                <div>
-                  <label className="mb-1.5 block text-sm text-slate-600">Placeholder</label>
+              {/* Placeholder */}
+              {nodeProps.placeholder !== undefined && (
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Placeholder</Label>
                   <Input
-                    value={nodeProps.placeholder || ''}
+                    value={(nodeProps.placeholder as string) || ''}
                     onChange={(e) => handleChange('placeholder', e.target.value)}
-                    className="bg-slate-50"
+                    placeholder="Placeholder text..."
                   />
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Video/Embed URL */}
-            {(nodeProps.videoUrl !== undefined || nodeProps.url !== undefined) && (
-              <div className="space-y-3">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Media
-                </label>
-                <div>
-                  <label className="mb-1.5 block text-sm text-slate-600">
-                    {nodeProps.videoUrl !== undefined ? 'Video URL' : 'Embed URL'}
-                  </label>
+              {/* URL for video/calendar */}
+              {nodeProps.url !== undefined && (
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {selectedNode.type === 'video_embed' ? 'Video URL' : 'Embed URL'}
+                  </Label>
                   <Input
-                    value={nodeProps.videoUrl || nodeProps.url || ''}
-                    onChange={(e) => handleChange(nodeProps.videoUrl !== undefined ? 'videoUrl' : 'url', e.target.value)}
+                    value={(nodeProps.url as string) || ''}
+                    onChange={(e) => handleChange('url', e.target.value)}
                     placeholder="https://..."
-                    className="bg-slate-50"
                   />
-                  <p className="mt-1.5 text-xs text-slate-400">
-                    {nodeProps.videoUrl !== undefined 
-                      ? 'YouTube, Vimeo, or Loom URL'
-                      : 'Calendly, Cal.com, or embed URL'}
+                  <p className="text-xs text-muted-foreground">
+                    {selectedNode.type === 'video_embed' 
+                      ? 'YouTube, Vimeo, or Loom'
+                      : 'Calendly or Cal.com link'}
                   </p>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Options */}
-            {nodeProps.options && Array.isArray(nodeProps.options) && (
-              <div className="space-y-3">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Answer Options
-                </label>
+              {/* Spacer height */}
+              {nodeProps.height !== undefined && (
                 <div className="space-y-2">
-                  {nodeProps.options.map((opt: any, i: number) => (
-                    <div key={opt.id} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={opt.emoji || ''}
-                        onChange={(e) => {
-                          const newOpts = [...nodeProps.options];
-                          newOpts[i] = { ...opt, emoji: e.target.value };
-                          handleChange('options', newOpts);
-                        }}
-                        className="w-10 rounded border border-slate-200 bg-slate-50 p-2 text-center text-sm"
-                        placeholder="✨"
-                      />
-                      <Input
-                        value={opt.label}
-                        onChange={(e) => {
-                          const newOpts = [...nodeProps.options];
-                          newOpts[i] = { ...opt, label: e.target.value };
-                          handleChange('options', newOpts);
-                        }}
-                        className="flex-1 bg-slate-50"
-                      />
-                      {nodeProps.options.length > 2 && (
-                        <button
-                          onClick={() => handleChange('options', nodeProps.options.filter((_: any, idx: number) => idx !== i))}
-                          className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => handleChange('options', [...nodeProps.options, { id: `opt${Date.now()}`, label: 'New Option', emoji: '✨' }])}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-2 text-sm font-medium text-slate-500 transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
-                  >
-                    <Plus size={14} /> Add Option
-                  </button>
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Height (px)</Label>
+                  <Input
+                    type="number"
+                    value={(nodeProps.height as number) || 24}
+                    onChange={(e) => handleChange('height', parseInt(e.target.value) || 24)}
+                    min={8}
+                    max={200}
+                  />
                 </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Page Settings */
-          <div className="space-y-5">
-            <div className="space-y-3">
-              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Page Info
-              </label>
-              <div>
-                <label className="mb-1.5 block text-sm text-slate-600">Name</label>
+              )}
+
+              {/* Options */}
+              {nodeProps.options && Array.isArray(nodeProps.options) && (
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">Options</Label>
+                  <div className="space-y-2">
+                    {(nodeProps.options as Array<{id: string; label: string; emoji?: string}>).map((opt, i) => (
+                      <div key={opt.id} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={opt.emoji || ''}
+                          onChange={(e) => {
+                            const newOpts = [...(nodeProps.options as Array<{id: string; label: string; emoji?: string}>)];
+                            newOpts[i] = { ...opt, emoji: e.target.value };
+                            handleChange('options', newOpts);
+                          }}
+                          className="w-10 rounded border bg-background p-2 text-center text-sm"
+                          placeholder="✨"
+                        />
+                        <Input
+                          value={opt.label}
+                          onChange={(e) => {
+                            const newOpts = [...(nodeProps.options as Array<{id: string; label: string; emoji?: string}>)];
+                            newOpts[i] = { ...opt, label: e.target.value };
+                            handleChange('options', newOpts);
+                          }}
+                          className="flex-1"
+                        />
+                        {(nodeProps.options as Array<{id: string; label: string; emoji?: string}>).length > 2 && (
+                          <button
+                            onClick={() => handleChange('options', (nodeProps.options as Array<{id: string; label: string; emoji?: string}>).filter((_, idx) => idx !== i))}
+                            className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => handleChange('options', [...(nodeProps.options as Array<{id: string; label: string; emoji?: string}>), { id: `opt${Date.now()}`, label: 'New Option', emoji: '✨' }])}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed py-2 text-sm font-medium text-muted-foreground hover:border-primary/50 hover:text-primary"
+                    >
+                      <Plus size={14} /> Add Option
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Page Name</Label>
                 <Input
                   value={page.name}
                   onChange={(e) => updatePageProps(page.id, { name: e.target.value })}
-                  className="bg-slate-50"
                 />
               </div>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium">Tip:</span> Click elements in the preview to edit them
+                </p>
+              </div>
             </div>
-
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-sm text-slate-600">
-                <span className="font-medium">Tip:</span> Click on elements in the preview to edit them directly.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
 
-// Main editor content
+// Main Editor Content
 function EditorContent({ 
   funnel, 
   teamId,
@@ -494,6 +706,7 @@ function EditorContent({
     editorState,
     setActivePage,
     selectNode,
+    addNode,
     undo,
     redo,
     canUndo,
@@ -505,8 +718,9 @@ function EditorContent({
 
   const [mode, setMode] = useState<'edit' | 'preview'>('edit');
   const [showSettings, setShowSettings] = useState(false);
-  const [showAddStep, setShowAddStep] = useState(false);
-  const [deviceView, setDeviceView] = useState<'phone' | 'desktop'>('phone');
+  const [showAddPage, setShowAddPage] = useState(false);
+  const [device, setDevice] = useState<DeviceType>('phone');
+  const [leftTab, setLeftTab] = useState<'pages' | 'elements'>('pages');
   
   const activePage = pages.find((p) => p.id === activePageId);
   const activePageIndex = pages.findIndex((p) => p.id === activePageId);
@@ -529,7 +743,7 @@ function EditorContent({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [canRedo, canUndo, redo, undo, onSave]);
 
-  const handleAddStep = (template: PageTemplate) => {
+  const handleAddPage = (template: PageTemplate) => {
     const newPage: Page = {
       id: `page-${Date.now()}`,
       name: template.name,
@@ -544,101 +758,132 @@ function EditorContent({
 
   const handleDeletePage = (pageId: string) => {
     if (pages.length <= 1) {
-      toast({ title: 'Cannot delete', description: 'Need at least one step', variant: 'destructive' });
+      toast({ title: 'Cannot delete', description: 'Need at least one page', variant: 'destructive' });
       return;
     }
     deletePage(pageId);
   };
 
+  const handleAddElement = (type: string) => {
+    if (!activePage) return;
+    
+    // Find first section or add to root
+    const findFirstContainer = (node: CanvasNode): string | null => {
+      if (node.type === 'section') return node.id;
+      for (const child of node.children) {
+        const found = findFirstContainer(child);
+        if (found) return found;
+      }
+      return null;
+    };
+    
+    const parentId = findFirstContainer(activePage.canvasRoot) || activePage.canvasRoot.id;
+    addNode(parentId, type);
+  };
+
   const previewUrl = `${window.location.origin}/f/${funnel.slug}`;
 
   return (
-    <div className="flex h-screen flex-col bg-slate-100">
+    <div className="flex h-screen flex-col bg-muted/30">
       {/* Top Bar */}
-      <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
-        {/* Left */}
+      <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => navigate(`/team/${teamId}/funnels`)}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-slate-600 hover:bg-slate-100"
+            className="flex items-center gap-2 rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-sm font-semibold text-slate-800">{funnel.name}</h1>
+            <h1 className="text-sm font-semibold">{funnel.name}</h1>
             <div className="flex items-center gap-1.5">
               <span className={cn(
                 "h-1.5 w-1.5 rounded-full",
                 funnel.status === 'published' ? "bg-green-500" : "bg-amber-500"
               )} />
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-muted-foreground">
                 {funnel.status === 'published' ? 'Published' : 'Draft'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Center - Mode Toggle */}
-        <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1">
-          <button
-            onClick={() => setMode('edit')}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
-              mode === 'edit' 
-                ? "bg-white text-slate-800 shadow-sm" 
-                : "text-slate-500 hover:text-slate-700"
-            )}
-          >
-            <MousePointer size={14} />
-            Edit
-          </button>
-          <button
-            onClick={() => setMode('preview')}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
-              mode === 'preview' 
-                ? "bg-white text-slate-800 shadow-sm" 
-                : "text-slate-500 hover:text-slate-700"
-            )}
-          >
-            <Eye size={14} />
-            Preview
-          </button>
+        {/* Center - Mode & Device */}
+        <div className="flex items-center gap-4">
+          {/* Device Switcher */}
+          <div className="flex items-center gap-1 rounded-lg border bg-background p-1">
+            {[
+              { type: 'phone' as DeviceType, icon: Smartphone, label: 'Phone' },
+              { type: 'tablet' as DeviceType, icon: Tablet, label: 'Tablet' },
+              { type: 'desktop' as DeviceType, icon: Monitor, label: 'Desktop' },
+            ].map(({ type, icon: Icon, label }) => (
+              <button
+                key={type}
+                onClick={() => setDevice(type)}
+                className={cn(
+                  "rounded-md p-2 transition-all",
+                  device === type 
+                    ? "bg-primary text-primary-foreground" 
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+                title={label}
+              >
+                <Icon size={16} />
+              </button>
+            ))}
+          </div>
+
+          {/* Mode Toggle */}
+          <div className="flex items-center gap-1 rounded-lg border bg-background p-1">
+            <button
+              onClick={() => setMode('edit')}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
+                mode === 'edit' 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => setMode('preview')}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
+                mode === 'preview' 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Eye size={14} />
+              Preview
+            </button>
+          </div>
         </div>
 
-        {/* Right */}
+        {/* Right - Actions */}
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setShowSettings(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
+            className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Settings"
           >
-            <Settings size={16} />
+            <Settings size={18} />
           </button>
           <button 
             onClick={() => window.open(previewUrl, '_blank')}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
+            className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="View Live"
           >
-            <ExternalLink size={16} />
-            View Live
+            <ExternalLink size={18} />
           </button>
-          <div className="mx-2 h-6 w-px bg-slate-200" />
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onSave}
-            disabled={isSaving}
-            className="gap-1.5"
-          >
-            <Save size={14} />
+          <div className="mx-2 h-6 w-px bg-border" />
+          <Button variant="outline" size="sm" onClick={onSave} disabled={isSaving}>
+            <Save size={14} className="mr-1.5" />
             {isSaving ? 'Saving...' : 'Save'}
           </Button>
-          <Button 
-            size="sm" 
-            onClick={onPublish}
-            disabled={isPublishing}
-            className="gap-1.5 bg-indigo-600 hover:bg-indigo-700"
-          >
-            <Globe size={14} />
+          <Button size="sm" onClick={onPublish} disabled={isPublishing}>
+            <Globe size={14} className="mr-1.5" />
             {isPublishing ? 'Publishing...' : 'Publish'}
           </Button>
         </div>
@@ -646,87 +891,49 @@ function EditorContent({
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar - Pages */}
+        {/* Left Sidebar */}
         {mode === 'edit' && (
-          <aside className="flex w-56 flex-col border-r border-slate-200 bg-white">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Steps</span>
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">
-                {pages.length}
-              </span>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-2">
-              <div className="space-y-1">
-                {pages.map((page, i) => {
-                  const isActive = page.id === activePageId;
-                  const stepConfig = STEP_TYPES.find(s => page.type?.includes(s.type)) || STEP_TYPES[0];
-                  return (
-                    <div
-                      key={page.id}
-                      onClick={() => setActivePage(page.id)}
-                      className={cn(
-                        "group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all",
-                        isActive 
-                          ? "bg-indigo-50 ring-1 ring-indigo-200" 
-                          : "hover:bg-slate-50"
-                      )}
-                    >
-                      <span className={cn(
-                        "flex h-6 w-6 items-center justify-center rounded-md text-xs font-semibold",
-                        isActive 
-                          ? "bg-indigo-600 text-white" 
-                          : "bg-slate-100 text-slate-500"
-                      )}>
-                        {i + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className={cn(
-                          "truncate text-sm font-medium",
-                          isActive ? "text-indigo-700" : "text-slate-700"
-                        )}>
-                          {page.name}
-                        </p>
-                      </div>
-                      {pages.length > 1 && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeletePage(page.id); }}
-                          className="rounded p-1 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="border-t border-slate-100 p-2">
-              <button
-                onClick={() => setShowAddStep(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-2.5 text-sm font-medium text-slate-500 transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
-              >
-                <Plus size={16} />
-                Add Step
-              </button>
-            </div>
+          <aside className="w-60 shrink-0">
+            <Tabs value={leftTab} onValueChange={(v) => setLeftTab(v as 'pages' | 'elements')} className="flex h-full flex-col">
+              <TabsList className="mx-2 mt-2 grid w-auto grid-cols-2">
+                <TabsTrigger value="pages" className="text-xs">
+                  <Layers size={14} className="mr-1.5" />
+                  Pages
+                </TabsTrigger>
+                <TabsTrigger value="elements" className="text-xs">
+                  <Plus size={14} className="mr-1.5" />
+                  Elements
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="pages" className="m-0 flex-1 overflow-hidden">
+                <PagesSidebar
+                  pages={pages}
+                  activePageId={activePageId}
+                  onSelectPage={setActivePage}
+                  onDeletePage={handleDeletePage}
+                  onAddPage={() => setShowAddPage(true)}
+                />
+              </TabsContent>
+              <TabsContent value="elements" className="m-0 flex-1 overflow-hidden border-r bg-background">
+                <ElementsPanel onAddElement={handleAddElement} />
+              </TabsContent>
+            </Tabs>
           </aside>
         )}
 
         {/* Canvas */}
         <main className="relative flex-1 overflow-hidden">
           {/* Canvas Toolbar */}
-          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur-sm">
-            <div className="flex items-center gap-1">
+          <div className="absolute left-4 right-4 top-3 z-10 flex items-center justify-between">
+            <div className="flex items-center gap-1 rounded-lg border bg-background/95 p-1 shadow-sm backdrop-blur-sm">
               <button
                 onClick={undo}
                 disabled={!canUndo}
                 className={cn(
                   "rounded-md p-1.5 transition-colors",
-                  canUndo ? "text-slate-600 hover:bg-slate-100" : "text-slate-300"
+                  canUndo ? "text-foreground hover:bg-muted" : "text-muted-foreground/40"
                 )}
-                title="Undo (Ctrl+Z)"
+                title="Undo"
               >
                 <Undo2 size={16} />
               </button>
@@ -735,52 +942,46 @@ function EditorContent({
                 disabled={!canRedo}
                 className={cn(
                   "rounded-md p-1.5 transition-colors",
-                  canRedo ? "text-slate-600 hover:bg-slate-100" : "text-slate-300"
+                  canRedo ? "text-foreground hover:bg-muted" : "text-muted-foreground/40"
                 )}
-                title="Redo (Ctrl+Shift+Z)"
+                title="Redo"
               >
                 <Redo2 size={16} />
               </button>
             </div>
             
-            <span className="text-sm font-medium text-slate-700">
-              {activePage?.name || 'Select a step'}
-            </span>
-
-            <div className="flex items-center gap-2">
-              {pages.length > 1 && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => activePageIndex > 0 && setActivePage(pages[activePageIndex - 1].id)}
-                    disabled={activePageIndex === 0}
-                    className={cn(
-                      "rounded-md p-1 transition-colors",
-                      activePageIndex > 0 ? "text-slate-600 hover:bg-slate-100" : "text-slate-300"
-                    )}
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <span className="min-w-[40px] text-center text-xs text-slate-500">
-                    {activePageIndex + 1} / {pages.length}
-                  </span>
-                  <button
-                    onClick={() => activePageIndex < pages.length - 1 && setActivePage(pages[activePageIndex + 1].id)}
-                    disabled={activePageIndex === pages.length - 1}
-                    className={cn(
-                      "rounded-md p-1 transition-colors",
-                      activePageIndex < pages.length - 1 ? "text-slate-600 hover:bg-slate-100" : "text-slate-300"
-                    )}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
+            {pages.length > 1 && (
+              <div className="flex items-center gap-1 rounded-lg border bg-background/95 p-1 shadow-sm backdrop-blur-sm">
+                <button
+                  onClick={() => activePageIndex > 0 && setActivePage(pages[activePageIndex - 1].id)}
+                  disabled={activePageIndex === 0}
+                  className={cn(
+                    "rounded-md p-1 transition-colors",
+                    activePageIndex > 0 ? "hover:bg-muted" : "text-muted-foreground/40"
+                  )}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="min-w-[50px] text-center text-xs font-medium">
+                  {activePageIndex + 1} / {pages.length}
+                </span>
+                <button
+                  onClick={() => activePageIndex < pages.length - 1 && setActivePage(pages[activePageIndex + 1].id)}
+                  disabled={activePageIndex === pages.length - 1}
+                  className={cn(
+                    "rounded-md p-1 transition-colors",
+                    activePageIndex < pages.length - 1 ? "hover:bg-muted" : "text-muted-foreground/40"
+                  )}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Canvas Area */}
-          <div className="flex h-full items-center justify-center pt-12 pb-4">
-            <PhoneFrame>
+          <div className="flex h-full items-center justify-center overflow-auto p-8">
+            <DeviceFrame device={device} slug={funnel.slug}>
               {activePage ? (
                 <CanvasEditor
                   page={activePage}
@@ -792,17 +993,17 @@ function EditorContent({
                   totalPages={pages.length}
                 />
               ) : (
-                <div className="flex h-full items-center justify-center text-slate-400">
-                  Select a step to start editing
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  Select a page to edit
                 </div>
               )}
-            </PhoneFrame>
+            </DeviceFrame>
           </div>
         </main>
 
         {/* Right Sidebar - Inspector */}
         {mode === 'edit' && (
-          <aside className="w-72 border-l border-slate-200 bg-white">
+          <aside className="w-72 shrink-0 border-l bg-background">
             <InspectorPanel />
           </aside>
         )}
@@ -815,10 +1016,10 @@ function EditorContent({
         onOpenChange={setShowSettings}
         onSave={onUpdateSettings} 
       />
-      <AddStepModal
-        open={showAddStep}
-        onOpenChange={setShowAddStep}
-        onAddStep={handleAddStep}
+      <AddPageModal
+        open={showAddPage}
+        onOpenChange={setShowAddPage}
+        onAddPage={handleAddPage}
       />
     </div>
   );
@@ -952,8 +1153,8 @@ export default function FunnelEditor() {
   if (isRoleLoading || funnelQuery.isLoading) return <LoadingState message="Loading..." />;
   if (funnelQuery.isError) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-50">
-        <p className="text-slate-600">Failed to load funnel</p>
+      <div className="flex h-screen flex-col items-center justify-center gap-4">
+        <p className="text-muted-foreground">Failed to load funnel</p>
         <Button onClick={() => navigate(`/team/${teamId}/funnels`)}>Back</Button>
       </div>
     );

@@ -10,7 +10,7 @@
   width: 100%;
   min-height: 100%;
   padding: 32px 24px;
-  gap: 32px;
+  gap: 28px;
   background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
 }
 
@@ -26,7 +26,7 @@
 
 .builder-section--hero {
   text-align: center;
-  padding: 24px 0;
+  padding: 20px 0;
 }
 
 .builder-section--content {
@@ -81,7 +81,7 @@
 /* Paragraph - Body text */
 .builder-paragraph {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.6;
@@ -136,7 +136,7 @@
   width: 100%;
   height: 1px;
   margin: 8px 0;
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
   border: none;
 }
 
@@ -225,7 +225,7 @@
   justify-content: center;
   gap: 12px;
   width: 100%;
-  min-height: 180px;
+  min-height: 140px;
   padding: 32px;
   background: rgba(255, 255, 255, 0.03);
   border: 2px dashed rgba(255, 255, 255, 0.15);
@@ -237,7 +237,7 @@
 }
 
 .builder-placeholder-text {
-  font-size: 14px;
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.4);
 }
 
@@ -260,16 +260,19 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all 200ms ease;
+  text-align: left;
 }
 
 .builder-option-item:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(99, 102, 241, 0.4);
+  transform: translateX(4px);
 }
 
 .builder-option-emoji {
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .builder-option-label {
@@ -281,34 +284,36 @@
 /* Icon */
 .builder-icon {
   flex-shrink: 0;
+  display: block;
+  margin: 0 auto 16px;
 }
 
 /* Info Card */
 .builder-info-card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
-  padding: 24px;
+  padding: 20px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  border-radius: 14px;
 }
 
 .builder-info-item {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
 }
 
 .builder-info-icon {
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
   flex-shrink: 0;
 }
 
 .builder-info-text {
-  font-size: 15px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.8);
   line-height: 1.5;
 }
@@ -324,5 +329,5 @@
 
 .builder-image-placeholder {
   max-width: 280px;
-  min-height: 160px;
+  min-height: 140px;
 }
