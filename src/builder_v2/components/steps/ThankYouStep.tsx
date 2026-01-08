@@ -20,9 +20,10 @@ export function ThankYouStep({
   return (
     <div
       className={cn(
-        "step-card step-card--thank-you",
+        "step-card step-card--thank_you",
         isSelected && "step-card--selected"
       )}
+      data-step-type="Thank You"
       style={{
         ...backgroundStyle,
         color: d.textColor,

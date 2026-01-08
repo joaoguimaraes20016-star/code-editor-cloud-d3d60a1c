@@ -26,9 +26,10 @@ export function MultiChoiceStep({
   return (
     <div
       className={cn(
-        "step-card step-card--multi-choice",
+        "step-card step-card--multi_choice",
         isSelected && "step-card--selected"
       )}
+      data-step-type="Multi Choice"
       style={{
         ...backgroundStyle,
         color: d.textColor,

@@ -13,6 +13,7 @@
    ============================================================================ */
 
 @import '../styles/visual-parity.css';
+@import './canvas-experience.css';
 
 :root {
   /* Base timing - slightly slower for calm */

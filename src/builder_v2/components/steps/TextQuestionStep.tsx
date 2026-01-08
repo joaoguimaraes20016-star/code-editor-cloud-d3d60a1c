@@ -19,9 +19,10 @@ export function TextQuestionStep({
   return (
     <div
       className={cn(
-        "step-card step-card--text-question",
+        "step-card step-card--text_question",
         isSelected && "step-card--selected"
       )}
+      data-step-type="Question"
       style={{
         ...backgroundStyle,
         color: d.textColor,
@@ -37,18 +38,20 @@ export function TextQuestionStep({
             {content.subtext}
           </p>
         )}
-        <input
-          type="text"
-          className="step-input"
-          placeholder={content.placeholder || 'Type your answer...'}
-          style={{
-            backgroundColor: d.inputBg || 'rgba(255,255,255,0.1)',
-            color: d.inputTextColor || d.textColor,
-            borderRadius: `${d.inputRadius || d.borderRadius}px`,
-            borderColor: d.inputBorder || 'rgba(255,255,255,0.2)',
-          }}
-          readOnly
-        />
+        <div className="step-input-wrapper">
+          <input
+            type="text"
+            className="step-input"
+            placeholder={content.placeholder || 'Type your answer...'}
+            style={{
+              backgroundColor: d.inputBg || 'rgba(255,255,255,0.1)',
+              color: d.inputTextColor || d.textColor,
+              borderRadius: `${d.inputRadius || d.borderRadius}px`,
+              borderColor: d.inputBorder || 'rgba(255,255,255,0.2)',
+            }}
+            readOnly
+          />
+        </div>
         <button
           className={cn("step-button", sizes.button)}
           style={{

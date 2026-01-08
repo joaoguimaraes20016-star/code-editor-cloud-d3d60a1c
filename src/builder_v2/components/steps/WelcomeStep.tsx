@@ -23,6 +23,7 @@ export function WelcomeStep({
         "step-card step-card--welcome",
         isSelected && "step-card--selected"
       )}
+      data-step-type="Welcome"
       style={{
         ...backgroundStyle,
         color: d.textColor,

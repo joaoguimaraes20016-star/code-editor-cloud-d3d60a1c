@@ -41,6 +41,7 @@ export function VideoStep({
         "step-card step-card--video",
         isSelected && "step-card--selected"
       )}
+      data-step-type="Video"
       style={{
         ...backgroundStyle,
         color: d.textColor,

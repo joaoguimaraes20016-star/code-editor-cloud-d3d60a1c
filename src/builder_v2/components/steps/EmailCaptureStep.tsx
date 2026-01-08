@@ -20,9 +20,10 @@ export function EmailCaptureStep({
   return (
     <div
       className={cn(
-        "step-card step-card--email-capture",
+        "step-card step-card--email_capture",
         isSelected && "step-card--selected"
       )}
+      data-step-type="Email Capture"
       style={{
         ...backgroundStyle,
         color: d.textColor,

@@ -20,9 +20,10 @@ export function PhoneCaptureStep({
   return (
     <div
       className={cn(
-        "step-card step-card--phone-capture",
+        "step-card step-card--phone_capture",
         isSelected && "step-card--selected"
       )}
+      data-step-type="Phone Capture"
       style={{
         ...backgroundStyle,
         color: d.textColor,

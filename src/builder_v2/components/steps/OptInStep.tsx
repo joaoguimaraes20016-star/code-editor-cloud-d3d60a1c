@@ -27,9 +27,10 @@ export function OptInStep({
   return (
     <div
       className={cn(
-        "step-card step-card--opt-in",
+        "step-card step-card--opt_in",
         isSelected && "step-card--selected"
       )}
+      data-step-type="Opt-In Form"
       style={{
         ...backgroundStyle,
         color: d.textColor,

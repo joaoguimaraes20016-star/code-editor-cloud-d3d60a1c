@@ -24,6 +24,7 @@ export function EmbedStep({
         "step-card step-card--embed",
         isSelected && "step-card--selected"
       )}
+      data-step-type="Calendar"
       style={{
         ...backgroundStyle,
         color: d.textColor,
