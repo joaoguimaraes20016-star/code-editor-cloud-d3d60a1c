@@ -46,12 +46,18 @@ function TemplatePreview({ template }: { template: SectionTemplate }) {
 
   // Hero templates
   if (category === 'hero') {
+    const showButton = id.includes('button') || id.includes('card');
+    const showImage = id.includes('image');
+
     return (
       <div className="space-y-2">
         <div className="h-2.5 w-24 bg-white/90 rounded" />
         <div className="h-1.5 w-20 bg-white/50 rounded" />
-        {id.includes('button') && (
+        {showButton && (
           <div className="h-3 w-12 bg-blue-500 rounded-sm mt-2" />
+        )}
+        {showImage && (
+          <div className="h-6 w-full bg-white/10 border border-white/20 rounded mt-2" />
         )}
       </div>
     );

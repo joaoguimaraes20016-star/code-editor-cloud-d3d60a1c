@@ -85,7 +85,7 @@ export function Frame({ name, children, className, backgroundColor, padding, gap
 // ============================================================================
 
 interface SectionProps {
-  variant?: 'hero' | 'content' | 'form' | 'media' | 'options' | 'cta' | 'embed';
+  variant?: 'hero' | 'hero-card' | 'content' | 'form' | 'media' | 'options' | 'cta' | 'embed';
   children?: ReactNode;
   className?: string;
   backgroundColor?: string;
@@ -269,10 +269,10 @@ export function CtaButton({
     <button
       type="button"
       className={cn(
-        'builder-cta-button', 
+        'builder-cta-button',
         `builder-cta-button--${variant}`,
         sizeClasses[size],
-        !fullWidth && 'w-auto',
+        fullWidth ? 'w-full' : 'w-auto',
         getShadowClass(shadow),
         className
       )}
@@ -739,6 +739,7 @@ export function HeaderBar({
 interface ContentCardProps {
   backgroundColor?: string;
   borderRadius?: number;
+  padding?: number;
   shadow?: boolean;
   children?: ReactNode;
   className?: string;
@@ -747,6 +748,7 @@ interface ContentCardProps {
 export function ContentCard({ 
   backgroundColor = '#ffffff', 
   borderRadius = 16,
+  padding = 32,
   shadow = true,
   children,
   className 
@@ -757,6 +759,7 @@ export function ContentCard({
       style={{ 
         backgroundColor,
         borderRadius: `${borderRadius}px`,
+        padding: `${padding}px`,
       }}
     >
       {children}
