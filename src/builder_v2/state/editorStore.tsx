@@ -55,6 +55,52 @@ export function generateNodeId(type: string) {
   return `${type}-${nodeIdCounter}`;
 }
 
+// Helper functions for step defaults
+function getStepLabel(stepType: string): string {
+  const labels: Record<string, string> = {
+    welcome: 'Welcome',
+    text_question: 'Question',
+    multi_choice: 'Multi Choice',
+    email_capture: 'Email Capture',
+    phone_capture: 'Phone Capture',
+    opt_in: 'Opt-In Form',
+    video: 'Video',
+    embed: 'Calendar',
+    thank_you: 'Thank You',
+  };
+  return labels[stepType] || 'Step';
+}
+
+function getDefaultHeadline(stepType: string): string {
+  const headlines: Record<string, string> = {
+    welcome: 'Welcome! Let\'s get started.',
+    text_question: 'Tell us about yourself',
+    multi_choice: 'Choose an option',
+    email_capture: 'Enter your email',
+    phone_capture: 'Enter your phone number',
+    opt_in: 'Get instant access',
+    video: 'Watch this first',
+    embed: 'Book your call',
+    thank_you: 'Thank you!',
+  };
+  return headlines[stepType] || 'Step';
+}
+
+function getDefaultSubtext(stepType: string): string {
+  const subtexts: Record<string, string> = {
+    welcome: 'We\'re excited to have you here.',
+    text_question: 'Your answer helps us personalize your experience.',
+    multi_choice: 'Select the option that best describes you.',
+    email_capture: 'We\'ll send you important updates.',
+    phone_capture: 'We\'ll text you a confirmation.',
+    opt_in: 'Fill out the form below to continue.',
+    video: 'This will only take a moment.',
+    embed: 'Select a time that works for you.',
+    thank_you: 'We\'ll be in touch soon.',
+  };
+  return subtexts[stepType] || '';
+}
+
 export function findNodeById(node: CanvasNode, nodeId: string): CanvasNode | null {
   if (node.id === nodeId) {
     return node;
@@ -565,7 +611,9 @@ type BaseEditorAction =
   | { type: 'COMMIT_NODE_PROPS'; nodeId: string; partialProps: Record<string, unknown> }
   | { type: 'UPDATE_PAGE_PROPS'; pageId: string; partialProps: Partial<Omit<Page, 'id' | 'canvasRoot'>> }
   | { type: 'ADD_NODE'; parentId: string; node: CanvasNode }
+  | { type: 'ADD_PAGE'; page: Page }
   | { type: 'DELETE_NODE'; nodeId: string }
+  | { type: 'DELETE_PAGE'; pageId: string }
   | { type: 'MOVE_NODE_UP'; nodeId: string }
   | { type: 'MOVE_NODE_DOWN'; nodeId: string }
   | { type: 'MOVE_NODE_TO_PARENT'; nodeId: string; targetParentId: string; targetIndex?: number }
@@ -612,7 +660,11 @@ export type EditorStoreContextValue = {
   /** Phase 27: Update page-level properties (name, type, layoutPersonality, etc.) */
   updatePageProps: (pageId: string, partialProps: Partial<Omit<Page, 'id' | 'canvasRoot'>>) => void;
   addNode: (parentId: string, type: string) => void;
+  /** Add a new page/step to the funnel */
+  addPage: (stepType: string) => void;
   deleteNode: (nodeId: string) => void;
+  /** Delete a page from the funnel */
+  deletePage: (pageId: string) => void;
   moveNodeUp: (nodeId: string) => void;
   moveNodeDown: (nodeId: string) => void;
   moveNodeToParent: (nodeId: string, targetParentId: string, targetIndex?: number) => void;
@@ -647,7 +699,9 @@ const initialHistoryState: HistoryState = {
 
 const historyTrackedActions = new Set<BaseEditorAction['type']>([
   'ADD_NODE',
+  'ADD_PAGE',
   'DELETE_NODE',
+  'DELETE_PAGE',
   'MOVE_NODE_UP',
   'MOVE_NODE_DOWN',
   'MOVE_NODE_TO_PARENT',
@@ -759,6 +813,42 @@ function editorReducer(state: EditorSnapshot, action: BaseEditorAction): EditorS
         ...state,
         pages: nextPages,
         selectedNodeId: nextSelectedNodeId,
+      };
+    }
+    case 'ADD_PAGE': {
+      return {
+        ...state,
+        pages: [...state.pages, action.page],
+        activePageId: action.page.id,
+        selectedNodeId: null,
+      };
+    }
+    case 'DELETE_PAGE': {
+      // Cannot delete the last page
+      if (state.pages.length <= 1) {
+        return state;
+      }
+
+      const pageIndex = state.pages.findIndex((page) => page.id === action.pageId);
+      if (pageIndex === -1) {
+        return state;
+      }
+
+      const nextPages = state.pages.filter((page) => page.id !== action.pageId);
+      
+      // If deleting the active page, switch to an adjacent page
+      let nextActivePageId = state.activePageId;
+      if (state.activePageId === action.pageId) {
+        nextActivePageId = pageIndex > 0 
+          ? nextPages[pageIndex - 1].id 
+          : nextPages[0].id;
+      }
+
+      return {
+        ...state,
+        pages: nextPages,
+        activePageId: nextActivePageId,
+        selectedNodeId: null,
       };
     }
     case 'COMMIT_NODE_PROPS': {
@@ -1248,6 +1338,51 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     [wrappedDispatch],
   );
 
+  // Add a new page/step to the funnel
+  const addPage = useCallback(
+    (stepType: string) => {
+      const pageId = generateNodeId('page');
+      const rootId = generateNodeId('step');
+      
+      // Map step type to page type
+      const pageType = (() => {
+        if (stepType === 'welcome') return 'landing';
+        if (stepType === 'opt_in' || stepType === 'email_capture' || stepType === 'phone_capture') return 'optin';
+        if (stepType === 'embed') return 'appointment';
+        if (stepType === 'thank_you') return 'thank_you';
+        return 'landing';
+      })() as Page['type'];
+
+      // Create default props based on step type
+      const defaultProps: Record<string, unknown> = {
+        headline: getDefaultHeadline(stepType),
+        subtext: getDefaultSubtext(stepType),
+        buttonText: 'Continue',
+      };
+
+      const newPage: Page = {
+        id: pageId,
+        name: getStepLabel(stepType),
+        type: pageType,
+        canvasRoot: {
+          id: rootId,
+          type: `${stepType}_step`,
+          props: defaultProps,
+          children: [],
+        },
+      };
+
+      wrappedDispatch({ type: 'ADD_PAGE', page: newPage });
+    },
+    [wrappedDispatch],
+  );
+
+  // Delete a page from the funnel
+  const deletePage = useCallback(
+    (pageId: string) => wrappedDispatch({ type: 'DELETE_PAGE', pageId }),
+    [wrappedDispatch],
+  );
+
   const moveNodeUp = useCallback(
     (nodeId: string) => wrappedDispatch({ type: 'MOVE_NODE_UP', nodeId }),
     [wrappedDispatch],
@@ -1320,7 +1455,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       updateNodeProps,
       updatePageProps,
       addNode,
+      addPage,
       deleteNode,
+      deletePage,
       moveNodeUp,
       moveNodeDown,
       moveNodeToParent: moveNodeToParentCallback,
@@ -1352,7 +1489,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       updateNodeProps,
       updatePageProps,
       addNode,
+      addPage,
       deleteNode,
+      deletePage,
       moveNodeUp,
       moveNodeDown,
       moveNodeToParentCallback,

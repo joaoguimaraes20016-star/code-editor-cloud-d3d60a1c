@@ -60,6 +60,7 @@ function EditorShellContent() {
     canUndo,
     canRedo,
     highlightedNodeIds,
+    addPage,
   } = useEditorStore();
 
   const [leftTab, setLeftTab] = useState<LeftPanelTab>('pages');
@@ -89,8 +90,7 @@ function EditorShellContent() {
   }, [canRedo, canUndo, redo, undo]);
 
   const handleAddStep = (stepType: string) => {
-    // TODO: Implement addPage in editorStore
-    console.log('Add step:', stepType);
+    addPage(stepType);
     setShowAddStep(false);
   };
 

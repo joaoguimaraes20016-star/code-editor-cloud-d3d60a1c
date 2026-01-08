@@ -5,6 +5,20 @@ import { Container } from '../components/Container';
 import { Hero } from '../components/Hero';
 import { LegacyFunnel } from '../components/LegacyFunnel';
 import { Text } from '../components/Text';
+
+// Step components
+import {
+  WelcomeStep,
+  TextQuestionStep,
+  MultiChoiceStep,
+  EmailCaptureStep,
+  PhoneCaptureStep,
+  OptInStep,
+  VideoStep,
+  EmbedStep,
+  ThankYouStep,
+} from '../components/steps';
+
 import type { ComponentCategory } from '../layout/presenceResolver';
 import type { IntentDefaultsContext, IntentDefaultsResult } from './creationHelpers';
 import {
@@ -192,6 +206,265 @@ export const ComponentRegistry: Record<string, ComponentDefinition> = {
     constraints: {
       canHaveChildren: false,
     },
+    presenceCategory: 'section',
+  },
+
+  // Step Components
+  'welcome_step': {
+    type: 'welcome_step',
+    displayName: 'Welcome',
+    defaultProps: {
+      headline: 'Welcome! Let\'s get started.',
+      subtext: 'We\'re excited to have you here.',
+      buttonText: 'Continue',
+    },
+    render: (props) => (
+      <WelcomeStep
+        content={{
+          headline: props.headline as string,
+          subtext: props.subtext as string,
+          button_text: props.buttonText as string,
+        }}
+        design={props.design as any}
+        isSelected={false}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Headline', propKey: 'headline', inputType: 'text' },
+      { label: 'Subtext', propKey: 'subtext', inputType: 'textarea', optional: true },
+      { label: 'Button Text', propKey: 'buttonText', inputType: 'text' },
+    ],
+    constraints: { canHaveChildren: false },
+    presenceCategory: 'hero',
+  },
+  'text_question_step': {
+    type: 'text_question_step',
+    displayName: 'Text Question',
+    defaultProps: {
+      headline: 'Tell us about yourself',
+      subtext: 'Your answer helps us personalize your experience.',
+      buttonText: 'Continue',
+      placeholder: 'Type your answer...',
+    },
+    render: (props) => (
+      <TextQuestionStep
+        content={{
+          headline: props.headline as string,
+          subtext: props.subtext as string,
+          button_text: props.buttonText as string,
+          placeholder: props.placeholder as string,
+        }}
+        design={props.design as any}
+        isSelected={false}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Headline', propKey: 'headline', inputType: 'text' },
+      { label: 'Subtext', propKey: 'subtext', inputType: 'textarea', optional: true },
+      { label: 'Button Text', propKey: 'buttonText', inputType: 'text' },
+      { label: 'Placeholder', propKey: 'placeholder', inputType: 'text', optional: true },
+    ],
+    constraints: { canHaveChildren: false },
+    presenceCategory: 'section',
+  },
+  'multi_choice_step': {
+    type: 'multi_choice_step',
+    displayName: 'Multi Choice',
+    defaultProps: {
+      headline: 'Choose an option',
+      subtext: 'Select the option that best describes you.',
+      options: [
+        { id: 'opt1', label: 'Option A', emoji: '✨' },
+        { id: 'opt2', label: 'Option B', emoji: '🚀' },
+        { id: 'opt3', label: 'Option C', emoji: '💡' },
+      ],
+    },
+    render: (props) => (
+      <MultiChoiceStep
+        content={{
+          headline: props.headline as string,
+          subtext: props.subtext as string,
+          options: props.options as any[],
+        }}
+        design={props.design as any}
+        isSelected={false}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Headline', propKey: 'headline', inputType: 'text' },
+      { label: 'Subtext', propKey: 'subtext', inputType: 'textarea', optional: true },
+    ],
+    constraints: { canHaveChildren: false },
+    presenceCategory: 'section',
+  },
+  'email_capture_step': {
+    type: 'email_capture_step',
+    displayName: 'Email Capture',
+    defaultProps: {
+      headline: 'Enter your email',
+      subtext: 'We\'ll send you important updates.',
+      buttonText: 'Continue',
+      placeholder: 'you@example.com',
+    },
+    render: (props) => (
+      <EmailCaptureStep
+        content={{
+          headline: props.headline as string,
+          subtext: props.subtext as string,
+          button_text: props.buttonText as string,
+          placeholder: props.placeholder as string,
+        }}
+        design={props.design as any}
+        isSelected={false}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Headline', propKey: 'headline', inputType: 'text' },
+      { label: 'Subtext', propKey: 'subtext', inputType: 'textarea', optional: true },
+      { label: 'Button Text', propKey: 'buttonText', inputType: 'text' },
+      { label: 'Placeholder', propKey: 'placeholder', inputType: 'text', optional: true },
+    ],
+    constraints: { canHaveChildren: false },
+    presenceCategory: 'section',
+  },
+  'phone_capture_step': {
+    type: 'phone_capture_step',
+    displayName: 'Phone Capture',
+    defaultProps: {
+      headline: 'Enter your phone number',
+      subtext: 'We\'ll text you a confirmation.',
+      buttonText: 'Continue',
+      placeholder: '(555) 123-4567',
+    },
+    render: (props) => (
+      <PhoneCaptureStep
+        content={{
+          headline: props.headline as string,
+          subtext: props.subtext as string,
+          button_text: props.buttonText as string,
+          placeholder: props.placeholder as string,
+        }}
+        design={props.design as any}
+        isSelected={false}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Headline', propKey: 'headline', inputType: 'text' },
+      { label: 'Subtext', propKey: 'subtext', inputType: 'textarea', optional: true },
+      { label: 'Button Text', propKey: 'buttonText', inputType: 'text' },
+      { label: 'Placeholder', propKey: 'placeholder', inputType: 'text', optional: true },
+    ],
+    constraints: { canHaveChildren: false },
+    presenceCategory: 'section',
+  },
+  'opt_in_step': {
+    type: 'opt_in_step',
+    displayName: 'Opt-In Form',
+    defaultProps: {
+      headline: 'Get instant access',
+      subtext: 'Fill out the form below to continue.',
+      buttonText: 'Submit',
+    },
+    render: (props) => (
+      <OptInStep
+        content={{
+          headline: props.headline as string,
+          subtext: props.subtext as string,
+          button_text: props.buttonText as string,
+        }}
+        design={props.design as any}
+        isSelected={false}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Headline', propKey: 'headline', inputType: 'text' },
+      { label: 'Subtext', propKey: 'subtext', inputType: 'textarea', optional: true },
+      { label: 'Button Text', propKey: 'buttonText', inputType: 'text' },
+    ],
+    constraints: { canHaveChildren: false },
+    presenceCategory: 'section',
+  },
+  'video_step': {
+    type: 'video_step',
+    displayName: 'Video',
+    defaultProps: {
+      headline: 'Watch this first',
+      subtext: 'This will only take a moment.',
+      videoUrl: '',
+      buttonText: 'Continue',
+    },
+    render: (props) => (
+      <VideoStep
+        content={{
+          headline: props.headline as string,
+          subtext: props.subtext as string,
+          video_url: props.videoUrl as string,
+          button_text: props.buttonText as string,
+        }}
+        design={props.design as any}
+        isSelected={false}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Headline', propKey: 'headline', inputType: 'text' },
+      { label: 'Video URL', propKey: 'videoUrl', inputType: 'text' },
+      { label: 'Button Text', propKey: 'buttonText', inputType: 'text', optional: true },
+    ],
+    constraints: { canHaveChildren: false },
+    presenceCategory: 'section',
+  },
+  'embed_step': {
+    type: 'embed_step',
+    displayName: 'Embed/Calendar',
+    defaultProps: {
+      headline: 'Book your call',
+      subtext: 'Select a time that works for you.',
+      embedUrl: '',
+    },
+    render: (props) => (
+      <EmbedStep
+        content={{
+          headline: props.headline as string,
+          subtext: props.subtext as string,
+          embed_url: props.embedUrl as string,
+        }}
+        design={props.design as any}
+        isSelected={false}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Headline', propKey: 'headline', inputType: 'text' },
+      { label: 'Subtext', propKey: 'subtext', inputType: 'textarea', optional: true },
+      { label: 'Embed URL', propKey: 'embedUrl', inputType: 'text' },
+    ],
+    constraints: { canHaveChildren: false },
+    presenceCategory: 'section',
+  },
+  'thank_you_step': {
+    type: 'thank_you_step',
+    displayName: 'Thank You',
+    defaultProps: {
+      headline: 'Thank you!',
+      subtext: 'We\'ll be in touch soon.',
+      buttonText: '',
+    },
+    render: (props) => (
+      <ThankYouStep
+        content={{
+          headline: props.headline as string,
+          subtext: props.subtext as string,
+          button_text: props.buttonText as string,
+        }}
+        design={props.design as any}
+        isSelected={false}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Headline', propKey: 'headline', inputType: 'text' },
+      { label: 'Subtext', propKey: 'subtext', inputType: 'textarea', optional: true },
+      { label: 'Button Text', propKey: 'buttonText', inputType: 'text', optional: true },
+    ],
+    constraints: { canHaveChildren: false },
     presenceCategory: 'section',
   },
 };
