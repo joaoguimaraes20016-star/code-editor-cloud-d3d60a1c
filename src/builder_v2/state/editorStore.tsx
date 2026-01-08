@@ -724,8 +724,32 @@ function editorReducer(state: EditorSnapshot, action: BaseEditorAction): EditorS
 
       const parentDefinition = ComponentRegistry[parentNode.type] ?? fallbackComponent;
 
+      // Compatibility: legacy/step roots (e.g. welcome_step) can't have children.
+      // If the user is trying to add a section to the page root, auto-wrap the
+      // existing root in a "frame" so future sections can be inserted.
       if (!parentDefinition.constraints.canHaveChildren) {
-        return state;
+        if (action.parentId !== targetPage.canvasRoot.id) {
+          return state;
+        }
+
+        const nextPages = state.pages.slice();
+        const frameNode: CanvasNode = {
+          id: generateNodeId('frame'),
+          type: 'frame',
+          props: {},
+          children: [targetPage.canvasRoot, action.node],
+        };
+
+        nextPages[pageIndex] = {
+          ...targetPage,
+          canvasRoot: frameNode,
+        };
+
+        return {
+          ...state,
+          pages: nextPages,
+          selectedNodeId: action.node.id,
+        };
       }
 
       const { next, inserted } = insertChildNode(targetPage.canvasRoot, action.parentId, action.node);

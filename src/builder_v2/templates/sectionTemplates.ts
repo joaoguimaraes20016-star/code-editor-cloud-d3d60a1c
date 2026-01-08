@@ -238,7 +238,7 @@ export const mediaImage: SectionTemplate = {
     children: [
       {
         id: genId('image'),
-        type: 'image_block',
+        type: 'image',
         props: { src: '', alt: 'Image description' },
         children: [],
       },
