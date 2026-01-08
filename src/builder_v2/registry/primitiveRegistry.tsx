@@ -50,7 +50,15 @@ export const PrimitiveRegistry: Record<string, ComponentDefinition> = {
     displayName: 'Section',
     defaultProps: { variant: 'content' },
     render: (props, children) => (
-      <Section variant={props.variant as 'hero' | 'content' | 'form' | 'media' | 'options' | 'cta' | 'embed'}>
+      <Section
+        variant={props.variant as 'hero' | 'hero-card' | 'content' | 'form' | 'media' | 'options' | 'cta' | 'embed'}
+        backgroundColor={props.backgroundColor as string}
+        padding={props.padding as number}
+        gap={props.gap as number}
+        maxWidth={props.maxWidth as string}
+        borderRadius={props.borderRadius as number}
+        shadow={props.shadow as string}
+      >
         {children}
       </Section>
     ),
@@ -126,6 +134,12 @@ export const PrimitiveRegistry: Record<string, ComponentDefinition> = {
         label={props.label as string} 
         variant={props.variant as 'primary' | 'secondary' | 'outline'} 
         action={props.action as 'next' | 'submit' | 'link'}
+        size={props.size as 'sm' | 'default' | 'lg'}
+        fullWidth={props.fullWidth as boolean}
+        backgroundColor={props.backgroundColor as string}
+        color={props.color as string}
+        borderRadius={props.borderRadius as number}
+        shadow={props.shadow as string}
       />
     ),
     inspectorSchema: [
@@ -410,13 +424,16 @@ export const PrimitiveRegistry: Record<string, ComponentDefinition> = {
     defaultProps: {
       backgroundColor: '#ffffff',
       borderRadius: 16,
+      padding: 32,
       shadow: true,
     },
     render: (props, children) => (
       <ContentCard 
         backgroundColor={props.backgroundColor as string}
         borderRadius={props.borderRadius as number}
+        padding={props.padding as number}
         shadow={props.shadow as boolean}
+        className={props.className as string}
       >
         {children}
       </ContentCard>
