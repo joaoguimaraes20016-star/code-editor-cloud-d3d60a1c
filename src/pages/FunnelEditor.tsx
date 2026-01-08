@@ -1,24 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import { EditorProvider, EditorShell, useEditorStore } from '@/builder_v2';
 import { extractDocument, type EditorDocument } from '@/builder_v2/state/persistence';
 import { createPublishedSnapshot, type PublishedDocumentSnapshot } from '@/builder_v2/state/documentTypes';
 import {
-  createLegacyEditorDocument,
-  createLegacySnapshotPayload,
   deriveLegacyPayloadFromDocument,
-  type LegacyFunnelStep,
-  type LegacyFunnelSummary,
   type LegacySnapshotPayload,
 } from '@/builder_v2/legacy/legacyAdapter';
 import { Button } from '@/components/ui/button';
 import { useTeamRole } from '@/hooks/useTeamRole';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-
-const LOCAL_STORAGE_KEY = 'builder_v2_editor_document';
 
 type BuilderFunnelRow = {
   id: string;
@@ -38,375 +32,82 @@ type FunnelQueryResult = {
   builderDocument: EditorDocument | null;
   legacyPayload: LegacySnapshotPayload | null;
   publishedSnapshot: PublishedDocumentSnapshot | null;
-    if (!funnelQuery.data.builderDocument) {
-      return (
-        <BuilderEmptyState teamId={teamId} funnelId={funnelId} hasLegacySteps={funnelQuery.data.hasLegacySteps} />
-      );
-    }
+  hasLegacySteps: boolean;
+};
 
-    if (!editorKey) {
-      return <FullscreenMessage message="Preparing Builder V2…" />;
-    }
-
-    return (
-      <div className="flex h-screen flex-col bg-background">
-        <EditorProvider key={editorKey}>
-          <BuilderCommandBar
-            funnelId={funnelId}
-            teamId={teamId}
-            funnelName={funnelQuery.data.funnel.name}
-            legacyPayload={legacyPayload}
-            onLegacyPayloadUpdate={setLegacyPayload}
-            publishedSnapshot={publishedSnapshot}
-            onPublished={setPublishedSnapshot}
-            lastSavedAt={lastSavedAt}
-            onSaved={(timestamp) => setLastSavedAt(timestamp)}
-          />
-          <div className="flex-1 overflow-hidden">
-            <EditorShell />
-          </div>
-        </EditorProvider>
-      </div>
-    );
-  }
-
-  type BuilderCommandBarProps = {
-    funnelId: string;
-    teamId: string;
-    funnelName: string;
-    legacyPayload: LegacySnapshotPayload | null;
-    onLegacyPayloadUpdate: (payload: LegacySnapshotPayload | null) => void;
-    publishedSnapshot: PublishedDocumentSnapshot | null;
-    onPublished: (snapshot: PublishedDocumentSnapshot) => void;
-    lastSavedAt: Date | null;
-    onSaved: (timestamp: Date) => void;
-  };
-
-  function BuilderCommandBar({
-    funnelId,
-    teamId,
-    funnelName,
-    legacyPayload,
-    onLegacyPayloadUpdate,
-    publishedSnapshot,
-    onPublished,
-    lastSavedAt,
-    onSaved,
-  }: BuilderCommandBarProps) {
-    const { pages, activePageId } = useEditorStore();
-    const [isSaving, setIsSaving] = useState(false);
-    const [isPublishing, setIsPublishing] = useState(false);
-
-    const runtimeStatus = useMemo(() => {
-      if (!publishedSnapshot) {
-        return 'Draft';
-      }
-      return `Published • ${new Date(publishedSnapshot.publishedAt).toLocaleString()}`;
-    }, [publishedSnapshot]);
-    } finally {
-      setIsPublishing(false);
-    }
-  }, [funnelId, isPublishing, persistFunnel, teamId]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      setSteps((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        const reordered = arrayMove(items, oldIndex, newIndex);
-        markStepsDirty(reordered.map((step) => step.id));
-        return reordered;
-      });
-    }
-  };
-
-  const handleAddStep = (stepType: FunnelStep['step_type']) => {
-    const newStep: FunnelStep = {
-      id: crypto.randomUUID(),
-      funnel_id: funnelId!,
-      order_index: steps.length,
-      step_type: stepType,
-      content: getDefaultContent(stepType),
-    };
-
-    const thankYouIndex = steps.findIndex((s) => s.step_type === 'thank_you');
-    const newSteps = [...steps];
-    if (thankYouIndex !== -1) {
-      newSteps.splice(thankYouIndex, 0, newStep);
-    } else {
-      newSteps.push(newStep);
-    }
-    setSteps(newSteps);
-
-    setSelection({ type: 'step', id: newStep.id });
-    markStepsDirty(newSteps.map((step) => step.id));
-  };
-
-  const handleDeleteStep = (stepId: string) => {
-    const remainingSteps = steps.filter((s) => s.id !== stepId);
-    setFunnelState((prev) => {
-      const { [stepId]: _removedDesign, ...nextDesigns } = prev.stepDesigns;
-      const { [stepId]: _removedSettings, ...nextSettings } = prev.stepSettings;
-      const { [stepId]: _removedOrder, ...nextOrders } = prev.elementOrders;
-      const { [stepId]: _removedDynamic, ...nextDynamic } = prev.dynamicElements;
-      const { [stepId]: _removedBlocks, ...nextBlocks } = prev.stepBlocks;
-      const { [stepId]: _removedPageSettings, ...nextPageSettings } = prev.pageSettings;
-
-      return {
-        ...prev,
-        steps: remainingSteps,
-        stepDesigns: nextDesigns,
-        stepSettings: nextSettings,
-        elementOrders: nextOrders,
-        dynamicElements: nextDynamic,
-        stepBlocks: nextBlocks,
-        pageSettings: nextPageSettings,
-      };
-    });
-    if (selectionStepId === stepId) {
-      if (remainingSteps[0]?.id) {
-        setSelection({ type: 'step', id: remainingSteps[0].id });
-      } else {
-        setSelection({ type: 'funnel', id: funnel?.id ?? 'funnel' });
-      }
-    }
-    markStepsDirty(remainingSteps.map((step) => step.id));
-  };
-
-  const handleUpdateDesign = (stepId: string, design: StepDesign) => {
-    updateStepDesign(stepId, design);
-  };
-
-  const handleUpdateSettings = (stepId: string, settings: StepSettings) => {
-    updateStepSettings(stepId, settings);
-  };
-
-  const handleUpdateBlocks = (stepId: string, blocks: ContentBlock[]) => {
-    updateStepBlocks(stepId, blocks);
-  };
-
-  const handleUpdateElementOrder = (stepId: string, order: string[]) => {
-    updateElementOrder(stepId, order);
-  };
-
-  const handlePreview = () => {
-    setShowLivePreview(true);
-  };
-
-  const handleOpenInNewTab = () => {
-    // Use custom domain URL if linked, otherwise use slug URL
-    if (linkedDomain) {
-      window.open(`https://${linkedDomain}`, '_blank');
-    } else {
-      window.open(`/f/${funnel?.slug}`, '_blank');
-    }
-  };
-
-  const handleDuplicateStep = (stepId: string) => {
-    const stepToDuplicate = steps.find(s => s.id === stepId);
-    if (!stepToDuplicate) return;
-    
-    const newStepId = crypto.randomUUID();
-    const newStep: FunnelStep = {
-      ...stepToDuplicate,
-      id: newStepId,
-      content: { ...stepToDuplicate.content, headline: `${stepToDuplicate.content.headline || 'Untitled'} (Copy)` },
-    };
-
-    const stepIndex = steps.findIndex(s => s.id === stepId);
-    const newSteps = [...steps];
-    newSteps.splice(stepIndex + 1, 0, newStep);
-
-    setFunnelState((prev) => ({
-      ...prev,
-      steps: newSteps,
-      stepDesigns: {
-        ...prev.stepDesigns,
-        [newStepId]: prev.stepDesigns[stepId] ? { ...prev.stepDesigns[stepId] } : {},
-      },
-      stepSettings: {
-        ...prev.stepSettings,
-        [newStepId]: prev.stepSettings[stepId] ? { ...prev.stepSettings[stepId] } : {},
-      },
-      elementOrders: {
-        ...prev.elementOrders,
-        [newStepId]: prev.elementOrders[stepId] ? [...prev.elementOrders[stepId]] : [],
-      },
-      dynamicElements: {
-        ...prev.dynamicElements,
-        [newStepId]: prev.dynamicElements[stepId] ? { ...prev.dynamicElements[stepId] } : {},
-      },
-      stepBlocks: {
-        ...prev.stepBlocks,
-        [newStepId]: prev.stepBlocks[stepId] ? [...prev.stepBlocks[stepId]] : [],
-      },
-      pageSettings: {
-        ...prev.pageSettings,
-        [newStepId]: prev.pageSettings[stepId] ? { ...prev.pageSettings[stepId] } : {},
-      },
-    }));
-    setSelection({ type: 'step', id: newStepId });
-    markStepsDirty(newSteps.map(step => step.id));
-  };
-
-  const handleRenameStep = (stepId: string, newName: string) => {
-    updateStepContent(stepId, { headline: newName });
-  };
-
-  const handleOpenPageSettings = (stepId: string) => {
-    setPageSettingsStepId(stepId);
-    setShowPageSettings(true);
-  };
-
-  const handleMoveStep = (stepId: string, direction: 'up' | 'down') => {
-    const index = steps.findIndex(s => s.id === stepId);
-    if (index === -1) return;
-    
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= steps.length) return;
-    
-    const reordered = arrayMove(steps, index, newIndex);
-    setSteps(reordered);
-    markStepsDirty(reordered.map((step) => step.id));
-  };
-
-  // Navigation between steps
-  // Selection state is declared once near the top of the component to avoid duplicate symbols.
-  const currentStepIndex = steps.findIndex((s) => s.id === selectionStepId);
-  const handleNavigatePrevious = () => {
-    if (currentStepIndex > 0) {
-      setSelection({ type: 'step', id: steps[currentStepIndex - 1].id });
-    }
-  };
-  const handleNavigateNext = () => {
-    if (currentStepIndex < steps.length - 1) {
-      setSelection({ type: 'step', id: steps[currentStepIndex + 1].id });
-    }
-  };
-
-  const selectedStep = useMemo(
-    () => steps.find((s) => s.id === selectionStepId) || null,
-    [steps, selectionStepId]
+function FullscreenMessage({ message }: { message: string }) {
+  return (
+    <div className="flex h-screen w-full items-center justify-center bg-background">
+      <p className="text-muted-foreground">{message}</p>
+    </div>
   );
+}
 
-  useEffect(() => {
-    if (steps.length === 0) {
-      setSelection({ type: 'funnel', id: funnel?.id ?? 'funnel' });
-      return;
+function BuilderEmptyState({
+  teamId,
+  funnelId,
+  hasLegacySteps,
+}: {
+  teamId: string;
+  funnelId: string;
+  hasLegacySteps: boolean;
+}) {
+  const [isMigrating, setIsMigrating] = useState(false);
+
+  const handleMigrate = async () => {
+    setIsMigrating(true);
+    try {
+      // Fetch legacy steps to build initial document
+      const { data: legacySteps } = await supabase
+        .from('funnel_steps')
+        .select('*')
+        .eq('funnel_id', funnelId)
+        .order('order_index');
+
+      // Create an initial empty document (migration can be enhanced later)
+      const initialDoc: EditorDocument = {
+        version: 1,
+        pages: [
+          {
+            id: 'page-1',
+            title: 'Home',
+            nodes: [],
+          },
+        ],
+        activePageId: 'page-1',
+      };
+
+      const { error } = await supabase
+        .from('funnels')
+        .update({ builder_document: initialDoc as unknown as Record<string, unknown> })
+        .eq('id', funnelId);
+
+      if (error) throw error;
+
+      toast({ title: 'Builder V2 initialized', description: 'Reload the page to continue.' });
+      window.location.reload();
+    } catch (err) {
+      console.error('[Builder] Migration failed', err);
+      toast({ title: 'Migration failed', variant: 'destructive' });
+    } finally {
+      setIsMigrating(false);
     }
-
-    if (selectionStepId && steps.some((step) => step.id === selectionStepId)) return;
-
-    setSelection({ type: 'step', id: steps[0].id });
-  }, [funnel?.id, selectionStepId, steps]);
-
-  // Keyboard shortcuts for element navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Skip if user is typing in an input field
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return;
-      }
-
-      if (!selectedStep) return;
-
-      const currentOrder = elementOrders[selectedStep.id] || [];
-
-      // Arrow keys - navigate between elements
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        
-        if (!selectionElementId && currentOrder.length > 0) {
-          // Select first element if nothing selected
-          setSelection({ type: 'element', id: buildSelectionId(selectedStep.id, currentOrder[0]) });
-          return;
-        }
-        
-        const currentIndex = currentOrder.indexOf(selectionElementId || '');
-        if (currentIndex === -1) return;
-        
-        const newIndex = e.key === 'ArrowUp' 
-          ? Math.max(0, currentIndex - 1)
-          : Math.min(currentOrder.length - 1, currentIndex + 1);
-        
-        setSelection({ type: 'element', id: buildSelectionId(selectedStep.id, currentOrder[newIndex]) });
-      }
-
-      // Delete key - remove selected element
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectionElementId) {
-        // Only delete dynamic elements (not standard ones like headline, button)
-        if (selectionElementId.includes('_') && /^\w+_\d+/.test(selectionElementId)) {
-          e.preventDefault();
-          const newOrder = currentOrder.filter(id => id !== selectionElementId);
-          handleUpdateElementOrder(selectedStep.id, newOrder);
-          setSelection({ type: 'step', id: selectedStep.id });
-        }
-      }
-
-      // Ctrl+D or Cmd+D - duplicate element
-      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectionElementId) {
-        e.preventDefault();
-        const index = currentOrder.indexOf(selectionElementId);
-        if (index !== -1) {
-          const newElementId = `${selectionElementId}_copy_${crypto.randomUUID()}`;
-          const newOrder = [...currentOrder];
-          newOrder.splice(index + 1, 0, newElementId);
-          
-          // Copy dynamic content if exists
-          const currentDynamic = dynamicElements[selectedStep.id]?.[selectionElementId];
-          if (currentDynamic) {
-            replaceDynamicElement(selectedStep.id, newElementId, { ...currentDynamic });
-          }
-          
-          handleUpdateElementOrder(selectedStep.id, newOrder);
-          setSelection({ type: 'element', id: buildSelectionId(selectedStep.id, newElementId) });
-        }
-      }
-
-      // Escape - deselect element
-      if (e.key === 'Escape') {
-        setSelection({ type: 'step', id: selectedStep.id });
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectionElementId, selectedStep, elementOrders, dynamicElements, handleUpdateElementOrder, replaceDynamicElement]);
-
-  if (isFunnelError) {
-=======
-  if (!funnelQuery.data.builderDocument) {
->>>>>>> a5ffa62 (Stabilize funnel builder layout and editor rendering)
-    return (
-      <BuilderEmptyState teamId={teamId} funnelId={funnelId} hasLegacySteps={funnelQuery.data.hasLegacySteps} />
-    );
-  }
-
-  if (!editorKey) {
-    return <FullscreenMessage message="Preparing Builder V2…" />;
-  }
+  };
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      <EditorProvider key={editorKey}>
-        <BuilderCommandBar
-          funnelId={funnelId}
-          teamId={teamId}
-          funnelName={funnelQuery.data.funnel.name}
-          legacyPayload={legacyPayload}
-          onLegacyPayloadUpdate={setLegacyPayload}
-          publishedSnapshot={publishedSnapshot}
-          onPublished={setPublishedSnapshot}
-          lastSavedAt={lastSavedAt}
-          onSaved={(timestamp) => setLastSavedAt(timestamp)}
-        />
-        <div className="flex-1 overflow-hidden">
-          <EditorShell />
-        </div>
-      </EditorProvider>
+    <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
+      <h1 className="text-xl font-semibold">Builder V2</h1>
+      <p className="text-muted-foreground">
+        {hasLegacySteps
+          ? 'This funnel has legacy steps. Migrate to Builder V2 to continue.'
+          : 'No builder document found. Initialize a new document to get started.'}
+      </p>
+      <Button onClick={handleMigrate} disabled={isMigrating}>
+        {isMigrating ? 'Initializing…' : hasLegacySteps ? 'Migrate to V2' : 'Create Document'}
+      </Button>
+      <Button variant="ghost" asChild>
+        <Link to={`/team/${teamId}/funnels`}>Back to Funnels</Link>
+      </Button>
     </div>
   );
 }
@@ -451,7 +152,7 @@ function BuilderCommandBar({
       const doc = extractDocument(pages, activePageId);
       const { error } = await supabase
         .from('funnels')
-        .update({ builder_document: doc, updated_at: new Date().toISOString() })
+        .update({ builder_document: doc as unknown as Record<string, unknown>, updated_at: new Date().toISOString() })
         .eq('id', funnelId);
 
       if (error) {
@@ -483,8 +184,8 @@ function BuilderCommandBar({
       const { error } = await supabase
         .from('funnels')
         .update({
-          builder_document: doc,
-          published_document_snapshot: snapshot,
+          builder_document: doc as unknown as Record<string, unknown>,
+          published_document_snapshot: snapshot as unknown as Record<string, unknown>,
           status: 'published',
           updated_at: new Date().toISOString(),
         })
@@ -528,5 +229,109 @@ function BuilderCommandBar({
         </Button>
       </div>
     </header>
+  );
+}
+
+export default function FunnelEditor() {
+  const { teamId, funnelId } = useParams<{ teamId: string; funnelId: string }>();
+  const { isLoading: isRoleLoading } = useTeamRole(teamId);
+
+  const [editorKey, setEditorKey] = useState<string | null>(null);
+  const [legacyPayload, setLegacyPayload] = useState<LegacySnapshotPayload | null>(null);
+  const [publishedSnapshot, setPublishedSnapshot] = useState<PublishedDocumentSnapshot | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  const funnelQuery = useQuery<FunnelQueryResult>({
+    queryKey: ['funnel-builder', funnelId],
+    enabled: !!funnelId && !isRoleLoading,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('funnels')
+        .select('id, team_id, name, slug, status, settings, domain_id, builder_document, published_document_snapshot, updated_at')
+        .eq('id', funnelId!)
+        .single();
+
+      if (error) throw error;
+
+      // Check if there are legacy steps
+      const { count } = await supabase
+        .from('funnel_steps')
+        .select('id', { count: 'exact', head: true })
+        .eq('funnel_id', funnelId!);
+
+      const funnel = data as unknown as BuilderFunnelRow;
+      const builderDocument = funnel.builder_document ?? null;
+      const publishedSnap = funnel.published_document_snapshot ?? null;
+
+      // Derive legacy payload from document if available
+      let legacy: LegacySnapshotPayload | null = null;
+      if (builderDocument) {
+        legacy = deriveLegacyPayloadFromDocument(builderDocument);
+      }
+
+      return {
+        funnel,
+        builderDocument,
+        legacyPayload: legacy,
+        publishedSnapshot: publishedSnap,
+        hasLegacySteps: (count ?? 0) > 0,
+      };
+    },
+  });
+
+  // Initialize editor state when document loads
+  useEffect(() => {
+    if (funnelQuery.data?.builderDocument) {
+      setEditorKey(`editor-${funnelId}-${Date.now()}`);
+      setLegacyPayload(funnelQuery.data.legacyPayload);
+      setPublishedSnapshot(funnelQuery.data.publishedSnapshot);
+    }
+  }, [funnelId, funnelQuery.data]);
+
+  if (!teamId || !funnelId) {
+    return <FullscreenMessage message="Invalid route parameters" />;
+  }
+
+  if (isRoleLoading || funnelQuery.isLoading) {
+    return <FullscreenMessage message="Loading funnel…" />;
+  }
+
+  if (funnelQuery.isError) {
+    return <FullscreenMessage message="Failed to load funnel" />;
+  }
+
+  if (!funnelQuery.data) {
+    return <FullscreenMessage message="Funnel not found" />;
+  }
+
+  if (!funnelQuery.data.builderDocument) {
+    return (
+      <BuilderEmptyState teamId={teamId} funnelId={funnelId} hasLegacySteps={funnelQuery.data.hasLegacySteps} />
+    );
+  }
+
+  if (!editorKey) {
+    return <FullscreenMessage message="Preparing Builder V2…" />;
+  }
+
+  return (
+    <div className="flex h-screen flex-col bg-background">
+      <EditorProvider key={editorKey}>
+        <BuilderCommandBar
+          funnelId={funnelId}
+          teamId={teamId}
+          funnelName={funnelQuery.data.funnel.name}
+          legacyPayload={legacyPayload}
+          onLegacyPayloadUpdate={setLegacyPayload}
+          publishedSnapshot={publishedSnapshot}
+          onPublished={setPublishedSnapshot}
+          lastSavedAt={lastSavedAt}
+          onSaved={(timestamp) => setLastSavedAt(timestamp)}
+        />
+        <div className="flex-1 overflow-hidden">
+          <EditorShell />
+        </div>
+      </EditorProvider>
+    </div>
   );
 }
