@@ -6,10 +6,10 @@
    ============================================================================ */
 
 :root {
-  --builder-bg: #f8fafc;
+  --builder-bg: #f1f5f9;
   --builder-panel-bg: #ffffff;
   --builder-panel-border: #e2e8f0;
-  --builder-canvas-bg: #f1f5f9;
+  --builder-canvas-bg: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
   --builder-text-primary: #0f172a;
   --builder-text-secondary: #475569;
   --builder-text-muted: #94a3b8;
@@ -23,10 +23,12 @@
   --builder-font-size-xs: 11px;
   --builder-font-size-sm: 13px;
   --builder-font-size-base: 14px;
+  --builder-selection-color: #6366f1;
+  --builder-selection-bg: rgba(99, 102, 241, 0.12);
 }
 
 /* ============================================================================
-   DEVICE FRAMES
+   DEVICE FRAMES - Dark preview inside white workspace
    ============================================================================ */
 
 /* Phone Frame */
@@ -37,7 +39,7 @@
   border-radius: 48px;
   padding: 12px;
   box-shadow: 
-    0 25px 60px -12px rgba(0, 0, 0, 0.35),
+    0 25px 60px -12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(255, 255, 255, 0.05) inset,
     0 -1px 0 0 rgba(255, 255, 255, 0.03) inset;
 }
@@ -59,7 +61,7 @@
 }
 
 .device-frame--phone .device-screen {
-  background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
+  background: var(--builder-canvas-bg);
   border-radius: 40px;
   overflow: hidden;
   min-height: 640px;
@@ -88,12 +90,12 @@
   border-radius: 24px;
   padding: 16px;
   box-shadow: 
-    0 25px 60px -12px rgba(0, 0, 0, 0.35),
+    0 25px 60px -12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 }
 
 .device-frame--tablet .device-screen {
-  background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
+  background: var(--builder-canvas-bg);
   border-radius: 12px;
   overflow: hidden;
   min-height: 560px;
@@ -123,7 +125,7 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 
-    0 25px 60px -12px rgba(0, 0, 0, 0.35),
+    0 25px 60px -12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(255, 255, 255, 0.08) inset;
 }
 
@@ -164,7 +166,7 @@
 }
 
 .device-frame--desktop .device-screen {
-  background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
+  background: var(--builder-canvas-bg);
   min-height: 560px;
   max-height: 700px;
   overflow-y: auto;
@@ -193,6 +195,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  padding: 24px;
 }
 
 .builder-v2-canvas--readonly {
@@ -200,7 +203,7 @@
 }
 
 /* ============================================================================
-   NODE RENDERING
+   NODE RENDERING & SELECTION
    ============================================================================ */
 
 .builder-v2-node {
@@ -210,6 +213,8 @@
 
 .builder-v2-node-surface {
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 .builder-v2-node-overlay {
@@ -218,21 +223,26 @@
   border-radius: 8px;
   pointer-events: none;
   border: 2px solid transparent;
-  transition: all 150ms ease;
-  z-index: 1;
+  transition: all 120ms ease;
+  z-index: 2;
 }
 
-/* Hover state */
+/* Hover state - subtle blue outline */
 .builder-v2-node:not([data-readonly]):hover > .builder-v2-node-overlay {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.05);
 }
 
-/* Selected state */
+/* Selected state - strong outline */
 .builder-v2-node[data-selected="true"] > .builder-v2-node-overlay {
-  border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.12);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: var(--builder-selection-color);
+  background: var(--builder-selection-bg);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Nested selection - show parent chain subtly */
+.builder-v2-node[data-selected="true"] .builder-v2-node:not([data-readonly]):hover > .builder-v2-node-overlay {
+  border-color: rgba(99, 102, 241, 0.3);
 }
 
 /* Highlighted state (for suggestions) */
@@ -247,6 +257,23 @@
   50% { opacity: 0.6; }
 }
 
+/* Node type label on selection */
+.builder-v2-node[data-selected="true"]::before {
+  content: attr(data-node-type);
+  position: absolute;
+  top: -20px;
+  left: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  background: var(--builder-selection-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 10;
+  text-transform: capitalize;
+  pointer-events: none;
+}
+
 /* ============================================================================
    EMPTY STATE
    ============================================================================ */
@@ -259,7 +286,7 @@
   height: 100%;
   padding: 48px 24px;
   text-align: center;
-  background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
+  background: var(--builder-canvas-bg);
 }
 
 .builder-v2-empty-icon {
@@ -386,4 +413,22 @@
 
 .builder-v2-canvas-guides {
   display: none;
+}
+
+/* ============================================================================
+   MAKE INPUTS INTERACTIVE IN EDIT MODE BUT NOT STEAL CLICK
+   ============================================================================ */
+
+/* In edit mode, let the overlay capture clicks but allow visual interaction */
+.builder-v2-node:not([data-readonly]) .builder-input,
+.builder-v2-node:not([data-readonly]) .builder-cta-button,
+.builder-v2-node:not([data-readonly]) .builder-option-item {
+  pointer-events: none;
+}
+
+/* Selected element can have interactive children for testing */
+.builder-v2-node[data-selected="true"] .builder-input,
+.builder-v2-node[data-selected="true"] .builder-cta-button,
+.builder-v2-node[data-selected="true"] .builder-option-item {
+  pointer-events: auto;
 }
