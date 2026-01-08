@@ -1,0 +1,739 @@
+/* ============================================================================
+   ENHANCED INSPECTOR - Perspective/Framer Style
+   ============================================================================ */
+
+.ei-inspector {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #ffffff;
+  font-size: 13px;
+  color: #1e293b;
+  overflow: hidden;
+}
+
+.ei-inspector--empty {
+  justify-content: center;
+  align-items: center;
+}
+
+/* ============================================================================
+   EMPTY STATE
+   ============================================================================ */
+
+.ei-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  text-align: center;
+  padding: 24px;
+}
+
+.ei-empty-state p {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ============================================================================
+   HEADER
+   ============================================================================ */
+
+.ei-header {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.ei-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ei-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.ei-subtitle {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.ei-reset-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.ei-reset-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* ============================================================================
+   TABS
+   ============================================================================ */
+
+.ei-tabs {
+  display: flex;
+  padding: 4px;
+  margin: 8px 12px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.ei-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.ei-tab:hover {
+  color: #334155;
+}
+
+.ei-tab--active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================================================
+   BODY - SCROLLABLE
+   ============================================================================ */
+
+.ei-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+}
+
+/* Custom scrollbar */
+.ei-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ei-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ei-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.ei-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ============================================================================
+   SECTIONS
+   ============================================================================ */
+
+.ei-section {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ei-section:last-child {
+  border-bottom: none;
+}
+
+.ei-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.ei-section-header:hover {
+  background: #f8fafc;
+}
+
+.ei-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.ei-section-title svg {
+  color: #6366f1;
+}
+
+.ei-chevron {
+  color: #94a3b8;
+  transition: transform 200ms ease;
+}
+
+.ei-chevron--open {
+  transform: rotate(180deg);
+}
+
+.ei-section-content {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ============================================================================
+   FIELDS
+   ============================================================================ */
+
+.ei-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ei-field--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ei-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ei-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.ei-field-value {
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ============================================================================
+   TEXT INPUT
+   ============================================================================ */
+
+.ei-text-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #0f172a;
+  transition: all 150ms ease;
+}
+
+.ei-text-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.ei-text-input--small {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.ei-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #0f172a;
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+  transition: all 150ms ease;
+}
+
+.ei-textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* ============================================================================
+   SELECT
+   ============================================================================ */
+
+.ei-select {
+  width: 100%;
+  padding: 8px 10px;
+  padding-right: 32px;
+  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") right 10px center no-repeat;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #0f172a;
+  cursor: pointer;
+  appearance: none;
+  transition: all 150ms ease;
+}
+
+.ei-select:focus {
+  outline: none;
+  border-color: #6366f1;
+  background-color: #ffffff;
+}
+
+/* ============================================================================
+   SLIDER
+   ============================================================================ */
+
+.ei-slider {
+  width: 100%;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.ei-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #6366f1;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+.ei-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.ei-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #6366f1;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* ============================================================================
+   COLOR PICKER
+   ============================================================================ */
+
+.ei-color-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.ei-color-trigger:hover {
+  border-color: #cbd5e1;
+}
+
+.ei-color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.ei-color-value {
+  flex: 1;
+  font-size: 12px;
+  color: #64748b;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ei-color-popover {
+  margin-top: 8px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.ei-color-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.ei-color-tab {
+  flex: 1;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.ei-color-tab--active {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.ei-color-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.ei-color-preset {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.ei-color-preset:hover {
+  transform: scale(1.1);
+}
+
+.ei-color-preset--active {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+.ei-gradient-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ei-gradient-preset {
+  width: 100%;
+  height: 40px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.ei-gradient-preset:hover {
+  transform: scale(1.05);
+}
+
+.ei-gradient-preset--active {
+  border-color: #6366f1;
+}
+
+.ei-color-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ei-color-native {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ei-color-native::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.ei-color-native::-webkit-color-swatch {
+  border-radius: 4px;
+  border: none;
+}
+
+/* ============================================================================
+   BUTTON GROUP
+   ============================================================================ */
+
+.ei-button-group {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.ei-button-group-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.ei-button-group-item:hover {
+  color: #334155;
+}
+
+.ei-button-group-item--active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================================================
+   SWITCH
+   ============================================================================ */
+
+.ei-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: #e2e8f0;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 200ms ease;
+}
+
+.ei-switch--on {
+  background: #6366f1;
+}
+
+.ei-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 200ms ease;
+}
+
+.ei-switch--on .ei-switch-thumb {
+  transform: translateX(16px);
+}
+
+/* ============================================================================
+   OPTIONS EDITOR
+   ============================================================================ */
+
+.ei-options-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ei-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.ei-option-grip {
+  color: #94a3b8;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.ei-option-emoji {
+  width: 36px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.ei-option-label {
+  flex: 1;
+  padding: 6px 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.ei-option-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.ei-option-delete:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.ei-option-delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ei-add-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.ei-add-option:hover {
+  background: #f1f5f9;
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+/* ============================================================================
+   PERSONALITY GRID
+   ============================================================================ */
+
+.ei-personality-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.ei-personality-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  text-align: left;
+}
+
+.ei-personality-option:hover {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.ei-personality-option--active {
+  border-color: #6366f1;
+  background: #eef2ff;
+}
+
+.ei-personality-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.ei-personality-desc {
+  font-size: 10px;
+  color: #64748b;
+}
+
+/* ============================================================================
+   INFO ROWS
+   ============================================================================ */
+
+.ei-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.ei-info-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.ei-info-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.ei-info-value--mono {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-size: 11px;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}

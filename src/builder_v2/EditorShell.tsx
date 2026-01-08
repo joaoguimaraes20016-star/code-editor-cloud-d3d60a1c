@@ -19,7 +19,7 @@ import {
 import './EditorLayout.css';
 import { CanvasEditor } from './canvas/CanvasEditor';
 import { PhoneFrame } from './canvas/PhoneFrame';
-import { Inspector } from './inspector/Inspector';
+import { EnhancedInspector } from './inspector/EnhancedInspector';
 import { EditorProvider, useEditorStore } from './state/editorStore';
 import { StructureTree } from './structure/StructureTree';
 import { StepPalette } from './structure/StepPalette';
@@ -257,7 +257,7 @@ function EditorShellContent() {
 
       {/* Right Panel - Inspector */}
       <aside className="builder-panel builder-panel--right">
-        <Inspector />
+        <EnhancedInspector />
       </aside>
     </div>
   );
