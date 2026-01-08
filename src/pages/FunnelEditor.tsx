@@ -510,16 +510,17 @@ function EditorContentWrapper({
   isSaving: boolean; 
   isPublishing: boolean 
 }) {
-  const { pages } = useEditorStore();
+  // Get store - this is guaranteed to be inside EditorProvider
+  const store = useEditorStore();
   const funnelId = funnel.id;
   
   const handleSave = useCallback(() => { 
-    onSave(extractDocument({ pages } as any, funnelId)); 
-  }, [pages, onSave, funnelId]);
+    onSave(extractDocument({ pages: store.pages } as any, funnelId)); 
+  }, [store.pages, onSave, funnelId]);
   
   const handlePublish = useCallback(() => { 
-    onPublish(extractDocument({ pages } as any, funnelId)); 
-  }, [pages, onPublish, funnelId]);
+    onPublish(extractDocument({ pages: store.pages } as any, funnelId)); 
+  }, [store.pages, onPublish, funnelId]);
   
   return (
     <EditorContent 
