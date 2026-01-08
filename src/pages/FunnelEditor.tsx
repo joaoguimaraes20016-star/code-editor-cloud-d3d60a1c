@@ -47,7 +47,7 @@ import { cn } from '@/lib/utils';
 // Builder V2 imports
 import '@/builder_v2/EditorLayout.css';
 import { CanvasEditor } from '@/builder_v2/canvas/CanvasEditor';
-import { EditorProvider, useEditorStore, generateNodeId } from '@/builder_v2/state/editorStore';
+import { EditorProvider, useEditorStore } from '@/builder_v2/state/editorStore';
 import { extractDocument, type EditorDocument } from '@/builder_v2/state/persistence';
 import { PAGE_TEMPLATES, type PageTemplate } from '@/builder_v2/templates/pageTemplates';
 import { SectionPicker } from '@/builder_v2/components/SectionPicker';
@@ -191,18 +191,11 @@ function PagesHeader({ pages, activePageId, onSelectPage, onAddPage, onDeletePag
   );
 }
 
-// Helper for tree ops
-function insertChildNode(node: CanvasNode, parentId: string, newNode: CanvasNode): { next: CanvasNode; inserted: boolean } {
-  if (node.id === parentId) return { next: { ...node, children: [...node.children, newNode] }, inserted: true };
-  let inserted = false;
-  const nextChildren = node.children.map((child) => { const r = insertChildNode(child, parentId, newNode); if (r.inserted) inserted = true; return r.next; });
-  return inserted ? { next: { ...node, children: nextChildren }, inserted: true } : { next: node, inserted: false };
-}
 
 // Main Editor Content
 function EditorContent({ funnel, teamId, onSave, onPublish, onUpdateSettings, isSaving, isPublishing }: { funnel: FunnelRow; teamId: string; onSave: () => void; onPublish: () => void; onUpdateSettings: (updates: Partial<FunnelRow>) => void; isSaving: boolean; isPublishing: boolean }) {
   const navigate = useNavigate();
-  const { pages, activePageId, editorState, selectedNodeId, setActivePage, selectNode, updateNodeProps, updatePageProps, deleteNode, moveNodeUp, moveNodeDown, undo, redo, canUndo, canRedo, highlightedNodeIds, deletePage, dispatch } = useEditorStore();
+  const { pages, activePageId, editorState, selectedNodeId, setActivePage, selectNode, updateNodeProps, updatePageProps, deleteNode, moveNodeUp, moveNodeDown, moveNodeToParent, undo, redo, canUndo, canRedo, highlightedNodeIds, deletePage, dispatch } = useEditorStore();
 
   const [mode, setMode] = useState<'edit' | 'preview'>('edit');
   const [showSettings, setShowSettings] = useState(false);
@@ -229,10 +222,24 @@ function EditorContent({ funnel, teamId, onSave, onPublish, onUpdateSettings, is
 
   const handleAddPage = (template: PageTemplate) => { dispatch({ type: 'ADD_PAGE', page: { id: `page-${Date.now()}`, name: template.name, type: template.category === 'welcome' ? 'landing' : template.category === 'booking' ? 'appointment' : template.category === 'capture' ? 'optin' : template.category === 'thank_you' ? 'thank_you' : 'landing', canvasRoot: template.createNodes() } }); };
   const handleDeletePage = (pageId: string) => { if (pages.length <= 1) { toast({ title: 'Cannot delete', description: 'Need at least one page', variant: 'destructive' }); return; } deletePage(pageId); };
-  const handleAddSection = (sectionNode: CanvasNode) => { if (!activePage) return; const { next } = insertChildNode(activePage.canvasRoot, activePage.canvasRoot.id, sectionNode); dispatch({ type: 'UPDATE_PAGE_PROPS', pageId: activePage.id, partialProps: {} }); /* Trigger re-render */ };
+  
+  // Container-aware section insertion
+  const handleAddSection = (sectionNode: CanvasNode) => {
+    if (!activePage) return;
+    // Use ADD_NODE action which properly handles insertion into the canvas root
+    dispatch({ type: 'ADD_NODE', parentId: activePage.canvasRoot.id, node: sectionNode });
+  };
+  
   const handleMoveNode = (nodeId: string, direction: 'up' | 'down') => { direction === 'up' ? moveNodeUp(nodeId) : moveNodeDown(nodeId); };
+  
+  // DnD-based node reordering
+  const handleDndMoveNode = useCallback((nodeId: string, targetParentId: string, targetIndex: number) => {
+    moveNodeToParent(nodeId, targetParentId, targetIndex);
+  }, [moveNodeToParent]);
+  
   const handleCanvasClick = (e: React.MouseEvent) => { if (e.target === e.currentTarget) selectNode(null); };
   const previewUrl = `${window.location.origin}/f/${funnel.slug}`;
+
 
   return (
     <div className="flex h-screen flex-col bg-slate-100">
@@ -283,7 +290,20 @@ function EditorContent({ funnel, teamId, onSave, onPublish, onUpdateSettings, is
             </>
           )}
           <DeviceFrame device={device} slug={funnel.slug}>
-            {activePage ? <CanvasEditor page={activePage} editorState={editorState} mode={mode === 'edit' ? 'canvas' : 'preview'} onSelectNode={selectNode} highlightedNodeIds={highlightedNodeIds} /> : <div className="flex h-full items-center justify-center"><p className="text-sm text-slate-400">No page selected</p></div>}
+            {activePage ? (
+              <CanvasEditor 
+                page={activePage} 
+                editorState={editorState} 
+                mode={mode === 'edit' ? 'canvas' : 'preview'} 
+                onSelectNode={selectNode} 
+                onMoveNode={handleDndMoveNode}
+                highlightedNodeIds={highlightedNodeIds} 
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <p className="text-sm text-slate-400">No page selected</p>
+              </div>
+            )}
           </DeviceFrame>
         </main>
         {mode === 'edit' && rightPanelOpen && (

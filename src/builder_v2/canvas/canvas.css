@@ -1212,3 +1212,76 @@
 .runtime-layout[data-step-intent] {
   --step-intent-motion-intensity: 0.85;
 }
+
+/* ============================================================================
+   PHASE B: DRAG & DROP SORTABLE SECTIONS
+   Visual feedback for section reordering
+   ============================================================================ */
+
+.builder-v2-sortable-section {
+  position: relative;
+  width: 100%;
+}
+
+.builder-v2-section-drag-handle {
+  position: absolute;
+  left: -28px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  color: rgba(100, 116, 139, 0.6);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 150ms ease, color 150ms ease, background 150ms ease;
+  z-index: 10;
+}
+
+.builder-v2-sortable-section:hover .builder-v2-section-drag-handle {
+  opacity: 1;
+}
+
+.builder-v2-section-drag-handle:hover {
+  background: rgba(255, 255, 255, 1);
+  color: rgba(99, 102, 241, 0.8);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.builder-v2-section-drag-handle:active {
+  cursor: grabbing;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.builder-v2-sortable-section[data-dragging="true"] {
+  opacity: 0.4;
+}
+
+.builder-v2-sortable-section[data-selected="true"] .builder-v2-section-drag-handle {
+  opacity: 1;
+  color: rgba(99, 102, 241, 0.8);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.builder-v2-drag-overlay {
+  position: fixed;
+  z-index: 1000;
+}
+
+.builder-v2-drag-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(99, 102, 241, 0.95);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
