@@ -376,7 +376,7 @@
   margin: 0;
 }
 
-/* Empty page state - with add button */
+/* Empty page state - minimal Perspective-style */
 .builder-v2-empty-page-state {
   display: flex;
   flex-direction: column;
@@ -384,46 +384,33 @@
   justify-content: center;
   height: 100%;
   min-height: 400px;
-  padding: 48px 24px;
+  gap: 12px;
 }
 
-.builder-v2-empty-page-add {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 48px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 2px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 16px;
-  cursor: pointer;
-  transition: all 200ms ease;
-}
-
-.builder-v2-empty-page-add:hover {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.5);
-}
-
-.builder-v2-empty-page-icon {
+.builder-v2-empty-page-add-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
-  background: rgba(99, 102, 241, 0.2);
-  border-radius: 16px;
-  color: rgba(99, 102, 241, 1);
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 150ms ease;
 }
 
-.builder-v2-empty-page-text {
-  font-size: 16px;
-  font-weight: 600;
+.builder-v2-empty-page-add-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.9);
+  transform: scale(1.05);
 }
 
-.builder-v2-empty-page-hint {
+.builder-v2-empty-page-label {
   font-size: 13px;
+  font-weight: 500;
   color: rgba(255, 255, 255, 0.4);
 }
 

@@ -345,3 +345,33 @@ export function ImageBlock({ src, alt = 'Image', className }: ImageBlockProps) {
     </div>
   );
 }
+
+// ============================================================================
+// CONSENT CHECKBOX - GDPR-compliant consent
+// ============================================================================
+
+interface ConsentCheckboxProps {
+  label?: string;
+  linkText?: string;
+  linkUrl?: string;
+  required?: boolean;
+  fieldName?: string;
+  className?: string;
+}
+
+export function ConsentCheckbox({ 
+  label = 'I agree to receive communications', 
+  linkText = 'Privacy Policy',
+  linkUrl = '/privacy',
+  className 
+}: ConsentCheckboxProps) {
+  return (
+    <label className={cn('builder-consent', className)}>
+      <input type="checkbox" className="builder-consent-checkbox" readOnly />
+      <span className="builder-consent-text">
+        {label}{' '}
+        <a href={linkUrl} className="builder-consent-link">{linkText}</a>
+      </span>
+    </label>
+  );
+}

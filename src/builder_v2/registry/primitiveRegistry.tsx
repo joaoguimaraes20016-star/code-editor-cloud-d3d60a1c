@@ -23,6 +23,7 @@ import {
   Icon,
   InfoCard,
   ImageBlock,
+  ConsentCheckbox,
 } from '../components/primitives';
 
 export const PrimitiveRegistry: Record<string, ComponentDefinition> = {
@@ -314,5 +315,37 @@ export const PrimitiveRegistry: Record<string, ComponentDefinition> = {
     inspectorSchema: [],
     constraints: { canHaveChildren: false },
     presenceCategory: 'section',
+  },
+
+  // ============================================================================
+  // CONSENT PRIMITIVES
+  // ============================================================================
+
+  consent_checkbox: {
+    type: 'consent_checkbox',
+    displayName: 'Consent',
+    defaultProps: {
+      label: 'I agree to receive communications and accept the',
+      linkText: 'Privacy Policy',
+      linkUrl: '/privacy',
+      required: true,
+      fieldName: 'consent',
+    },
+    render: (props) => (
+      <ConsentCheckbox 
+        label={props.label as string}
+        linkText={props.linkText as string}
+        linkUrl={props.linkUrl as string}
+        required={props.required as boolean}
+        fieldName={props.fieldName as string}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Label', propKey: 'label', inputType: 'text' },
+      { label: 'Link Text', propKey: 'linkText', inputType: 'text' },
+      { label: 'Link URL', propKey: 'linkUrl', inputType: 'text' },
+    ],
+    constraints: { canHaveChildren: false },
+    presenceCategory: 'input',
   },
 };

@@ -109,15 +109,13 @@ function EmptyPageState({ onAddSection }: { onAddSection?: () => void }) {
   return (
     <div className="builder-v2-empty-page-state">
       <button 
-        className="builder-v2-empty-page-add"
+        className="builder-v2-empty-page-add-btn"
         onClick={onAddSection}
+        type="button"
       >
-        <div className="builder-v2-empty-page-icon">
-          <Plus size={32} strokeWidth={1.5} />
-        </div>
-        <span className="builder-v2-empty-page-text">Add your first section</span>
-        <span className="builder-v2-empty-page-hint">Click to browse sections and blocks</span>
+        <Plus size={24} strokeWidth={2} />
       </button>
+      <span className="builder-v2-empty-page-label">Add section</span>
     </div>
   );
 }

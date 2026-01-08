@@ -8,7 +8,6 @@ import {
   Type,
   AlignLeft,
   MousePointerClick,
-  Play,
   Image,
   Mail,
   Phone,
@@ -21,10 +20,8 @@ import {
   Users,
   Quote,
   Shield,
-  Star,
   Sparkles,
   HelpCircle,
-  Timer,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -116,27 +113,28 @@ const sectionCategories = [
 // Basic blocks - simple single elements
 const basicBlocks = [
   { id: 'text', name: 'Text', icon: AlignLeft, preview: 'text-lines', type: 'paragraph', props: { text: 'Add your text here.' } },
+  { id: 'heading', name: 'Heading', icon: Type, preview: 'heading', type: 'heading', props: { text: 'Your Heading', level: 'h2' } },
   { id: 'button', name: 'Button', icon: MousePointerClick, preview: 'button', type: 'cta_button', props: { label: 'Continue', variant: 'primary', action: 'next' } },
-  { id: 'image', name: 'Image', icon: Image, preview: 'image', type: 'image_block', props: { src: '', alt: 'Image' } },
-  { id: 'list', name: 'List', icon: ListChecks, preview: 'list', type: 'info_card', props: { items: [{ icon: '•', text: 'Item 1' }, { icon: '•', text: 'Item 2' }] } },
-  { id: 'divider', name: 'Divider', icon: Minus, preview: 'divider', type: 'spacer', props: { height: 24 } },
-  { id: 'video', name: 'Video', icon: Video, preview: 'video', type: 'video_embed', props: { url: '' } },
-  { id: 'reviews', name: 'Reviews', icon: Star, preview: 'reviews', type: 'info_card', props: { items: [{ icon: '⭐', text: '5-star rated' }] } },
+  { id: 'image', name: 'Image', icon: Image, preview: 'image', type: 'image', props: { src: '', alt: 'Image' } },
+  { id: 'list', name: 'List', icon: ListChecks, preview: 'list', type: 'info_card', props: { items: [{ icon: '✓', text: 'Item 1' }, { icon: '✓', text: 'Item 2' }] } },
+  { id: 'divider', name: 'Spacer', icon: Minus, preview: 'divider', type: 'spacer', props: { height: 24 } },
+  { id: 'video', name: 'Video', icon: Video, preview: 'video', type: 'video_embed', props: { url: '', placeholder: 'Paste video URL' } },
 ];
 
 // Interactive blocks - form elements and embeds
 const interactiveBlocks = [
-  { id: 'email', name: 'Email Input', icon: Mail, preview: 'input', type: 'email_input', props: { placeholder: 'Email address', fieldName: 'email' } },
-  { id: 'phone', name: 'Phone Input', icon: Phone, preview: 'input', type: 'phone_input', props: { placeholder: 'Phone number', fieldName: 'phone' } },
-  { id: 'options', name: 'Multiple Choice', icon: LayoutGrid, preview: 'options', type: 'option_grid', props: { options: [{ id: 'a', label: 'Option A', emoji: '✨' }, { id: 'b', label: 'Option B', emoji: '🚀' }], autoAdvance: true } },
-  { id: 'calendar', name: 'Calendar', icon: Calendar, preview: 'calendar', type: 'calendar_embed', props: { url: '' } },
-  { id: 'faq', name: 'FAQ', icon: HelpCircle, preview: 'faq', type: 'heading', props: { text: 'Frequently Asked Questions', level: 'h2' } },
-  { id: 'countdown', name: 'Countdown', icon: Timer, preview: 'countdown', type: 'heading', props: { text: 'Limited Time Offer', level: 'h2' } },
+  { id: 'email', name: 'Email', icon: Mail, preview: 'input', type: 'email_input', props: { placeholder: 'Email address', fieldName: 'email', required: true } },
+  { id: 'phone', name: 'Phone', icon: Phone, preview: 'input', type: 'phone_input', props: { placeholder: 'Phone number', fieldName: 'phone' } },
+  { id: 'options', name: 'Options', icon: LayoutGrid, preview: 'options', type: 'option_grid', props: { options: [{ id: 'a', label: 'Option A', emoji: '✨' }, { id: 'b', label: 'Option B', emoji: '🚀' }], autoAdvance: true } },
+  { id: 'calendar', name: 'Calendar', icon: Calendar, preview: 'calendar', type: 'calendar_embed', props: { url: '', placeholder: 'Paste calendar URL' } },
+  { id: 'text-input', name: 'Text Input', icon: Type, preview: 'input', type: 'text_input', props: { placeholder: 'Type here...', fieldName: 'text' } },
 ];
 
 // Block preview thumbnails
 function BlockPreview({ type }: { type: string }) {
   switch (type) {
+    case 'heading':
+      return <div className="h-2 w-16 rounded bg-white font-bold" />;
     case 'text-lines':
       return (
         <div className="space-y-1">
@@ -155,32 +153,24 @@ function BlockPreview({ type }: { type: string }) {
     case 'video':
       return (
         <div className="h-10 w-14 rounded bg-slate-200 flex items-center justify-center">
-          <Play size={14} className="text-slate-400" />
+          <Video size={14} className="text-slate-400" />
         </div>
       );
     case 'list':
       return (
         <div className="space-y-0.5">
           <div className="flex items-center gap-1">
-            <div className="h-1 w-1 rounded-full bg-blue-400" />
+            <div className="h-1 w-1 rounded-full bg-emerald-500" />
             <div className="h-1 w-8 rounded bg-slate-300" />
           </div>
           <div className="flex items-center gap-1">
-            <div className="h-1 w-1 rounded-full bg-blue-400" />
+            <div className="h-1 w-1 rounded-full bg-emerald-500" />
             <div className="h-1 w-6 rounded bg-slate-300" />
           </div>
         </div>
       );
     case 'divider':
       return <div className="h-px w-10 bg-slate-300" />;
-    case 'reviews':
-      return (
-        <div className="flex items-center gap-0.5">
-          {[...Array(5)].map((_, i) => (
-            <Star key={i} size={8} className="text-yellow-400 fill-yellow-400" />
-          ))}
-        </div>
-      );
     case 'input':
       return <div className="h-4 w-12 rounded border border-slate-300 bg-white" />;
     case 'options':
