@@ -542,7 +542,8 @@ export default function FunnelList() {
       let appointmentId: string | null = null;
 
       if (pipelineContactId) {
-        const { data: byContact, error: byContactError } = await supabase
+        // Use any type to avoid deep type instantiation issues
+        const { data: byContact, error: byContactError } = await (supabase as any)
           .from('appointments')
           .select('id')
           .eq('team_id', teamId)
