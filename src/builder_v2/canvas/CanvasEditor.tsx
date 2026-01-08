@@ -163,27 +163,39 @@ function mapNodesToLegacy(
 ): LegacyPreviewData | null {
   const elementBindings: Record<string, string> = {};
 
-  const step: FunnelStep = {
-    id: page.id,
-    order_index: 0,
-    step_type: page.type ?? 'landing',
-    content: {
-      headline: '',
-      subtext: '',
-      button_text: '',
-      element_order: [] as string[],
-      dynamic_elements: {} as Record<string, any>,
-      design: {
-        textColor: '#ffffff',
-        buttonColor: '#6366f1',
-        buttonTextColor: '#ffffff',
-      },
+  // Map PageType to valid StepType - 'appointment' and 'landing' become 'welcome'
+  const stepType = (() => {
+    const pageType = page.type ?? 'landing';
+    if (pageType === 'appointment' || pageType === 'landing') return 'welcome';
+    if (pageType === 'optin') return 'opt_in';
+    if (pageType === 'thank_you') return 'thank_you';
+    return 'welcome';
+  })();
+
+  const contentData = {
+    headline: '',
+    subtext: '',
+    button_text: '',
+    element_order: [] as string[],
+    dynamic_elements: {} as Record<string, any>,
+    design: {
+      textColor: '#ffffff',
+      buttonColor: '#6366f1',
+      buttonTextColor: '#ffffff',
     },
   };
 
+  const step: FunnelStep = {
+    id: page.id,
+    funnel_id: '',
+    order_index: 0,
+    step_type: stepType,
+    content: contentData,
+  };
+
   const addElement = (id: string, nodeId: string) => {
-    if (!step.content.element_order.includes(id)) {
-      step.content.element_order.push(id);
+    if (!contentData.element_order.includes(id)) {
+      contentData.element_order.push(id);
     }
     elementBindings[id] = nodeId;
   };
@@ -195,9 +207,9 @@ function mapNodesToLegacy(
         break;
       }
       case 'hero': {
-        step.content.headline = (node.props as any)?.headline ?? 'Hero headline';
-        step.content.subtext = (node.props as any)?.subheadline ?? 'Hero subheadline';
-        step.content.button_text = (node.props as any)?.buttonLabel ?? 'Button';
+        contentData.headline = (node.props as any)?.headline ?? 'Hero headline';
+        contentData.subtext = (node.props as any)?.subheadline ?? 'Hero subheadline';
+        contentData.button_text = (node.props as any)?.buttonLabel ?? 'Button';
         addElement('headline', node.id);
         addElement('subtext', node.id);
         addElement('button', node.id);
@@ -207,7 +219,7 @@ function mapNodesToLegacy(
       case 'text': {
         const id = `text_${node.id}`;
         addElement(id, node.id);
-        step.content.dynamic_elements[id] = {
+        contentData.dynamic_elements[id] = {
           text: (node.props as any)?.text ?? 'Text',
         };
         break;
@@ -215,7 +227,7 @@ function mapNodesToLegacy(
       case 'image': {
         const id = `image_${node.id}`;
         addElement(id, node.id);
-        step.content.dynamic_elements[id] = {
+        contentData.dynamic_elements[id] = {
           image_url: (node.props as any)?.src ?? (node.props as any)?.url ?? '',
         };
         break;
@@ -223,7 +235,7 @@ function mapNodesToLegacy(
       case 'video': {
         const id = `video_${node.id}`;
         addElement(id, node.id);
-        step.content.dynamic_elements[id] = {
+        contentData.dynamic_elements[id] = {
           video_url: (node.props as any)?.src ?? (node.props as any)?.url ?? '',
         };
         break;
@@ -231,7 +243,7 @@ function mapNodesToLegacy(
       case 'button': {
         const id = `button_${node.id}`;
         addElement(id, node.id);
-        step.content.dynamic_elements[id] = {
+        contentData.dynamic_elements[id] = {
           text: (node.props as any)?.label ?? 'Button',
         };
         break;
@@ -245,7 +257,7 @@ function mapNodesToLegacy(
 
   walk(root);
 
-  if (step.content.element_order.length === 0) {
+  if (contentData.element_order.length === 0) {
     return null;
   }
 
