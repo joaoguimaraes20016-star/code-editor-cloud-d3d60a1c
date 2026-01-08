@@ -275,6 +275,74 @@
 }
 
 /* ============================================================================
+   HOVER TOOLBAR - Appears on element hover
+   ============================================================================ */
+
+.builder-v2-hover-toolbar {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+  z-index: 100;
+  white-space: nowrap;
+}
+
+.builder-v2-node--leaf:hover > .builder-v2-hover-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.builder-v2-hover-toolbar-type {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  padding-right: 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.builder-v2-hover-toolbar-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.builder-v2-hover-toolbar-btn {
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  color: white;
+  background: rgba(99, 102, 241, 0.9);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.builder-v2-hover-toolbar-btn:hover {
+  background: rgba(99, 102, 241, 1);
+}
+
+.builder-v2-hover-toolbar-btn--delete {
+  background: rgba(239, 68, 68, 0.9);
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.builder-v2-hover-toolbar-btn--delete:hover {
+  background: rgba(239, 68, 68, 1);
+}
+
+/* ============================================================================
    EMPTY STATE
    ============================================================================ */
 
@@ -306,6 +374,57 @@
   font-size: 14px;
   color: rgba(255, 255, 255, 0.4);
   margin: 0;
+}
+
+/* Empty page state - with add button */
+.builder-v2-empty-page-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 400px;
+  padding: 48px 24px;
+}
+
+.builder-v2-empty-page-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.builder-v2-empty-page-add:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.builder-v2-empty-page-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 16px;
+  color: rgba(99, 102, 241, 1);
+}
+
+.builder-v2-empty-page-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.builder-v2-empty-page-hint {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* ============================================================================

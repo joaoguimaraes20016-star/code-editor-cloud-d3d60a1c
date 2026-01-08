@@ -17,13 +17,12 @@ import {
   Globe,
   BarChart3,
   Users,
-  AppWindow,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type DeviceType = 'phone' | 'tablet' | 'desktop';
-type EditorTab = 'funnel' | 'metrics' | 'contacts' | 'apps';
+type EditorTab = 'funnel' | 'metrics' | 'contacts';
 
 interface EditorHeaderProps {
   funnelName: string;
@@ -56,7 +55,6 @@ export function EditorHeader({
   canRedo,
   isSaving,
   isPublishing,
-  previewUrl,
   onBack,
   onDeviceChange,
   onModeChange,
@@ -69,10 +67,9 @@ export function EditorHeader({
   onPublish,
 }: EditorHeaderProps) {
   const tabs: { id: EditorTab; label: string; icon: typeof BarChart3 }[] = [
-    { id: 'funnel', label: 'Funnel', icon: AppWindow },
+    { id: 'funnel', label: 'Funnel', icon: Globe },
     { id: 'metrics', label: 'Metrics', icon: BarChart3 },
     { id: 'contacts', label: 'Contacts', icon: Users },
-    { id: 'apps', label: 'Apps', icon: AppWindow },
   ];
 
   const devices: { type: DeviceType; icon: typeof Smartphone }[] = [
