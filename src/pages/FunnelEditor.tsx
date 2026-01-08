@@ -395,11 +395,6 @@ function EditorContent({
         onOpenChange={setShowSettings} 
         onSave={onUpdateSettings} 
       />
-      <AddPageModal 
-        open={showAddPage} 
-        onOpenChange={setShowAddPage} 
-        onAddPage={handleAddPage} 
-      />
     </div>
   );
 }
