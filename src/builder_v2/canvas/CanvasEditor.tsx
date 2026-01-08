@@ -75,7 +75,8 @@ export function CanvasEditor({
   // Phase 38: Guides only in canvas mode with editable flag
   const shouldShowGuides = interactivity.hoverGuides && resolvedIntent.orchestration.showCompositionGuides;
 
-  const legacyPreview = buildLegacyPreview(page, page.canvasRoot, editorState.selectedNodeId, onSelectNode);
+  // Check if the root is a V2 step component (uses registry directly)
+  const isV2Step = page.canvasRoot.type.endsWith('_step');
 
   // Phase 38: Canonical viewport frame structure (MUST be identical in canvas/preview/runtime)
   return (
@@ -100,10 +101,18 @@ export function CanvasEditor({
               />
             </div>
           )}
-          {legacyPreview ?? renderNode(page.canvasRoot, editorState, onSelectNode, { 
-            readonly: !interactivity.editable,
-            highlightedNodeIds,
-          })}
+          {isV2Step ? (
+            renderNode(page.canvasRoot, editorState, onSelectNode, { 
+              readonly: !interactivity.editable,
+              highlightedNodeIds,
+            })
+          ) : (
+            buildLegacyPreview(page, page.canvasRoot, editorState.selectedNodeId, onSelectNode) ?? 
+            renderNode(page.canvasRoot, editorState, onSelectNode, { 
+              readonly: !interactivity.editable,
+              highlightedNodeIds,
+            })
+          )}
         </div>
       </div>
     </div>

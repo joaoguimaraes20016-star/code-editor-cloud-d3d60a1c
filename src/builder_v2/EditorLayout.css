@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import './canvas/canvas-experience.css';
 
 /* Builder V2 - Framer/Perspective Style */
 :root {
@@ -107,24 +108,13 @@
 .builder-v2-structure-chip:disabled { opacity: 0.4; cursor: not-allowed; }
 .builder-v2-structure-chip--danger:hover:not(:disabled) { background: #fef2f2; color: #dc2626; }
 
-.step-card { display: flex; flex-direction: column; min-height: 100%; padding: 60px 24px 32px; }
-.step-content { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
-.step-headline { font-weight: 700; line-height: 1.2; margin: 0; }
-.step-subtext { opacity: 0.8; line-height: 1.5; margin: 0; max-width: 280px; }
-.step-button { display: inline-flex; align-items: center; justify-content: center; padding: 14px 32px; font-weight: 600; border: none; cursor: pointer; margin-top: 8px; width: 100%; max-width: 280px; }
-.step-input { width: 100%; max-width: 280px; padding: 14px 16px; font-size: 15px; border: 1px solid rgba(255,255,255,0.2); outline: none; }
-.step-input-wrapper { position: relative; width: 100%; max-width: 280px; }
+/* Step styling moved to canvas-experience.css - only base structure here */
 .step-input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); opacity: 0.5; }
 .step-input--with-icon { padding-left: 44px; }
-.step-form { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 280px; }
-.step-options { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
-.step-option { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; text-align: left; }
-.step-option:hover { background: rgba(255,255,255,0.12); }
 .step-option-emoji { font-size: 20px; }
 .step-option-label { font-weight: 500; font-size: 15px; }
-.step-video-container, .step-embed-container { width: 100%; aspect-ratio: 16/9; overflow: hidden; background: rgba(0,0,0,0.3); }
+.step-video-container, .step-embed-container { width: 100%; aspect-ratio: 16/9; overflow: hidden; background: rgba(0,0,0,0.3); border-radius: 12px; }
 .step-video-iframe, .step-embed-iframe { width: 100%; height: 100%; border: none; }
-.step-video-placeholder, .step-embed-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; opacity: 0.5; }
 .step-success-icon { margin-bottom: 8px; }
 
 .builder-v2-legacy-preview { min-height: 100%; }

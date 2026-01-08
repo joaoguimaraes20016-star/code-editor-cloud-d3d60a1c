@@ -532,56 +532,21 @@ export function moveNodeToParent(
   return nextRoot;
 }
 
-const initialCanvasRoot: CanvasNode = {
-  id: 'root',
-  type: 'container',
-  props: {
-    gap: 12,
-  },
-  children: [
-    {
-      id: 'hero',
-      type: 'hero',
-      props: {
-        headline: 'Builder V2 Hero',
-        subheadline: 'Registry-driven components',
-        backgroundColor: '#1f2937',
-      },
-      children: [
-        {
-          id: 'hero-cta',
-          type: 'button',
-          props: {
-            label: 'Explore',
-          },
-          children: [],
-        },
-      ],
-    },
-    {
-      id: 'headline',
-      type: 'text',
-      props: {
-        text: 'Welcome to Builder V2',
-      },
-      children: [],
-    },
-    {
-      id: 'cta',
-      type: 'button',
-      props: {
-        label: 'Get Started',
-      },
-      children: [],
-    },
-  ],
-};
-
+// Initial page uses a V2 step component directly
 const initialPage: Page = {
   id: 'page-1',
-  name: 'Landing Page',
+  name: 'Welcome',
   type: 'landing',
-  canvasRoot: initialCanvasRoot,
+  canvasRoot: {
+    id: 'welcome-step-1',
+    type: 'welcome_step',
+    props: {
+      headline: 'Welcome! Let\'s get started.',
+      subtext: 'We\'re excited to have you here.',
+      buttonText: 'Continue',
+    },
+    children: [],
+  },
 };
 
 export type EditorSnapshot = {
