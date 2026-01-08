@@ -18,7 +18,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, Plus } from 'lucide-react';
 
 import type { EditorState, Page, CanvasNode } from '../types';
 import type { EditorMode } from '../editorMode';
@@ -38,6 +38,8 @@ type CanvasEditorProps = {
   mode: EditorMode;
   onSelectNode: (nodeId: string) => void;
   onMoveNode?: (nodeId: string, targetParentId: string, targetIndex: number) => void;
+  onDeleteNode?: (nodeId: string) => void;
+  onOpenSectionPicker?: () => void;
   highlightedNodeIds?: string[];
   funnelPosition?: number;
   totalPages?: number;
@@ -47,6 +49,7 @@ interface SortableSectionProps {
   node: CanvasNode;
   editorState: EditorState;
   onSelectNode: (nodeId: string) => void;
+  onDeleteNode?: (nodeId: string) => void;
   highlightedNodeIds: string[];
   isDragMode: boolean;
 }
@@ -55,6 +58,7 @@ function SortableSection({
   node,
   editorState,
   onSelectNode,
+  onDeleteNode,
   highlightedNodeIds,
   isDragMode,
 }: SortableSectionProps) {
@@ -95,7 +99,25 @@ function SortableSection({
           <GripVertical size={12} />
         </button>
       )}
-      {renderNode(node, editorState, onSelectNode, { highlightedNodeIds }, 1)}
+      {renderNode(node, editorState, onSelectNode, { highlightedNodeIds, onDeleteNode }, 1)}
+    </div>
+  );
+}
+
+// Empty state component for blank pages
+function EmptyPageState({ onAddSection }: { onAddSection?: () => void }) {
+  return (
+    <div className="builder-v2-empty-page-state">
+      <button 
+        className="builder-v2-empty-page-add"
+        onClick={onAddSection}
+      >
+        <div className="builder-v2-empty-page-icon">
+          <Plus size={32} strokeWidth={1.5} />
+        </div>
+        <span className="builder-v2-empty-page-text">Add your first section</span>
+        <span className="builder-v2-empty-page-hint">Click to browse sections and blocks</span>
+      </button>
     </div>
   );
 }
@@ -105,6 +127,8 @@ export function CanvasEditor({
   editorState, 
   onSelectNode,
   onMoveNode,
+  onDeleteNode,
+  onOpenSectionPicker,
   mode,
   highlightedNodeIds = [],
   funnelPosition,
@@ -159,6 +183,21 @@ export function CanvasEditor({
     );
   }
 
+  // Check if page has no content sections
+  const hasNoContent = page.canvasRoot.children.length === 0;
+  
+  if (hasNoContent && !isPreview) {
+    return (
+      <div className="builder-root" data-mode="canvas">
+        <div className="builder-canvas-frame">
+          <div className="builder-page builder-v2-canvas" data-mode={mode}>
+            <EmptyPageState onAddSection={onOpenSectionPicker} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const layout = resolveFunnelLayout(page);
   const personalityVars = generatePersonalityVariables(layout.personality);
   const resolvedIntent = resolvePageIntent(page, {
@@ -194,6 +233,7 @@ export function CanvasEditor({
       return renderNode(page.canvasRoot, editorState, onSelectNode, {
         readonly: !interactivity.editable,
         highlightedNodeIds,
+        onDeleteNode,
       });
     }
 
@@ -223,6 +263,7 @@ export function CanvasEditor({
               node={section}
               editorState={editorState}
               onSelectNode={onSelectNode}
+              onDeleteNode={onDeleteNode}
               highlightedNodeIds={highlightedNodeIds}
               isDragMode={isDragEnabled}
             />

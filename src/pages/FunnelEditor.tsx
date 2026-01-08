@@ -43,7 +43,7 @@ type FunnelRow = {
 };
 
 type DeviceType = 'phone' | 'tablet' | 'desktop';
-type EditorTab = 'funnel' | 'metrics' | 'contacts' | 'apps';
+type EditorTab = 'funnel' | 'metrics' | 'contacts';
 type SidebarTab = 'pages' | 'add';
 
 // Loading state
@@ -137,35 +137,6 @@ function SettingsDialog({ funnel, open, onOpenChange, onSave }: {
   );
 }
 
-// Add Page Modal
-function AddPageModal({ open, onOpenChange, onAddPage }: { 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void; 
-  onAddPage: (template: PageTemplate) => void 
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader><DialogTitle>Add New Page</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-2 gap-3 py-4">
-          {PAGE_TEMPLATES.map((template) => (
-            <button 
-              key={template.id} 
-              onClick={() => { onAddPage(template); onOpenChange(false); }}
-              className="flex flex-col items-center gap-2 rounded-xl border bg-background p-4 text-center transition-all hover:border-primary/50 hover:bg-primary/5"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600 text-white">
-                <Sparkles size={18} />
-              </div>
-              <span className="text-sm font-medium">{template.name}</span>
-              <span className="text-xs text-muted-foreground">{template.description}</span>
-            </button>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // Main Editor Content
 function EditorContent({ 
@@ -210,7 +181,6 @@ function EditorContent({
 
   const [mode, setMode] = useState<'edit' | 'preview'>('edit');
   const [showSettings, setShowSettings] = useState(false);
-  const [showAddPage, setShowAddPage] = useState(false);
   const [device, setDevice] = useState<DeviceType>('phone');
   const [activeTab, setActiveTab] = useState<EditorTab>('funnel');
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('pages');
@@ -251,16 +221,24 @@ function EditorContent({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [canRedo, canUndo, redo, undo, onSave, selectNode, selectedNodeId, deleteNode]);
 
-  const handleAddPage = (template: PageTemplate) => { 
+  const handleAddPage = () => { 
     dispatch({ 
       type: 'ADD_PAGE', 
       page: { 
         id: `page-${Date.now()}`, 
-        name: template.name, 
-        type: template.category === 'welcome' ? 'landing' : template.category === 'booking' ? 'appointment' : template.category === 'capture' ? 'optin' : template.category === 'thank_you' ? 'thank_you' : 'landing', 
-        canvasRoot: template.createNodes() 
+        name: `Page ${pages.length + 1}`, 
+        type: 'landing', 
+        canvasRoot: { id: `frame-${Date.now()}`, type: 'frame', props: {}, children: [] }
       } 
     }); 
+  };
+
+  const handleRenamePage = (id: string, name: string) => {
+    updatePageProps(id, { name });
+  };
+
+  const handleOpenSectionPicker = () => {
+    setSidebarTab('add');
   };
   
   const handleDeletePage = (pageId: string) => { 
@@ -346,8 +324,9 @@ function EditorContent({
                   pages={pages}
                   activePageId={activePageId}
                   onSelectPage={setActivePage}
-                  onAddPage={() => setShowAddPage(true)}
+                  onAddPage={handleAddPage}
                   onDeletePage={handleDeletePage}
+                  onRenamePage={handleRenamePage}
                 />
               )}
               {sidebarTab === 'add' && (
@@ -370,6 +349,8 @@ function EditorContent({
                 mode={mode === 'edit' ? 'canvas' : 'preview'} 
                 onSelectNode={selectNode} 
                 onMoveNode={handleDndMoveNode}
+                onDeleteNode={deleteNode}
+                onOpenSectionPicker={handleOpenSectionPicker}
                 highlightedNodeIds={highlightedNodeIds} 
               />
             ) : (

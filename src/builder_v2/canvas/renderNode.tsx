@@ -20,6 +20,33 @@ export interface RenderOptions {
    * Highlighted nodes show a subtle glow/pulse animation.
    */
   highlightedNodeIds?: string[];
+  /**
+   * Callback when a node is deleted
+   */
+  onDeleteNode?: (nodeId: string) => void;
+}
+
+// Map node types to human-readable labels
+const nodeTypeLabels: Record<string, string> = {
+  heading: 'Heading',
+  paragraph: 'Text',
+  cta_button: 'Button',
+  image_block: 'Image',
+  video_embed: 'Video',
+  email_input: 'Email',
+  phone_input: 'Phone',
+  text_input: 'Text Input',
+  option_grid: 'Options',
+  info_card: 'Info Card',
+  calendar_embed: 'Calendar',
+  spacer: 'Spacer',
+  section: 'Section',
+  frame: 'Frame',
+  consent_checkbox: 'Consent',
+};
+
+function getNodeTypeLabel(type: string): string {
+  return nodeTypeLabels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 /**
@@ -36,7 +63,7 @@ export function renderNode(
   options: RenderOptions = {},
   depth = 0,
 ): JSX.Element {
-  const { readonly = false, highlightedNodeIds = [] } = options;
+  const { readonly = false, highlightedNodeIds = [], onDeleteNode } = options;
   
   const children = node.children.map((child) =>
     renderNode(child, editorState, onSelectNode, options, depth + 1),
@@ -57,6 +84,11 @@ export function renderNode(
   
   // Check if this node is highlighted (for suggestion feedback)
   const isHighlighted = highlightedNodeIds.includes(node.id);
+  
+  // Don't show hover toolbar on frame/section containers, only on leaf elements
+  const showHoverToolbar = !readonly && !canHaveChildren && depth > 0;
+  
+  const typeLabel = getNodeTypeLabel(node.type);
 
   return (
     <div
@@ -67,12 +99,39 @@ export function renderNode(
       data-selected={isSelected}
       data-highlighted={isHighlighted || undefined}
       data-node-id={node.id}
+      data-node-type={typeLabel}
       data-readonly={readonly || undefined}
       data-has-children={canHaveChildren || undefined}
       data-depth={depth}
       style={surfaceStyle}
     >
       <div className="builder-v2-node-overlay" aria-hidden="true" />
+      
+      {/* Hover toolbar for leaf elements */}
+      {showHoverToolbar && (
+        <div className="builder-v2-hover-toolbar">
+          <span className="builder-v2-hover-toolbar-type">{typeLabel}</span>
+          <div className="builder-v2-hover-toolbar-actions">
+            <button 
+              className="builder-v2-hover-toolbar-btn"
+              onClick={(e) => { e.stopPropagation(); onSelectNode(node.id); }}
+              title="Edit"
+            >
+              Edit
+            </button>
+            {onDeleteNode && (
+              <button 
+                className="builder-v2-hover-toolbar-btn builder-v2-hover-toolbar-btn--delete"
+                onClick={(e) => { e.stopPropagation(); onDeleteNode(node.id); }}
+                title="Delete"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
       <div
         className="builder-v2-node-surface"
         onClick={readonly

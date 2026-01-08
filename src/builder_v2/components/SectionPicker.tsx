@@ -1,6 +1,6 @@
 /**
  * SectionPicker - Perspective-style clean section picker
- * Left sidebar with expandable categories, shows template previews on hover
+ * Visual template previews with categorized sections
  */
 
 import { useState } from 'react';
@@ -23,10 +23,8 @@ import {
   Shield,
   Star,
   Sparkles,
-  MessageSquare,
   HelpCircle,
   Timer,
-  MapPin,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -34,6 +32,7 @@ import {
   allSectionTemplates,
   type SectionTemplate,
 } from '../templates/sectionTemplates';
+import { TemplatePreviewCard } from './TemplatePreviewCard';
 import type { CanvasNode } from '../types';
 
 interface SectionPickerProps {
@@ -46,57 +45,71 @@ const sectionCategories = [
     id: 'hero', 
     name: 'Hero', 
     icon: Sparkles,
-    color: 'bg-blue-500',
+    color: 'bg-gradient-to-br from-blue-500 to-indigo-600',
     templates: ['hero-simple', 'hero-button']
   },
   { 
     id: 'product', 
     name: 'Product', 
     icon: LayoutGrid,
-    color: 'bg-blue-600',
+    color: 'bg-gradient-to-br from-purple-500 to-pink-500',
     templates: ['features-list', 'content-heading-text']
   },
   { 
     id: 'cta', 
     name: 'Call to action', 
     icon: MousePointerClick,
-    color: 'bg-blue-400',
+    color: 'bg-gradient-to-br from-orange-400 to-red-500',
     templates: ['cta-simple', 'cta-text']
   },
   { 
     id: 'about', 
     name: 'About us', 
     icon: Users,
-    color: 'bg-blue-300',
+    color: 'bg-gradient-to-br from-teal-400 to-cyan-500',
     templates: ['content-text', 'content-heading-text']
   },
   { 
     id: 'quiz', 
     name: 'Quiz', 
     icon: HelpCircle,
-    color: 'bg-blue-500',
+    color: 'bg-gradient-to-br from-yellow-400 to-orange-500',
     templates: ['form-multi-choice']
   },
   { 
     id: 'team', 
     name: 'Team', 
     icon: Users,
-    color: 'bg-blue-600',
+    color: 'bg-gradient-to-br from-green-400 to-emerald-500',
     templates: ['content-heading-text']
   },
   { 
     id: 'testimonials', 
     name: 'Testimonials', 
     icon: Quote,
-    color: 'bg-blue-400',
+    color: 'bg-gradient-to-br from-pink-400 to-rose-500',
     templates: ['social-badges']
   },
   { 
     id: 'trust', 
     name: 'Trust', 
     icon: Shield,
-    color: 'bg-blue-500',
+    color: 'bg-gradient-to-br from-slate-500 to-slate-700',
     templates: ['social-badges', 'features-list']
+  },
+  { 
+    id: 'media', 
+    name: 'Media', 
+    icon: Video,
+    color: 'bg-gradient-to-br from-red-500 to-rose-600',
+    templates: ['media-video', 'media-image']
+  },
+  { 
+    id: 'form', 
+    name: 'Form', 
+    icon: Mail,
+    color: 'bg-gradient-to-br from-blue-400 to-blue-600',
+    templates: ['form-email', 'form-phone', 'form-full', 'form-calendar', 'legal-consent', 'legal-optin']
   },
 ];
 
@@ -225,7 +238,7 @@ function BlockItem({ name, icon: Icon, preview, onClick }: { name: string; icon:
   );
 }
 
-// Expandable category row
+// Expandable category row with template grid
 function CategoryRow({ 
   name, 
   icon: Icon, 
@@ -240,7 +253,7 @@ function CategoryRow({
   color: string;
   isExpanded: boolean;
   onToggle: () => void;
-  onSelectTemplate: (templateId: string) => void;
+  onSelectTemplate: (template: SectionTemplate) => void;
   templates: SectionTemplate[];
 }) {
   return (
@@ -265,16 +278,16 @@ function CategoryRow({
         />
       </button>
       {isExpanded && templates.length > 0 && (
-        <div className="ml-10 mt-1 mb-2 space-y-1">
-          {templates.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => onSelectTemplate(template.id)}
-              className="w-full text-left px-3 py-1.5 rounded-md text-xs text-slate-600 hover:bg-primary/5 hover:text-primary transition-colors"
-            >
-              {template.name}
-            </button>
-          ))}
+        <div className="mt-2 mb-3 px-2">
+          <div className="grid grid-cols-2 gap-2">
+            {templates.map((template) => (
+              <TemplatePreviewCard
+                key={template.id}
+                template={template}
+                onAdd={() => onSelectTemplate(template)}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -302,11 +315,8 @@ export function SectionPicker({ onAddSection }: SectionPickerProps) {
     onAddSection(sectionNode);
   };
 
-  const handleAddTemplate = (templateId: string) => {
-    const template = allSectionTemplates.find(t => t.id === templateId);
-    if (template) {
-      onAddSection(template.createNode());
-    }
+  const handleAddTemplate = (template: SectionTemplate) => {
+    onAddSection(template.createNode());
   };
 
   const getTemplatesForCategory = (categoryId: string): SectionTemplate[] => {
@@ -332,7 +342,7 @@ export function SectionPicker({ onAddSection }: SectionPickerProps) {
                 expandedBlock === 'basic' ? "bg-slate-100" : "hover:bg-slate-50"
               )}
             >
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-blue-500 text-white">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-slate-500 to-slate-700 text-white">
                 <Type size={14} />
               </div>
               <span className="flex-1 text-left text-sm font-medium text-slate-700">Basic blocks</span>
@@ -366,7 +376,7 @@ export function SectionPicker({ onAddSection }: SectionPickerProps) {
                 expandedBlock === 'interactive' ? "bg-slate-100" : "hover:bg-slate-50"
               )}
             >
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-purple-500 text-white">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500 text-white">
                 <Sparkles size={14} />
               </div>
               <span className="flex-1 text-left text-sm font-medium text-slate-700">Interactive blocks</span>
@@ -398,7 +408,7 @@ export function SectionPicker({ onAddSection }: SectionPickerProps) {
             Sections
           </div>
 
-          {/* Section categories */}
+          {/* Section categories with visual previews */}
           <div className="space-y-0.5">
             {sectionCategories.map((category) => (
               <CategoryRow

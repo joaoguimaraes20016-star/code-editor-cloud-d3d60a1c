@@ -1,8 +1,9 @@
 /**
  * PagesList - Perspective-style simple numbered page list
- * Clean, minimal, shows page numbers with names
+ * Clean, minimal, shows page numbers with inline editable names
  */
 
+import { useState, useRef, useEffect } from 'react';
 import { Plus, MoreHorizontal, Trash2, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Page } from '../types';
@@ -30,6 +31,40 @@ export function PagesList({
   onDeletePage,
   onRenamePage 
 }: PagesListProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingId]);
+
+  const handleStartEdit = (page: Page, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(page.id);
+    setEditValue(page.name);
+  };
+
+  const handleFinishEdit = () => {
+    if (editingId && editValue.trim() && onRenamePage) {
+      onRenamePage(editingId, editValue.trim());
+    }
+    setEditingId(null);
+    setEditValue('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleFinishEdit();
+    } else if (e.key === 'Escape') {
+      setEditingId(null);
+      setEditValue('');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -71,13 +106,30 @@ export function PagesList({
                 {index + 1}
               </span>
               
-              {/* Page name */}
-              <span className={cn(
-                "flex-1 text-sm truncate",
-                page.id === activePageId ? "font-medium text-slate-900" : "text-slate-600"
-              )}>
-                {page.name}
-              </span>
+              {/* Page name - editable */}
+              {editingId === page.id ? (
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleFinishEdit}
+                  onKeyDown={handleKeyDown}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex-1 text-sm bg-white border border-primary rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-primary"
+                />
+              ) : (
+                <span 
+                  className={cn(
+                    "flex-1 text-sm truncate",
+                    page.id === activePageId ? "font-medium text-slate-900" : "text-slate-600"
+                  )}
+                  onDoubleClick={(e) => handleStartEdit(page, e)}
+                  title="Double-click to rename"
+                >
+                  {page.name}
+                </span>
+              )}
 
               {/* Actions menu */}
               {pages.length > 1 && (
