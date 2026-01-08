@@ -1,72 +1,1213 @@
+/* ============================================================================
+   PHASE 38: VISUAL PARITY LOCK
+   
+   RULE_0: Intelligence layers (intent, personality, AI) MAY NOT:
+   - Change layout geometry
+   - Change spacing units
+   - Change alignment rules
+   - Change viewport framing
+   
+   Intelligence MAY ONLY:
+   - Adjust emphasis (opacity, scale ≤ 1.03, color)
+   - Toggle visibility
+   ============================================================================ */
+
+@import '../styles/visual-parity.css';
+
+:root {
+  /* Base timing - slightly slower for calm */
+  --builder-v2-transition: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --builder-v2-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --builder-v2-transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Selection glow - soft, not sharp */
+  --builder-v2-selection-glow: rgba(139, 92, 246, 0.15);
+  --builder-v2-selection-ring: rgba(139, 92, 246, 0.35);
+  --builder-v2-hover-glow: rgba(139, 92, 246, 0.08);
+  
+  /* Phase 22: Focus Framing & Composition */
+  --builder-v2-focus-bias-y: -3%; /* Subtle upward bias - content anchors above center */
+  --builder-v2-edge-recession: rgba(3, 4, 8, 0.35); /* Canvas edges feel recessed */
+  --builder-v2-content-elevation: rgba(139, 92, 246, 0.018); /* Primary content band feels elevated */
+  
+  /* Phase 22: Composition Zone Spacing — DECORATIVE ONLY (Phase 38 RULE_0) */
+  --builder-v2-headline-zone-weight: 1; /* LOCKED: was 1.15 */
+  --builder-v2-action-zone-weight: 1;   /* LOCKED: was 1.25 */
+  --builder-v2-zone-rhythm: 1;          /* LOCKED: was 1.08 */
+  
+  /* Phase 22: Editor Psychology */
+  --builder-v2-idle-opacity: 0.6;
+  --builder-v2-hover-guidance-opacity: 0.85;
+  
+  /* Phase 23: Selection Framing & Intent Amplification */
+  --builder-v2-selection-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1); /* Confident, not rushed */
+  --builder-v2-selection-fade-distant: 0.65; /* Distant nodes fade more */
+  --builder-v2-selection-fade-sibling: 0.78; /* Immediate siblings fade less */
+  --builder-v2-selection-contrast-lift: 1.02; /* Micro contrast lift on selected */
+  --builder-v2-selection-shadow-ground: rgba(139, 92, 246, 0.08); /* Grounding shadow tint */
+
+  /* Phase 38: LOCKED Layout Spacing (overrides Phase 27 personality defaults)
+   * These values are LOCKED. Do NOT apply multipliers or overrides. */
+  --builder-spacing-section: 64px;  /* LOCKED */
+  --builder-spacing-block: 24px;    /* LOCKED */
+  --builder-spacing-content: 12px;  /* LOCKED */
+  --builder-spacing-action: 32px;   /* LOCKED */
+  --builder-rhythm-multiplier: 1;   /* LOCKED */
+  --builder-headline-scale: 1;
+  --builder-body-scale: 1;
+  --builder-line-height: 1.5;
+  --builder-letter-spacing: 0em;
+  --builder-cta-weight: 600;
+  --builder-cta-min-gap: 32px;      /* LOCKED */
+  --builder-cta-prominence: 1;
+  --builder-hero-padding: 1;        /* LOCKED */
+  --builder-hero-emphasis: 1;
+  --builder-motion-duration: 1;
+  --builder-motion-easing-intensity: 0.5;
+  --builder-motion-stagger: 50ms;
+
+  /* ============================================================================
+     PHASE 34: COMPONENT PRESENCE SYSTEM
+     CSS-variable driven presence tokens for elevation, surface, and emphasis.
+     These defaults are overridden by inline styles from presenceResolver.
+     ============================================================================ */
+
+  /* Elevation tokens - z-depth perception */
+  --presence-shadow-blur: 8px;
+  --presence-shadow-spread: -2px;
+  --presence-shadow-y: 4px;
+  --presence-shadow-opacity: 0.08;
+  --presence-accent-glow: 0;
+  --presence-hover-lift: 1px;
+
+  /* Surface tokens - background treatment */
+  --presence-bg-opacity: 0.02;
+  --presence-border-opacity: 0.03;
+  --presence-inner-highlight: 0;
+  --presence-backdrop-blur: 0px;
+
+  /* Emphasis tokens - visual weight */
+  --presence-type-scale: 1;
+  --presence-letter-spacing: 0em;
+  --presence-line-height: 1.5;
+  --presence-optical-margin: 0em;
+  --presence-font-weight-delta: 0;
+  --presence-contrast: 1;
+
+  /* ============================================================================
+     PHASE 35: EXPRESSIVE TOKENS (MICRO-EXPRESSION LAYER)
+     CSS-variable driven interaction feedback. Subtle, premium, restrained.
+     No JS listeners. No animation libraries. Just feel.
+     ============================================================================ */
+
+  /* Hover expression - acknowledgment, not celebration */
+  --expr-hover-lift: 1px;
+  --expr-hover-shadow-grow: 1.05;
+  --expr-hover-surface-brighten: 0.02;
+  --expr-hover-border-reveal: 0.02;
+  --expr-hover-scale: 1;
+
+  /* Focus expression - clarity, not highlight */
+  --expr-focus-ring-opacity: 0.15;
+  --expr-focus-ring-spread: 2px;
+  --expr-focus-ring-blur: 4px;
+  --expr-focus-bg-clarity: 0.01;
+  --expr-focus-contrast: 1.01;
+
+  /* Press expression - grounded, not bouncy */
+  --expr-press-depth: 1px;
+  --expr-press-shadow-collapse: 0.4;
+  --expr-press-surface-darken: 0.03;
+  --expr-press-scale: 0.995;
+
+  /* Transition softness - calm, deliberate */
+  --expr-transition-hover: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --expr-transition-focus: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --expr-transition-press: 80ms cubic-bezier(0.4, 0, 0.2, 1);
+  --expr-transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --expr-reduced-motion-multiplier: 0.3;
+}
+
 .builder-v2-canvas {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
-  padding: 16px;
-  min-height: 200px;
-}
-
-.builder-v2-node {
   position: relative;
-  border-radius: 8px;
-  padding: 8px;
-  cursor: pointer;
-  transition: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--funnel-block-gap, 24px);
+  width: 100%;
+  max-width: var(--builder-v2-viewport-width, 768px);
+  margin: 0 auto;
+  padding: 0;
+  min-height: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
-.builder-v2-node:hover {
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.6) inset;
+.builder-v2-canvas {
+  --builder-v2-viewport-width: 768px;
+  --builder-v2-content-max: 672px; /* max-w-2xl */
+}
+
+.builder-v2-canvas[data-width='compact'] {
+  --builder-v2-viewport-width: 390px;
+}
+
+.builder-v2-canvas[data-width='standard'] {
+  --builder-v2-viewport-width: 768px;
+}
+
+.builder-v2-canvas[data-width='wide'] {
+  --builder-v2-viewport-width: 1024px;
+}
+.builder-v2-node {
+  --builder-v2-node-depth: 0;
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.builder-v2-node[data-has-children='true'] {
+  cursor: grab;
+}
+
+.builder-v2-node[data-has-children='true']:active {
+  cursor: grabbing;
+}
+
+.builder-v2-node[data-has-children='false'] {
+  cursor: pointer;
+}
+
+.builder-v2-node--readonly,
+.builder-v2-shell--preview .builder-v2-node {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.95;
+  border: none;
+  box-shadow: none;
+}
+
+.builder-v2-node-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  border: 1px solid transparent;
+  box-shadow: none;
+  opacity: 0;
+  transition:
+    border-color var(--builder-v2-transition),
+    box-shadow var(--builder-v2-transition),
+    opacity var(--builder-v2-transition);
+  z-index: 2;
+}
+
+.builder-v2-node-surface {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: var(--builder-v2-content-max, 672px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--builder-v2-gap, var(--funnel-content-gap, 12px));
+  padding: 0;
+  background: transparent;
+}
+
+.builder-v2-node:hover .builder-v2-node-overlay {
+  border-color: rgba(148, 163, 184, 0.4);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35);
+  opacity: 1;
+}
+
+.builder-v2-node[data-selected='true'] .builder-v2-node-overlay {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+  opacity: 1;
 }
 
 .builder-v2-node[data-selected='true'] {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.9) inset;
+  filter: none;
+  transform: none;
+  opacity: 1;
 }
+
+/* ============================================================================
+   PHASE 23: SELECTION FOCUS MODE
+   When any node is selected, non-selected nodes fade to reduce cognitive load.
+   The canvas collaboratively frames attention on the user's focus.
+   ============================================================================ */
+
+/* All nodes in a canvas with selection: prepare for focus mode */
+.builder-v2-canvas:has(.builder-v2-node[data-selected='true']) .builder-v2-node {
+  transition:
+    transform var(--builder-v2-selection-transition),
+    box-shadow var(--builder-v2-selection-transition),
+    border-color var(--builder-v2-selection-transition),
+    background var(--builder-v2-selection-transition),
+    opacity var(--builder-v2-selection-transition),
+    filter var(--builder-v2-selection-transition);
+}
+
+/* Non-selected nodes fade back - distant de-emphasis */
+.builder-v2-canvas:has(.builder-v2-node[data-selected='true']) .builder-v2-node:not([data-selected='true']) {
+  opacity: var(--builder-v2-selection-fade-distant);
+  filter: saturate(0.92);
+}
+
+/* Immediate siblings of selected node fade less - contextual proximity */
+.builder-v2-canvas:has(.builder-v2-node[data-selected='true']) .builder-v2-node[data-selected='true'] + .builder-v2-node,
+.builder-v2-canvas:has(.builder-v2-node[data-selected='true']) .builder-v2-node:has(+ .builder-v2-node[data-selected='true']) {
+  opacity: var(--builder-v2-selection-fade-sibling);
+  filter: saturate(0.96);
+}
+
+/* Parent containers of selected node: slightly less fade for hierarchy awareness */
+.builder-v2-canvas:has(.builder-v2-node[data-selected='true']) .builder-v2-node:not([data-selected='true']):has(.builder-v2-node[data-selected='true']) {
+  opacity: 0.85;
+  filter: none;
+}
+
+/* Non-selected nodes: hover restores visibility temporarily */
+.builder-v2-canvas:has(.builder-v2-node[data-selected='true']) .builder-v2-node:not([data-selected='true']):hover {
+  opacity: 0.9;
+  filter: saturate(1);
+}
+
+/* ============================================================================
+   PHASE 23: SPATIAL ANCHORING (overlay-only)
+   Selection chrome floats above content without changing layout.
+   ============================================================================ */
 
 .builder-v2-component {
   display: flex;
   flex-direction: column;
-  gap: var(--builder-v2-gap, 12px);
+  align-items: center;
+  width: 100%;
+  max-width: var(--builder-v2-content-max, 672px);
+  margin: 0 auto;
+  gap: var(--builder-v2-gap, var(--funnel-content-gap, 12px));
 }
 
 .builder-v2-component--container {
-  min-height: 24px;
+  min-height: 28px;
 }
 
 .builder-v2-component--text {
-  font-size: 18px;
+  display: block;
+  width: 100%;
+  font-size: 16px;
   font-weight: 600;
   margin: 0;
+  line-height: 1.5;
+  text-align: center;
+  /* Subtle text rendering improvement */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Phase 22: Headline zone - first text element gets subtle visual weight */
+.builder-v2-component:first-child .builder-v2-component--text,
+.builder-v2-node:first-child .builder-v2-component--text {
+  /* Slightly more generous line height for headline breathing room */
+  line-height: calc(1.4 * var(--builder-v2-headline-zone-weight, 1.15));
 }
 
 .builder-v2-component--button {
-  padding: 10px 16px;
-  border-radius: 8px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 320px; /* max-w-xs */
+  padding: 12px 18px;
+  border-radius: 12px;
   border: none;
-  background: rgba(99, 102, 241, 0.9);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 60%, #6366f1 100%);
   color: #fff;
   font-weight: 600;
-  align-self: flex-start;
+  font-size: 15px;
+  align-self: center;
+  text-align: center;
+  margin-top: 0;
+  transition:
+    transform var(--builder-v2-transition),
+    box-shadow var(--builder-v2-transition-slow),
+    filter var(--builder-v2-transition);
+  box-shadow: none;
+}
+
+.builder-v2-component--button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+  box-shadow: none;
+}
+
+.builder-v2-component img {
+  display: block;
+  width: 100%;
+  max-width: 320px; /* max-w-xs */
+  height: auto;
+  margin: 0 auto;
+  border-radius: 12px;
+}
+
+.builder-v2-component video,
+.builder-v2-component iframe {
+  display: block;
+  width: 100%;
+  max-width: var(--builder-v2-content-max, 672px);
+  margin: 0 auto;
+  border-radius: 12px;
+}
+
+.builder-v2-component video {
+  aspect-ratio: 16 / 9;
+}
+
+.builder-v2-legacy-preview {
+  width: 100%;
+  max-width: var(--builder-v2-content-max, 672px);
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--funnel-content-gap, 12px);
+}
+
+.builder-v2-legacy-empty {
+  width: 100%;
+  max-width: var(--builder-v2-content-max, 672px);
+  padding: 24px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.builder-v2-legacy-element {
+  position: relative;
+  width: 100%;
+  display: block;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--builder-v2-transition);
+}
+
+.builder-v2-legacy-element:hover {
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.builder-v2-legacy-element.is-selected {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
 }
 
 .builder-v2-component--hero {
   background: var(--builder-v2-hero-bg, #1f2937);
-  border-radius: 12px;
-  padding: 24px;
+  border-radius: 16px;
+  padding: var(--funnel-block-gap, 24px);
   color: #f8fafc;
+  box-shadow: none;
+  text-align: center;
 }
 
 .builder-v2-component--hero-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: var(--funnel-content-gap, 12px);
 }
 
 .builder-v2-component--hero-headline {
   margin: 0;
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-align: center;
 }
 
 .builder-v2-component--hero-subheadline {
   margin: 0;
-  opacity: 0.8;
+  opacity: 0.75;
+  line-height: 1.5;
+  font-size: 16px;
+  text-align: center;
+}
+
+/* ============================================================================
+   PHASE 34: COMPONENT PRESENCE SYSTEM
+   Presence-aware styling using CSS custom properties.
+   Components receive presence tokens via inline styles from presenceResolver.
+   These rules consume those tokens for subtle, designed-by-default feel.
+   ============================================================================ */
+
+/* --- Heading Presence: Typographic dominance, optical correction --- */
+.builder-v2-component--text[data-presence="heading"],
+.builder-v2-component--hero-headline {
+  /* Typographic scale from presence */
+  font-size: calc(17px * var(--presence-type-scale, 1));
+  /* Tighter tracking for headlines */
+  letter-spacing: var(--presence-letter-spacing, -0.015em);
+  /* Tighter line height for headlines */
+  line-height: var(--presence-line-height, 1.2);
+  /* Optical left margin compensation */
+  margin-left: var(--presence-optical-margin, -0.03em);
+  /* Contrast boost */
+  filter: contrast(var(--presence-contrast, 1));
+}
+
+/* --- Input Presence: Surface separation, calm focus --- */
+.builder-v2-component--input,
+.builder-v2-component--form-field {
+  /* Surface treatment */
+  background: rgba(255, 255, 255, var(--presence-bg-opacity, 0.04));
+  border: 1px solid rgba(255, 255, 255, var(--presence-border-opacity, 0.08));
+  /* Subtle inner highlight */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, var(--presence-inner-highlight, 0.02)),
+    0 var(--presence-shadow-y, 2px) var(--presence-shadow-blur, 6px) 
+      rgba(0, 0, 0, var(--presence-shadow-opacity, 0.06));
+  /* Calm transitions */
+  transition:
+    border-color var(--builder-v2-transition),
+    box-shadow var(--builder-v2-transition-slow),
+    background var(--builder-v2-transition);
+}
+
+.builder-v2-component--input:focus,
+.builder-v2-component--form-field:focus-within {
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 0 0 3px rgba(139, 92, 246, var(--presence-accent-glow, 0.08)),
+    0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* --- Button Presence: Elevation, grounding, confidence --- */
+.builder-v2-component--button {
+  /* Presence-driven shadows */
+  box-shadow:
+    0 var(--presence-shadow-y, 6px) var(--presence-shadow-blur, 16px)
+      var(--presence-shadow-spread, -4px)
+      rgba(99, 102, 241, var(--presence-shadow-opacity, 0.15)),
+    0 0 20px rgba(99, 102, 241, var(--presence-accent-glow, 0.18)),
+    inset 0 1px 0 rgba(255, 255, 255, var(--presence-inner-highlight, 0.08));
+  /* Font weight from presence */
+  font-weight: calc(600 + var(--presence-font-weight-delta, 0));
+  /* Letter spacing for buttons */
+  letter-spacing: var(--presence-letter-spacing, 0.01em);
+}
+
+.builder-v2-component--button:hover {
+  /* Presence-driven hover lift */
+  transform: translateY(calc(-1 * var(--presence-hover-lift, 2px)));
+  box-shadow:
+    0 calc(var(--presence-shadow-y, 6px) + 2px) calc(var(--presence-shadow-blur, 16px) + 4px)
+      var(--presence-shadow-spread, -4px)
+      rgba(99, 102, 241, calc(var(--presence-shadow-opacity, 0.15) + 0.08)),
+    0 0 24px rgba(99, 102, 241, calc(var(--presence-accent-glow, 0.18) + 0.1)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* --- Hero Presence: Commanding but not loud --- */
+.builder-v2-component--hero {
+  /* Presence-driven elevation */
+  box-shadow:
+    0 var(--presence-shadow-y, 12px) var(--presence-shadow-blur, 24px)
+      var(--presence-shadow-spread, -8px)
+      rgba(0, 0, 0, var(--presence-shadow-opacity, 0.12)),
+    0 0 40px rgba(139, 92, 246, var(--presence-accent-glow, 0.05)),
+    inset 0 1px 0 rgba(255, 255, 255, var(--presence-inner-highlight, 0.03));
+  /* Contrast boost for hero sections */
+  filter: contrast(var(--presence-contrast, 1.03));
+}
+
+/* --- Section/Container Presence: Implicit separation, rhythm --- */
+.builder-v2-component--container,
+.builder-v2-component--section {
+  /* Containers are transparent by default - presence via spacing not surface */
+  background: rgba(255, 255, 255, var(--presence-bg-opacity, 0));
+  /* Border only if presence specifies */
+  border: 1px solid rgba(255, 255, 255, var(--presence-border-opacity, 0));
+}
+
+/* Preview empty state - calm, not alarming */
+.builder-v2-preview-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  text-align: center;
+  padding: 40px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.builder-v2-preview-empty-icon {
+  font-size: 40px;
+  margin-bottom: 20px;
+  opacity: 0.35;
+}
+
+.builder-v2-preview-empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.builder-v2-preview-empty-description {
+  font-size: 13px;
+  margin: 0;
+  opacity: 0.6;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+/* Preview header with badge and timestamp - subtle, informative */
+.builder-v2-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.builder-v2-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  /* Softer green - not alarming */
+  background: rgba(34, 197, 94, 0.1);
+  color: rgba(134, 239, 172, 0.8);
+  border-radius: 4px;
+  border: 1px solid rgba(34, 197, 94, 0.15);
+}
+
+.builder-v2-preview-timestamp {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.builder-v2-preview-content {
+  pointer-events: none;
+}
+
+/* Canvas guides - visible when needed, invisible when not */
+.builder-v2-canvas-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  /* Fade in on canvas hover, fade out when idle */
+  opacity: 0.2;
+  transition: opacity var(--builder-v2-transition-slow);
+}
+
+.builder-v2-canvas:hover .builder-v2-canvas-guides {
+  opacity: 0.4;
+}
+
+.builder-v2-canvas-guide {
+  position: absolute;
+  /* Very subtle - guides should whisper */
+  opacity: 0.3;
+  mix-blend-mode: screen;
+}
+
+/* Phase 22: Center guide with asymmetric fade - heavier at top for headline zone */
+.builder-v2-canvas-guide--center {
+  /* Offset slightly upward for optical asymmetry */
+  top: 20px;
+  bottom: 28px;
+  left: 50%;
+  width: 1px;
+  /* Asymmetric gradient - stronger at top (headline zone), fades toward bottom */
+  background: linear-gradient(
+    180deg, 
+    rgba(148, 163, 184, 0) 0%,
+    rgba(148, 163, 184, 0.28) 15%,
+    rgba(148, 163, 184, 0.22) 50%,
+    rgba(148, 163, 184, 0.15) 80%,
+    rgba(148, 163, 184, 0) 100%
+  );
+  transform: translateX(-0.5px);
+}
+
+/* Phase 22: Bounds guide with asymmetric positioning */
+.builder-v2-canvas-guide--bounds {
+  /* Asymmetric vertical positioning - more space at bottom */
+  top: 20px;
+  bottom: 28px;
+  left: 0;
+  right: 0;
+}
+
+.builder-v2-canvas-guide--bounds::before,
+.builder-v2-canvas-guide--bounds::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  /* Asymmetric fade - composition zone awareness */
+  background: linear-gradient(
+    180deg,
+    rgba(148, 163, 184, 0) 0%,
+    rgba(148, 163, 184, 0.18) 12%,
+    rgba(148, 163, 184, 0.12) 55%,
+    rgba(148, 163, 184, 0.08) 85%,
+    rgba(148, 163, 184, 0) 100%
+  );
+}
+
+.builder-v2-canvas-guide--bounds::before {
+  left: calc(50% - (var(--builder-v2-guide-width, 460px) / 2));
+}
+
+.builder-v2-canvas-guide--bounds::after {
+  left: calc(50% + (var(--builder-v2-guide-width, 460px) / 2));
+}
+
+
+/* ============================================================================
+   PREVIEW MODE - RUNTIME ILLUSION
+   In preview mode, the page should feel almost "live"
+   ============================================================================ */
+
+.builder-v2-canvas--preview .builder-v2-node {
+  /* Remove all editing affordances in preview */
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.builder-v2-canvas--preview .builder-v2-canvas-guides {
+  display: none;
+}
+
+/* ============================================================================
+   PHASE 27: LAYOUT PERSONALITY VISUAL LAYER
+   Subtle canvas atmosphere shifts based on personality.
+   No explicit UI - just a psychological shift in how the canvas feels.
+   ============================================================================ */
+
+/* Clean personality (default) - breathable, generous, calm */
+.builder-v2-canvas[data-personality='clean'] {
+  --builder-v2-content-elevation: rgba(139, 92, 246, 0.015);
+  --builder-v2-zone-rhythm: 1.05;
+}
+
+/* Editorial personality - reading-focused, strong hierarchy */
+.builder-v2-canvas[data-personality='editorial'] {
+  --builder-v2-content-elevation: rgba(139, 92, 246, 0.012);
+  --builder-v2-headline-zone-weight: 1.25;
+  --builder-v2-zone-rhythm: 1.15;
+}
+
+.builder-v2-canvas[data-personality='editorial']::before {
+  /* Slightly warmer vignette for editorial feel */
+  background: 
+    linear-gradient(180deg, transparent 0%, transparent 65%, rgba(3, 4, 8, 0.1) 100%),
+    radial-gradient(ellipse 75% 55% at 50% 45%, transparent 0%, rgba(3, 4, 6, 0.15) 100%);
+}
+
+/* Bold personality - high impact, attention-grabbing */
+.builder-v2-canvas[data-personality='bold'] {
+  --builder-v2-content-elevation: rgba(139, 92, 246, 0.025);
+  --builder-v2-selection-glow: rgba(139, 92, 246, 0.2);
+  --builder-v2-action-zone-weight: 1.35;
+  --builder-v2-zone-rhythm: 1.1;
+}
+
+.builder-v2-canvas[data-personality='bold']::after {
+  /* Action zone more prominent in bold mode */
+  background: 
+    linear-gradient(180deg, rgba(255, 255, 255, 0.01) 0%, transparent 15%, transparent 100%),
+    linear-gradient(0deg, rgba(139, 92, 246, 0.018) 0%, transparent 30%, transparent 100%);
+}
+
+/* Dense personality - information-rich, compact */
+.builder-v2-canvas[data-personality='dense'] {
+  --builder-v2-content-elevation: rgba(139, 92, 246, 0.008);
+  --builder-v2-edge-recession: rgba(3, 4, 8, 0.25);
+  --builder-v2-zone-rhythm: 0.85;
+}
+
+.builder-v2-canvas[data-personality='dense'] .builder-v2-node {
+  padding: 0;
+  margin: 0;
+}
+
+/* Conversion personality - CTA-focused, action-optimized */
+.builder-v2-canvas[data-personality='conversion'] {
+  --builder-v2-content-elevation: rgba(139, 92, 246, 0.02);
+  --builder-v2-action-zone-weight: 1.4;
+  --builder-v2-selection-glow: rgba(139, 92, 246, 0.18);
+  --builder-v2-zone-rhythm: 0.95;
+}
+
+.builder-v2-canvas[data-personality='conversion']::after {
+  /* CTA zone more emphasized */
+  background: 
+    linear-gradient(180deg, rgba(255, 255, 255, 0.006) 0%, transparent 12%, transparent 100%),
+    linear-gradient(0deg, rgba(139, 92, 246, 0.022) 0%, transparent 35%, transparent 100%);
+}
+
+/* Personality transition - smooth shifts when personality changes */
+.builder-v2-canvas[data-personality] {
+  transition: 
+    --builder-v2-content-elevation var(--builder-v2-transition-slow),
+    --builder-v2-zone-rhythm var(--builder-v2-transition-slow),
+    padding var(--builder-v2-transition-slow),
+    box-shadow var(--builder-v2-transition-slow),
+    border-color var(--builder-v2-transition);
+}
+
+/* ============================================================================
+   PHASE 35: EXPRESSIVE TOKENS — MICRO-EXPRESSION LAYER
+   Subtle, premium interaction feedback. CSS-only, no JS listeners.
+   Feel, not animation.
+   ============================================================================ */
+
+/* Reduced motion: collapse all expression timing */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --expr-hover-lift: 0px;
+    --expr-hover-scale: 1;
+    --expr-press-depth: 0px;
+    --expr-press-scale: 1;
+    --expr-transition-hover: 0ms;
+    --expr-transition-focus: 0ms;
+    --expr-transition-press: 0ms;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   BUTTONS / CTAs — Lift, Press Depth, Calm Focus
+   ----------------------------------------------------------------------------- */
+
+/* Base button expression layer */
+.builder-v2-component[data-component-type='button'],
+.builder-v2-component[data-component-type='cta'],
+.builder-v2-canvas button,
+.builder-v2-canvas [role='button'] {
+  --_expr-lift: var(--expr-hover-lift, 2px);
+  --_expr-shadow-grow: var(--expr-hover-shadow-grow, 1.15);
+  --_expr-surface-brighten: var(--expr-hover-surface-brighten, 0.03);
+  --_expr-border-reveal: var(--expr-hover-border-reveal, 0.02);
+  --_expr-press-depth: var(--expr-press-depth, 2px);
+  --_expr-press-shadow-collapse: var(--expr-press-shadow-collapse, 0.6);
+  --_expr-press-darken: var(--expr-press-surface-darken, 0.05);
+  --_expr-focus-ring: var(--expr-focus-ring-opacity, 0.22);
+  --_expr-focus-spread: var(--expr-focus-ring-spread, 3px);
+  --_expr-focus-blur: var(--expr-focus-ring-blur, 6px);
+  
+  position: relative;
+  transition:
+    transform var(--expr-transition-hover),
+    box-shadow var(--expr-transition-hover),
+    filter var(--expr-transition-hover),
+    border-color var(--expr-transition-hover);
+}
+
+/* Button hover: subtle lift, shadow bloom */
+.builder-v2-component[data-component-type='button']:hover,
+.builder-v2-component[data-component-type='cta']:hover,
+.builder-v2-canvas button:hover,
+.builder-v2-canvas [role='button']:hover {
+  transform: translateY(calc(-1 * var(--_expr-lift))) scale(var(--expr-hover-scale, 1.01));
+  filter: brightness(calc(1 + var(--_expr-surface-brighten)));
+  border-color: rgba(255, 255, 255, calc(0.08 + var(--_expr-border-reveal)));
+  box-shadow:
+    0 calc(4px * var(--_expr-shadow-grow)) calc(16px * var(--_expr-shadow-grow)) calc(-4px * var(--_expr-shadow-grow)) rgba(0, 0, 0, 0.25),
+    0 0 calc(20px * var(--_expr-shadow-grow)) rgba(139, 92, 246, 0.08);
+}
+
+/* Button focus: calm clarity ring */
+.builder-v2-component[data-component-type='button']:focus-visible,
+.builder-v2-component[data-component-type='cta']:focus-visible,
+.builder-v2-canvas button:focus-visible,
+.builder-v2-canvas [role='button']:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--_expr-focus-spread) rgba(139, 92, 246, var(--_expr-focus-ring)),
+    0 0 var(--_expr-focus-blur) calc(var(--_expr-focus-spread) + 2px) rgba(139, 92, 246, calc(var(--_expr-focus-ring) * 0.5));
+  filter: contrast(var(--expr-focus-contrast, 1.02));
+}
+
+/* Button press: grounded depth */
+.builder-v2-component[data-component-type='button']:active,
+.builder-v2-component[data-component-type='cta']:active,
+.builder-v2-canvas button:active,
+.builder-v2-canvas [role='button']:active {
+  transform: translateY(var(--_expr-press-depth)) scale(var(--expr-press-scale, 0.98));
+  filter: brightness(calc(1 - var(--_expr-press-darken)));
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, calc(0.2 * var(--_expr-press-shadow-collapse))),
+    0 0 8px rgba(139, 92, 246, 0.04);
+  transition:
+    transform var(--expr-transition-press),
+    box-shadow var(--expr-transition-press),
+    filter var(--expr-transition-press);
+}
+
+/* -----------------------------------------------------------------------------
+   INPUTS — Focus Clarity, Surface Response
+   ----------------------------------------------------------------------------- */
+
+/* Base input expression layer */
+.builder-v2-component[data-component-type='input'],
+.builder-v2-component[data-component-type='textarea'],
+.builder-v2-component[data-component-type='select'],
+.builder-v2-canvas input,
+.builder-v2-canvas textarea,
+.builder-v2-canvas select {
+  --_expr-hover-brighten: var(--expr-hover-surface-brighten, 0.015);
+  --_expr-hover-border: var(--expr-hover-border-reveal, 0.04);
+  --_expr-focus-ring: var(--expr-focus-ring-opacity, 0.2);
+  --_expr-focus-spread: var(--expr-focus-ring-spread, 2px);
+  --_expr-focus-blur: var(--expr-focus-ring-blur, 8px);
+  --_expr-focus-clarity: var(--expr-focus-bg-clarity, 0.02);
+  
+  transition:
+    background var(--expr-transition-hover),
+    border-color var(--expr-transition-hover),
+    box-shadow var(--expr-transition-focus);
+}
+
+/* Input hover: surface acknowledgment */
+.builder-v2-component[data-component-type='input']:hover,
+.builder-v2-component[data-component-type='textarea']:hover,
+.builder-v2-component[data-component-type='select']:hover,
+.builder-v2-canvas input:hover,
+.builder-v2-canvas textarea:hover,
+.builder-v2-canvas select:hover {
+  background: rgba(255, 255, 255, calc(var(--presence-bg-opacity, 0.04) + var(--_expr-hover-brighten)));
+  border-color: rgba(255, 255, 255, calc(var(--presence-border-opacity, 0.08) + var(--_expr-hover-border)));
+}
+
+/* Input focus: clarity emphasis, soft ring */
+.builder-v2-component[data-component-type='input']:focus,
+.builder-v2-component[data-component-type='textarea']:focus,
+.builder-v2-component[data-component-type='select']:focus,
+.builder-v2-canvas input:focus,
+.builder-v2-canvas textarea:focus,
+.builder-v2-canvas select:focus {
+  outline: none;
+  background: rgba(255, 255, 255, calc(var(--presence-bg-opacity, 0.04) + var(--_expr-focus-clarity)));
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow:
+    0 0 0 var(--_expr-focus-spread) rgba(139, 92, 246, var(--_expr-focus-ring)),
+    0 0 var(--_expr-focus-blur) calc(var(--_expr-focus-spread) + 4px) rgba(139, 92, 246, calc(var(--_expr-focus-ring) * 0.4)),
+    inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Input focus-visible: keyboard navigation enhancement */
+.builder-v2-canvas input:focus-visible,
+.builder-v2-canvas textarea:focus-visible,
+.builder-v2-canvas select:focus-visible {
+  box-shadow:
+    0 0 0 calc(var(--_expr-focus-spread) + 1px) rgba(139, 92, 246, calc(var(--_expr-focus-ring) * 1.2)),
+    0 0 var(--_expr-focus-blur) calc(var(--_expr-focus-spread) + 6px) rgba(139, 92, 246, calc(var(--_expr-focus-ring) * 0.5)),
+    inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* -----------------------------------------------------------------------------
+   HEADINGS — Editor-Only Clarity Emphasis
+   ----------------------------------------------------------------------------- */
+
+/* Base heading expression (editor context) */
+.builder-v2-canvas .builder-v2-component[data-component-type='heading'],
+.builder-v2-canvas .builder-v2-component[data-component-type='headline'],
+.builder-v2-canvas h1,
+.builder-v2-canvas h2,
+.builder-v2-canvas h3 {
+  --_expr-hover-brighten: var(--expr-hover-surface-brighten, 0.01);
+  --_expr-hover-border: var(--expr-hover-border-reveal, 0.01);
+  --_expr-focus-ring: var(--expr-focus-ring-opacity, 0.08);
+  --_expr-focus-blur: var(--expr-focus-ring-blur, 12px);
+  
+  transition:
+    filter var(--expr-transition-hover),
+    text-shadow var(--expr-transition-hover);
+}
+
+/* Heading hover: editorial clarity (editor-only) */
+.builder-v2-canvas:not(.builder-v2-canvas--readonly) .builder-v2-component[data-component-type='heading']:hover,
+.builder-v2-canvas:not(.builder-v2-canvas--readonly) .builder-v2-component[data-component-type='headline']:hover {
+  filter: contrast(1.02) brightness(calc(1 + var(--_expr-hover-brighten)));
+  text-shadow: 0 0 40px rgba(255, 255, 255, 0.03);
+}
+
+/* Heading focus: soft editorial glow (editor-only) */
+.builder-v2-canvas:not(.builder-v2-canvas--readonly) .builder-v2-component[data-component-type='heading']:focus-within,
+.builder-v2-canvas:not(.builder-v2-canvas--readonly) .builder-v2-component[data-component-type='headline']:focus-within {
+  text-shadow: 
+    0 0 var(--_expr-focus-blur) rgba(139, 92, 246, var(--_expr-focus-ring)),
+    0 0 calc(var(--_expr-focus-blur) * 2) rgba(139, 92, 246, calc(var(--_expr-focus-ring) * 0.4));
+}
+
+/* -----------------------------------------------------------------------------
+   SECTIONS / CONTAINERS — Workspace Feedback
+   ----------------------------------------------------------------------------- */
+
+/* Base section expression layer */
+.builder-v2-node[data-component-type='section'],
+.builder-v2-node[data-component-type='container'],
+.builder-v2-node[data-component-type='hero'],
+.builder-v2-node[data-component-type='stack'] {
+  --_expr-lift: var(--expr-hover-lift, 1px);
+  --_expr-shadow-grow: var(--expr-hover-shadow-grow, 1.08);
+  --_expr-surface-brighten: var(--expr-hover-surface-brighten, 0.012);
+  --_expr-border-reveal: var(--expr-hover-border-reveal, 0.025);
+  --_expr-focus-ring: var(--expr-focus-ring-opacity, 0.1);
+  --_expr-focus-spread: var(--expr-focus-ring-spread, 4px);
+  --_expr-focus-blur: var(--expr-focus-ring-blur, 10px);
+}
+
+/* Section hover: workspace surface response */
+.builder-v2-node[data-component-type='section']:hover,
+.builder-v2-node[data-component-type='container']:hover,
+.builder-v2-node[data-component-type='hero']:hover,
+.builder-v2-node[data-component-type='stack']:hover {
+  transform: translateY(calc(-1 * var(--_expr-lift)));
+  background: rgba(12, 14, 24, calc(0.5 + var(--_expr-surface-brighten)));
+  border-color: rgba(255, 255, 255, calc(0.04 + var(--_expr-border-reveal)));
+  box-shadow:
+    0 calc(8px * var(--_expr-shadow-grow)) calc(24px * var(--_expr-shadow-grow)) calc(-8px * var(--_expr-shadow-grow)) rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(139, 92, 246, calc(0.05 * var(--_expr-shadow-grow)));
+}
+
+/* Section selection: enhanced workspace feedback */
+.builder-v2-node[data-component-type='section'][data-selected='true'],
+.builder-v2-node[data-component-type='container'][data-selected='true'],
+.builder-v2-node[data-component-type='hero'][data-selected='true'],
+.builder-v2-node[data-component-type='stack'][data-selected='true'] {
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.22),
+    0 0 var(--_expr-focus-blur) var(--_expr-focus-spread) rgba(139, 92, 246, var(--_expr-focus-ring)),
+    0 14px 32px -8px rgba(0, 0, 0, 0.38),
+    0 4px 16px -4px var(--builder-v2-selection-shadow-ground);
+}
+
+/* -----------------------------------------------------------------------------
+   PERSONALITY-AWARE EXPRESSION OVERRIDES
+   Subtle shifts in expression intensity based on personality.
+   ----------------------------------------------------------------------------- */
+
+/* Clean personality: restrained, breathing */
+.builder-v2-canvas[data-personality='clean'] {
+  --expr-hover-lift: 1px;
+  --expr-hover-surface-brighten: 0.015;
+  --expr-focus-ring-opacity: 0.12;
+  --expr-focus-ring-blur: 6px;
+}
+
+/* Editorial personality: measured, reading-focused */
+.builder-v2-canvas[data-personality='editorial'] {
+  --expr-hover-lift: 0.5px;
+  --expr-hover-shadow-grow: 1.03;
+  --expr-hover-surface-brighten: 0.01;
+  --expr-focus-ring-opacity: 0.1;
+  --expr-focus-ring-blur: 8px;
+}
+
+/* Bold personality: confident, responsive */
+.builder-v2-canvas[data-personality='bold'] {
+  --expr-hover-lift: 2px;
+  --expr-hover-shadow-grow: 1.1;
+  --expr-hover-surface-brighten: 0.03;
+  --expr-focus-ring-opacity: 0.2;
+  --expr-press-depth: 1.5px;
+}
+
+/* Dense personality: efficient, minimal response */
+.builder-v2-canvas[data-personality='dense'] {
+  --expr-hover-lift: 0px;
+  --expr-hover-shadow-grow: 1;
+  --expr-hover-surface-brighten: 0.01;
+  --expr-focus-ring-opacity: 0.12;
+  --expr-focus-ring-spread: 1px;
+  --expr-press-depth: 0.5px;
+}
+
+/* Conversion personality: action-focused, tactile */
+.builder-v2-canvas[data-personality='conversion'] {
+  --expr-hover-lift: 2px;
+  --expr-hover-shadow-grow: 1.12;
+  --expr-hover-scale: 1.005;
+  --expr-focus-ring-opacity: 0.18;
+  --expr-press-depth: 2px;
+  --expr-press-shadow-collapse: 0.5;
+}
+
+/* =============================================================================
+   PHASE 37: INTENT-DRIVEN RENDERING & ORCHESTRATION
+   Step intent controls visual emphasis, spacing rhythm, and focus bias.
+   No hardcoded styles — only CSS variable adjustments.
+   ============================================================================= */
+
+/* Phase 37: Intent Variable Defaults */
+.builder-v2-canvas {
+  --step-intent-focus-bias: 0%;
+  --step-intent-spacing-rhythm: 1;
+  --step-intent-cta-emphasis: 1;
+  --step-intent-motion-intensity: 1;
+  --step-intent-hero-expected: 0;
+  --step-intent-show-guides: 1;
+  --step-intent-block-gap-scale: 1;
+  --step-intent-action-gap-scale: 1;
+  --step-intent-content-gap-scale: 1;
+}
+
+/* Phase 37: Intent-scoped focus bias - shifts visual attention */
+.builder-v2-canvas[data-step-intent] {
+  --builder-v2-focus-bias-y: var(--step-intent-focus-bias);
+}
+
+/* Phase 37: Intent-scoped spacing rhythm adjustments */
+.builder-v2-canvas[data-step-intent] .builder-v2-node {
+  --_intent-block-gap: calc(var(--funnel-block-gap, 28px) * var(--step-intent-block-gap-scale, 1));
+  --_intent-action-gap: calc(var(--funnel-action-gap, 28px) * var(--step-intent-action-gap-scale, 1));
+  --_intent-content-gap: calc(var(--funnel-content-gap, 16px) * var(--step-intent-content-gap-scale, 1));
+}
+
+/* Phase 37: Optin intent - action-focused, tighter rhythm */
+.builder-v2-canvas[data-step-intent='optin'] {
+  /* Emphasize the action zone */
+  --builder-v2-action-zone-weight: 1.35;
+  --builder-v2-headline-zone-weight: 1.05;
+}
+
+.builder-v2-canvas[data-step-intent='optin'] .builder-v2-node[data-component-type='button'],
+.builder-v2-canvas[data-step-intent='optin'] .builder-v2-node[data-component-type='cta'] {
+  /* Enhanced CTA emphasis for optin intent */
+  --expr-hover-lift: calc(2px * var(--step-intent-cta-emphasis, 1));
+  --expr-hover-shadow-grow: calc(1.1 * var(--step-intent-cta-emphasis, 1));
+  --expr-focus-ring-opacity: calc(0.2 * var(--step-intent-cta-emphasis, 1));
+}
+
+/* Phase 37: Content intent - reading-focused, relaxed rhythm */
+.builder-v2-canvas[data-step-intent='content'] {
+  /* Emphasize the headline/hero zone */
+  --builder-v2-headline-zone-weight: 1.25;
+  --builder-v2-action-zone-weight: 1.0;
+}
+
+.builder-v2-canvas[data-step-intent='content'] .builder-v2-node[data-component-type='hero'],
+.builder-v2-canvas[data-step-intent='content'] .builder-v2-node[data-component-type='headline'] {
+  /* Hero emphasis for content intent */
+  --expr-hover-lift: 1.5px;
+  --presence-type-scale: calc(1 * var(--builder-hero-emphasis, 1));
+}
+
+/* Phase 37: Checkout intent - centered focus, prominent actions */
+.builder-v2-canvas[data-step-intent='checkout'] {
+  /* Balanced focus for checkout flow */
+  --builder-v2-headline-zone-weight: 1.1;
+  --builder-v2-action-zone-weight: 1.3;
+}
+
+.builder-v2-canvas[data-step-intent='checkout'] .builder-v2-node[data-component-type='form'],
+.builder-v2-canvas[data-step-intent='checkout'] .builder-v2-node[data-component-type='form-group'] {
+  /* Stable, grounded forms for checkout */
+  --expr-hover-lift: 0.5px;
+  --expr-focus-ring-opacity: 0.15;
+  --expr-focus-ring-spread: 3px;
+}
+
+/* Phase 37: Thank you intent - calm, centered, celebratory */
+.builder-v2-canvas[data-step-intent='thank_you'] {
+  /* Centered, balanced attention */
+  --builder-v2-headline-zone-weight: 1.1;
+  --builder-v2-action-zone-weight: 0.9;
+}
+
+.builder-v2-canvas[data-step-intent='thank_you'] .builder-v2-node {
+  /* Calmer interactions for completion state */
+  --expr-hover-lift: 0.5px;
+  --expr-hover-shadow-grow: 1.02;
+}
+
+/* Phase 37: Intent-specific composition guides (editor only) */
+.builder-v2-canvas[data-step-intent='optin']::after {
+  /* Show action zone guide for optin */
+  background: 
+    linear-gradient(0deg,
+      rgba(139, 92, 246, 0.02) 0%,
+      transparent 30%,
+      transparent 100%
+    );
+  opacity: calc(0.5 * var(--step-intent-show-guides, 1));
+}
+
+.builder-v2-canvas[data-step-intent='content']::after {
+  /* Show hero zone guide for content */
+  background: 
+    linear-gradient(180deg, 
+      rgba(139, 92, 246, 0.015) 0%, 
+      transparent 25%,
+      transparent 100%
+    );
+  opacity: calc(0.5 * var(--step-intent-show-guides, 1));
+}
+
+/* Phase 37: Motion intensity respect */
+.builder-v2-canvas[data-step-intent] .builder-v2-node {
+  transition-duration: calc(var(--builder-v2-transition) * var(--step-intent-motion-intensity, 1));
+}
+
+/* Phase 37: Reduced motion - respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  .builder-v2-canvas[data-step-intent] {
+    --step-intent-motion-intensity: 0.3;
+  }
+  
+  .builder-v2-canvas[data-step-intent] .builder-v2-node {
+    --expr-hover-lift: 0px;
+    --expr-press-depth: 0px;
+    transition-duration: 0ms;
+  }
+  
+  .builder-v2-canvas[data-step-intent]::after {
+    opacity: 0;
+  }
+}
+
+/* Phase 37: Preview/Runtime parity - calmer in non-editor contexts */
+.builder-v2-canvas--readonly[data-step-intent],
+.builder-v2-canvas--preview[data-step-intent] {
+  /* Hide editor-specific guides */
+  --step-intent-show-guides: 0;
+}
+
+.builder-v2-canvas--readonly[data-step-intent]::after,
+.builder-v2-canvas--preview[data-step-intent]::after {
+  opacity: 0;
+}
+
+/* Phase 37: Runtime-specific calmer values (applied via JS, reinforced here) */
+.runtime-layout[data-step-intent] {
+  --step-intent-motion-intensity: 0.85;
 }

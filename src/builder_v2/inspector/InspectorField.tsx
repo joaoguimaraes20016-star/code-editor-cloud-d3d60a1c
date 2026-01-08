@@ -12,28 +12,80 @@ const inputTypeMap: Record<InspectorFieldDefinition['inputType'], string> = {
 type InspectorFieldProps = {
   field: InspectorFieldDefinition;
   value: unknown;
+  defaultValue: unknown;
   onChange: (value: string | number) => void;
+  onReset: () => void;
 };
 
-export function InspectorField({ field, value, onChange }: InspectorFieldProps) {
+function valuesMatch(current: unknown, baseline: unknown) {
+  if (current === baseline) {
+    return true;
+  }
+
+  const isNumber = typeof current === 'number' || typeof baseline === 'number';
+
+  if (isNumber) {
+    const currentNumber = Number(current);
+    const baselineNumber = Number(baseline);
+
+    if (Number.isNaN(currentNumber) && Number.isNaN(baselineNumber)) {
+      return true;
+    }
+
+    return currentNumber === baselineNumber;
+  }
+
+  if (typeof current === 'string' || typeof baseline === 'string') {
+    return String(current ?? '') === String(baseline ?? '');
+  }
+
+  return false;
+}
+
+export function InspectorField({ field, value, defaultValue, onChange, onReset }: InspectorFieldProps) {
   const inputType = inputTypeMap[field.inputType];
+  const hasAuthoredValue = value !== undefined && value !== null;
+  const displayValue = hasAuthoredValue ? value : defaultValue;
+  const isDirty = hasAuthoredValue ? !valuesMatch(value, defaultValue) : false;
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const nextValue = field.inputType === 'number'
-      ? Number(event.target.value)
-      : event.target.value;
+  const commonProps = {
+    className: 'builder-v2-inspector-input',
+    onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const nextValue = field.inputType === 'number'
+        ? Number(event.target.value)
+        : event.target.value;
 
-    onChange(nextValue);
+      onChange(nextValue);
+    },
+    placeholder: field.optional ? 'Optional' : undefined,
+  } as const;
+
+  const handleReset = () => {
+    if (!isDirty) {
+      return;
+    }
+
+    onReset();
   };
 
   if (inputType === 'textarea') {
     return (
       <label className="builder-v2-inspector-field">
-        <span className="builder-v2-inspector-label">{field.label}</span>
+        <span className="builder-v2-inspector-label-row">
+          <span className="builder-v2-inspector-label">{field.label}</span>
+          <button
+            type="button"
+            className="builder-v2-inspector-reset"
+            onClick={handleReset}
+            disabled={!isDirty}
+            aria-label={`Reset ${field.label} to default`}
+          >
+            Reset
+          </button>
+        </span>
         <textarea
-          className="builder-v2-inspector-input"
-          value={typeof value === 'string' ? value : ''}
-          onChange={handleChange}
+          {...commonProps}
+          value={typeof displayValue === 'string' ? displayValue : ''}
         />
       </label>
     );
@@ -41,18 +93,36 @@ export function InspectorField({ field, value, onChange }: InspectorFieldProps) 
 
   return (
     <label className="builder-v2-inspector-field">
-      <span className="builder-v2-inspector-label">{field.label}</span>
+      <span className="builder-v2-inspector-label-row">
+        <span className="builder-v2-inspector-label">{field.label}</span>
+        <button
+          type="button"
+          className="builder-v2-inspector-reset"
+          onClick={handleReset}
+          disabled={!isDirty}
+          aria-label={`Reset ${field.label} to default`}
+        >
+          Reset
+        </button>
+      </span>
       <input
-        className="builder-v2-inspector-input"
         type={inputType}
+        {...commonProps}
         value={field.inputType === 'number'
-          ? Number.isFinite(value as number)
-            ? String(value)
-            : ''
-          : typeof value === 'string'
-            ? value
+          ? (() => {
+              if (typeof displayValue === 'number' && Number.isFinite(displayValue)) {
+                return String(displayValue);
+              }
+
+              if (typeof displayValue === 'string' && displayValue.trim() !== '') {
+                return displayValue;
+              }
+
+              return '';
+            })()
+          : typeof displayValue === 'string'
+            ? displayValue
             : ''}
-        onChange={handleChange}
       />
     </label>
   );

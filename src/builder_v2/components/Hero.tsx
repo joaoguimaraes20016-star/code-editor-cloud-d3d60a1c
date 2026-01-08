@@ -16,7 +16,13 @@ export function Hero({
   return (
     <section
       className="builder-v2-component builder-v2-component--hero"
-      style={{ '--builder-v2-hero-bg': backgroundColor } as CSSProperties}
+      style={{
+        '--builder-v2-hero-bg': backgroundColor,
+        maxWidth: '672px',
+        width: '100%',
+        margin: '0 auto',
+        textAlign: 'center',
+      } as CSSProperties}
     >
       <div className="builder-v2-component--hero-content">
         <h2 className="builder-v2-component--hero-headline">{headline}</h2>

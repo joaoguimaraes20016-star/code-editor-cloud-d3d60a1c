@@ -22,7 +22,8 @@ import FunnelList from "./pages/FunnelList";
 import FunnelEditor from "./pages/FunnelEditor";
 import PublicFunnel from "./pages/PublicFunnel";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
-
+import { EditorShell } from "./builder_v2/EditorShell";
+import { RuntimePage } from "./builder_v2/runtime";
 // Dev-only funnel test route (dynamically imported so it is not included in production builds)
 let DevFunnelTest: React.LazyExoticComponent<any> | null = null;
 if (import.meta.env.DEV) {
@@ -53,9 +54,13 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* 🔓 TEMP DEV ROUTE — must stay outside auth */}
+            <Route path="/builder-v2" element={<EditorShell />} />
+
             {/* Public routes - no auth required */}
             <Route path="/onboard/:token" element={<OnboardingForm />} />
             <Route path="/f/:slug" element={<PublicFunnel />} />
+            <Route path="/runtime/:documentId" element={<RuntimePage />} />
             <Route path="/legal/privacy" element={<PrivacyPolicy />} />
 
             {import.meta.env.DEV && DevFunnelTest && (

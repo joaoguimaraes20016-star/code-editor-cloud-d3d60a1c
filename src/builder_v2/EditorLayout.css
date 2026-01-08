@@ -1,11 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap');
+
+:root {
+  /* Core palette - darker, calmer, more depth */
+  --builder-v2-bg: #030406;
+  --builder-v2-bg-elevated: #080a10;
+  --builder-v2-panel-bg: rgba(6, 8, 14, 0.88);
+  --builder-v2-panel-border: rgba(255, 255, 255, 0.05);
+  --builder-v2-text: #f5f7fa;
+  --builder-v2-text-muted: rgba(245, 247, 250, 0.55);
+  --builder-v2-text-dim: rgba(245, 247, 250, 0.35);
+  
+  /* Outlines - softer, less "engineer-y" */
+  --builder-v2-outline-soft: rgba(148, 163, 184, 0.12);
+  --builder-v2-outline-strong: rgba(139, 92, 246, 0.4);
+  
+  /* Accent - softer glow, less saturated at rest */
+  --builder-v2-accent: #8b5cf6;
+  --builder-v2-accent-soft: rgba(139, 92, 246, 0.15);
+  --builder-v2-accent-glow: rgba(139, 92, 246, 0.25);
+  --builder-v2-accent-strong: #a78bfa;
+  --builder-v2-danger: #f87171;
+  
+  /* Transitions - slightly slower for calm feel */
+  --builder-v2-transition: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --builder-v2-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --builder-v2-transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Canvas surface - the "stage" feel */
+  --builder-v2-canvas-surface: rgba(12, 14, 22, 0.6);
+  --builder-v2-canvas-glow: rgba(139, 92, 246, 0.04);
+  --builder-v2-canvas-vignette: radial-gradient(
+    ellipse 80% 60% at 50% 50%,
+    transparent 0%,
+    rgba(3, 4, 6, 0.4) 100%
+  );
+  
+  /* Phase 22: Editor Focus Framing */
+  --builder-v2-center-focus-gradient: radial-gradient(
+    ellipse 70% 50% at 50% 45%,
+    rgba(139, 92, 246, 0.015) 0%,
+    transparent 70%
+  );
+  --builder-v2-working-surface-glow: rgba(139, 92, 246, 0.025);
+
+  /* ============================================================================
+     PHASE 35: EDITOR EXPRESSIVE TOKENS
+     Richer interaction feedback for editor context. Subtle, premium, deliberate.
+     Editor-specific enhancements on top of the base expression system.
+     ============================================================================ */
+
+  /* Editor hover expression - slightly richer than runtime */
+  --editor-expr-hover-lift: 1.5px;
+  --editor-expr-hover-shadow-grow: 1.08;
+  --editor-expr-hover-surface-brighten: 0.025;
+  --editor-expr-hover-border-reveal: 0.03;
+
+  /* Editor focus expression - enhanced clarity for workspace */
+  --editor-expr-focus-ring-opacity: 0.18;
+  --editor-expr-focus-ring-spread: 3px;
+  --editor-expr-focus-ring-blur: 8px;
+  --editor-expr-focus-bg-clarity: 0.015;
+
+  /* Editor press expression - tactile workspace feedback */
+  --editor-expr-press-depth: 1.5px;
+  --editor-expr-press-shadow-collapse: 0.45;
+
+  /* Editor transition softness - responsive but calm */
+  --editor-expr-transition-hover: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --editor-expr-transition-focus: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --editor-expr-transition-press: 70ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .builder-v2-shell {
   display: flex;
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   overflow: hidden;
-  background: #0f1115;
-  color: #f5f7fa;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  color: var(--builder-v2-text);
+  background: inherit;
+  font-family: 'Space Grotesk', 'Sora', system-ui, -apple-system, sans-serif;
 }
 
 .builder-v2-panel {
@@ -13,7 +86,12 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  /* Softer border - less "wall", more "edge" */
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+  background: var(--builder-v2-panel-bg);
+  backdrop-filter: blur(32px);
+  /* Side panels fade into background mentally */
+  transition: opacity var(--builder-v2-transition-slow);
 }
 
 .builder-v2-panel:last-child {
@@ -23,61 +101,171 @@
 .builder-v2-panel--left,
 .builder-v2-panel--right {
   width: 280px;
+  /* Subtle fade effect - panels are contextual, not primary */
+  opacity: 0.95;
+}
+
+.builder-v2-panel--left:hover,
+.builder-v2-panel--right:hover {
+  opacity: 1;
 }
 
 .builder-v2-panel--center {
   flex: 1;
+  /* Canvas is the stage - visually primary */
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+/* Phase 22: Working surface background layer */
+.builder-v2-panel--center::before {
+  content: none;
+}
+
+/* Phase 22: Working surface intensifies on interaction */
+.builder-v2-panel--center:hover::before {
+  opacity: 1;
 }
 
 .builder-v2-panel-header {
-  padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 14px;
-  letter-spacing: 0.04em;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  /* Subtle - headers should whisper, not shout */
+  color: var(--builder-v2-text-muted);
+  transition: color var(--builder-v2-transition);
+}
+
+.builder-v2-panel-header:hover {
+  color: var(--builder-v2-text);
+}
+
+.builder-v2-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  /* Softer badge - informative but not loud */
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  color: rgba(167, 139, 250, 0.8);
+  transition: all var(--builder-v2-transition);
+}
+
+.builder-v2-mode-badge:hover {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--builder-v2-accent-strong);
 }
 
 .builder-v2-panel-scroll {
   flex: 1;
   overflow: auto;
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* Smoother scrolling */
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.builder-v2-panel-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.builder-v2-panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.builder-v2-panel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+}
+
+.builder-v2-panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.builder-v2-preview-hint {
+  font-size: 12px;
+  color: var(--builder-v2-text-dim);
+  padding: 12px 14px;
+  border-radius: 12px;
+  /* Solid but soft border - less "alert" feel */
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.015);
+  line-height: 1.5;
 }
 
 .builder-v2-mode-toggle {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  /* Subtler container - almost invisible */
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  gap: 2px;
 }
 
 .builder-v2-mode-toggle button {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid transparent;
-  color: inherit;
-  padding: 6px 12px;
-  border-radius: 6px;
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 11px;
+  color: var(--builder-v2-text-dim);
+  background: transparent;
   cursor: pointer;
+  transition: all var(--builder-v2-transition);
+}
+
+.builder-v2-mode-toggle button:hover {
+  color: var(--builder-v2-text-muted);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .builder-v2-mode-toggle button[aria-pressed="true"] {
-  background: rgba(99, 102, 241, 0.4);
-  border-color: rgba(99, 102, 241, 0.8);
+  /* Soft glow, not hard box */
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--builder-v2-text);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
 }
 
 .builder-v2-placeholder {
   padding: 16px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px dashed rgba(255, 255, 255, 0.12);
+  /* Soft solid border instead of dashed - calmer */
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--builder-v2-text-dim);
 }
 
 .builder-v2-hidden {
   display: none;
 }
 
+.builder-v2-shell--preview .builder-v2-panel--center {
+  box-shadow: none;
+}
+
 .builder-v2-inspector {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  min-height: 200px;
 }
 
 .builder-v2-inspector-header {
@@ -86,33 +274,137 @@
   gap: 4px;
 }
 
+.builder-v2-inspector-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .builder-v2-inspector-title {
-  font-size: 16px;
   margin: 0;
+  font-size: 18px;
+}
+
+/* 
+ * Layout Intelligence Indicator
+ * A subtle dot that appears when suggestions are available.
+ * Intentionally minimal - this is infrastructure, not a feature launch.
+ */
+.builder-v2-inspector-suggestion-indicator {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.6);
+  flex-shrink: 0;
+  cursor: help;
+  transition: 
+    background var(--builder-v2-transition),
+    transform var(--builder-v2-transition);
+}
+
+.builder-v2-inspector-suggestion-indicator:hover {
+  background: rgba(99, 102, 241, 0.9);
+  transform: scale(1.2);
 }
 
 .builder-v2-inspector-subtitle {
   margin: 0;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--builder-v2-text-muted);
 }
 
 .builder-v2-inspector-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px;
-  border-radius: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  /* Softer borders - less "boxed" */
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.015);
+  transition: 
+    border-color var(--builder-v2-transition),
+    background var(--builder-v2-transition),
+    box-shadow var(--builder-v2-transition-slow);
+}
+
+/* Phase 37: Collapsed section state */
+.builder-v2-inspector-section--collapsed {
+  gap: 0;
+  padding: 10px 14px;
+}
+
+.builder-v2-inspector-section:hover {
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.builder-v2-inspector-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Phase 37: Clickable header for collapsible sections */
+.builder-v2-inspector-section-header--clickable {
+  appearance: none;
+  border: none;
+  background: transparent;
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  text-align: left;
+  border-radius: 6px;
+  transition: background var(--builder-v2-transition);
+}
+
+.builder-v2-inspector-section-header--clickable:hover {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.builder-v2-inspector-section-header--clickable:focus-visible {
+  outline: none;
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.builder-v2-inspector-section-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.builder-v2-inspector-section-chevron {
+  font-size: 10px;
+  color: var(--builder-v2-text-dim);
+  transition: transform var(--builder-v2-transition);
+}
+
+.builder-v2-inspector-section--collapsed .builder-v2-inspector-section-chevron {
+  transform: rotate(0deg);
+}
+
+.builder-v2-inspector-section:not(.builder-v2-inspector-section--collapsed) .builder-v2-inspector-section-chevron {
+  transform: rotate(0deg);
 }
 
 .builder-v2-inspector-section-title {
   margin: 0;
-  font-size: 13px;
-  letter-spacing: 0.04em;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--builder-v2-text-dim);
+}
+
+.builder-v2-inspector-section-description {
+  margin: 0;
+  font-size: 11px;
+  color: rgba(245, 247, 250, 0.35);
+  line-height: 1.4;
 }
 
 .builder-v2-inspector-fields {
@@ -124,30 +416,991 @@
 .builder-v2-inspector-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+}
+
+.builder-v2-inspector-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .builder-v2-inspector-label {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--builder-v2-text-muted);
+}
+
+.builder-v2-inspector-reset {
+  appearance: none;
+  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--builder-v2-text);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity var(--builder-v2-transition), background var(--builder-v2-transition);
+}
+
+.builder-v2-inspector-reset:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .builder-v2-inspector-input {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 8px;
-  color: #f8fafc;
-  padding: 8px 10px;
-  font-size: 14px;
+  background: rgba(6, 8, 14, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  color: var(--builder-v2-text);
+  padding: 10px 12px;
+  font-size: 13px;
+  transition: 
+    border-color var(--builder-v2-transition),
+    box-shadow var(--builder-v2-transition-slow),
+    background var(--builder-v2-transition);
+  resize: vertical;
+}
+
+.builder-v2-inspector-input:hover {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(8, 10, 16, 0.8);
 }
 
 .builder-v2-inspector-input:focus {
-  outline: 2px solid rgba(59, 130, 246, 0.6);
-  outline-offset: 1px;
+  outline: none;
+  border-color: rgba(139, 92, 246, 0.3);
+  /* Soft glow instead of hard ring */
+  box-shadow: 
+    0 0 0 3px rgba(139, 92, 246, 0.08),
+    0 0 20px -4px rgba(139, 92, 246, 0.15);
+  background: rgba(10, 12, 20, 0.9);
 }
 
 .builder-v2-inspector-empty {
   margin: 0;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--builder-v2-text-muted);
+}
+
+.builder-v2-inspector--disabled {
+  /* Soft solid border instead of dashed */
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.builder-v2-inspector-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+}
+
+.builder-v2-inspector-preview-title {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--builder-v2-text);
+}
+
+.builder-v2-inspector-preview-description {
+  margin: 0;
+  font-size: 13px;
+  color: var(--builder-v2-text-muted);
+}
+
+.builder-v2-structure-tree {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.builder-v2-structure-node {
+  display: flex;
+  flex-direction: column;
+}
+
+.builder-v2-structure-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-left: calc(var(--builder-v2-structure-depth, 0) * 8px);
+  /* Softer borders - almost invisible at rest */
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.01);
+  cursor: grab;
+  transition: 
+    border-color var(--builder-v2-transition),
+    box-shadow var(--builder-v2-transition-slow),
+    background var(--builder-v2-transition);
+}
+
+.builder-v2-structure-row[data-depth='0'] {
+  cursor: default;
+}
+
+.builder-v2-structure-row::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: inherit;
+  border: 1px solid transparent;
+  opacity: 0;
+  transition: 
+    opacity var(--builder-v2-transition),
+    border-color var(--builder-v2-transition);
+}
+
+.builder-v2-structure-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.builder-v2-structure-row:hover::after {
+  border-color: rgba(255, 255, 255, 0.06);
+  opacity: 1;
+}
+
+/* ============================================================================
+   PHASE 23: STRUCTURE TREE SELECTION FRAMING
+   Structure panel mirrors canvas focus mode - reinforces selection intent
+   ============================================================================ */
+
+/* All rows in a tree with selection: prepare for focus mode */
+.builder-v2-structure-tree:has(.builder-v2-structure-row[data-selected='true']) .builder-v2-structure-row {
+  transition:
+    opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    background 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Non-selected rows fade in structure tree */
+.builder-v2-structure-tree:has(.builder-v2-structure-row[data-selected='true']) .builder-v2-structure-row:not([data-selected='true']) {
+  opacity: 0.55;
+}
+
+/* Non-selected rows: hover restores visibility temporarily */
+.builder-v2-structure-tree:has(.builder-v2-structure-row[data-selected='true']) .builder-v2-structure-row:not([data-selected='true']):hover {
+  opacity: 0.85;
+}
+
+/* Parent rows containing selected: less fade for hierarchy awareness */
+.builder-v2-structure-tree:has(.builder-v2-structure-row[data-selected='true']) .builder-v2-structure-row:not([data-selected='true']):has(.builder-v2-structure-row[data-selected='true']) {
+  opacity: 0.75;
+}
+
+.builder-v2-structure-row[data-selected='true'] {
+  /* Soft selection glow - not harsh border */
+  border-color: rgba(139, 92, 246, 0.25);
+  background: rgba(139, 92, 246, 0.05);
+  box-shadow: 
+    0 0 16px -4px rgba(139, 92, 246, 0.15),
+    0 4px 12px -4px rgba(0, 0, 0, 0.2);
+  /* Phase 23: Selected row stays fully opaque */
+  opacity: 1 !important;
+}
+
+.builder-v2-structure-row[data-selected='true']::after {
+  border-color: rgba(139, 92, 246, 0.3);
+  opacity: 1;
+}
+
+.builder-v2-structure-row-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.builder-v2-structure-row-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.builder-v2-structure-row-type {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--builder-v2-text-dim);
+}
+
+.builder-v2-structure-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--builder-v2-transition);
+}
+
+.builder-v2-structure-row:hover .builder-v2-structure-row-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.builder-v2-structure-row-controls-group {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.builder-v2-structure-chip {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--builder-v2-text);
+  cursor: pointer;
+  transition: opacity var(--builder-v2-transition), border-color var(--builder-v2-transition);
+}
+
+.builder-v2-structure-chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.builder-v2-structure-chip--danger {
+  border-color: rgba(251, 113, 133, 0.5);
+  color: var(--builder-v2-danger);
+}
+
+.builder-v2-structure-children {
+  margin-left: 10px;
+  padding-left: 10px;
+  /* Softer connector line */
+  border-left: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.builder-v2-structure-tree--disabled .builder-v2-structure-row {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.builder-v2-structure-tree--disabled .builder-v2-structure-row-controls {
+  display: none;
+}
+
+.builder-v2-structure-disabled-banner {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--builder-v2-text-dim);
+  padding: 10px 12px;
+  border-radius: 10px;
+  /* Softer border - not dashed */
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.builder-v2-dnd-ghost {
+  position: fixed;
+  pointer-events: none;
+  opacity: 0.95;
+  /* Softer container with glow */
+  background: rgba(8, 10, 18, 0.95);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--builder-v2-text);
+  box-shadow: 
+    0 12px 32px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(139, 92, 246, 0.15);
+  z-index: 9999;
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+
+@keyframes builder-v2-drop-line {
+  from {
+    opacity: 0;
+    transform: scaleX(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.builder-v2-dnd-line {
+  position: fixed;
+  height: 2px;
+  /* Softer glow */
+  background: linear-gradient(90deg, transparent, var(--builder-v2-accent), transparent);
+  border-radius: 999px;
+  z-index: 9998;
+  animation: builder-v2-drop-line 180ms ease;
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+}
+
+/* ==================================================
+   Phase 26: Suggestions Panel & Node Highlighting
+   ================================================== */
+
+/* Suggestions Panel Container */
+.builder-v2-suggestions-panel {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--builder-v2-panel-border);
+}
+
+.builder-v2-suggestions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 8px;
+  transition: background var(--builder-v2-transition-fast);
+}
+
+.builder-v2-suggestions-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.builder-v2-suggestions-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.builder-v2-suggestions-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--builder-v2-text-muted);
+}
+
+.builder-v2-suggestions-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--builder-v2-accent-soft);
+  color: var(--builder-v2-accent-strong);
+}
+
+.builder-v2-suggestions-chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--builder-v2-text-dim);
+  transition: transform var(--builder-v2-transition-fast);
+}
+
+.builder-v2-suggestions-chevron--expanded {
+  transform: rotate(180deg);
+}
+
+/* Suggestions List */
+.builder-v2-suggestions-list {
+  padding: 4px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Individual Suggestion Item */
+.builder-v2-suggestion-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  transition: 
+    background var(--builder-v2-transition-fast),
+    border-color var(--builder-v2-transition-fast);
+  cursor: default;
+}
+
+.builder-v2-suggestion-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.builder-v2-suggestion-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--builder-v2-accent-soft);
+  color: var(--builder-v2-accent);
+  font-size: 12px;
+}
+
+.builder-v2-suggestion-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.builder-v2-suggestion-type {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--builder-v2-text-dim);
+}
+
+.builder-v2-suggestion-description {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--builder-v2-text-muted);
+}
+
+.builder-v2-suggestion-apply {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: none;
+  background: var(--builder-v2-accent-soft);
+  color: var(--builder-v2-accent-strong);
+  cursor: pointer;
+  transition: 
+    background var(--builder-v2-transition-fast),
+    transform var(--builder-v2-transition-fast);
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.builder-v2-suggestion-apply:hover {
+  background: rgba(139, 92, 246, 0.25);
+  transform: translateY(-1px);
+}
+
+.builder-v2-suggestion-apply:active {
+  transform: translateY(0);
+}
+
+.builder-v2-suggestion-apply:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Node Highlight Animation */
+@keyframes builder-v2-highlight-pulse {
+  0% {
+    box-shadow: 
+      0 0 0 0 rgba(139, 92, 246, 0.4),
+      0 0 20px rgba(139, 92, 246, 0.15);
+  }
+  50% {
+    box-shadow: 
+      0 0 0 3px rgba(139, 92, 246, 0.2),
+      0 0 30px rgba(139, 92, 246, 0.25);
+  }
+  100% {
+    box-shadow: 
+      0 0 0 0 rgba(139, 92, 246, 0),
+      0 0 0 rgba(139, 92, 246, 0);
+  }
+}
+
+[data-highlighted="true"] {
+  animation: builder-v2-highlight-pulse 600ms ease-out forwards;
+  /* Subtle outline during animation */
+  outline: 2px solid rgba(139, 92, 246, 0.3);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Empty State */
+.builder-v2-suggestions-empty {
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--builder-v2-text-dim);
+}
+
+/* ============================================================================
+   PHASE 27: LAYOUT PERSONALITY SELECTOR
+   Clean segmented control for personality selection
+   ============================================================================ */
+
+.builder-v2-personality-selector {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.builder-v2-personality-option {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--builder-v2-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition:
+    color var(--builder-v2-transition),
+    background var(--builder-v2-transition),
+    box-shadow var(--builder-v2-transition);
+}
+
+.builder-v2-personality-option:hover {
+  color: var(--builder-v2-text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.builder-v2-personality-option--active {
+  color: var(--builder-v2-text);
+  background: rgba(139, 92, 246, 0.15);
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.2),
+    0 2px 8px -2px rgba(139, 92, 246, 0.2);
+}
+
+.builder-v2-personality-option--active:hover {
+  background: rgba(139, 92, 246, 0.2);
+}
+
+/* Field container for personality (within inspector) */
+.builder-v2-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.builder-v2-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--builder-v2-text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================================
+   PHASE 33: GUIDED MODES & PROGRESSIVE DISCLOSURE
+   Framer/Perspective-style authoring modes with CSS-driven behavior.
+   Uses [data-editor-mode] attribute for all mode-aware styling.
+   ============================================================================ */
+
+/* Guided Mode Switcher - 3-pill toggle */
+.builder-v2-guided-mode-switcher {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  gap: 1px;
+}
+
+.builder-v2-guided-mode-pill {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--builder-v2-text-dim);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    background 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.builder-v2-guided-mode-pill:hover:not(:disabled) {
+  color: var(--builder-v2-text-muted);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.builder-v2-guided-mode-pill--active {
+  color: var(--builder-v2-text);
+  background: rgba(139, 92, 246, 0.15);
+  box-shadow:
+    0 0 8px rgba(139, 92, 246, 0.2),
+    inset 0 0 0 1px rgba(139, 92, 246, 0.25);
+}
+
+.builder-v2-guided-mode-pill--active:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.2);
+}
+
+.builder-v2-guided-mode-pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   MODE-AWARE UI: BUILD MODE
+   Structure-focused: tree visible, spacing guides, structure suggestions
+   --------------------------------------------------------------------------- */
+
+[data-editor-mode="build"] .builder-v2-panel--left {
+  opacity: 1;
+}
+
+[data-editor-mode="build"] .builder-v2-structure-tree {
+  opacity: 1;
+}
+
+/* Inspector sections in Build mode: Content + Structure emphasized */
+[data-editor-mode="build"] .builder-v2-inspector-section[data-section="layout"],
+[data-editor-mode="build"] .builder-v2-inspector-section[data-section="style"] {
+  opacity: 0.6;
+  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-editor-mode="build"] .builder-v2-inspector-section[data-section="layout"]:hover,
+[data-editor-mode="build"] .builder-v2-inspector-section[data-section="style"]:hover {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   MODE-AWARE UI: REFINE MODE
+   Layout/style-focused: tree faded, composition guides, strong selection framing
+   --------------------------------------------------------------------------- */
+
+[data-editor-mode="refine"] .builder-v2-panel--left {
+  opacity: 0.85;
+  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-editor-mode="refine"] .builder-v2-panel--left:hover {
+  opacity: 1;
+}
+
+[data-editor-mode="refine"] .builder-v2-structure-tree {
+  opacity: 0.7;
+  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-editor-mode="refine"] .builder-v2-structure-tree:hover {
+  opacity: 1;
+}
+
+/* Inspector sections in Refine mode: Layout + Style emphasized */
+[data-editor-mode="refine"] .builder-v2-inspector-section[data-section="content"] {
+  opacity: 0.6;
+  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-editor-mode="refine"] .builder-v2-inspector-section[data-section="content"]:hover {
+  opacity: 1;
+}
+
+/* Stronger selection framing in Refine mode */
+[data-editor-mode="refine"] .builder-v2-canvas-node--selected {
+  box-shadow:
+    0 0 0 2px rgba(139, 92, 246, 0.4),
+    0 0 20px rgba(139, 92, 246, 0.15);
+}
+
+/* ---------------------------------------------------------------------------
+   MODE-AWARE UI: CONVERT MODE  
+   CTA-focused: tree minimized, action zones emphasized, conversion suggestions
+   --------------------------------------------------------------------------- */
+
+[data-editor-mode="convert"] .builder-v2-panel--left {
+  opacity: 0.7;
+  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-editor-mode="convert"] .builder-v2-panel--left:hover {
+  opacity: 1;
+}
+
+[data-editor-mode="convert"] .builder-v2-structure-tree {
+  opacity: 0.5;
+  max-height: 200px;
+  overflow: hidden;
+  transition:
+    opacity 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    max-height 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-editor-mode="convert"] .builder-v2-structure-tree:hover {
+  opacity: 0.9;
+  max-height: none;
+}
+
+/* Inspector sections in Convert mode: CTA fields prioritized */
+[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="content"],
+[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="layout"],
+[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="style"] {
+  opacity: 0.5;
+  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="content"]:hover,
+[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="layout"]:hover,
+[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="style"]:hover {
+  opacity: 1;
+}
+
+/* Emphasize action zones (buttons, CTAs) in Convert mode */
+[data-editor-mode="convert"] [data-node-type="button"],
+[data-editor-mode="convert"] [data-node-type="cta"] {
+  outline: 2px solid rgba(139, 92, 246, 0.2);
+  outline-offset: 4px;
+  border-radius: 4px;
+  transition:
+    outline-color 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    outline-offset 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================================
+   PHASE 35: EDITOR EXPRESSIVE TOKENS — MICRO-EXPRESSION LAYER
+   Richer interaction feedback for editor workspace. CSS-only, no JS listeners.
+   Feel, not animation. Editor context allows slightly more expressiveness.
+   ============================================================================ */
+
+/* Reduced motion: collapse all editor expression timing */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --editor-expr-hover-lift: 0px;
+    --editor-expr-press-depth: 0px;
+    --editor-expr-transition-hover: 0ms;
+    --editor-expr-transition-focus: 0ms;
+    --editor-expr-transition-press: 0ms;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   EDITOR PANEL CONTROLS — Workspace Surface Response
+   ----------------------------------------------------------------------------- */
+
+/* Panel buttons and interactive controls */
+.builder-v2-panel button,
+.builder-v2-panel [role="button"],
+.builder-v2-panel .builder-v2-mode-toggle button {
+  transition:
+    transform var(--editor-expr-transition-hover),
+    box-shadow var(--editor-expr-transition-hover),
+    background var(--editor-expr-transition-hover),
+    border-color var(--editor-expr-transition-hover),
+    color var(--editor-expr-transition-hover);
+}
+
+/* Panel button hover: workspace acknowledgment */
+.builder-v2-panel button:hover,
+.builder-v2-panel [role="button"]:hover {
+  transform: translateY(calc(-0.5 * var(--editor-expr-hover-lift)));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Panel button focus: calm clarity */
+.builder-v2-panel button:focus-visible,
+.builder-v2-panel [role="button"]:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--editor-expr-focus-ring-spread) rgba(139, 92, 246, var(--editor-expr-focus-ring-opacity)),
+    0 0 var(--editor-expr-focus-ring-blur) calc(var(--editor-expr-focus-ring-spread) + 2px) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 0.5));
+}
+
+/* Panel button press: grounded */
+.builder-v2-panel button:active,
+.builder-v2-panel [role="button"]:active {
+  transform: translateY(calc(0.5 * var(--editor-expr-press-depth)));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition:
+    transform var(--editor-expr-transition-press),
+    box-shadow var(--editor-expr-transition-press);
+}
+
+/* -----------------------------------------------------------------------------
+   EDITOR INPUT FIELDS — Workspace Form Clarity
+   ----------------------------------------------------------------------------- */
+
+/* Inspector inputs and form controls */
+.builder-v2-inspector input,
+.builder-v2-inspector textarea,
+.builder-v2-inspector select,
+.builder-v2-panel-scroll input,
+.builder-v2-panel-scroll textarea,
+.builder-v2-panel-scroll select {
+  transition:
+    background var(--editor-expr-transition-hover),
+    border-color var(--editor-expr-transition-hover),
+    box-shadow var(--editor-expr-transition-focus);
+}
+
+/* Inspector input hover: surface acknowledgment */
+.builder-v2-inspector input:hover,
+.builder-v2-inspector textarea:hover,
+.builder-v2-inspector select:hover {
+  background: rgba(255, 255, 255, calc(0.03 + var(--editor-expr-hover-surface-brighten)));
+  border-color: rgba(255, 255, 255, calc(0.06 + var(--editor-expr-hover-border-reveal)));
+}
+
+/* Inspector input focus: clarity emphasis */
+.builder-v2-inspector input:focus,
+.builder-v2-inspector textarea:focus,
+.builder-v2-inspector select:focus {
+  outline: none;
+  background: rgba(255, 255, 255, calc(0.04 + var(--editor-expr-focus-bg-clarity)));
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow:
+    0 0 0 var(--editor-expr-focus-ring-spread) rgba(139, 92, 246, var(--editor-expr-focus-ring-opacity)),
+    0 0 var(--editor-expr-focus-ring-blur) calc(var(--editor-expr-focus-ring-spread) + 4px) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 0.4)),
+    inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* -----------------------------------------------------------------------------
+   STRUCTURE TREE — Workspace Navigation Feedback
+   ----------------------------------------------------------------------------- */
+
+/* Tree item hover: workspace guidance */
+.builder-v2-structure-tree-item {
+  transition:
+    background var(--editor-expr-transition-hover),
+    border-color var(--editor-expr-transition-hover),
+    box-shadow var(--editor-expr-transition-hover);
+}
+
+.builder-v2-structure-tree-item:hover {
+  background: rgba(139, 92, 246, calc(0.04 + var(--editor-expr-hover-surface-brighten)));
+  border-color: rgba(139, 92, 246, calc(0.08 + var(--editor-expr-hover-border-reveal)));
+}
+
+/* Tree item selected: workspace emphasis */
+.builder-v2-structure-tree-item--selected {
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.2),
+    0 0 var(--editor-expr-focus-ring-blur) var(--editor-expr-focus-ring-spread) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 0.6));
+}
+
+/* Tree item keyboard focus */
+.builder-v2-structure-tree-item:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--editor-expr-focus-ring-spread) rgba(139, 92, 246, var(--editor-expr-focus-ring-opacity)),
+    0 0 var(--editor-expr-focus-ring-blur) calc(var(--editor-expr-focus-ring-spread) + 2px) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 0.4));
+}
+
+/* -----------------------------------------------------------------------------
+   INSPECTOR SECTIONS — Workspace Accordion Feedback
+   ----------------------------------------------------------------------------- */
+
+/* Inspector section headers */
+.builder-v2-inspector-section-header {
+  transition:
+    background var(--editor-expr-transition-hover),
+    color var(--editor-expr-transition-hover);
+}
+
+.builder-v2-inspector-section-header:hover {
+  background: rgba(255, 255, 255, calc(0.02 + var(--editor-expr-hover-surface-brighten)));
+}
+
+/* Inspector section toggle focus */
+.builder-v2-inspector-section-header:focus-visible {
+  outline: none;
+  background: rgba(139, 92, 246, 0.06);
+  box-shadow:
+    inset 0 0 0 1px rgba(139, 92, 246, var(--editor-expr-focus-ring-opacity));
+}
+
+/* -----------------------------------------------------------------------------
+   MODE TOGGLE — Workspace Mode Switching
+   ----------------------------------------------------------------------------- */
+
+/* Mode toggle enhanced expression */
+.builder-v2-mode-toggle button[aria-pressed="true"] {
+  box-shadow:
+    0 0 var(--editor-expr-focus-ring-blur) rgba(139, 92, 246, var(--editor-expr-focus-ring-opacity)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.builder-v2-mode-toggle button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--editor-expr-focus-ring-spread) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 1.2)),
+    0 0 var(--editor-expr-focus-ring-blur) calc(var(--editor-expr-focus-ring-spread) + 4px) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 0.5));
+}
+
+/* -----------------------------------------------------------------------------
+   BADGE & INDICATOR EXPRESSION
+   ----------------------------------------------------------------------------- */
+
+/* Mode badge hover feedback */
+.builder-v2-mode-badge {
+  transition:
+    background var(--editor-expr-transition-hover),
+    border-color var(--editor-expr-transition-hover),
+    color var(--editor-expr-transition-hover),
+    transform var(--editor-expr-transition-hover);
+}
+
+.builder-v2-mode-badge:hover {
+  transform: translateY(-0.5px);
+}
+
+/* -----------------------------------------------------------------------------
+   CANVAS AREA — EDITOR-ENHANCED WORKSPACE FEEDBACK
+   Richer expression for the main editing canvas in editor context.
+   ----------------------------------------------------------------------------- */
+
+/* Editor shell enhanced expression tokens */
+.builder-v2-shell {
+  --expr-hover-lift: var(--editor-expr-hover-lift);
+  --expr-hover-shadow-grow: var(--editor-expr-hover-shadow-grow);
+  --expr-hover-surface-brighten: var(--editor-expr-hover-surface-brighten);
+  --expr-hover-border-reveal: var(--editor-expr-hover-border-reveal);
+  --expr-focus-ring-opacity: var(--editor-expr-focus-ring-opacity);
+  --expr-focus-ring-spread: var(--editor-expr-focus-ring-spread);
+  --expr-focus-ring-blur: var(--editor-expr-focus-ring-blur);
+  --expr-focus-bg-clarity: var(--editor-expr-focus-bg-clarity);
+  --expr-press-depth: var(--editor-expr-press-depth);
+  --expr-press-shadow-collapse: var(--editor-expr-press-shadow-collapse);
+  --expr-transition-hover: var(--editor-expr-transition-hover);
+  --expr-transition-focus: var(--editor-expr-transition-focus);
+  --expr-transition-press: var(--editor-expr-transition-press);
+}
+
+[data-editor-mode="convert"] [data-node-type="button"]:hover,
+[data-editor-mode="convert"] [data-node-type="cta"]:hover {
+  outline-color: rgba(139, 92, 246, 0.4);
+  outline-offset: 6px;
+}
+
+/* Calmer canvas background progression: Build → Convert */
+[data-editor-mode="build"] .builder-v2-panel--center::before {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 45%, rgba(139, 92, 246, 0.02) 0%, transparent 70%),
+    linear-gradient(90deg, rgba(3, 4, 8, 0.15) 0%, transparent 12%, transparent 88%, rgba(3, 4, 8, 0.15) 100%);
+}
+
+[data-editor-mode="refine"] .builder-v2-panel--center::before {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 45%, rgba(139, 92, 246, 0.025) 0%, transparent 70%),
+    linear-gradient(90deg, rgba(3, 4, 8, 0.12) 0%, transparent 15%, transparent 85%, rgba(3, 4, 8, 0.12) 100%);
+}
+
+[data-editor-mode="convert"] .builder-v2-panel--center::before {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 45%, rgba(139, 92, 246, 0.03) 0%, transparent 70%),
+    linear-gradient(90deg, rgba(3, 4, 8, 0.1) 0%, transparent 18%, transparent 82%, rgba(3, 4, 8, 0.1) 100%);
 }

@@ -1,0 +1,677 @@
+/**
+ * Phase 15 + 21 + 27 + 38: Runtime CSS
+ *
+ * Styles for the public runtime renderer.
+ * Visual parity with editor, atmospheric calm.
+ * Phase 27: Layout personality support.
+ * Phase 38: Visual Parity Lock — LOCKED spacing values.
+ * 
+ * RULE_0: Intelligence layers (intent, personality, AI) MAY NOT:
+ * - Change layout geometry
+ * - Change spacing units
+ * - Change alignment rules
+ * - Change viewport framing
+ */
+
+@import '../styles/visual-parity.css';
+
+/* ============================================================================
+   RUNTIME LAYOUT WRAPPER
+   ============================================================================ */
+
+.runtime-layout {
+  /* Layout constraints - generous, intentional */
+  --runtime-layout-max-width: 460px;
+  
+  /* Phase 38: LOCKED spacing values */
+  --funnel-section-gap: 64px;  /* LOCKED */
+  --funnel-block-gap: 24px;    /* LOCKED */
+  --funnel-text-gap: 12px;     /* LOCKED */
+  --funnel-cta-gap: 32px;      /* LOCKED */
+  /* Legacy var names (mapped to locked values) */
+  --funnel-step-gap: 64px;     /* LOCKED */
+  --funnel-content-gap: 12px;  /* LOCKED */
+  --funnel-action-gap: 32px;   /* LOCKED */
+  --funnel-stack-padding-top: 64px;
+  --funnel-stack-padding-bottom: 72px;
+  --funnel-stack-padding-inline: 24px;
+
+  /* Phase 38: LOCKED Layout Personality Variables
+   * These values are LOCKED. Do NOT apply multipliers or overrides. */
+  --builder-spacing-section: 64px;  /* LOCKED */
+  --builder-spacing-block: 24px;    /* LOCKED */
+  --builder-spacing-content: 12px;  /* LOCKED */
+  --builder-spacing-action: 32px;   /* LOCKED */
+  --builder-rhythm-multiplier: 1;   /* LOCKED */
+  --builder-headline-scale: 1;
+  --builder-body-scale: 1;
+  --builder-line-height: 1.5;
+  --builder-letter-spacing: 0em;
+  --builder-cta-weight: 600;
+  --builder-cta-min-gap: 32px;      /* LOCKED */
+  --builder-cta-prominence: 1;
+  --builder-hero-padding: 1;        /* LOCKED */
+  --builder-hero-emphasis: 1;
+  --builder-motion-duration: 1;
+  --builder-motion-easing-intensity: 0.5;
+  --builder-motion-stagger: 50ms;
+
+  /* Phase 34: Component Presence Tokens (defaults)
+   * Presence-specific values injected inline via presenceResolver */
+  --presence-shadow-blur: 8px;
+  --presence-shadow-spread: 0px;
+  --presence-shadow-y: 4px;
+  --presence-shadow-opacity: 0.08;
+  --presence-accent-glow: 0.1;
+  --presence-hover-lift: 2px;
+  --presence-bg-opacity: 0.04;
+  --presence-border-opacity: 0.06;
+  --presence-inner-highlight: 0.02;
+  --presence-backdrop-blur: 8px;
+  --presence-type-scale: 1;
+  --presence-letter-spacing: 0em;
+  --presence-line-height: 1.5;
+  --presence-optical-margin: 0;
+  --presence-font-weight-delta: 0;
+  --presence-contrast: 1;
+
+  /* ============================================================================
+     PHASE 35: EXPRESSIVE TOKENS (MICRO-EXPRESSION LAYER)
+     CSS-variable driven interaction feedback. Subtle, premium, restrained.
+     No JS listeners. No animation libraries. Runtime = minimal, calm.
+     ============================================================================ */
+
+  /* Hover expression - acknowledgment, not celebration */
+  --expr-hover-lift: 1px;
+  --expr-hover-shadow-grow: 1.05;
+  --expr-hover-surface-brighten: 0.015;
+  --expr-hover-border-reveal: 0.015;
+  --expr-hover-scale: 1;
+
+  /* Focus expression - clarity, not highlight */
+  --expr-focus-ring-opacity: 0.12;
+  --expr-focus-ring-spread: 2px;
+  --expr-focus-ring-blur: 6px;
+  --expr-focus-bg-clarity: 0.01;
+  --expr-focus-contrast: 1.01;
+
+  /* Press expression - grounded, not bouncy */
+  --expr-press-depth: 1px;
+  --expr-press-shadow-collapse: 0.35;
+  --expr-press-surface-darken: 0.025;
+  --expr-press-scale: 0.997;
+
+  /* Transition softness - calm, deliberate (slightly slower for runtime) */
+  --expr-transition-hover: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --expr-transition-focus: 170ms cubic-bezier(0.4, 0, 0.2, 1);
+  --expr-transition-press: 90ms cubic-bezier(0.4, 0, 0.2, 1);
+  --expr-transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.runtime-layout__scroll {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 28px;
+}
+
+.runtime-layout__content {
+  width: 100%;
+  max-width: var(--runtime-layout-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--funnel-step-gap, 36px);
+}
+
+.runtime-layout--runtime {
+  min-height: 100vh;
+  /* Atmospheric depth - feels immersive */
+  background: 
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(139, 92, 246, 0.04), transparent 50%),
+    radial-gradient(ellipse 80% 50% at 20% 100%, rgba(59, 130, 246, 0.03), transparent 40%),
+    linear-gradient(180deg, #0c101a 0%, #0f172a 30%, #1e293b 100%);
+}
+
+.runtime-layout--runtime .runtime-layout__scroll {
+  flex: 1;
+  padding: 40px 20px 56px;
+}
+
+.runtime-layout--preview,
+.runtime-layout--editor {
+  background: transparent;
+}
+
+.runtime-layout--preview .runtime-layout__scroll,
+.runtime-layout--editor .runtime-layout__scroll {
+  padding: 0;
+}
+
+.runtime-layout--preview .runtime-layout__content,
+.runtime-layout--editor .runtime-layout__content {
+  max-width: 480px;
+  padding: 0;
+}
+
+/* Motion container - smooth transitions */
+.runtime-motion-container {
+  width: 100%;
+  position: relative;
+}
+
+/* Step boundary - isolated for motion */
+.runtime-step-boundary {
+  width: 100%;
+  position: relative;
+  isolation: isolate;
+}
+
+/* Step stack - generous vertical rhythm */
+.funnel-step-stack {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding:
+    var(--funnel-stack-padding-top, 64px)
+    var(--funnel-stack-padding-inline, 24px)
+    var(--funnel-stack-padding-bottom, 72px);
+}
+
+.funnel-step-stack__inner {
+  width: 100%;
+  max-width: var(--runtime-layout-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--funnel-block-gap, 32px);
+}
+
+.funnel-step-stack[data-mode='preview'] {
+  padding-top: 36px;
+  padding-bottom: 36px;
+}
+
+/* ============================================================================
+   LEGACY RUNTIME CONTAINER (kept for parity)
+   ============================================================================ */
+
+.runtime-container {
+  min-height: 100vh;
+  /* Atmospheric depth - matches new runtime layout */
+  background: 
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(139, 92, 246, 0.04), transparent 50%),
+    linear-gradient(180deg, #0c101a 0%, #0f172a 30%, #1e293b 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.runtime-canvas {
+  width: 100%;
+  max-width: 1200px;
+  padding: 28px;
+  margin: 0 auto;
+}
+
+/* ============================================================================
+   EMPTY STATE - calm, not alarming
+   ============================================================================ */
+
+.runtime-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 56px 28px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.runtime-empty-icon {
+  font-size: 56px;
+  margin-bottom: 28px;
+  opacity: 0.35;
+}
+
+.runtime-empty-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 14px 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.runtime-empty-description {
+  font-size: 15px;
+  margin: 0;
+  opacity: 0.6;
+  max-width: 380px;
+  line-height: 1.5;
+}
+
+/* ============================================================================
+   ERROR STATES - informative but calm
+   ============================================================================ */
+
+.runtime-error-container {
+  min-height: 100vh;
+  background: 
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(139, 92, 246, 0.04), transparent 50%),
+    linear-gradient(180deg, #0c101a 0%, #0f172a 30%, #1e293b 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+}
+
+.runtime-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 440px;
+  padding: 44px;
+  /* Softer container - not boxed feeling */
+  background: rgba(12, 14, 22, 0.6);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 
+    0 20px 60px -20px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+}
+
+.runtime-error-icon {
+  font-size: 56px;
+  margin-bottom: 24px;
+  opacity: 0.9;
+}
+
+.runtime-error-title {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 14px 0;
+  color: #f8fafc;
+}
+
+.runtime-error-description {
+  font-size: 15px;
+  margin: 0 0 8px 0;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.6;
+}
+
+.runtime-error-hint {
+  font-size: 13px;
+  margin: 18px 0 0 0;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.5;
+}
+
+.runtime-error-id {
+  font-size: 11px;
+  margin: 18px 0 0 0;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.runtime-error-reason {
+  font-size: 12px;
+  margin: 14px 0 0 0;
+  color: rgba(248, 113, 113, 0.7);
+  font-style: italic;
+}
+
+/* ============================================================================
+   LOADING STATE - calm, anticipatory
+   ============================================================================ */
+
+.runtime-loading-container {
+  min-height: 100vh;
+  background: 
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(139, 92, 246, 0.04), transparent 50%),
+    linear-gradient(180deg, #0c101a 0%, #0f172a 30%, #1e293b 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.runtime-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+/* ============================================================================
+   PHASE 27: LAYOUT PERSONALITY - RUNTIME VISUAL LAYER
+   Matches canvas personality styles for visual parity.
+   ============================================================================ */
+
+/* Editorial personality - reading-focused atmosphere */
+.runtime-layout[data-personality='editorial'] {
+  --builder-v2-content-elevation: rgba(139, 92, 246, 0.012);
+}
+
+.runtime-layout--runtime[data-personality='editorial'] {
+  background: 
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(139, 92, 246, 0.035), transparent 50%),
+    radial-gradient(ellipse 80% 50% at 20% 100%, rgba(59, 130, 246, 0.025), transparent 40%),
+    linear-gradient(180deg, #0c101a 0%, #0f172a 30%, #1e293b 100%);
+}
+
+/* Bold personality - high impact atmosphere */
+.runtime-layout[data-personality='bold'] {
+  --builder-v2-content-elevation: rgba(139, 92, 246, 0.025);
+}
+
+.runtime-layout--runtime[data-personality='bold'] {
+  background: 
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(139, 92, 246, 0.05), transparent 50%),
+    radial-gradient(ellipse 80% 50% at 20% 100%, rgba(59, 130, 246, 0.035), transparent 40%),
+    linear-gradient(180deg, #0c101a 0%, #0f172a 30%, #1e293b 100%);
+}
+
+/* Dense personality - compact, efficient atmosphere */
+.runtime-layout[data-personality='dense'] {
+  --builder-v2-content-elevation: rgba(139, 92, 246, 0.008);
+}
+
+.runtime-layout--runtime[data-personality='dense'] {
+  background: 
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(139, 92, 246, 0.03), transparent 50%),
+    linear-gradient(180deg, #0c101a 0%, #0f172a 30%, #1e293b 100%);
+}
+
+.runtime-layout--runtime[data-personality='dense'] .runtime-layout__scroll {
+  padding: 32px 16px 44px;
+}
+
+/* Conversion personality - action-focused atmosphere */
+.runtime-layout[data-personality='conversion'] {
+  --builder-v2-content-elevation: rgba(139, 92, 246, 0.02);
+}
+
+.runtime-layout--runtime[data-personality='conversion'] {
+  background: 
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(139, 92, 246, 0.045), transparent 50%),
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(139, 92, 246, 0.03), transparent 40%),
+    linear-gradient(180deg, #0c101a 0%, #0f172a 30%, #1e293b 100%);
+}
+
+/* ============================================================================
+   PHASE 34: COMPONENT PRESENCE SYSTEM
+   Presence-aware styling using CSS custom properties.
+   Components receive presence tokens via inline styles from presenceResolver.
+   These rules consume those tokens for subtle, designed-by-default feel.
+   Runtime/editor parity: mirrors canvas.css presence styles.
+   ============================================================================ */
+
+/* --- Heading Presence: Typographic dominance, optical correction --- */
+.runtime-component--text[data-presence="heading"],
+.runtime-component--hero-headline {
+  font-size: calc(17px * var(--presence-type-scale, 1));
+  letter-spacing: var(--presence-letter-spacing, -0.015em);
+  line-height: var(--presence-line-height, 1.2);
+  margin-left: var(--presence-optical-margin, -0.03em);
+  filter: contrast(var(--presence-contrast, 1));
+}
+
+/* --- Input Presence: Surface separation, calm focus --- */
+.runtime-component--input,
+.runtime-component--form-field {
+  background: rgba(255, 255, 255, var(--presence-bg-opacity, 0.04));
+  border: 1px solid rgba(255, 255, 255, var(--presence-border-opacity, 0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, var(--presence-inner-highlight, 0.02)),
+    0 var(--presence-shadow-y, 2px) var(--presence-shadow-blur, 6px) 
+      rgba(0, 0, 0, var(--presence-shadow-opacity, 0.06));
+  transition: border-color 0.2s ease, box-shadow 0.3s ease, background 0.2s ease;
+}
+
+.runtime-component--input:focus,
+.runtime-component--form-field:focus-within {
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 0 0 3px rgba(139, 92, 246, var(--presence-accent-glow, 0.08)),
+    0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* --- Button Presence: Elevation, grounding, confidence --- */
+.runtime-component--button {
+  box-shadow:
+    0 var(--presence-shadow-y, 6px) var(--presence-shadow-blur, 16px)
+      var(--presence-shadow-spread, -4px)
+      rgba(99, 102, 241, var(--presence-shadow-opacity, 0.15)),
+    0 0 20px rgba(99, 102, 241, var(--presence-accent-glow, 0.18)),
+    inset 0 1px 0 rgba(255, 255, 255, var(--presence-inner-highlight, 0.08));
+  font-weight: calc(600 + var(--presence-font-weight-delta, 0));
+  letter-spacing: var(--presence-letter-spacing, 0.01em);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.runtime-component--button:hover {
+  transform: translateY(calc(-1 * var(--presence-hover-lift, 2px)));
+  box-shadow:
+    0 calc(var(--presence-shadow-y, 6px) + 2px) calc(var(--presence-shadow-blur, 16px) + 4px)
+      var(--presence-shadow-spread, -4px)
+      rgba(99, 102, 241, calc(var(--presence-shadow-opacity, 0.15) + 0.08)),
+    0 0 24px rgba(99, 102, 241, calc(var(--presence-accent-glow, 0.18) + 0.1)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* --- Hero Presence: Commanding but not loud --- */
+.runtime-component--hero {
+  box-shadow:
+    0 var(--presence-shadow-y, 12px) var(--presence-shadow-blur, 24px)
+      var(--presence-shadow-spread, -8px)
+      rgba(0, 0, 0, var(--presence-shadow-opacity, 0.12)),
+    0 0 40px rgba(139, 92, 246, var(--presence-accent-glow, 0.05)),
+    inset 0 1px 0 rgba(255, 255, 255, var(--presence-inner-highlight, 0.03));
+  filter: contrast(var(--presence-contrast, 1.03));
+}
+
+/* --- Section/Container Presence: Implicit separation, rhythm --- */
+.runtime-component--container,
+.runtime-component--section {
+  background: rgba(255, 255, 255, var(--presence-bg-opacity, 0));
+  border: 1px solid rgba(255, 255, 255, var(--presence-border-opacity, 0));
+}
+
+.runtime-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(99, 102, 241, 0.2);
+  border-top-color: rgba(99, 102, 241, 0.8);
+  border-radius: 50%;
+  animation: runtime-spin 0.8s linear infinite;
+}
+
+@keyframes runtime-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.runtime-loading-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ============================================================================
+   PHASE 35: EXPRESSIVE TOKENS — MICRO-EXPRESSION LAYER (RUNTIME)
+   Subtle, premium interaction feedback. CSS-only, no JS listeners.
+   Runtime is restrained; feel, not animation.
+   ============================================================================ */
+
+/* Reduced motion: collapse all expression timing */
+@media (prefers-reduced-motion: reduce) {
+  .runtime-layout {
+    --expr-hover-lift: 0px;
+    --expr-hover-scale: 1;
+    --expr-press-depth: 0px;
+    --expr-press-scale: 1;
+    --expr-transition-hover: 0ms;
+    --expr-transition-focus: 0ms;
+    --expr-transition-press: 0ms;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   RUNTIME BUTTONS — Subtle Lift, Press Depth, Calm Focus
+   Runtime buttons are more restrained than editor.
+   ----------------------------------------------------------------------------- */
+
+/* Base runtime button expression */
+.runtime-component--button,
+.runtime-layout button,
+.runtime-layout [role='button'] {
+  position: relative;
+  transition:
+    transform var(--expr-transition-hover),
+    box-shadow var(--expr-transition-hover),
+    filter var(--expr-transition-hover),
+    border-color var(--expr-transition-hover);
+}
+
+/* Button hover: subtle lift, shadow bloom */
+.runtime-component--button:hover,
+.runtime-layout button:hover,
+.runtime-layout [role='button']:hover {
+  transform: translateY(calc(-1 * var(--expr-hover-lift))) scale(var(--expr-hover-scale));
+  filter: brightness(calc(1 + var(--expr-hover-surface-brighten)));
+}
+
+/* Button focus: calm clarity ring */
+.runtime-component--button:focus-visible,
+.runtime-layout button:focus-visible,
+.runtime-layout [role='button']:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--expr-focus-ring-spread) rgba(139, 92, 246, var(--expr-focus-ring-opacity)),
+    0 0 var(--expr-focus-ring-blur) calc(var(--expr-focus-ring-spread) + 2px) rgba(139, 92, 246, calc(var(--expr-focus-ring-opacity) * 0.5));
+  filter: contrast(var(--expr-focus-contrast));
+}
+
+/* Button press: grounded depth */
+.runtime-component--button:active,
+.runtime-layout button:active,
+.runtime-layout [role='button']:active {
+  transform: translateY(var(--expr-press-depth)) scale(var(--expr-press-scale));
+  filter: brightness(calc(1 - var(--expr-press-surface-darken)));
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, calc(0.15 * var(--expr-press-shadow-collapse))),
+    0 0 6px rgba(139, 92, 246, 0.03);
+  transition:
+    transform var(--expr-transition-press),
+    box-shadow var(--expr-transition-press),
+    filter var(--expr-transition-press);
+}
+
+/* -----------------------------------------------------------------------------
+   RUNTIME INPUTS — Focus Clarity, Surface Response
+   ----------------------------------------------------------------------------- */
+
+/* Base runtime input expression */
+.runtime-component--input,
+.runtime-component--form-field,
+.runtime-layout input,
+.runtime-layout textarea,
+.runtime-layout select {
+  transition:
+    background var(--expr-transition-hover),
+    border-color var(--expr-transition-hover),
+    box-shadow var(--expr-transition-focus);
+}
+
+/* Input hover: surface acknowledgment */
+.runtime-layout input:hover,
+.runtime-layout textarea:hover,
+.runtime-layout select:hover {
+  background: rgba(255, 255, 255, calc(var(--presence-bg-opacity, 0.04) + var(--expr-hover-surface-brighten)));
+  border-color: rgba(255, 255, 255, calc(var(--presence-border-opacity, 0.08) + var(--expr-hover-border-reveal)));
+}
+
+/* Input focus: clarity emphasis, soft ring */
+.runtime-layout input:focus,
+.runtime-layout textarea:focus,
+.runtime-layout select:focus {
+  outline: none;
+  background: rgba(255, 255, 255, calc(var(--presence-bg-opacity, 0.04) + var(--expr-focus-bg-clarity)));
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow:
+    0 0 0 var(--expr-focus-ring-spread) rgba(139, 92, 246, var(--expr-focus-ring-opacity)),
+    0 0 var(--expr-focus-ring-blur) calc(var(--expr-focus-ring-spread) + 4px) rgba(139, 92, 246, calc(var(--expr-focus-ring-opacity) * 0.35)),
+    inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Input focus-visible: keyboard navigation enhancement */
+.runtime-layout input:focus-visible,
+.runtime-layout textarea:focus-visible,
+.runtime-layout select:focus-visible {
+  box-shadow:
+    0 0 0 calc(var(--expr-focus-ring-spread) + 1px) rgba(139, 92, 246, calc(var(--expr-focus-ring-opacity) * 1.15)),
+    0 0 var(--expr-focus-ring-blur) calc(var(--expr-focus-ring-spread) + 6px) rgba(139, 92, 246, calc(var(--expr-focus-ring-opacity) * 0.45)),
+    inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* -----------------------------------------------------------------------------
+   RUNTIME PERSONALITY-AWARE EXPRESSION OVERRIDES
+   Subtle shifts in expression intensity based on personality.
+   Runtime is always more restrained than editor.
+   ----------------------------------------------------------------------------- */
+
+/* Clean personality: restrained, breathing */
+.runtime-layout[data-personality='clean'] {
+  --expr-hover-lift: 1px;
+  --expr-hover-surface-brighten: 0.012;
+  --expr-focus-ring-opacity: 0.1;
+  --expr-focus-ring-blur: 8px;
+}
+
+/* Editorial personality: measured, reading-focused */
+.runtime-layout[data-personality='editorial'] {
+  --expr-hover-lift: 0px;
+  --expr-hover-shadow-grow: 1.02;
+  --expr-hover-surface-brighten: 0.008;
+  --expr-focus-ring-opacity: 0.08;
+  --expr-focus-ring-blur: 10px;
+}
+
+/* Bold personality: confident but not jumpy */
+.runtime-layout[data-personality='bold'] {
+  --expr-hover-lift: 1.5px;
+  --expr-hover-shadow-grow: 1.08;
+  --expr-hover-surface-brighten: 0.02;
+  --expr-focus-ring-opacity: 0.15;
+  --expr-press-depth: 1px;
+}
+
+/* Dense personality: efficient, minimal response */
+.runtime-layout[data-personality='dense'] {
+  --expr-hover-lift: 0px;
+  --expr-hover-shadow-grow: 1;
+  --expr-hover-surface-brighten: 0.006;
+  --expr-focus-ring-opacity: 0.08;
+  --expr-focus-ring-spread: 1px;
+  --expr-press-depth: 0px;
+}
+
+/* Conversion personality: action-focused, inviting */
+.runtime-layout[data-personality='conversion'] {
+  --expr-hover-lift: 1.5px;
+  --expr-hover-shadow-grow: 1.1;
+  --expr-hover-scale: 1.003;
+  --expr-focus-ring-opacity: 0.14;
+  --expr-press-depth: 1.5px;
+}

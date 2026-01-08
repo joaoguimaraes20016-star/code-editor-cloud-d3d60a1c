@@ -1,798 +1,108 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Settings, Eye, Save, Globe, Play, Maximize2, Minimize2, ChevronLeft, ChevronRight, Undo2, Redo2, Link2, AlertTriangle } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { PagesList } from '@/components/funnel-builder/PagesList';
-import { EditorSidebar } from '@/components/funnel-builder/EditorSidebar';
-import { EditorShell } from '@/components/funnel-builder/EditorShell';
-import type { EditorSelection } from '@/components/funnel-builder/editorSelection';
-import { buildSelectionId, getSelectionChildId, getSelectionStepId } from '@/components/funnel-builder/editorSelection';
-import { FunnelSettingsDialog } from '@/components/funnel-builder/FunnelSettingsDialog';
-import { DevicePreview } from '@/components/funnel-builder/DevicePreview';
-import { StepPreview } from '@/components/funnel-builder/StepPreview';
-import { PreviewNavigation } from '@/components/funnel-builder/PreviewNavigation';
-import { AddStepDialog } from '@/components/funnel-builder/AddStepDialog';
-import { ContentBlock } from '@/components/funnel-builder/ContentBlockEditor';
-import { LivePreviewMode } from '@/components/funnel-builder/LivePreviewMode';
-import { PageSettingsDialog } from '@/components/funnel-builder/PageSettingsDialog';
-import { KeyboardShortcutsPanel } from '@/components/funnel-builder/KeyboardShortcutsPanel';
-import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useFunnelHistory } from '@/hooks/useFunnelHistory';
-import { useTeamRole } from '@/hooks/useTeamRole';
-import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { getDefaultIntent, validateFunnelStructure, countCaptureSteps } from '@/lib/funnel/stepDefinitions';
+
+import { EditorProvider, EditorShell, useEditorStore } from '@/builder_v2';
+import { extractDocument, type EditorDocument } from '@/builder_v2/state/persistence';
+import { createPublishedSnapshot, type PublishedDocumentSnapshot } from '@/builder_v2/state/documentTypes';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import NotFound from './NotFound';
+  createLegacyEditorDocument,
+  createLegacySnapshotPayload,
+  deriveLegacyPayloadFromDocument,
+  type LegacyFunnelStep,
+  type LegacyFunnelSummary,
+  type LegacySnapshotPayload,
+} from '@/builder_v2/legacy/legacyAdapter';
+import { Button } from '@/components/ui/button';
+import { useTeamRole } from '@/hooks/useTeamRole';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const sanitizeUUID = (v?: string | null) => typeof v === 'string' ? v.replace(/^"+|"+$/g, '') : v;
-const validateUuid = (value: string | null | undefined, label: string): string => {
-  const cleaned = sanitizeUUID(value);
-  if (!cleaned) throw new Error(`Missing ${label}`);
-  if (!UUID_RE.test(cleaned)) throw new Error(`Invalid ${label}`);
-  return cleaned;
-};
-const buildNotInFilter = (ids: string[]) => `(${ids.map(id => `"${id}"`).join(',')})`;
-// PostgREST expects UUIDs to be quoted inside the `in` filter list.
+const LOCAL_STORAGE_KEY = 'builder_v2_editor_document';
 
-type DeviceType = 'mobile' | 'tablet' | 'desktop';
-
-export interface StepDesign {
-  backgroundColor?: string;
-  textColor?: string;
-  buttonColor?: string;
-  buttonTextColor?: string;
-  fontSize?: 'small' | 'medium' | 'large';
-  fontFamily?: string;
-  borderRadius?: number;
-  padding?: number;
-  imageUrl?: string;
-  imageSize?: 'S' | 'M' | 'L' | 'XL';
-  imagePosition?: 'top' | 'bottom' | 'background';
-  // Background gradient
-  useGradient?: boolean;
-  gradientFrom?: string;
-  gradientTo?: string;
-  gradientDirection?: string;
-  // Image overlay
-  imageOverlay?: boolean;
-  imageOverlayColor?: string;
-  imageOverlayOpacity?: number;
-  // Button gradient
-  useButtonGradient?: boolean;
-  buttonGradientFrom?: string;
-  buttonGradientTo?: string;
-  buttonGradientDirection?: string;
-  // Button animation
-  buttonAnimation?: 'none' | 'fade' | 'slide-up' | 'bounce' | 'scale';
-  buttonAnimationDuration?: number;
-  // Button hover effect
-  buttonHoverEffect?: 'none' | 'glow' | 'lift' | 'pulse' | 'shine';
-  // Option card styling (multi-choice)
-  optionCardBg?: string;
-  optionCardBorder?: string;
-  optionCardBorderWidth?: number;
-  optionCardSelectedBg?: string;
-  optionCardSelectedBorder?: string;
-  optionCardHoverEffect?: 'none' | 'scale' | 'glow' | 'lift';
-  optionCardRadius?: number;
-  // Input/Textarea styling (text_question)
-  inputBg?: string;
-  inputTextColor?: string;
-  inputBorder?: string;
-  inputBorderWidth?: number;
-  inputRadius?: number;
-  inputPlaceholderColor?: string;
-  inputFocusBorder?: string;
-  inputShowIcon?: boolean;
-}
-
-export interface FunnelStep {
-  id: string;
-  funnel_id: string;
-  order_index: number;
-  step_type: 'welcome' | 'text_question' | 'multi_choice' | 'email_capture' | 'phone_capture' | 'video' | 'thank_you' | 'opt_in' | 'embed';
-  content: {
-    headline?: string;
-    subtext?: string;
-    button_text?: string;
-    placeholder?: string;
-    video_url?: string;
-    options?: Array<string | { text: string; emoji?: string }>;
-    is_required?: boolean;
-    redirect_url?: string;
-    // Multi-choice specific
-    next_button_text?: string;
-    show_next_button?: boolean;
-    // Text/Email/Phone input submit button
-    submit_button_text?: string;
-    // Opt-in form specific
-    name_placeholder?: string;
-    email_placeholder?: string;
-    phone_placeholder?: string;
-    name_icon?: string;
-    email_icon?: string;
-    phone_icon?: string;
-    privacy_text?: string;
-    privacy_link?: string;
-    // Consent / compliance
-    requires_consent?: boolean;
-    show_consent_checkbox?: boolean;
-    consent_mode?: 'explicit' | 'implicit';
-    // Embed specific
-    embed_url?: string;
-    embed_height?: number;
-    embed_scale?: number;
-    // Persisted design and layout
-    design?: StepDesign;
-    element_order?: string[];
-    dynamic_elements?: Record<string, any>;
-    // Step intent for workflow triggering
-    intent?: 'capture' | 'collect' | 'schedule' | 'complete';
-  };
-}
-
-export interface FunnelSettings {
-  logo_url?: string;
-  primary_color: string;
-  background_color: string;
-  button_text: string;
-  ghl_webhook_url?: string;
-  privacy_policy_url?: string;
-  // SEO settings
-  favicon_url?: string;
-  seo_title?: string;
-  seo_description?: string;
-  seo_image?: string;
-  // Pixel Tracking
-  meta_pixel_id?: string;
-  google_analytics_id?: string;
-  google_ads_id?: string;
-  tiktok_pixel_id?: string;
-  // Display settings
-  show_progress_bar?: boolean;
-}
-
-export interface Funnel {
+type BuilderFunnelRow = {
   id: string;
   team_id: string;
   name: string;
   slug: string;
-  status: 'draft' | 'published';
-  settings: FunnelSettings;
-  zapier_webhook_url?: string | null;
-  webhook_urls?: string[] | null;
+  status: string;
+  settings: Record<string, unknown>;
   domain_id?: string | null;
-}
+  builder_document: EditorDocument | null;
+  published_document_snapshot: PublishedDocumentSnapshot | null;
+  updated_at: string;
+};
 
-// Using StepDesign from the exported interface above
+type FunnelQueryResult = {
+  funnel: BuilderFunnelRow;
+  builderDocument: EditorDocument | null;
+  legacyPayload: LegacySnapshotPayload | null;
+  publishedSnapshot: PublishedDocumentSnapshot | null;
+    if (!funnelQuery.data.builderDocument) {
+      return (
+        <BuilderEmptyState teamId={teamId} funnelId={funnelId} hasLegacySteps={funnelQuery.data.hasLegacySteps} />
+      );
+    }
 
-interface StepSettings {
-  autoAdvance?: boolean;
-  autoAdvanceDelay?: number;
-  skipEnabled?: boolean;
-  progressBar?: boolean;
-  animation?: 'fade' | 'slide' | 'scale' | 'none';
-  animationDuration?: number;
-  animationEasing?: 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'linear';
-}
+    if (!editorKey) {
+      return <FullscreenMessage message="Preparing Builder V2…" />;
+    }
 
-// Unified state for undo/redo history
-interface FunnelState {
-  name: string;
-  steps: FunnelStep[];
-  stepDesigns: Record<string, StepDesign>;
-  stepSettings: Record<string, StepSettings>;
-  elementOrders: Record<string, string[]>;
-  dynamicElements: Record<string, Record<string, any>>;
-  stepBlocks: Record<string, ContentBlock[]>;
-  pageSettings: Record<string, any>;
-}
-
-function LoadingState() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <span className="text-sm text-muted-foreground">Loading funnel editor...</span>
-    </div>
-  );
-}
-
-function ErrorState({ title, description }: { title: string; description?: string }) {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
-      <div className="max-w-md space-y-3">
-        <div className="flex items-center justify-center gap-2 text-destructive">
-          <AlertTriangle className="h-5 w-5" />
-          <span className="text-sm font-semibold">{title}</span>
-        </div>
-        {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        ) : null}
+    return (
+      <div className="flex h-screen flex-col bg-background">
+        <EditorProvider key={editorKey}>
+          <BuilderCommandBar
+            funnelId={funnelId}
+            teamId={teamId}
+            funnelName={funnelQuery.data.funnel.name}
+            legacyPayload={legacyPayload}
+            onLegacyPayloadUpdate={setLegacyPayload}
+            publishedSnapshot={publishedSnapshot}
+            onPublished={setPublishedSnapshot}
+            lastSavedAt={lastSavedAt}
+            onSaved={(timestamp) => setLastSavedAt(timestamp)}
+          />
+          <div className="flex-1 overflow-hidden">
+            <EditorShell />
+          </div>
+        </EditorProvider>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-export default function FunnelEditor() {
-  const { teamId, funnelId } = useParams<{ teamId: string; funnelId: string }>();
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  const { isAdmin, loading: roleLoading } = useTeamRole(teamId);
+  type BuilderCommandBarProps = {
+    funnelId: string;
+    teamId: string;
+    funnelName: string;
+    legacyPayload: LegacySnapshotPayload | null;
+    onLegacyPayloadUpdate: (payload: LegacySnapshotPayload | null) => void;
+    publishedSnapshot: PublishedDocumentSnapshot | null;
+    onPublished: (snapshot: PublishedDocumentSnapshot) => void;
+    lastSavedAt: Date | null;
+    onSaved: (timestamp: Date) => void;
+  };
 
-  // Redirect non-admins back to funnel list
-  useEffect(() => {
-    if (!roleLoading && !isAdmin) {
-      navigate(`/team/${teamId}/funnels`, { replace: true });
-    }
-  }, [roleLoading, isAdmin, teamId, navigate]);
+  function BuilderCommandBar({
+    funnelId,
+    teamId,
+    funnelName,
+    legacyPayload,
+    onLegacyPayloadUpdate,
+    publishedSnapshot,
+    onPublished,
+    lastSavedAt,
+    onSaved,
+  }: BuilderCommandBarProps) {
+    const { pages, activePageId } = useEditorStore();
+    const [isSaving, setIsSaving] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
 
-  useEffect(() => {
-    document.documentElement.classList.add('editor-no-scroll');
-    document.body.classList.add('editor-no-scroll');
-
-    return () => {
-      document.documentElement.classList.remove('editor-no-scroll');
-      document.body.classList.remove('editor-no-scroll');
-    };
-  }, []);
-
-  // Use the history hook for undo/redo
-  const {
-    state: funnelState,
-    set: setFunnelState,
-    undo,
-    redo,
-    reset: resetHistory,
-    canUndo,
-    canRedo,
-  } = useFunnelHistory<FunnelState>({
-    name: '',
-    steps: [],
-    stepDesigns: {},
-    stepSettings: {},
-    elementOrders: {},
-    dynamicElements: {},
-    stepBlocks: {},
-    pageSettings: {},
-  });
-
-  const [selection, setSelection] = useState<EditorSelection>({
-    type: 'funnel',
-    id: funnelId ?? 'funnel',
-  });
-  const selectionStepId = useMemo(() => getSelectionStepId(selection), [selection]);
-  const selectionElementId = selection.type === 'element' ? getSelectionChildId(selection) : null;
-  const [showSettings, setShowSettings] = useState(false);
-  const [showAddStep, setShowAddStep] = useState(false);
-  const [dirtyState, setDirtyState] = useState<{ funnel: boolean; steps: Record<string, boolean> }>({
-    funnel: false,
-    steps: {},
-  });
-  const hasUnsavedChanges = dirtyState.funnel || Object.keys(dirtyState.steps).length > 0;
-  const dirtyVersionRef = useRef(0);
-  const pendingSaveRef = useRef(false);
-  const isSavingRef = useRef(false);
-  const savePromiseRef = useRef<Promise<void> | null>(null);
-  const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [showLeftPanel, setShowLeftPanel] = useState(true);
-  const [showRightPanel, setShowRightPanel] = useState(true);
-  const [showLivePreview, setShowLivePreview] = useState(false);
-  const [showPageSettings, setShowPageSettings] = useState(false);
-  const [pageSettingsStepId, setPageSettingsStepId] = useState<string | null>(null);
-  const [focusMode, setFocusMode] = useState(false);
-  const [devicePreview, setDevicePreview] = useState<DeviceType>('mobile');
-  const [isInitialized, setIsInitialized] = useState(false); // Track if initial load happened
-  const [showPublishPrompt, setShowPublishPrompt] = useState(false); // Domain prompt on publish
-  const [initializationError, setInitializationError] = useState<string | null>(null);
-  const initializationRanRef = useRef(false);
-  
-  // Destructure for convenience
-  const { name, steps, stepDesigns, stepSettings, elementOrders, dynamicElements, stepBlocks, pageSettings } = funnelState;
-
-  const markDirty = useCallback((options?: { funnel?: boolean; stepIds?: string[] }) => {
-    dirtyVersionRef.current += 1;
-    setDirtyState((prev) => {
-      const nextSteps = options?.stepIds?.length
-        ? options.stepIds.reduce((acc, stepId) => {
-          acc[stepId] = true;
-          return acc;
-        }, { ...prev.steps } as Record<string, boolean>)
-        : prev.steps;
-
-      return {
-        funnel: options?.funnel ? true : prev.funnel,
-        steps: nextSteps,
-      };
-    });
-  }, []);
-
-  const clearDirty = useCallback((version: number) => {
-    if (dirtyVersionRef.current !== version) return;
-    setDirtyState({ funnel: false, steps: {} });
-  }, []);
-
-  // Helper functions to update state through the history-tracked funnel state
-  const setName = useCallback((newName: string) => {
-    setFunnelState(prev => ({ ...prev, name: newName }));
-    markDirty({ funnel: true });
-  }, [markDirty, setFunnelState]);
-
-  const setSteps = useCallback((newSteps: FunnelStep[] | ((prev: FunnelStep[]) => FunnelStep[])) => {
-    setFunnelState(prev => {
-      const resolvedSteps = typeof newSteps === 'function' ? newSteps(prev.steps) : newSteps;
-      return {
-        ...prev,
-        steps: resolvedSteps,
-      };
-    });
-  }, [setFunnelState]);
-
-  const setStepDesigns = useCallback((newDesigns: Record<string, StepDesign> | ((prev: Record<string, StepDesign>) => Record<string, StepDesign>)) => {
-    setFunnelState(prev => ({
-      ...prev,
-      stepDesigns: typeof newDesigns === 'function' ? newDesigns(prev.stepDesigns) : newDesigns
-    }));
-  }, [setFunnelState]);
-
-  const setStepSettingsState = useCallback((newSettings: Record<string, StepSettings> | ((prev: Record<string, StepSettings>) => Record<string, StepSettings>)) => {
-    setFunnelState(prev => ({
-      ...prev,
-      stepSettings: typeof newSettings === 'function' ? newSettings(prev.stepSettings) : newSettings
-    }));
-  }, [setFunnelState]);
-
-  const setElementOrders = useCallback((newOrders: Record<string, string[]> | ((prev: Record<string, string[]>) => Record<string, string[]>)) => {
-    setFunnelState(prev => ({
-      ...prev,
-      elementOrders: typeof newOrders === 'function' ? newOrders(prev.elementOrders) : newOrders
-    }));
-  }, [setFunnelState]);
-
-  const setDynamicElementsState = useCallback((newElements: Record<string, Record<string, any>> | ((prev: Record<string, Record<string, any>>) => Record<string, Record<string, any>>)) => {
-    setFunnelState(prev => ({
-      ...prev,
-      dynamicElements: typeof newElements === 'function' ? newElements(prev.dynamicElements) : newElements
-    }));
-  }, [setFunnelState]);
-
-  const setStepBlocksState = useCallback((newBlocks: Record<string, ContentBlock[]> | ((prev: Record<string, ContentBlock[]>) => Record<string, ContentBlock[]>)) => {
-    setFunnelState(prev => ({
-      ...prev,
-      stepBlocks: typeof newBlocks === 'function' ? newBlocks(prev.stepBlocks) : newBlocks
-    }));
-  }, [setFunnelState]);
-
-  const setPageSettingsState = useCallback((newSettings: Record<string, any> | ((prev: Record<string, any>) => Record<string, any>)) => {
-    setFunnelState(prev => ({
-      ...prev,
-      pageSettings: typeof newSettings === 'function' ? newSettings(prev.pageSettings) : newSettings
-    }));
-  }, [setFunnelState]);
-
-  const persistFunnel = useCallback(async (overrides?: {
-    steps?: FunnelStep[];
-    stepDesigns?: Record<string, StepDesign>;
-    elementOrders?: Record<string, string[]>;
-    dynamicElements?: Record<string, Record<string, any>>;
-    name?: string;
-  }) => {
-    if (isSavingRef.current) {
-      pendingSaveRef.current = true;
-      return savePromiseRef.current ?? Promise.resolve();
-    }
-
-    const saveVersion = dirtyVersionRef.current;
-    setIsSaving(true);
-    isSavingRef.current = true;
-    const savePromise = (async () => {
-      try {
-        const cleanFunnelId = validateUuid(funnelId, 'funnel id');
-        const cleanTeamId = validateUuid(teamId, 'team id');
-
-        const stepsToPersist = overrides?.steps ?? steps;
-        const stepDesignsToPersist = overrides?.stepDesigns ?? stepDesigns;
-        const elementOrdersToPersist = overrides?.elementOrders ?? elementOrders;
-        const dynamicElementsToPersist = overrides?.dynamicElements ?? dynamicElements;
-        const funnelNameToPersist = overrides?.name ?? name;
-
-        const stepIds = stepsToPersist.map(s => validateUuid(s.id, 'step id'));
-
-        const { error: funnelError } = await supabase
-          .from('funnels')
-          .update({ name: funnelNameToPersist })
-          .eq('id', cleanFunnelId)
-          .eq('team_id', cleanTeamId);
-
-        if (funnelError) throw funnelError;
-
-        if (stepIds.length > 0) {
-          const { data: existingSteps, error: existingError } = await supabase
-            .from('funnel_steps')
-            .select('id')
-            .eq('funnel_id', cleanFunnelId);
-          if (existingError) throw existingError;
-
-          const idsToDelete = (existingSteps ?? [])
-            .map((step) => step.id)
-            .filter((id) => !stepIds.includes(id));
-
-          if (idsToDelete.length > 0) {
-            const { error: deleteError } = await supabase
-              .from('funnel_steps')
-              .delete()
-              .in('id', idsToDelete);
-            if (deleteError) throw deleteError;
-          }
-        } else {
-          const { error: deleteError } = await supabase
-            .from('funnel_steps')
-            .delete()
-            .eq('funnel_id', cleanFunnelId);
-          if (deleteError) throw deleteError;
-        }
-
-        const stepsToInsert = stepsToPersist.map((step, index) => {
-          const stepId = validateUuid(step.id, 'step id');
-          const baseContent = { ...step.content } as FunnelStep['content'];
-          const termsUrl =
-            baseContent.privacy_link ||
-            (baseContent as any).terms_url ||
-            (baseContent as any).terms_link ||
-            '';
-
-          if (step.step_type === 'opt_in' && termsUrl && baseContent.requires_consent !== true) {
-            baseContent.requires_consent = true;
-          }
-
-          if (baseContent.requires_consent === true && baseContent.show_consent_checkbox !== true) {
-            baseContent.show_consent_checkbox = true;
-          }
-
-          const contentWithDesign = {
-            ...baseContent,
-            design: stepDesignsToPersist[step.id] || step.content.design || null,
-            element_order: elementOrdersToPersist[step.id] || step.content.element_order || null,
-            dynamic_elements: dynamicElementsToPersist[step.id] || step.content.dynamic_elements || null,
-          };
-
-          return {
-            id: stepId,
-            funnel_id: cleanFunnelId,
-            order_index: index,
-            step_type: step.step_type,
-            content: JSON.parse(JSON.stringify(contentWithDesign)),
-          };
-        });
-
-        const { error: upsertError } = await supabase
-          .from('funnel_steps')
-          .upsert(stepsToInsert, { onConflict: 'id' });
-
-        if (upsertError) throw upsertError;
-
-        setLastSaved(new Date());
-        clearDirty(saveVersion);
-      } catch (error) {
-        const err = error as Error;
-        toast({ title: 'Failed to save', description: err.message, variant: 'destructive' });
-      } finally {
-        setIsSaving(false);
-        isSavingRef.current = false;
-        savePromiseRef.current = null;
-        if (pendingSaveRef.current) {
-          pendingSaveRef.current = false;
-          if (dirtyVersionRef.current !== saveVersion) {
-            await persistFunnel();
-          }
-        }
+    const runtimeStatus = useMemo(() => {
+      if (!publishedSnapshot) {
+        return 'Draft';
       }
-    })();
-
-    savePromiseRef.current = savePromise;
-    return savePromise;
-  }, [clearDirty, dynamicElements, elementOrders, funnelId, name, stepDesigns, steps, teamId]);
-
-  useEffect(() => {
-    if (!hasUnsavedChanges) {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current);
-        autosaveTimerRef.current = null;
-      }
-      return;
-    }
-
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
-    }
-
-    autosaveTimerRef.current = setTimeout(() => {
-      void persistFunnel();
-    }, 1500);
-
-    return () => {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current);
-        autosaveTimerRef.current = null;
-      }
-    };
-  }, [hasUnsavedChanges, persistFunnel]);
-
-  const markStepsDirty = useCallback((stepIds: string[]) => {
-    if (stepIds.length === 0) return;
-    markDirty({ stepIds });
-  }, [markDirty]);
-
-  const updateStepContent = useCallback((stepId: string, patch: Partial<FunnelStep['content']>) => {
-    setSteps((prev) => prev.map((step) => (
-      step.id === stepId
-        ? { ...step, content: { ...step.content, ...patch } }
-        : step
-    )));
-    markStepsDirty([stepId]);
-  }, [markStepsDirty, setSteps]);
-
-  const updateStepDesign = useCallback((stepId: string, design: StepDesign) => {
-    setStepDesigns((prev) => ({ ...prev, [stepId]: design }));
-    markStepsDirty([stepId]);
-  }, [markStepsDirty, setStepDesigns]);
-
-  const updateStepSettings = useCallback((stepId: string, settings: StepSettings) => {
-    setStepSettingsState((prev) => ({ ...prev, [stepId]: settings }));
-    markStepsDirty([stepId]);
-  }, [markStepsDirty, setStepSettingsState]);
-
-  const updateStepBlocks = useCallback((stepId: string, blocks: ContentBlock[]) => {
-    setStepBlocksState((prev) => ({ ...prev, [stepId]: blocks }));
-    markStepsDirty([stepId]);
-  }, [markStepsDirty, setStepBlocksState]);
-
-  const updateElementOrder = useCallback((stepId: string, order: string[]) => {
-    setElementOrders((prev) => ({ ...prev, [stepId]: order }));
-    markStepsDirty([stepId]);
-  }, [markStepsDirty, setElementOrders]);
-
-  const updateDynamicElement = useCallback((stepId: string, elementId: string, patch: Record<string, any>) => {
-    setDynamicElementsState((prev) => ({
-      ...prev,
-      [stepId]: {
-        ...(prev[stepId] || {}),
-        [elementId]: { ...(prev[stepId]?.[elementId] || {}), ...patch },
-      },
-    }));
-    markStepsDirty([stepId]);
-  }, [markStepsDirty, setDynamicElementsState]);
-
-  const replaceDynamicElement = useCallback((stepId: string, elementId: string, value: Record<string, any>) => {
-    setDynamicElementsState((prev) => ({
-      ...prev,
-      [stepId]: {
-        ...(prev[stepId] || {}),
-        [elementId]: value,
-      },
-    }));
-    markStepsDirty([stepId]);
-  }, [markStepsDirty, setDynamicElementsState]);
-
-  const updatePageSettings = useCallback((stepId: string, settings: Record<string, any>) => {
-    setPageSettingsState((prev) => ({ ...prev, [stepId]: settings }));
-    markStepsDirty([stepId]);
-  }, [markStepsDirty, setPageSettingsState]);
-
-  const tryInitialize = useCallback((funnelData: Funnel, dbSteps: FunnelStep[]) => {
-    if (initializationRanRef.current) return;
-
-    try {
-
-      const loadedDesigns: Record<string, StepDesign> = {};
-      const loadedOrders: Record<string, string[]> = {};
-      const loadedDynamicElements: Record<string, Record<string, any>> = {};
-
-      const migratedSteps = dbSteps.map(step => {
-        const safeContent = step.content ?? {};
-
-        if (safeContent.design) {
-          loadedDesigns[step.id] = safeContent.design;
-        }
-        if (safeContent.element_order) {
-          loadedOrders[step.id] = safeContent.element_order;
-        }
-        if (safeContent.dynamic_elements) {
-          loadedDynamicElements[step.id] = safeContent.dynamic_elements;
-        }
-
-        if (!safeContent.intent) {
-          const defaultIntent = getDefaultIntent(step.step_type);
-          return {
-            ...step,
-            content: {
-              ...safeContent,
-              intent: defaultIntent,
-            },
-          };
-        }
-        return {
-          ...step,
-          content: safeContent,
-        };
-      });
-
-      const hasDbSteps = migratedSteps.length > 0;
-      const stepsToLoad: FunnelStep[] = hasDbSteps
-        ? migratedSteps
-        : [{
-            id: crypto.randomUUID(),
-            funnel_id: funnelData.id,
-            order_index: 0,
-            step_type: 'welcome' as const,
-            content: {},
-          }];
-
-      resetHistory({
-        name: funnelData.name,
-        steps: stepsToLoad,
-        stepDesigns: loadedDesigns,
-        stepSettings: {},
-        elementOrders: loadedOrders,
-        dynamicElements: loadedDynamicElements,
-        stepBlocks: {},
-        pageSettings: {},
-      });
-
-      if (stepsToLoad.length > 0 && !selectionStepId) {
-        setSelection({ type: 'step', id: stepsToLoad[0].id });
-      }
-
-      setIsInitialized(true);
-      initializationRanRef.current = true;
-
-      const neededMigration = dbSteps.some(step => !(step.content ?? {}).intent);
-      if (neededMigration) {
-        console.log('[FunnelEditor] Auto-migrated step intents for',
-          dbSteps.filter(s => !(s.content ?? {}).intent).length, 'steps');
-        markDirty({ stepIds: stepsToLoad.map(step => step.id) });
-      }
-
-      const warnings = validateFunnelStructure(stepsToLoad);
-      if (warnings.length > 0 && process.env.NODE_ENV === 'development') {
-        console.warn('[FunnelEditor] Structure warnings:', warnings);
-      }
-    } catch (error) {
-      const err = error as Error;
-      console.error('[FunnelEditor] Initialization failed:', err);
-      setInitializationError(err.message || 'Failed to initialize editor.');
-    }
-
-  }, [markDirty, resetHistory, selectionStepId, setIsInitialized]);
-
-  const {
-    data: funnel,
-    isLoading: isFunnelLoading,
-    isError: isFunnelError,
-    error: funnelError,
-  } = useQuery<Funnel, Error>({
-    queryKey: ['funnels', teamId, funnelId],
-    queryFn: async () => {
-      if (!teamId) {
-        throw new Error('Missing team id');
-      }
-
-      const cleanFunnelId = validateUuid(funnelId, 'funnel id');
-      const cleanTeamId = validateUuid(teamId, 'team id');
-      const { data, error } = await supabase
-        .from('funnels')
-        .select('*')
-        .eq('id', cleanFunnelId);
-
-      if (error) throw error;
-      if (!data || data.length === 0) {
-        throw new Error('Funnel not found');
-      }
-      const row = data[0];
-      return { ...row, settings: row.settings as unknown as FunnelSettings } as Funnel;
-    },
-    enabled: !!teamId && !!funnelId,
-    // CRITICAL: Disable all refetching to prevent state reset
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
-    staleTime: Infinity,
-  });
-
-  // Fetch domains for publish prompt
-  const { data: domains = [] } = useQuery({
-    queryKey: ['funnel-domains', teamId],
-    queryFn: async () => {
-      const cleanTeamId = validateUuid(teamId, 'team id');
-      const { data, error } = await supabase
-        .from('funnel_domains')
-        .select('*')
-        .eq('team_id', cleanTeamId)
-        .eq('status', 'verified');
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!teamId,
-  });
-
-  // Get linked domain for this funnel
-  const linkedDomain = funnel?.domain_id 
-    ? domains.find(d => d.id === funnel.domain_id)?.domain 
-    : null;
-
-  const {
-    data: stepsData,
-    isLoading: isStepsLoading,
-    isError: isStepsError,
-    error: stepsError,
-  } = useQuery<FunnelStep[], Error>({
-    queryKey: ['funnel-steps', funnelId],
-    queryFn: async () => {
-      const cleanFunnelId = validateUuid(funnelId, 'funnel id');
-      const { data, error } = await supabase
-        .from('funnel_steps')
-        .select('*')
-        .eq('funnel_id', cleanFunnelId)
-        .order('order_index', { ascending: true });
-
-      if (error) throw error;
-      return data as FunnelStep[];
-    },
-    enabled: !!funnelId,
-    // CRITICAL: Disable all refetching to prevent state reset
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
-    staleTime: Infinity,
-  });
-
-  useEffect(() => {
-    if (initializationRanRef.current) return;
-    if (!funnel || !stepsData) return;
-    if (initializationError) return;
-
-    tryInitialize(funnel, stepsData);
-  }, [funnel, stepsData, initializationError, tryInitialize]);
-
-  const handlePublish = useCallback(async () => {
-    if (isPublishing) return;
-
-    setIsPublishing(true);
-
-    try {
-      await persistFunnel();
-
-      const cleanFunnelId = validateUuid(funnelId, 'funnel id');
-      const cleanTeamId = validateUuid(teamId, 'team id');
-
-      const { error } = await supabase
-        .from('funnels')
-        .update({ status: 'published' })
-        .eq('id', cleanFunnelId)
-        .eq('team_id', cleanTeamId);
-
-      if (error) {
-        throw error;
-      }
-    } catch (error) {
-      const err = error as Error;
-      toast({ title: 'Failed to publish', description: err.message, variant: 'destructive' });
+      return `Published • ${new Date(publishedSnapshot.publishedAt).toLocaleString()}`;
+    }, [publishedSnapshot]);
     } finally {
       setIsPublishing(false);
     }
@@ -1067,554 +377,156 @@ export default function FunnelEditor() {
   }, [selectionElementId, selectedStep, elementOrders, dynamicElements, handleUpdateElementOrder, replaceDynamicElement]);
 
   if (isFunnelError) {
+=======
+  if (!funnelQuery.data.builderDocument) {
+>>>>>>> a5ffa62 (Stabilize funnel builder layout and editor rendering)
     return (
-      <ErrorState
-        title="Unable to load funnel"
-        description={(funnelError as Error)?.message || "Please try again."}
-      />
+      <BuilderEmptyState teamId={teamId} funnelId={funnelId} hasLegacySteps={funnelQuery.data.hasLegacySteps} />
     );
   }
 
-  if (isStepsError) {
-    return (
-      <ErrorState
-        title="Unable to load funnel steps"
-        description={(stepsError as Error)?.message || "Please try again."}
-      />
-    );
-  }
-
-  if (initializationError) {
-    return (
-      <ErrorState
-        title="Unable to initialize the editor"
-        description={initializationError}
-      />
-    );
-  }
-
-  if (!isInitialized || isFunnelLoading || isStepsLoading) {
-    return <LoadingState />;
-  }
-
-  if (!funnel) {
-    return <NotFound />;
+  if (!editorKey) {
+    return <FullscreenMessage message="Preparing Builder V2…" />;
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Top Bar */}
-      <div className="border-b bg-card px-2 sm:px-4 py-2 sm:py-3 flex-shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(`/team/${teamId}/funnels`)}
-              className="shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Back</span>
-            </Button>
-
-            <Input
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-              }}
-              className="w-32 sm:w-64 font-semibold text-sm sm:text-base"
-            />
-
-            <Badge 
-              variant={funnel.status === 'published' ? 'default' : 'secondary'}
-              className="hidden sm:inline-flex"
-            >
-              {funnel.status}
-            </Badge>
-
-            {/* Show linked domain */}
-            {linkedDomain && (
-              <Badge 
-                variant="outline" 
-                className="hidden lg:inline-flex text-xs border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10"
-              >
-                <Link2 className="h-3 w-3 mr-1" />
-                {linkedDomain}
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1 sm:gap-2">
-            {/* Undo/Redo Buttons */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={undo}
-                    disabled={!canUndo}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Undo2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={redo}
-                    disabled={!canRedo}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Redo2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Redo (Ctrl+Shift+Z)</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <div className="w-px h-4 bg-border mx-1 hidden sm:block" />
-
-            {/* Focus mode toggle */}
-            <Button
-              variant={focusMode ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setFocusMode(!focusMode)}
-              title={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
-            >
-              {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
-
-            <KeyboardShortcutsPanel />
-
-            <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} className="hidden sm:flex">
-              <Settings className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Settings</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePreview}
-              className="hidden sm:flex"
-            >
-              <Play className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Preview</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleOpenInNewTab}
-              className="hidden sm:flex"
-            >
-              <Eye className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Open</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void persistFunnel();
-              }}
-              disabled={isSaving || isPublishing}
-            >
-              <Save className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Save</span>
-            </Button>
-
-            <Button
-              size="sm"
-              onClick={() => {
-                // Check if funnel has no domain and there are verified domains available
-                if (!funnel.domain_id && domains.length > 0) {
-                  setShowPublishPrompt(true);
-                } else {
-                  void handlePublish();
-                }
-              }}
-              disabled={isSaving || isPublishing}
-            >
-              <Globe className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">{funnel.status === 'published' ? 'Update' : 'Publish'}</span>
-            </Button>
-          </div>
+    <div className="flex h-screen flex-col bg-background">
+      <EditorProvider key={editorKey}>
+        <BuilderCommandBar
+          funnelId={funnelId}
+          teamId={teamId}
+          funnelName={funnelQuery.data.funnel.name}
+          legacyPayload={legacyPayload}
+          onLegacyPayloadUpdate={setLegacyPayload}
+          publishedSnapshot={publishedSnapshot}
+          onPublished={setPublishedSnapshot}
+          lastSavedAt={lastSavedAt}
+          onSaved={(timestamp) => setLastSavedAt(timestamp)}
+        />
+        <div className="flex-1 overflow-hidden">
+          <EditorShell />
         </div>
-      </div>
-
-      {/* Main Editor Area - Responsive 3 Column Layout */}
-      <EditorShell
-        className={cn(
-          "flex-1",
-          focusMode && "editor-shell--focus",
-          !showLeftPanel && "editor-shell--left-collapsed",
-          !showRightPanel && "editor-shell--right-collapsed"
-        )}
-        left={(
-          <div
-            className={cn(
-              "border-r bg-card transition-all duration-300 relative h-full",
-              focusMode || !showLeftPanel ? "opacity-0 pointer-events-none" : "p-2 sm:p-3 pt-8"
-            )}
-          >
-            {/* Collapse button */}
-            {showLeftPanel && !focusMode && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-1 h-6 w-6 z-10"
-                onClick={() => setShowLeftPanel(false)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            )}
-
-            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <PagesList
-                steps={steps}
-                selection={selection}
-                onSelectStep={(id) => {
-                  setSelection({ type: 'step', id });
-                }}
-                onDeleteStep={handleDeleteStep}
-                onAddStep={() => setShowAddStep(true)}
-                onDuplicateStep={handleDuplicateStep}
-                onRenameStep={handleRenameStep}
-                onOpenPageSettings={handleOpenPageSettings}
-                onMoveStep={handleMoveStep}
-              />
-            </DndContext>
-          </div>
-        )}
-        center={(
-          <div className="flex flex-col items-center bg-zinc-900/50 py-6 px-4">
-            {selectedStep ? (
-              <>
-                <DevicePreview
-                  backgroundColor={stepDesigns[selectedStep.id]?.backgroundColor || funnel.settings.background_color}
-                  device={devicePreview}
-                  onDeviceChange={setDevicePreview}
-                  className={cn(
-                    "transition-transform duration-300",
-                    focusMode
-                      ? "scale-100"
-                      : devicePreview === 'desktop' ? "scale-[0.7] lg:scale-[0.85]" :
-                        devicePreview === 'tablet' ? "scale-[0.8] lg:scale-90" :
-                        "scale-[0.9] lg:scale-100"
-                  )}
-                >
-                  <StepPreview
-                    step={selectedStep}
-                    settings={funnel.settings}
-                    funnel={funnel}
-                    selection={selection}
-                    onSelectElement={(elementId) => {
-                      setSelection({ type: 'element', id: buildSelectionId(selectedStep.id, elementId) });
-                    }}
-                    onSelectStep={() => {
-                      setSelection({ type: 'step', id: selectedStep.id });
-                    }}
-                    design={stepDesigns[selectedStep.id]}
-                    elementOrder={elementOrders[selectedStep.id]}
-                    onReorderElements={(order) => handleUpdateElementOrder(selectedStep.id, order)}
-                    onUpdateContent={(field, value) => {
-                      updateStepContent(selectedStep.id, { [field]: value });
-                    }}
-                    dynamicContent={dynamicElements[selectedStep.id] || {}}
-                    onUpdateDynamicContent={(elementId, value) => {
-                      updateDynamicElement(selectedStep.id, elementId, value);
-                    }}
-                  />
-                </DevicePreview>
-
-                {/* Navigation Arrows */}
-                <PreviewNavigation
-                  currentIndex={currentStepIndex}
-                  totalSteps={steps.length}
-                  onPrevious={handleNavigatePrevious}
-                  onNext={handleNavigateNext}
-                  className="mt-4"
-                />
-              </>
-            ) : (
-              <div className="text-muted-foreground text-center mt-12">
-                No steps yet. Add a step to get started.
-              </div>
-            )}
-          </div>
-        )}
-        right={(
-          <div
-            className={cn(
-              "border-l bg-card transition-all duration-300 relative h-full flex flex-col",
-              focusMode || !showRightPanel ? "opacity-0 pointer-events-none" : "p-2 sm:p-3 pt-8"
-            )}
-          >
-            {/* Collapse button */}
-            {showRightPanel && !focusMode && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 left-1 h-6 w-6 z-10"
-                onClick={() => setShowRightPanel(false)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            )}
-            <EditorSidebar
-              selection={selection}
-              funnel={funnel}
-              step={selectedStep}
-              onUpdateContent={(patch) => {
-                if (!selectedStep) return;
-                updateStepContent(selectedStep.id, patch);
-              }}
-              onUpdateDesign={(design) => {
-                if (!selectedStep) return;
-                handleUpdateDesign(selectedStep.id, design);
-              }}
-              onUpdateSettings={(settings) => {
-                if (!selectedStep) return;
-                handleUpdateSettings(selectedStep.id, settings);
-              }}
-              onUpdateBlocks={(blocks) => {
-                if (!selectedStep) return;
-                handleUpdateBlocks(selectedStep.id, blocks);
-              }}
-              onSelectBlock={(blockId) => {
-                if (!selectedStep) return;
-                setSelection({ type: 'block', id: buildSelectionId(selectedStep.id, blockId) });
-              }}
-              onOpenFunnelSettings={() => setShowSettings(true)}
-              design={selectedStep ? stepDesigns[selectedStep.id] || {} : {}}
-              settings={selectedStep ? stepSettings[selectedStep.id] || {} : {}}
-              blocks={selectedStep ? stepBlocks[selectedStep.id] || [] : []}
-              elementOrder={selectedStep ? elementOrders[selectedStep.id] || [] : []}
-              dynamicContent={selectedStep ? dynamicElements[selectedStep.id] || {} : {}}
-              onUpdateDynamicContent={(elementId, value) => {
-                if (!selectedStep) return;
-                updateDynamicElement(selectedStep.id, elementId, value);
-              }}
-            />
-          </div>
-        )}
-        overlays={(
-          <>
-            {/* Left Sidebar Toggle Button */}
-            {!focusMode && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "absolute left-0 top-1/2 -translate-y-1/2 z-30 h-8 w-6 rounded-l-none bg-card border border-l-0 hover:bg-accent",
-                  showLeftPanel ? "hidden" : "flex"
-                )}
-                onClick={() => setShowLeftPanel(true)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            )}
-
-            {/* Right Sidebar Toggle Button */}
-            {!focusMode && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "absolute right-0 top-1/2 -translate-y-1/2 z-30 h-8 w-6 rounded-r-none bg-card border border-r-0 hover:bg-accent",
-                  showRightPanel ? "hidden" : "flex"
-                )}
-                onClick={() => setShowRightPanel(true)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            )}
-
-            {/* Mobile overlay */}
-            {isMobile && (showLeftPanel || showRightPanel) && (
-              <div
-                className="absolute inset-0 bg-black/50 z-10"
-                onClick={() => {
-                  setShowLeftPanel(false);
-                  setShowRightPanel(false);
-                }}
-              />
-            )}
-          </>
-        )}
-      />
-
-      {funnel && (
-        <FunnelSettingsDialog
-          open={showSettings}
-          onOpenChange={setShowSettings}
-          funnel={funnel}
-          onSave={() => {
-            // Mirror latest settings from dialog into local funnelState-aware view
-            setFunnelState((prev) => ({
-              ...prev,
-              // FunnelState itself doesnt store settings, but publish validation reads
-              // from the funnel query object, which the dialog just persisted. No extra
-              // state is required here beyond triggering a re-render if needed.
-            }));
-          }}
-        />
-      )}
-
-      <AddStepDialog
-        open={showAddStep}
-        onOpenChange={setShowAddStep}
-        onAddStep={handleAddStep}
-      />
-
-      <LivePreviewMode
-        open={showLivePreview}
-        onClose={() => setShowLivePreview(false)}
-        funnel={funnel}
-        steps={steps}
-        dynamicElements={dynamicElements}
-        stepDesigns={stepDesigns}
-        elementOrders={elementOrders}
-      />
-
-      {pageSettingsStepId && (
-        <PageSettingsDialog
-          open={showPageSettings}
-          onOpenChange={setShowPageSettings}
-          step={steps.find(s => s.id === pageSettingsStepId)!}
-          allSteps={steps}
-          settings={pageSettings[pageSettingsStepId] || {}}
-          onSave={(settings) => {
-            updatePageSettings(pageSettingsStepId, settings);
-          }}
-        />
-      )}
-
-      {/* Publish Domain Prompt Dialog */}
-      <Dialog open={showPublishPrompt} onOpenChange={setShowPublishPrompt}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-emerald-500/10">
-                <Link2 className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div>
-                <DialogTitle>Connect a Custom Domain?</DialogTitle>
-                <DialogDescription>
-                  You have verified domains available. Would you like to connect one to this funnel?
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          
-          <div className="py-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Publishing on a custom domain gives your funnel a professional, branded URL.
-            </p>
-            <div className="flex flex-col gap-2">
-              {domains.slice(0, 3).map((domain: any) => (
-                <div key={domain.id} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
-                  <Globe className="h-4 w-4 text-emerald-500" />
-                  <span className="text-sm font-medium">{domain.domain}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-between gap-2 pt-4 border-t">
-            <Button 
-              variant="ghost" 
-              onClick={() => {
-                setShowPublishPrompt(false);
-                void handlePublish();
-              }}
-              disabled={isSaving || isPublishing}
-            >
-              Skip for now
-            </Button>
-            <Button 
-              onClick={() => {
-                setShowPublishPrompt(false);
-                navigate(`/team/${teamId}/funnels?tab=domains`);
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              Connect Domain
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      </EditorProvider>
     </div>
   );
 }
 
-function getDefaultContent(stepType: FunnelStep['step_type']): FunnelStep['content'] {
-  switch (stepType) {
-    case 'welcome':
-      return {
-        headline: 'Welcome',
-        subtext: 'Start your journey with us',
-        button_text: 'Get Started',
-      };
-    case 'text_question':
-      return {
-        headline: 'What is your name?',
-        placeholder: 'Type your answer...',
-        is_required: true,
-      };
-    case 'multi_choice':
-      return {
-        headline: 'Choose an option',
-        options: ['Option 1', 'Option 2', 'Option 3'],
-        is_required: true,
-      };
-    case 'email_capture':
-      return {
-        headline: 'What is your email?',
-        subtext: 'We will send you important updates',
-        placeholder: 'email@example.com',
-        is_required: true,
-      };
-    case 'phone_capture':
-      return {
-        headline: 'What is your phone number?',
-        subtext: 'We will reach out to schedule a call',
-        placeholder: '(555) 123-4567',
-        is_required: true,
-      };
-    case 'video':
-      return {
-        headline: 'Watch this video',
-        video_url: '',
-        button_text: 'Continue',
-      };
-    case 'thank_you':
-      return {
-        headline: 'Thank You!',
-        subtext: 'We will be in touch soon.',
-      };
-    case 'opt_in':
-      return {
-        headline: "What's the best way to reach you?",
-        name_placeholder: 'Your name',
-        email_placeholder: 'Your email address',
-        phone_placeholder: 'Your phone number',
-        name_icon: '👋',
-        email_icon: '✉️',
-        phone_icon: '🇺🇸',
-        privacy_text: 'I have read and accept the',
-        submit_button_text: 'Submit and proceed',
-        is_required: true,
-      };
-    default:
-      return {};
-  }
+type BuilderCommandBarProps = {
+  funnelId: string;
+  teamId: string;
+  funnelName: string;
+  legacyPayload: LegacySnapshotPayload | null;
+  onLegacyPayloadUpdate: (payload: LegacySnapshotPayload | null) => void;
+  publishedSnapshot: PublishedDocumentSnapshot | null;
+  onPublished: (snapshot: PublishedDocumentSnapshot) => void;
+  lastSavedAt: Date | null;
+  onSaved: (timestamp: Date) => void;
+};
+
+function BuilderCommandBar({
+  funnelId,
+  teamId,
+  funnelName,
+  legacyPayload,
+  onLegacyPayloadUpdate,
+  publishedSnapshot,
+  onPublished,
+  lastSavedAt,
+  onSaved,
+}: BuilderCommandBarProps) {
+  const { pages, activePageId } = useEditorStore();
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const runtimeStatus = useMemo(() => {
+    if (!publishedSnapshot) {
+      return 'Draft';
+    }
+    return `Published • ${new Date(publishedSnapshot.publishedAt).toLocaleString()}`;
+  }, [publishedSnapshot]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const doc = extractDocument(pages, activePageId);
+      const { error } = await supabase
+        .from('funnels')
+        .update({ builder_document: doc, updated_at: new Date().toISOString() })
+        .eq('id', funnelId);
+
+      if (error) {
+        throw error;
+      }
+      const timestamp = new Date();
+      onSaved(timestamp);
+      toast({ title: 'Draft saved' });
+    } catch (error) {
+      console.error('[Builder] Save failed', error);
+      toast({ title: 'Save failed', description: 'Unable to persist builder document', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      const doc = extractDocument(pages, activePageId);
+      const docLegacy = deriveLegacyPayloadFromDocument(doc) ?? legacyPayload;
+
+      if (!docLegacy) {
+        throw new Error('Add a legacy funnel block before publishing.');
+      }
+
+      const snapshot = createPublishedSnapshot(doc.pages, doc.activePageId, { legacy: docLegacy });
+
+      const { error } = await supabase
+        .from('funnels')
+        .update({
+          builder_document: doc,
+          published_document_snapshot: snapshot,
+          status: 'published',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', funnelId);
+
+      if (error) {
+        throw error;
+      }
+
+      const timestamp = new Date();
+      onSaved(timestamp);
+      toast({ title: 'Published', description: 'Runtime snapshot updated successfully.' });
+      onLegacyPayloadUpdate(docLegacy);
+      onPublished(snapshot);
+    } catch (error) {
+      console.error('[Builder] Publish failed', error);
+      toast({ title: 'Publish failed', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  return (
+    <header className="flex items-center gap-3 border-b border-border bg-card px-5 py-3">
+      <div className="flex flex-1 flex-col">
+        <span className="text-sm font-semibold">{funnelName}</span>
+        <span className="text-xs text-muted-foreground">{runtimeStatus}</span>
+        {lastSavedAt && (
+          <span className="text-xs text-muted-foreground">Draft saved {lastSavedAt.toLocaleTimeString()}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button asChild variant="ghost" size="sm">
+          <Link to={`/team/${teamId}/funnels/${funnelId}/legacy`}>Legacy view</Link>
+        </Button>
+        <Button onClick={handleSave} size="sm" disabled={isSaving || isPublishing}>
+          {isSaving ? 'Saving…' : 'Save Draft'}
+        </Button>
+        <Button onClick={handlePublish} size="sm" disabled={isPublishing || isSaving}>
+          {isPublishing ? 'Publishing…' : 'Publish'}
+        </Button>
+      </div>
+    </header>
+  );
 }

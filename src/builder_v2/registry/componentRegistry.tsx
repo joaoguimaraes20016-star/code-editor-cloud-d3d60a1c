@@ -3,7 +3,16 @@ import type { ReactNode } from 'react';
 import { Button } from '../components/Button';
 import { Container } from '../components/Container';
 import { Hero } from '../components/Hero';
+import { LegacyFunnel } from '../components/LegacyFunnel';
 import { Text } from '../components/Text';
+import type { ComponentCategory } from '../layout/presenceResolver';
+import type { IntentDefaultsContext, IntentDefaultsResult } from './creationHelpers';
+import {
+  containerIntentDefaults,
+  heroIntentDefaults,
+  buttonIntentDefaults,
+  textIntentDefaults,
+} from './creationHelpers';
 
 export type InspectorField = {
   label: string;
@@ -12,6 +21,15 @@ export type InspectorField = {
   optional?: boolean;
 };
 
+/**
+ * Phase 28: Component Definition
+ *
+ * Extended with optional intentDefaults for personality-aware creation.
+ * intentDefaults is applied ONLY at creation time, never retroactively.
+ *
+ * Phase 34: Added presenceCategory for presence resolution.
+ * presenceCategory determines elevation, surface, and emphasis tokens.
+ */
 export type ComponentDefinition = {
   type: string;
   displayName: string;
@@ -21,6 +39,22 @@ export type ComponentDefinition = {
   constraints: {
     canHaveChildren: boolean;
   };
+  /**
+   * Phase 34: Presence category for elevation/surface/emphasis resolution.
+   * Used by presenceResolver to compute CSS tokens at render time.
+   * Defaults to 'body' if not specified.
+   */
+  presenceCategory?: ComponentCategory;
+  /**
+   * Phase 28: Intent defaults function.
+   *
+   * Returns partial props that are merged with defaultProps at creation time.
+   * Applied ONLY when the node is created via user action.
+   * NEVER applied on paste, hydration, or undo/redo.
+   *
+   * This encodes design "taste" at creation-time only.
+   */
+  intentDefaults?: (ctx: IntentDefaultsContext) => IntentDefaultsResult;
 };
 
 export const ComponentRegistry: Record<string, ComponentDefinition> = {
@@ -46,6 +80,8 @@ export const ComponentRegistry: Record<string, ComponentDefinition> = {
     constraints: {
       canHaveChildren: true,
     },
+    presenceCategory: 'container',
+    intentDefaults: containerIntentDefaults,
   },
   text: {
     type: 'text',
@@ -66,6 +102,8 @@ export const ComponentRegistry: Record<string, ComponentDefinition> = {
     constraints: {
       canHaveChildren: false,
     },
+    presenceCategory: 'body',
+    intentDefaults: textIntentDefaults,
   },
   button: {
     type: 'button',
@@ -86,6 +124,8 @@ export const ComponentRegistry: Record<string, ComponentDefinition> = {
     constraints: {
       canHaveChildren: false,
     },
+    presenceCategory: 'button',
+    intentDefaults: buttonIntentDefaults,
   },
   hero: {
     type: 'hero',
@@ -132,6 +172,27 @@ export const ComponentRegistry: Record<string, ComponentDefinition> = {
     constraints: {
       canHaveChildren: true,
     },
+    presenceCategory: 'hero',
+    intentDefaults: heroIntentDefaults,
+  },
+  'legacy-funnel': {
+    type: 'legacy-funnel',
+    displayName: 'Legacy Funnel',
+    defaultProps: {
+      funnel: null,
+      steps: [],
+    },
+    render: (props) => (
+      <LegacyFunnel
+        funnel={props.funnel as any}
+        steps={(props.steps as any[]) ?? []}
+      />
+    ),
+    inspectorSchema: [],
+    constraints: {
+      canHaveChildren: false,
+    },
+    presenceCategory: 'section',
   },
 };
 
@@ -146,4 +207,5 @@ export const fallbackComponent: ComponentDefinition = {
   constraints: {
     canHaveChildren: true,
   },
+  presenceCategory: 'container',
 };

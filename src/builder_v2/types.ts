@@ -13,6 +13,26 @@
 export type PageType = 'landing' | 'optin' | 'appointment' | 'thank_you';
 
 /**
+ * Explicit intent for a funnel step. Drives layout + spacing decisions.
+ */
+export type StepIntent = 'optin' | 'content' | 'checkout' | 'thank_you';
+
+/**
+ * Phase 27: Layout Personality
+ *
+ * An opinionated but flexible taste layer that encodes design intent.
+ * Controls spacing rhythm, typography scale, CTA emphasis, motion intensity,
+ * and AI suggestion sensitivity without hardcoding styles.
+ *
+ * - clean: Minimal, breathable, generous whitespace (default)
+ * - editorial: Magazine-like, strong hierarchy, reading-focused
+ * - bold: High impact, attention-grabbing, confident spacing
+ * - dense: Information-rich, compact, efficient use of space
+ * - conversion: CTA-focused, urgency-driven, action-optimized
+ */
+export type LayoutPersonality = 'clean' | 'editorial' | 'bold' | 'dense' | 'conversion';
+
+/**
  * CanvasNode.type must map to a registered component key.
  * Rendering and inspector behavior are resolved via ComponentRegistry,
  * never via conditional logic in the canvas renderer.
@@ -28,6 +48,14 @@ export interface Page {
   id: string;
   name: string;
   type: PageType;
+  /** Optional declarative layout intent. Derived from type when omitted. */
+  layoutIntent?: StepIntent;
+  /**
+   * Phase 27: Layout Personality
+   * Optional design taste layer that controls spacing, typography, emphasis, and motion.
+   * Defaults to 'clean' when omitted.
+   */
+  layoutPersonality?: LayoutPersonality;
   /**
    * canvasRoot must always be a single root node.
    * Pages may not have multiple roots to ensure deterministic layout and rendering.
