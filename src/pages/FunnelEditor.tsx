@@ -634,13 +634,13 @@ export default function FunnelEditor() {
       });
 
       const hasDbSteps = migratedSteps.length > 0;
-      const stepsToLoad = hasDbSteps
+      const stepsToLoad: FunnelStep[] = hasDbSteps
         ? migratedSteps
         : [{
             id: crypto.randomUUID(),
             funnel_id: funnelData.id,
             order_index: 0,
-            step_type: 'welcome',
+            step_type: 'welcome' as const,
             content: {},
           }];
 
@@ -686,7 +686,7 @@ export default function FunnelEditor() {
     isLoading: isFunnelLoading,
     isError: isFunnelError,
     error: funnelError,
-  } = useQuery({
+  } = useQuery<Funnel, Error>({
     queryKey: ['funnels', teamId, funnelId],
     queryFn: async () => {
       if (!teamId) {
@@ -713,9 +713,6 @@ export default function FunnelEditor() {
     refetchOnMount: false,
     refetchOnReconnect: false,
     staleTime: Infinity,
-    onSuccess: () => {
-      setInitializationError(null);
-    },
   });
 
   // Fetch domains for publish prompt
@@ -744,7 +741,7 @@ export default function FunnelEditor() {
     isLoading: isStepsLoading,
     isError: isStepsError,
     error: stepsError,
-  } = useQuery({
+  } = useQuery<FunnelStep[], Error>({
     queryKey: ['funnel-steps', funnelId],
     queryFn: async () => {
       const cleanFunnelId = validateUuid(funnelId, 'funnel id');
@@ -763,9 +760,6 @@ export default function FunnelEditor() {
     refetchOnMount: false,
     refetchOnReconnect: false,
     staleTime: Infinity,
-    onSuccess: () => {
-      setInitializationError(null);
-    },
   });
 
   useEffect(() => {
