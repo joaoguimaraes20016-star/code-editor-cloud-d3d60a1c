@@ -54,9 +54,10 @@ import { STEP_DEFINITIONS } from '@/lib/funnel/stepDefinitions';
 import '@/builder_v2/EditorLayout.css';
 import { PhoneFrame } from '@/builder_v2/canvas/PhoneFrame';
 import { CanvasEditor } from '@/builder_v2/canvas/CanvasEditor';
-import { Inspector } from '@/builder_v2/inspector/Inspector';
+import { EnhancedInspector } from '@/builder_v2/inspector/EnhancedInspector';
 import { StructureTree } from '@/builder_v2/structure/StructureTree';
 import { StepPalette } from '@/builder_v2/structure/StepPalette';
+import { ElementPalette } from '@/builder_v2/structure/ElementPalette';
 import { EditorProvider, useEditorStore } from '@/builder_v2/state/editorStore';
 import { extractDocument, type EditorDocument } from '@/builder_v2/state/persistence';
 import type { Page } from '@/builder_v2/types';
@@ -553,7 +554,7 @@ function EditorContent({
         {/* Right Panel - Inspector */}
         {mode === 'edit' && (
           <aside className="w-72 bg-[var(--builder-panel-bg)] border-l border-[var(--builder-panel-border)] overflow-y-auto">
-            <Inspector />
+            <EnhancedInspector />
           </aside>
         )}
       </div>

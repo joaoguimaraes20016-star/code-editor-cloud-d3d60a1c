@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import './canvas/canvas-experience.css';
+@import './inspector/inspector.css';
 
 /* Builder V2 - Framer/Perspective Style */
 :root {
@@ -62,10 +63,24 @@
 .step-palette-header { padding: 8px 10px 4px; }
 .step-palette-title { font-size: var(--builder-font-size-xs); font-weight: 600; color: var(--builder-text-muted); text-transform: uppercase; }
 .step-palette-grid { display: grid; grid-template-columns: 1fr; gap: 4px; padding: 4px 8px 8px; }
+.step-palette--compact .step-palette-grid { grid-template-columns: repeat(2, 1fr); }
 .step-palette-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: transparent; border: none; border-radius: var(--builder-radius-sm); cursor: pointer; }
 .step-palette-item:hover { background: var(--builder-hover-bg); }
 .step-palette-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: var(--builder-radius-sm); }
 .step-palette-label { font-size: var(--builder-font-size-sm); font-weight: 500; text-align: left; }
+
+/* Element Palette */
+.element-palette { padding: 8px; }
+.element-palette--compact .element-palette-grid { gap: 4px; }
+.element-palette-category { margin-bottom: 16px; }
+.element-palette-category:last-child { margin-bottom: 0; }
+.element-palette-category-header { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--builder-text-muted); margin-bottom: 8px; padding: 0 4px; }
+.element-palette-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.element-palette-item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; background: var(--builder-bg); border: 1px solid var(--builder-panel-border); border-radius: var(--builder-radius-md); cursor: pointer; transition: all 150ms ease; }
+.element-palette-item:hover { border-color: var(--builder-accent); background: var(--builder-accent-light); }
+.element-palette-icon { color: var(--builder-text-secondary); }
+.element-palette-item:hover .element-palette-icon { color: var(--builder-accent); }
+.element-palette-label { font-size: 11px; font-weight: 500; color: var(--builder-text-secondary); }
 
 .builder-canvas-area { display: flex; flex-direction: column; background: var(--builder-canvas-bg); }
 .builder-canvas-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--builder-panel-bg); border-bottom: 1px solid var(--builder-panel-border); }
