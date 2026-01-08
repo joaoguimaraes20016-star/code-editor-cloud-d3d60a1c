@@ -419,3 +419,63 @@
   text-decoration: underline;
   text-decoration-color: rgba(129, 140, 248, 0.4);
 }
+
+/* ============================================================================
+   HEADER BAR - Dark header with logo
+   ============================================================================ */
+
+.builder-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 16px 24px;
+  background: #1a1a1a;
+  border-radius: 16px 16px 0 0;
+}
+
+.builder-header-logo {
+  max-height: 40px;
+  max-width: 120px;
+  object-fit: contain;
+}
+
+.builder-header-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ============================================================================
+   CONTENT CARD - White card container
+   ============================================================================ */
+
+.builder-content-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 32px 24px;
+  gap: 16px;
+  text-align: center;
+}
+
+.builder-content-card--shadow {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Content card typography overrides for light bg */
+.builder-content-card .builder-heading {
+  color: #1a1a1a;
+}
+
+.builder-content-card .builder-paragraph {
+  color: #666666;
+}

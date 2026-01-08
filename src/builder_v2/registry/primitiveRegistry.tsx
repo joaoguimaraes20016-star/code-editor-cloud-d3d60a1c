@@ -24,6 +24,8 @@ import {
   InfoCard,
   ImageBlock,
   ConsentCheckbox,
+  HeaderBar,
+  ContentCard,
 } from '../components/primitives';
 
 export const PrimitiveRegistry: Record<string, ComponentDefinition> = {
@@ -373,5 +375,57 @@ export const PrimitiveRegistry: Record<string, ComponentDefinition> = {
     ],
     constraints: { canHaveChildren: false },
     presenceCategory: 'input',
+  },
+
+  // ============================================================================
+  // LAYOUT CARD PRIMITIVES
+  // ============================================================================
+
+  header_bar: {
+    type: 'header_bar',
+    displayName: 'Header Bar',
+    defaultProps: {
+      backgroundColor: '#1a1a1a',
+      logoUrl: '',
+      logoAlt: 'Logo',
+    },
+    render: (props) => (
+      <HeaderBar 
+        backgroundColor={props.backgroundColor as string}
+        logoUrl={props.logoUrl as string}
+        logoAlt={props.logoAlt as string}
+      />
+    ),
+    inspectorSchema: [
+      { label: 'Background', propKey: 'backgroundColor', inputType: 'color' },
+      { label: 'Logo URL', propKey: 'logoUrl', inputType: 'text' },
+    ],
+    constraints: { canHaveChildren: false },
+    presenceCategory: 'section',
+  },
+
+  content_card: {
+    type: 'content_card',
+    displayName: 'Content Card',
+    defaultProps: {
+      backgroundColor: '#ffffff',
+      borderRadius: 16,
+      shadow: true,
+    },
+    render: (props, children) => (
+      <ContentCard 
+        backgroundColor={props.backgroundColor as string}
+        borderRadius={props.borderRadius as number}
+        shadow={props.shadow as boolean}
+      >
+        {children}
+      </ContentCard>
+    ),
+    inspectorSchema: [
+      { label: 'Background', propKey: 'backgroundColor', inputType: 'color' },
+      { label: 'Radius', propKey: 'borderRadius', inputType: 'number' },
+    ],
+    constraints: { canHaveChildren: true },
+    presenceCategory: 'container',
   },
 };
