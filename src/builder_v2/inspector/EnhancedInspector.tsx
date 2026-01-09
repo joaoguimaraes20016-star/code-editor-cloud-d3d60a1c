@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
   Type, 
   Palette, 
   Layout, 
   Settings,
+  LayoutGrid,
   Plus,
   Trash2,
   GripVertical,
@@ -24,7 +25,34 @@ import { ComponentRegistry, fallbackComponent } from '../registry/componentRegis
 import type { CanvasNode, LayoutPersonality } from '../types';
 import './enhanced-inspector.css';
 
-type InspectorTab = 'content' | 'style' | 'layout';
+type InspectorTab = 'content' | 'design' | 'blocks' | 'settings';
+
+// Element-to-tab mapping for smart auto-switching
+const ELEMENT_TO_TAB_MAP: Record<string, { tab: InspectorTab; section?: string }> = {
+  headline: { tab: 'content', section: 'text' },
+  heading: { tab: 'content', section: 'text' },
+  paragraph: { tab: 'content', section: 'text' },
+  text: { tab: 'content', section: 'text' },
+  subtext: { tab: 'content', section: 'text' },
+  button: { tab: 'design', section: 'button-styling' },
+  cta_button: { tab: 'design', section: 'button-styling' },
+  input: { tab: 'design', section: 'input-styling' },
+  email_input: { tab: 'design', section: 'input-styling' },
+  phone_input: { tab: 'design', section: 'input-styling' },
+  options: { tab: 'content', section: 'options' },
+  multi_choice: { tab: 'content', section: 'options' },
+  video: { tab: 'content', section: 'video' },
+  image: { tab: 'content', section: 'image' },
+  embed: { tab: 'content', section: 'embed' },
+  background: { tab: 'design', section: 'background' },
+  section: { tab: 'blocks', section: 'structure' },
+  frame: { tab: 'blocks', section: 'structure' },
+  hero: { tab: 'content', section: 'hero' },
+};
+
+function getTabForElement(nodeType: string): InspectorTab {
+  return ELEMENT_TO_TAB_MAP[nodeType]?.tab || 'content';
+}
 
 // Find node by ID in tree
 function findNodeById(node: CanvasNode, nodeId: string): CanvasNode | null {
@@ -460,6 +488,22 @@ export function EnhancedInspector() {
   } = useEditorStore();
 
   const [activeTab, setActiveTab] = useState<InspectorTab>('content');
+  const [previousNodeId, setPreviousNodeId] = useState<string | null>(null);
+
+  // Auto-switch tab when selecting a new element
+  useEffect(() => {
+    if (selectedNodeId && selectedNodeId !== previousNodeId) {
+      const page = pages.find((p) => p.id === activePageId);
+      if (page) {
+        const node = findNodeById(page.canvasRoot, selectedNodeId);
+        if (node) {
+          const suggestedTab = getTabForElement(node.type);
+          setActiveTab(suggestedTab);
+        }
+      }
+      setPreviousNodeId(selectedNodeId);
+    }
+  }, [selectedNodeId, previousNodeId, pages, activePageId]);
 
   const page = pages.find((p) => p.id === activePageId) ?? null;
 
@@ -591,17 +635,24 @@ export function EnhancedInspector() {
         </button>
         <button
           type="button"
-          className={cn("ei-tab", activeTab === 'style' && "ei-tab--active")}
-          onClick={() => setActiveTab('style')}
+          className={cn("ei-tab", activeTab === 'design' && "ei-tab--active")}
+          onClick={() => setActiveTab('design')}
         >
-          <Palette size={14} /> Style
+          <Palette size={14} /> Design
         </button>
         <button
           type="button"
-          className={cn("ei-tab", activeTab === 'layout' && "ei-tab--active")}
-          onClick={() => setActiveTab('layout')}
+          className={cn("ei-tab", activeTab === 'blocks' && "ei-tab--active")}
+          onClick={() => setActiveTab('blocks')}
         >
-          <Layout size={14} /> Layout
+          <LayoutGrid size={14} /> Blocks
+        </button>
+        <button
+          type="button"
+          className={cn("ei-tab", activeTab === 'settings' && "ei-tab--active")}
+          onClick={() => setActiveTab('settings')}
+        >
+          <Settings size={14} /> Settings
         </button>
       </div>
 
@@ -729,7 +780,7 @@ export function EnhancedInspector() {
         )}
 
         {/* ====== STYLE TAB ====== */}
-        {activeTab === 'style' && (
+        {activeTab === 'design' && (
           <>
             {/* Typography */}
             <InspectorSection title="Typography" icon={<Type size={14} />}>
@@ -853,7 +904,7 @@ export function EnhancedInspector() {
         )}
 
         {/* ====== LAYOUT TAB ====== */}
-        {activeTab === 'layout' && (
+        {activeTab === 'blocks' && (
           <>
             <InspectorSection title="Spacing" icon={<Layout size={14} />}>
               <SliderField
@@ -914,8 +965,13 @@ export function EnhancedInspector() {
                 />
               )}
             </InspectorSection>
+          </>
+        )}
 
-            <InspectorSection title="Element Info" icon={<Settings size={14} />} defaultOpen={false}>
+        {/* ====== SETTINGS TAB ====== */}
+        {activeTab === 'settings' && (
+          <>
+            <InspectorSection title="Element Info" icon={<Settings size={14} />}>
               <div className="ei-info-row">
                 <span className="ei-info-label">Type</span>
                 <span className="ei-info-value">{definition.displayName}</span>
@@ -924,6 +980,14 @@ export function EnhancedInspector() {
                 <span className="ei-info-label">ID</span>
                 <span className="ei-info-value ei-info-value--mono">{selectedNode.id.slice(0, 8)}...</span>
               </div>
+            </InspectorSection>
+
+            <InspectorSection title="Visibility" icon={<Settings size={14} />} defaultOpen={false}>
+              <SwitchField
+                value={nodeProps.hidden || false}
+                onChange={(v) => handlePropChange('hidden', v)}
+                label="Hide Element"
+              />
             </InspectorSection>
           </>
         )}
