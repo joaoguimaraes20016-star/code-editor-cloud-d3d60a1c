@@ -38,14 +38,10 @@ export function ElementWrapper({
   canMoveDown = true,
   children,
 }: ElementWrapperProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const label = getNodeLabel(nodeType);
 
   // Show action menu when element is selected (not in editing mode)
   const showActionMenu = isSelected && !isReadonly;
-  
-  // Show hover tooltip when hovering and not selected
-  const showHoverTooltip = isHovered && !isSelected && !isReadonly;
 
   return (
     <div
@@ -61,32 +57,23 @@ export function ElementWrapper({
       data-selected={isSelected || undefined}
       data-highlighted={isHighlighted || undefined}
       data-depth={depth}
-      onMouseEnter={() => !isReadonly && setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       onClick={(e) => {
         if (isReadonly) return;
         e.stopPropagation();
         onSelect(nodeId);
       }}
     >
-      {/* Selection overlay */}
+      {/* Selection overlay - cyan outline */}
       <div className="element-wrapper-overlay" aria-hidden="true" />
       
-      {/* Hover tooltip */}
-      {showHoverTooltip && (
-        <div className="element-wrapper-tooltip">
-          Click to edit
-        </div>
-      )}
-      
-      {/* Selected label */}
+      {/* Selected label badge - Perspective style */}
       {isSelected && !isReadonly && (
         <div className="element-wrapper-label">
           {label}
         </div>
       )}
       
-      {/* Action menu */}
+      {/* Action menu - positioned outside to the right */}
       {showActionMenu && (
         <ElementActionMenu
           elementId={nodeId}

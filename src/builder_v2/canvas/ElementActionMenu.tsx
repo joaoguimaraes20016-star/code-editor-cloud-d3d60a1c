@@ -1,7 +1,8 @@
 import { 
-  ChevronUp, 
-  ChevronDown, 
+  Plus,
+  Minus,
   Copy, 
+  Square,
   Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -35,24 +36,24 @@ export function ElementActionMenu({
       )}
       onClick={(e) => e.stopPropagation()}
     >
+      {/* Add element above */}
       <button
         type="button"
         className="element-action-btn"
-        onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
-        disabled={!canMoveUp}
-        title="Move up"
+        onClick={(e) => { e.stopPropagation(); /* TODO: add above */ }}
+        title="Add above"
       >
-        <ChevronUp size={14} />
+        <Plus size={16} />
       </button>
-      
+
+      {/* Add element below */}
       <button
         type="button"
         className="element-action-btn"
-        onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
-        disabled={!canMoveDown}
-        title="Move down"
+        onClick={(e) => { e.stopPropagation(); /* TODO: add below */ }}
+        title="Add below"
       >
-        <ChevronDown size={14} />
+        <Minus size={16} />
       </button>
       
       {onDuplicate && (
@@ -62,9 +63,19 @@ export function ElementActionMenu({
           onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
           title="Duplicate"
         >
-          <Copy size={14} />
+          <Copy size={16} />
         </button>
       )}
+
+      {/* Select parent */}
+      <button
+        type="button"
+        className="element-action-btn"
+        onClick={(e) => { e.stopPropagation(); /* TODO: select parent */ }}
+        title="Select parent"
+      >
+        <Square size={16} />
+      </button>
       
       {onDelete && (
         <button
@@ -73,7 +84,7 @@ export function ElementActionMenu({
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           title="Delete"
         >
-          <Trash2 size={14} />
+          <Trash2 size={16} />
         </button>
       )}
     </div>

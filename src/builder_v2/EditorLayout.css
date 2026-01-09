@@ -13,8 +13,8 @@
   --builder-text-primary: #0f172a;
   --builder-text-secondary: #475569;
   --builder-text-muted: #94a3b8;
-  --builder-accent: #6366f1;
-  --builder-accent-light: #eef2ff;
+  --builder-accent: #38bdf8;
+  --builder-accent-light: #e0f2fe;
   --builder-hover-bg: #f1f5f9;
   --builder-active-bg: #e2e8f0;
   --builder-radius-sm: 6px;
@@ -23,8 +23,9 @@
   --builder-font-size-xs: 11px;
   --builder-font-size-sm: 13px;
   --builder-font-size-base: 14px;
-  --builder-selection-color: #6366f1;
-  --builder-selection-bg: rgba(99, 102, 241, 0.12);
+  /* Perspective-style cyan selection */
+  --builder-selection-color: #38bdf8;
+  --builder-selection-bg: transparent;
   
   /* Perspective-style content area */
   --builder-content-bg: linear-gradient(180deg, #0f0f14 0%, #141419 100%);
@@ -226,7 +227,7 @@
 }
 
 /* ============================================================================
-   NODE RENDERING & SELECTION
+   NODE RENDERING & SELECTION - Perspective style (cyan outlines)
    ============================================================================ */
 
 .builder-v2-node {
@@ -242,36 +243,32 @@
 
 .builder-v2-node-overlay {
   position: absolute;
-  inset: -2px;
+  inset: -1px;
   border-radius: 8px;
   pointer-events: none;
   border: 2px solid transparent;
-  transition: all 120ms ease;
+  transition: border-color 120ms ease;
   z-index: 2;
 }
 
-/* Hover state - subtle blue outline */
+/* Hover state - subtle cyan outline like Perspective */
 .builder-v2-node:not([data-readonly]):hover > .builder-v2-node-overlay {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(99, 102, 241, 0.05);
+  border-color: rgba(56, 189, 248, 0.4);
 }
 
-/* Selected state - strong outline */
+/* Selected state - strong cyan outline */
 .builder-v2-node[data-selected="true"] > .builder-v2-node-overlay {
-  border-color: var(--builder-selection-color);
-  background: var(--builder-selection-bg);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: #38bdf8;
 }
 
-/* Nested selection - show parent chain subtly */
+/* Nested selection - keep parent subtle */
 .builder-v2-node[data-selected="true"] .builder-v2-node:not([data-readonly]):hover > .builder-v2-node-overlay {
-  border-color: rgba(99, 102, 241, 0.3);
+  border-color: rgba(56, 189, 248, 0.3);
 }
 
 /* Highlighted state (for suggestions) */
 .builder-v2-node[data-highlighted="true"] > .builder-v2-node-overlay {
-  border-color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.15);
+  border-color: #22d3ee;
   animation: pulse-highlight 1.5s ease-in-out infinite;
 }
 
@@ -280,39 +277,41 @@
   50% { opacity: 0.6; }
 }
 
-/* Node type label on selection */
+/* Node type label on selection - Perspective style badge */
 .builder-v2-node[data-selected="true"]::before {
   content: attr(data-node-type);
   position: absolute;
-  top: -20px;
-  left: 4px;
-  font-size: 10px;
+  top: -24px;
+  left: 0;
+  font-size: 11px;
   font-weight: 600;
-  color: white;
-  background: var(--builder-selection-color);
-  padding: 2px 6px;
+  color: #0c4a6e;
+  background: #38bdf8;
+  padding: 3px 10px;
   border-radius: 4px;
   z-index: 10;
   text-transform: capitalize;
   pointer-events: none;
+  box-shadow: 0 2px 6px rgba(56, 189, 248, 0.3);
 }
 
 /* ============================================================================
-   HOVER TOOLBAR - Appears on element hover
+   HOVER TOOLBAR - Simplified (no purple)
    ============================================================================ */
 
 .builder-v2-hover-toolbar {
   position: absolute;
-  top: -28px;
+  top: -32px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
-  background: rgba(15, 23, 42, 0.95);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   opacity: 0;
   pointer-events: none;
   transition: opacity 150ms ease;
@@ -326,11 +325,11 @@
 }
 
 .builder-v2-hover-toolbar-type {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
-  padding-right: 6px;
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  color: #64748b;
+  padding-right: 8px;
+  border-right: 1px solid #e2e8f0;
 }
 
 .builder-v2-hover-toolbar-actions {
@@ -339,30 +338,30 @@
 }
 
 .builder-v2-hover-toolbar-btn {
-  padding: 2px 8px;
-  font-size: 10px;
+  padding: 4px 10px;
+  font-size: 12px;
   font-weight: 500;
-  color: white;
-  background: rgba(99, 102, 241, 0.9);
+  color: #334155;
+  background: #f1f5f9;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
-  transition: background 150ms ease;
+  transition: all 150ms ease;
 }
 
 .builder-v2-hover-toolbar-btn:hover {
-  background: rgba(99, 102, 241, 1);
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
 .builder-v2-hover-toolbar-btn--delete {
-  background: rgba(239, 68, 68, 0.9);
-  padding: 2px 6px;
-  font-size: 12px;
-  font-weight: 700;
+  background: #fef2f2;
+  color: #ef4444;
 }
 
 .builder-v2-hover-toolbar-btn--delete:hover {
-  background: rgba(239, 68, 68, 1);
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 /* ============================================================================
@@ -1053,67 +1052,61 @@
 }
 
 /* ============================================================================
-   ELEMENT WRAPPER - Selection States
+   ELEMENT WRAPPER - Perspective-style Selection States
    ============================================================================ */
 
 .element-wrapper {
   position: relative;
   width: 100%;
+  cursor: pointer;
 }
 
 .element-wrapper-overlay {
   position: absolute;
-  inset: -2px;
+  inset: -1px;
   border-radius: 8px;
   pointer-events: none;
   border: 2px solid transparent;
-  transition: all 150ms ease;
+  transition: border-color 120ms ease;
   z-index: 2;
 }
 
-.element-wrapper:hover .element-wrapper-overlay {
-  border-color: rgba(99, 102, 241, 0.4);
+/* Hover state - subtle cyan/blue outline like Perspective */
+.element-wrapper:hover:not(.element-wrapper--selected) .element-wrapper-overlay {
+  border-color: rgba(56, 189, 248, 0.5);
 }
 
+/* Selected state - strong cyan outline */
 .element-wrapper--selected .element-wrapper-overlay {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: #38bdf8;
 }
 
+/* No background fill on selection - keep it clean */
 .element-wrapper--highlighted .element-wrapper-overlay {
-  border-color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.1);
+  border-color: #22d3ee;
   animation: pulse-highlight 1.5s ease-in-out infinite;
 }
 
+/* Hide hover tooltip - not Perspective style */
 .element-wrapper-tooltip {
-  position: absolute;
-  top: -28px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 10px;
-  background: rgba(15, 23, 42, 0.95);
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  color: white;
-  white-space: nowrap;
-  z-index: 100;
-  pointer-events: none;
+  display: none;
 }
 
+/* Selected label - small pill badge above element */
 .element-wrapper-label {
   position: absolute;
-  top: -22px;
-  left: 4px;
-  padding: 2px 8px;
-  background: #6366f1;
+  top: -24px;
+  left: 0;
+  padding: 3px 10px;
+  background: #38bdf8;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  color: white;
+  color: #0c4a6e;
+  letter-spacing: 0.02em;
   z-index: 10;
   pointer-events: none;
+  box-shadow: 0 2px 6px rgba(56, 189, 248, 0.3);
 }
 
 .element-wrapper-surface {
@@ -1122,17 +1115,22 @@
   width: 100%;
 }
 
-/* Element Action Menu */
+/* ============================================================================
+   ELEMENT ACTION MENU - Perspective-style (outside right edge)
+   ============================================================================ */
+
 .element-action-menu {
   position: absolute;
-  top: -32px;
-  right: 4px;
+  top: 0;
+  right: -44px;
   display: flex;
-  gap: 2px;
-  padding: 4px;
-  background: rgba(15, 23, 42, 0.95);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   z-index: 100;
 }
 
@@ -1140,19 +1138,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  color: #64748b;
   cursor: pointer;
   transition: all 150ms ease;
 }
 
 .element-action-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .element-action-btn:disabled {
@@ -1161,10 +1159,137 @@
 }
 
 .element-action-btn--delete {
-  color: #f87171;
+  color: #ef4444;
 }
 
 .element-action-btn--delete:hover:not(:disabled) {
-  background: rgba(248, 113, 113, 0.2);
-  color: #f87171;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* ============================================================================
+   INLINE TEXT EDITING - Click to edit with floating toolbar
+   ============================================================================ */
+
+.inline-editable-text {
+  cursor: text;
+  outline: none;
+  border-radius: 4px;
+  transition: box-shadow 150ms ease;
+}
+
+.inline-editable-text:focus {
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
+}
+
+.inline-editable-text--editing {
+  cursor: text;
+}
+
+/* Floating text toolbar */
+.text-edit-toolbar {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+  z-index: 9999;
+  animation: fadeInUp 150ms ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.text-edit-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: #e2e8f0;
+  margin: 0 6px;
+}
+
+.text-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  transition: all 150ms ease;
+  gap: 4px;
+}
+
+.text-edit-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.text-edit-btn--active {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.text-edit-btn--ai {
+  background: linear-gradient(135deg, #f0abfc 0%, #c084fc 100%);
+  color: white;
+  font-weight: 600;
+}
+
+.text-edit-btn--ai:hover {
+  background: linear-gradient(135deg, #e879f9 0%, #a855f7 100%);
+}
+
+.text-edit-dropdown {
+  position: relative;
+}
+
+.text-edit-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  min-width: 100px;
+  z-index: 10000;
+}
+
+.text-edit-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.text-edit-dropdown-item:hover {
+  background: #f1f5f9;
 }
