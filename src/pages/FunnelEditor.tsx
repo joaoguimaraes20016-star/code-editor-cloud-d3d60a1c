@@ -338,8 +338,7 @@ function EditorContent({
         
         {/* Canvas area - dark Perspective-style background */}
         <main 
-          className="relative flex-1 overflow-hidden flex items-center justify-center p-8"
-          style={{ background: '#1e1e24' }}
+          className="relative flex-1 overflow-hidden flex items-center justify-center p-8 funnel-editor-canvas-bg"
           onClick={handleCanvasClick}
         >
           <DeviceFrame device={device} slug={funnel.slug}>
