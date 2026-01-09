@@ -1,8 +1,8 @@
-import { Button } from '@/components/ui/button';
 import { 
-  ChevronUp, 
-  ChevronDown, 
+  Plus,
+  Minus,
   Copy, 
+  Square,
   Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,56 +31,63 @@ export function ElementActionMenu({
   return (
     <div 
       className={cn(
-        // Changed: now positioned at top-right corner INSIDE the element, not outside
-        "absolute -top-1 -right-1 z-50 flex flex-row gap-0.5 p-0.5 bg-popover/95 backdrop-blur-sm border border-border rounded-md shadow-lg animate-in fade-in-0 zoom-in-95",
+        "element-action-menu",
         className
       )}
       onClick={(e) => e.stopPropagation()}
     >
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 rounded-sm"
+      {/* Add element above */}
+      <button
+        type="button"
+        className="element-action-btn"
         onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
         disabled={!canMoveUp}
-        title="Move up"
+        title="Add above"
       >
-        <ChevronUp className="h-3.5 w-3.5" />
-      </Button>
-      
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 rounded-sm"
+        <Plus size={16} />
+      </button>
+
+      {/* Add element below */}
+      <button
+        type="button"
+        className="element-action-btn"
         onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
         disabled={!canMoveDown}
-        title="Move down"
+        title="Add below"
       >
-        <ChevronDown className="h-3.5 w-3.5" />
-      </Button>
+        <Minus size={16} />
+      </button>
       
       {onDuplicate && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 rounded-sm"
+        <button
+          type="button"
+          className="element-action-btn"
           onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
           title="Duplicate"
         >
-          <Copy className="h-3.5 w-3.5" />
-        </Button>
+          <Copy size={16} />
+        </button>
       )}
+
+      {/* Select parent */}
+      <button
+        type="button"
+        className="element-action-btn"
+        onClick={(e) => { e.stopPropagation(); /* TODO: select parent */ }}
+        title="Select parent"
+      >
+        <Square size={16} />
+      </button>
       
       {onDelete && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+        <button
+          type="button"
+          className="element-action-btn element-action-btn--delete"
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           title="Delete"
         >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+          <Trash2 size={16} />
+        </button>
       )}
     </div>
   );
