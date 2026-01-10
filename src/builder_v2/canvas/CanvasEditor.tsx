@@ -1,9 +1,27 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useCallback, useState } from 'react';
+import type { CSSProperties } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, Plus } from 'lucide-react';
 
-import type { EditorState, Page } from '../types';
+import type { EditorState, Page, CanvasNode } from '../types';
 import type { EditorMode } from '../editorMode';
-import type { Funnel, FunnelSettings, FunnelStep } from '@/pages/FunnelEditor';
-import type { EditorSelection } from '@/components/funnel-builder/editorSelection';
 
 import './canvas.css';
 import '../styles/visual-parity.css';
@@ -12,43 +30,174 @@ import { generatePersonalityVariables } from '../layout/personalityResolver';
 import { resolvePageIntent, generateIntentVariables } from '../layout/stepIntentResolver';
 import { SPACING, INTERACTIVITY_MODE } from '../layout/layoutTokens';
 import { renderNode } from './renderNode';
-import { StepPreview } from '@/components/funnel-builder/StepPreview';
+import { ComponentRegistry, fallbackComponent } from '../registry/componentRegistry';
 
 type CanvasEditorProps = {
   page: Page;
   editorState: EditorState;
   mode: EditorMode;
   onSelectNode: (nodeId: string) => void;
-  /** Node IDs to highlight (for suggestion preview/feedback) */
+  onMoveNode?: (nodeId: string, targetParentId: string, targetIndex: number) => void;
+  onDeleteNode?: (nodeId: string) => void;
+  onOpenSectionPicker?: () => void;
   highlightedNodeIds?: string[];
-  /** Position in funnel for intent inference */
   funnelPosition?: number;
-  /** Total pages in funnel for intent inference */
   totalPages?: number;
 };
+
+interface SortableSectionProps {
+  node: CanvasNode;
+  editorState: EditorState;
+  onSelectNode: (nodeId: string) => void;
+  onDeleteNode?: (nodeId: string) => void;
+  highlightedNodeIds: string[];
+  isDragMode: boolean;
+}
+
+function SortableSection({
+  node,
+  editorState,
+  onSelectNode,
+  onDeleteNode,
+  highlightedNodeIds,
+  isDragMode,
+}: SortableSectionProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: node.id });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    position: 'relative',
+  };
+
+  const isSelected = editorState.selectedNodeId === node.id;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="builder-v2-sortable-section"
+      data-dragging={isDragging || undefined}
+      data-selected={isSelected || undefined}
+    >
+      {isDragMode && (
+        <button
+          className="builder-v2-section-drag-handle"
+          {...attributes}
+          {...listeners}
+          aria-label="Drag to reorder section"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical size={12} />
+        </button>
+      )}
+      {renderNode(node, editorState, onSelectNode, { highlightedNodeIds, onDeleteNode }, 1)}
+    </div>
+  );
+}
+
+// Empty state component for blank pages
+function EmptyPageState({ onAddSection }: { onAddSection?: () => void }) {
+  return (
+    <div className="builder-v2-empty-page-state">
+      <button 
+        className="builder-v2-empty-page-add-btn"
+        onClick={onAddSection}
+        type="button"
+      >
+        <Plus size={24} strokeWidth={2} />
+      </button>
+      <span className="builder-v2-empty-page-label">Add section</span>
+    </div>
+  );
+}
 
 export function CanvasEditor({ 
   page, 
   editorState, 
-  onSelectNode, 
+  onSelectNode,
+  onMoveNode,
+  onDeleteNode,
+  onOpenSectionPicker,
   mode,
   highlightedNodeIds = [],
   funnelPosition,
   totalPages,
 }: CanvasEditorProps) {
+  const [activeId, setActiveId] = useState<string | null>(null);
   const isPreview = mode === 'preview';
   const interactivity = isPreview ? INTERACTIVITY_MODE.preview : INTERACTIVITY_MODE.canvas;
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveId(null);
+
+      if (!over || active.id === over.id || !onMoveNode) {
+        return;
+      }
+
+      const sectionIds = page.canvasRoot.children.map((c) => c.id);
+      const activeIndex = sectionIds.indexOf(active.id as string);
+      const overIndex = sectionIds.indexOf(over.id as string);
+
+      if (activeIndex !== -1 && overIndex !== -1) {
+        onMoveNode(active.id as string, page.canvasRoot.id, overIndex);
+      }
+    },
+    [page.canvasRoot, onMoveNode]
+  );
+
   if (!page?.canvasRoot) {
-    return <div className="builder-v2-placeholder">Empty page</div>;
+    return (
+      <div className="builder-v2-empty-state">
+        <div className="builder-v2-empty-icon">📄</div>
+        <p className="builder-v2-empty-title">Empty page</p>
+        <p className="builder-v2-empty-hint">Add elements from the panel</p>
+      </div>
+    );
+  }
+
+  // Check if page has no content sections
+  const hasNoContent = page.canvasRoot.children.length === 0;
+  
+  if (hasNoContent && !isPreview) {
+    return (
+      <div className="builder-root" data-mode="canvas">
+        <div className="builder-canvas-frame">
+          <div className="builder-page builder-v2-canvas" data-mode={mode}>
+            <EmptyPageState onAddSection={onOpenSectionPicker} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const layout = resolveFunnelLayout(page);
-  
-  // Phase 27: Generate personality-specific CSS variables (DECORATIVE ONLY per Phase 38)
   const personalityVars = generatePersonalityVariables(layout.personality);
-  
-  // Phase 37: Resolve step intent (DECORATIVE ONLY per Phase 38 — no geometry changes)
   const resolvedIntent = resolvePageIntent(page, {
     funnelPosition,
     totalPages,
@@ -56,29 +205,73 @@ export function CanvasEditor({
   });
   const intentVars = generateIntentVariables(resolvedIntent, isPreview ? 'preview' : 'editor');
   
-  // Phase 38: LOCKED spacing values — ignore personality/intent overrides for geometry
   const layoutVars = {
     '--funnel-section-gap': `${SPACING.SECTION_GAP}px`,
     '--funnel-block-gap': `${SPACING.BLOCK_GAP}px`,
     '--funnel-text-gap': `${SPACING.TEXT_GAP}px`,
     '--funnel-cta-gap': `${SPACING.CTA_GAP}px`,
-    // Legacy vars (locked to new values)
     '--funnel-step-gap': `${SPACING.SECTION_GAP}px`,
     '--funnel-content-gap': `${SPACING.TEXT_GAP}px`,
     '--funnel-action-gap': `${SPACING.CTA_GAP}px`,
-    // Inject personality variables (DECORATIVE ONLY — opacity, color, scale ≤ 1.03)
     ...personalityVars,
-    // Phase 37: Intent vars (DECORATIVE ONLY)
     ...intentVars,
   } as CSSProperties;
   
-  // Phase 38: Guides only in canvas mode with editable flag
   const shouldShowGuides = interactivity.hoverGuides && resolvedIntent.orchestration.showCompositionGuides;
 
-  const legacyPreview = buildLegacyPreview(page, page.canvasRoot, editorState.selectedNodeId, onSelectNode);
+  // Check if the root has section children or is a legacy step component
+  const rootDef = ComponentRegistry[page.canvasRoot.type] ?? fallbackComponent;
+  const hasSortableSections = rootDef.constraints.canHaveChildren && page.canvasRoot.children.length > 0;
+  const sectionIds = hasSortableSections ? page.canvasRoot.children.map((c) => c.id) : [];
+  const isDragEnabled = !isPreview && hasSortableSections && !!onMoveNode;
 
-  // Phase 38: Canonical viewport frame structure (MUST be identical in canvas/preview/runtime)
-  return (
+  const renderContent = () => {
+    if (!hasSortableSections) {
+      // Legacy single-step page or no children - render directly
+      return renderNode(page.canvasRoot, editorState, onSelectNode, {
+        readonly: !interactivity.editable,
+        highlightedNodeIds,
+        onDeleteNode,
+      });
+    }
+
+    // Render frame wrapper, then sortable sections
+    const frameIsSelected = editorState.selectedNodeId === page.canvasRoot.id;
+    const frameDef = ComponentRegistry[page.canvasRoot.type] ?? fallbackComponent;
+    const frameProps = { ...frameDef.defaultProps, ...page.canvasRoot.props };
+
+    return (
+      <div
+        className={`builder-v2-node builder-v2-node--container`}
+        data-selected={frameIsSelected}
+        data-node-id={page.canvasRoot.id}
+        data-has-children="true"
+        data-depth="0"
+        onClick={(e) => {
+          if (e.target === e.currentTarget && !isPreview) {
+            onSelectNode(page.canvasRoot.id);
+          }
+        }}
+      >
+        <div className="builder-v2-node-overlay" aria-hidden="true" />
+        <div className="builder-v2-node-surface">
+          {frameDef.render(frameProps, page.canvasRoot.children.map((section) => (
+            <SortableSection
+              key={section.id}
+              node={section}
+              editorState={editorState}
+              onSelectNode={onSelectNode}
+              onDeleteNode={onDeleteNode}
+              highlightedNodeIds={highlightedNodeIds}
+              isDragMode={isDragEnabled}
+            />
+          )))}
+        </div>
+      </div>
+    );
+  };
+
+  const canvasContent = (
     <div className="builder-root" data-mode={isPreview ? 'preview' : 'canvas'}>
       <div className="builder-canvas-frame">
         <div 
@@ -100,170 +293,36 @@ export function CanvasEditor({
               />
             </div>
           )}
-          {legacyPreview ?? renderNode(page.canvasRoot, editorState, onSelectNode, { 
-            readonly: !interactivity.editable,
-            highlightedNodeIds,
-          })}
+          {renderContent()}
         </div>
       </div>
     </div>
   );
-}
 
-type LegacyPreviewData = {
-  step: FunnelStep;
-  settings: FunnelSettings;
-  selection: EditorSelection;
-  elementBindings: Record<string, string>;
-};
-
-function buildLegacyPreview(
-  page: Page,
-  root: Page['canvasRoot'],
-  selectedNodeId: string | null,
-  onSelectNode: (nodeId: string) => void,
-): JSX.Element | null {
-  const preview = mapNodesToLegacy(page, root, selectedNodeId);
-  if (!preview) {
-    return (
-      <div className="builder-v2-legacy-preview">
-        <div className="builder-v2-legacy-empty">Empty page</div>
-      </div>
-    );
+  if (!isDragEnabled) {
+    return canvasContent;
   }
-
-  const { step, settings, selection, elementBindings } = preview;
-
-  const handleSelectElement = (elementId: string) => {
-    const nodeId = elementBindings[elementId];
-    if (nodeId) {
-      onSelectNode(nodeId);
-    }
-  };
 
   return (
-    <div className="builder-v2-legacy-preview">
-      <StepPreview
-        step={step as FunnelStep}
-        settings={settings as FunnelSettings}
-        selection={selection}
-        onSelectElement={handleSelectElement}
-        onSelectStep={() => onSelectNode(root.id)}
-        onUpdateContent={() => {}}
-        onUpdateDynamicContent={() => {}}
-      />
-    </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
+        {canvasContent}
+      </SortableContext>
+      <DragOverlay>
+        {activeId ? (
+          <div className="builder-v2-drag-overlay">
+            <div className="builder-v2-drag-preview">
+              <GripVertical size={14} />
+              <span>Reordering...</span>
+            </div>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
-}
-
-function mapNodesToLegacy(
-  page: Page,
-  root: Page['canvasRoot'],
-  selectedNodeId: string | null,
-): LegacyPreviewData | null {
-  const elementBindings: Record<string, string> = {};
-
-  const step: FunnelStep = {
-    id: page.id,
-    order_index: 0,
-    step_type: page.type ?? 'landing',
-    content: {
-      headline: '',
-      subtext: '',
-      button_text: '',
-      element_order: [] as string[],
-      dynamic_elements: {} as Record<string, any>,
-      design: {
-        textColor: '#ffffff',
-        buttonColor: '#6366f1',
-        buttonTextColor: '#ffffff',
-      },
-    },
-  };
-
-  const addElement = (id: string, nodeId: string) => {
-    if (!step.content.element_order.includes(id)) {
-      step.content.element_order.push(id);
-    }
-    elementBindings[id] = nodeId;
-  };
-
-  const walk = (node: Page['canvasRoot']) => {
-    switch (node.type) {
-      case 'container': {
-        node.children.forEach(walk);
-        break;
-      }
-      case 'hero': {
-        step.content.headline = (node.props as any)?.headline ?? 'Hero headline';
-        step.content.subtext = (node.props as any)?.subheadline ?? 'Hero subheadline';
-        step.content.button_text = (node.props as any)?.buttonLabel ?? 'Button';
-        addElement('headline', node.id);
-        addElement('subtext', node.id);
-        addElement('button', node.id);
-        node.children.forEach(walk);
-        break;
-      }
-      case 'text': {
-        const id = `text_${node.id}`;
-        addElement(id, node.id);
-        step.content.dynamic_elements[id] = {
-          text: (node.props as any)?.text ?? 'Text',
-        };
-        break;
-      }
-      case 'image': {
-        const id = `image_${node.id}`;
-        addElement(id, node.id);
-        step.content.dynamic_elements[id] = {
-          image_url: (node.props as any)?.src ?? (node.props as any)?.url ?? '',
-        };
-        break;
-      }
-      case 'video': {
-        const id = `video_${node.id}`;
-        addElement(id, node.id);
-        step.content.dynamic_elements[id] = {
-          video_url: (node.props as any)?.src ?? (node.props as any)?.url ?? '',
-        };
-        break;
-      }
-      case 'button': {
-        const id = `button_${node.id}`;
-        addElement(id, node.id);
-        step.content.dynamic_elements[id] = {
-          text: (node.props as any)?.label ?? 'Button',
-        };
-        break;
-      }
-      default: {
-        node.children.forEach(walk);
-        break;
-      }
-    }
-  };
-
-  walk(root);
-
-  if (step.content.element_order.length === 0) {
-    return null;
-  }
-
-  const settings: FunnelSettings = {
-    primary_color: '#6366f1',
-    background_color: '#0b0b0b',
-    button_text: 'Continue',
-  } as FunnelSettings;
-
-  const matchedElementId = Object.entries(elementBindings).find(([, nodeId]) => nodeId === selectedNodeId)?.[0];
-  const selection: EditorSelection = matchedElementId
-    ? { type: 'element', id: `${step.id}::${matchedElementId}` }
-    : { type: 'step', id: step.id };
-
-  return {
-    step,
-    settings,
-    selection,
-    elementBindings,
-  };
 }

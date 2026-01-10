@@ -22,7 +22,7 @@ const MOTION_VARIANTS = {
 
 const MOTION_TRANSITION = {
   duration: 0.2,
-  ease: [0.16, 1, 0.3, 1],
+  ease: [0.16, 1, 0.3, 1] as const,
 };
 
 export function MotionContainer({

@@ -81,5 +81,4 @@ export {
   describeTemplateChanges,
   isTemplateApplied,
   type TemplateApplicationResult,
-  type TemplatePreview,
 } from './applyTemplate';

@@ -80,21 +80,23 @@ export function RuntimeLayout({
     : {};
 
   // Phase 38: LOCKED spacing values — ignore layout.spacing, use canonical values
-  const geometryStyles: CSSProperties = {
-    '--runtime-layout-max-width': `${layout?.maxWidth ?? 460}px`,
+  const geometryStyles: React.CSSProperties = {
     // Phase 38: LOCKED spacing (hard numbers only)
+  } as React.CSSProperties;
+
+  // Apply CSS custom properties via style attribute
+  const cssVarStyles = {
+    '--runtime-layout-max-width': `${layout?.maxWidth ?? 460}px`,
     '--funnel-section-gap': `${SPACING.SECTION_GAP}px`,
     '--funnel-block-gap': `${SPACING.BLOCK_GAP}px`,
     '--funnel-text-gap': `${SPACING.TEXT_GAP}px`,
     '--funnel-cta-gap': `${SPACING.CTA_GAP}px`,
-    // Legacy vars (locked to new values)
     '--funnel-step-gap': `${SPACING.SECTION_GAP}px`,
     '--funnel-content-gap': `${SPACING.TEXT_GAP}px`,
     '--funnel-action-gap': `${SPACING.CTA_GAP}px`,
-    // DECORATIVE ONLY vars (personality/intent — no geometry changes)
     ...personalityVars,
     ...intentVars,
-  };
+  } as React.CSSProperties;
 
   const layoutContent = (
     <div

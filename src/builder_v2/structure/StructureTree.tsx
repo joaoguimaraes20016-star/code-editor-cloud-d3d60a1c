@@ -3,9 +3,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { ComponentRegistry, fallbackComponent } from '../registry/componentRegistry';
 import { findNodeById, useEditorStore } from '../state/editorStore';
+import { getNodeLabel } from '../utils/nodeLabels';
 import type { CanvasNode } from '../types';
 
-const addableTypes = ['text', 'button', 'hero', 'container'];
+const addableTypes = ['heading', 'paragraph', 'cta_button', 'image_block', 'spacer', 'section'];
 
 type DragTarget = { parentId: string; insertIndex: number; indicatorY: number; indicatorLeft: number; indicatorWidth: number };
 
@@ -120,7 +121,7 @@ function StructureNode({
       >
         <div className="builder-v2-structure-row-content">
           <span className="builder-v2-structure-row-label">{label}</span>
-          <span className="builder-v2-structure-row-type">{node.type}</span>
+          <span className="builder-v2-structure-row-type">{getNodeLabel(node.type)}</span>
         </div>
 
         {!isReadOnly && (
@@ -129,55 +130,51 @@ function StructureNode({
               <button
                 type="button"
                 className="builder-v2-structure-chip"
-                disabled={isFirstSibling || depth === 0}
+                disabled={isFirstSibling}
                 onClick={(event) => {
                   event.stopPropagation();
                   moveNodeUp(node.id);
                 }}
               >
-                Move up
+                ↑
               </button>
               <button
                 type="button"
                 className="builder-v2-structure-chip"
-                disabled={isLastSibling || depth === 0}
+                disabled={isLastSibling}
                 onClick={(event) => {
                   event.stopPropagation();
                   moveNodeDown(node.id);
                 }}
               >
-                Move down
+                ↓
               </button>
             </div>
             {canHaveChildren && (
               <div className="builder-v2-structure-row-controls-group">
-                {addableTypes.map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    className="builder-v2-structure-chip"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      addNode(node.id, type);
-                    }}
-                  >
-                    Add {type}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  className="builder-v2-structure-chip builder-v2-structure-chip--add"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    addNode(node.id, 'heading');
+                  }}
+                >
+                  + Add
+                </button>
               </div>
             )}
-            {depth > 0 && (
-              <button
-                type="button"
-                className="builder-v2-structure-chip builder-v2-structure-chip--danger"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  deleteNode(node.id);
-                }}
-              >
-                Delete
-              </button>
-            )}
+            {/* Allow deleting any element - removed depth > 0 constraint */}
+            <button
+              type="button"
+              className="builder-v2-structure-chip builder-v2-structure-chip--danger"
+              onClick={(event) => {
+                event.stopPropagation();
+                deleteNode(node.id);
+              }}
+            >
+              ×
+            </button>
           </div>
         )}
       </div>

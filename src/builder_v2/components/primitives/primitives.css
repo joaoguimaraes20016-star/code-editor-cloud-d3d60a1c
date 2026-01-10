@@ -1,0 +1,500 @@
+/* ============================================================================
+   PRIMITIVE COMPONENTS - Framer/Perspective style
+   Clean, professional, composable building blocks
+   ============================================================================ */
+
+/* Frame - Page container */
+.builder-frame {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+  padding: 32px 24px;
+  gap: 28px;
+  background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
+}
+
+/* Section - Content grouping */
+.builder-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  gap: 16px;
+}
+
+.builder-section--hero {
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* Card hero (Framer/Perspective vibe) */
+.builder-section--hero-card {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  gap: 18px;
+  padding: 24px 0;
+  text-align: center;
+}
+
+.builder-section--content {
+  text-align: center;
+}
+
+.builder-section--form {
+  width: 100%;
+  max-width: 320px;
+  gap: 12px;
+}
+
+.builder-section--media {
+  width: 100%;
+}
+
+.builder-section--options {
+  width: 100%;
+}
+
+.builder-section--cta {
+  width: 100%;
+  max-width: 320px;
+}
+
+.builder-section--embed {
+  width: 100%;
+  min-height: 400px;
+}
+
+/* Heading - Typography */
+.builder-heading {
+  margin: 0;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.builder-heading--h1 {
+  font-size: 28px;
+}
+
+.builder-heading--h2 {
+  font-size: 22px;
+}
+
+.builder-heading--h3 {
+  font-size: 18px;
+}
+
+/* Paragraph - Body text */
+.builder-paragraph {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+}
+
+/* CTA Button */
+.builder-cta-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.builder-cta-button--primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.builder-cta-button--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+}
+
+.builder-cta-button--secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.builder-cta-button--outline {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Spacer */
+.builder-spacer {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Divider */
+.builder-divider {
+  width: 100%;
+  height: 1px;
+  margin: 8px 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
+  border: none;
+}
+
+/* Input Wrapper */
+.builder-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.builder-input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
+/* Text Input */
+.builder-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  font-size: 15px;
+  color: #ffffff;
+  outline: none;
+  transition: all 200ms ease;
+}
+
+.builder-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.builder-input:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.builder-input-wrapper .builder-input {
+  padding-left: 44px;
+}
+
+/* Video Embed */
+.builder-video-embed {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+.builder-video-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Calendar Embed */
+.builder-calendar-embed {
+  width: 100%;
+  min-height: 500px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.builder-calendar-iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  border: none;
+}
+
+/* Placeholders */
+.builder-video-placeholder,
+.builder-embed-placeholder,
+.builder-image-placeholder,
+.builder-option-placeholder,
+.builder-info-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 140px;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+}
+
+.builder-placeholder-icon {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.builder-placeholder-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Option Grid */
+.builder-option-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Perspective-style image card grid */
+.builder-option-grid--perspective {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.builder-option-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 200ms ease;
+  text-align: left;
+}
+
+.builder-option-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateX(4px);
+}
+
+/* Perspective-style card option (with image) */
+.builder-option-item--card {
+  flex-direction: column;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  overflow: hidden;
+  transform: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.builder-option-item--card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  background: transparent;
+  border: none;
+}
+
+.builder-option-image {
+  width: 100%;
+  height: 120px;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.builder-option-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+}
+
+.builder-option-content--card {
+  background: #f59e0b;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.builder-option-emoji {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.builder-option-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+/* Icon */
+.builder-icon {
+  flex-shrink: 0;
+  display: block;
+  margin: 0 auto 16px;
+}
+
+/* Info Card */
+.builder-info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.builder-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.builder-info-icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.builder-info-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
+}
+
+/* Image */
+.builder-image {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.builder-image-placeholder {
+  max-width: 280px;
+  min-height: 140px;
+}
+
+/* Consent Checkbox */
+.builder-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.builder-consent-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.builder-consent-checkbox:checked {
+  background: #6366f1;
+  border-color: #6366f1;
+}
+
+.builder-consent-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+
+.builder-consent-link {
+  color: #818cf8;
+  text-decoration: underline;
+  text-decoration-color: rgba(129, 140, 248, 0.4);
+}
+
+/* ============================================================================
+   HEADER BAR - Dark header with logo
+   ============================================================================ */
+
+.builder-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 16px 24px;
+  background: #1a1a1a;
+  border-radius: 0;
+}
+
+.builder-header-logo {
+  max-height: 40px;
+  max-width: 120px;
+  object-fit: contain;
+}
+
+.builder-header-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* =========================================================================
+   CONTENT CARD - White card container
+   ========================================================================= */
+
+.builder-content-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  gap: 0;
+  text-align: center;
+  overflow: hidden; /* allows HeaderBar to clip to rounded corners */
+}
+
+.builder-content-card--shadow {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* Content card typography overrides for light bg */
+.builder-content-card .builder-heading {
+  color: #1a1a1a;
+}
+
+.builder-content-card .builder-paragraph {
+  color: #555555;
+}
+
+/* Nested sections in content cards should center content */
+.builder-content-card .builder-section {
+  align-items: center;
+}
+
+/* Buttons inside content cards should auto-width */
+.builder-content-card .builder-cta-button {
+  align-self: center;
+}

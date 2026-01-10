@@ -1223,7 +1223,8 @@ export function MultiDocumentProvider({ children }: { children: ReactNode }) {
       const definition = ComponentRegistry[type] ?? fallbackComponent;
       
       // Phase 28: Get active page personality for intent defaults
-      const activePage = document.pages.find((p) => p.id === document.activePageId);
+      const currentDoc = state.history.present.document;
+      const activePage = currentDoc.pages.find((p) => p.id === currentDoc.activePageId);
       const personality = activePage?.layoutPersonality ?? DEFAULT_PERSONALITY;
       
       // Phase 28: Find parent node type for context-aware defaults
@@ -1245,7 +1246,7 @@ export function MultiDocumentProvider({ children }: { children: ReactNode }) {
       };
       wrappedDispatch({ type: 'ADD_NODE', parentId, node });
     },
-    [wrappedDispatch, document.pages, document.activePageId],
+    [wrappedDispatch, state.history.present.document],
   );
 
   const deleteNode = useCallback(

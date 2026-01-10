@@ -65,7 +65,7 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       host: "0.0.0.0",
-      port: 3000,
+      port: 8080,
       strictPort: false,
     },
     plugins: [
@@ -74,6 +74,7 @@ export default defineConfig(({ mode }) => {
       mode === "development" && devServerLogger(),
     ].filter(Boolean),
     resolve: {
+      dedupe: ["react", "react-dom"],
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },

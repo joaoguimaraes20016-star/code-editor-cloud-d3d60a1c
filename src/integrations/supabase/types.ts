@@ -1140,8 +1140,8 @@ export type Database = {
       }
       funnels: {
         Row: {
-          builder_document: Json | null
           auto_create_contact: boolean | null
+          builder_document: Json | null
           created_at: string
           created_by: string
           domain_id: string | null
@@ -1157,8 +1157,8 @@ export type Database = {
           zapier_webhook_url: string | null
         }
         Insert: {
-          builder_document?: Json | null
           auto_create_contact?: boolean | null
+          builder_document?: Json | null
           created_at?: string
           created_by: string
           domain_id?: string | null
@@ -1174,8 +1174,8 @@ export type Database = {
           zapier_webhook_url?: string | null
         }
         Update: {
-          builder_document?: Json | null
           auto_create_contact?: boolean | null
+          builder_document?: Json | null
           created_at?: string
           created_by?: string
           domain_id?: string | null

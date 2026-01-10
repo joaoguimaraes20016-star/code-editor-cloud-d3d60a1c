@@ -2,7 +2,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { SortableStepItem } from './SortableStepItem';
 import type { EditorSelection } from './editorSelection';
 import { getSelectionStepId } from './editorSelection';
-import { FunnelStep } from '@/pages/FunnelEditor';
+import type { FunnelStep } from '@/lib/funnel/editorTypes';
 
 interface SortableStepListProps {
   steps: FunnelStep[];

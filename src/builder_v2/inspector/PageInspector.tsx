@@ -1,14 +1,6 @@
 /**
- * Phase 27: Page Inspector Component
- *
- * Displays page-level settings when no node is selected.
- * Includes the layout personality selector.
- *
- * Design principles:
- * - Minimal, calm UI
- * - No tooltips or long descriptions
- * - Instant visual feedback
- * - Seamless with existing inspector aesthetic
+ * Page Inspector - shown when no element is selected
+ * Displays page-level settings with Framer-style layout
  */
 
 import type { LayoutPersonality, Page } from '../types';
@@ -19,10 +11,6 @@ export interface PageInspectorProps {
   onUpdatePersonality: (personality: LayoutPersonality) => void;
 }
 
-/**
- * Segmented control for personality selection.
- * Clean, horizontal segments with no visual clutter.
- */
 function PersonalitySelector({
   value,
   onChange,
@@ -33,14 +21,14 @@ function PersonalitySelector({
   const options = getPersonalityOptions();
 
   return (
-    <div className="builder-v2-personality-selector" role="radiogroup" aria-label="Layout personality">
+    <div className="builder-segment-control" role="radiogroup">
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           role="radio"
           aria-checked={value === option.value}
-          className={`builder-v2-personality-option${value === option.value ? ' builder-v2-personality-option--active' : ''}`}
+          className={`builder-segment${value === option.value ? ' builder-segment--active' : ''}`}
           onClick={() => onChange(option.value)}
         >
           {option.label}
@@ -50,29 +38,22 @@ function PersonalitySelector({
   );
 }
 
-/**
- * Page Inspector - shown when no node is selected.
- * Allows editing page-level properties like layout personality.
- */
 export function PageInspector({ page, onUpdatePersonality }: PageInspectorProps) {
   const currentPersonality = page.layoutPersonality ?? 'clean';
 
   return (
-    <div className="builder-v2-inspector">
-      <div className="builder-v2-inspector-header">
-        <div className="builder-v2-inspector-header-row">
-          <h3 className="builder-v2-inspector-title">{page.name}</h3>
-        </div>
-        <p className="builder-v2-inspector-subtitle">Page settings</p>
-      </div>
+    <div className="builder-inspector">
+      <header className="builder-inspector-header">
+        <span className="builder-inspector-type">{page.name}</span>
+      </header>
 
-      <section className="builder-v2-inspector-section">
-        <div className="builder-v2-inspector-section-header">
-          <p className="builder-v2-inspector-section-title">Layout</p>
+      <section className="builder-inspector-section">
+        <div className="builder-inspector-section-header builder-inspector-section-header--static">
+          <span className="builder-inspector-section-title">Layout</span>
         </div>
-        <div className="builder-v2-inspector-fields">
-          <div className="builder-v2-field">
-            <label className="builder-v2-field-label">Personality</label>
+        <div className="builder-inspector-section-content">
+          <div className="builder-field">
+            <label className="builder-field-label">Style</label>
             <PersonalitySelector
               value={currentPersonality}
               onChange={onUpdatePersonality}

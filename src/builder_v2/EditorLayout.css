@@ -1,1406 +1,1295 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import './components/primitives/primitives.css';
+
+/* ============================================================================
+   DESIGN TOKENS
+   ============================================================================ */
 
 :root {
-  /* Core palette - darker, calmer, more depth */
-  --builder-v2-bg: #030406;
-  --builder-v2-bg-elevated: #080a10;
-  --builder-v2-panel-bg: rgba(6, 8, 14, 0.88);
-  --builder-v2-panel-border: rgba(255, 255, 255, 0.05);
-  --builder-v2-text: #f5f7fa;
-  --builder-v2-text-muted: rgba(245, 247, 250, 0.55);
-  --builder-v2-text-dim: rgba(245, 247, 250, 0.35);
+  --builder-bg: #f8fafc;
+  --builder-panel-bg: #ffffff;
+  --builder-panel-border: #e2e8f0;
+  --builder-canvas-bg: #1e1e24;
+  --builder-text-primary: #0f172a;
+  --builder-text-secondary: #475569;
+  --builder-text-muted: #94a3b8;
+  --builder-accent: #38bdf8;
+  --builder-accent-light: #e0f2fe;
+  --builder-hover-bg: #f1f5f9;
+  --builder-active-bg: #e2e8f0;
+  --builder-radius-sm: 6px;
+  --builder-radius-md: 10px;
+  --builder-radius-lg: 16px;
+  --builder-font-size-xs: 11px;
+  --builder-font-size-sm: 13px;
+  --builder-font-size-base: 14px;
+  /* Perspective-style cyan selection */
+  --builder-selection-color: #38bdf8;
+  --builder-selection-bg: transparent;
   
-  /* Outlines - softer, less "engineer-y" */
-  --builder-v2-outline-soft: rgba(148, 163, 184, 0.12);
-  --builder-v2-outline-strong: rgba(139, 92, 246, 0.4);
-  
-  /* Accent - softer glow, less saturated at rest */
-  --builder-v2-accent: #8b5cf6;
-  --builder-v2-accent-soft: rgba(139, 92, 246, 0.15);
-  --builder-v2-accent-glow: rgba(139, 92, 246, 0.25);
-  --builder-v2-accent-strong: #a78bfa;
-  --builder-v2-danger: #f87171;
-  
-  /* Transitions - slightly slower for calm feel */
-  --builder-v2-transition: 220ms cubic-bezier(0.4, 0, 0.2, 1);
-  --builder-v2-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --builder-v2-transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
-  
-  /* Canvas surface - the "stage" feel */
-  --builder-v2-canvas-surface: rgba(12, 14, 22, 0.6);
-  --builder-v2-canvas-glow: rgba(139, 92, 246, 0.04);
-  --builder-v2-canvas-vignette: radial-gradient(
-    ellipse 80% 60% at 50% 50%,
-    transparent 0%,
-    rgba(3, 4, 6, 0.4) 100%
-  );
-  
-  /* Phase 22: Editor Focus Framing */
-  --builder-v2-center-focus-gradient: radial-gradient(
-    ellipse 70% 50% at 50% 45%,
-    rgba(139, 92, 246, 0.015) 0%,
-    transparent 70%
-  );
-  --builder-v2-working-surface-glow: rgba(139, 92, 246, 0.025);
-
-  /* ============================================================================
-     PHASE 35: EDITOR EXPRESSIVE TOKENS
-     Richer interaction feedback for editor context. Subtle, premium, deliberate.
-     Editor-specific enhancements on top of the base expression system.
-     ============================================================================ */
-
-  /* Editor hover expression - slightly richer than runtime */
-  --editor-expr-hover-lift: 1.5px;
-  --editor-expr-hover-shadow-grow: 1.08;
-  --editor-expr-hover-surface-brighten: 0.025;
-  --editor-expr-hover-border-reveal: 0.03;
-
-  /* Editor focus expression - enhanced clarity for workspace */
-  --editor-expr-focus-ring-opacity: 0.18;
-  --editor-expr-focus-ring-spread: 3px;
-  --editor-expr-focus-ring-blur: 8px;
-  --editor-expr-focus-bg-clarity: 0.015;
-
-  /* Editor press expression - tactile workspace feedback */
-  --editor-expr-press-depth: 1.5px;
-  --editor-expr-press-shadow-collapse: 0.45;
-
-  /* Editor transition softness - responsive but calm */
-  --editor-expr-transition-hover: 180ms cubic-bezier(0.4, 0, 0.2, 1);
-  --editor-expr-transition-focus: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --editor-expr-transition-press: 70ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.builder-v2-shell {
-  display: flex;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  color: var(--builder-v2-text);
-  background: inherit;
-  font-family: 'Space Grotesk', 'Sora', system-ui, -apple-system, sans-serif;
-}
-
-.builder-v2-panel {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  /* Softer border - less "wall", more "edge" */
-  border-right: 1px solid rgba(255, 255, 255, 0.03);
-  background: var(--builder-v2-panel-bg);
-  backdrop-filter: blur(32px);
-  /* Side panels fade into background mentally */
-  transition: opacity var(--builder-v2-transition-slow);
-}
-
-.builder-v2-panel:last-child {
-  border-right: none;
-}
-
-.builder-v2-panel--left,
-.builder-v2-panel--right {
-  width: 280px;
-  /* Subtle fade effect - panels are contextual, not primary */
-  opacity: 0.95;
-}
-
-.builder-v2-panel--left:hover,
-.builder-v2-panel--right:hover {
-  opacity: 1;
-}
-
-.builder-v2-panel--center {
-  flex: 1;
-  /* Canvas is the stage - visually primary */
-  position: relative;
-  z-index: 1;
-  background: transparent;
-}
-
-/* Phase 22: Working surface background layer */
-.builder-v2-panel--center::before {
-  content: none;
-}
-
-/* Phase 22: Working surface intensifies on interaction */
-.builder-v2-panel--center:hover::before {
-  opacity: 1;
-}
-
-.builder-v2-panel-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  /* Subtle - headers should whisper, not shout */
-  color: var(--builder-v2-text-muted);
-  transition: color var(--builder-v2-transition);
-}
-
-.builder-v2-panel-header:hover {
-  color: var(--builder-v2-text);
-}
-
-.builder-v2-mode-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  /* Softer badge - informative but not loud */
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  color: rgba(167, 139, 250, 0.8);
-  transition: all var(--builder-v2-transition);
-}
-
-.builder-v2-mode-badge:hover {
-  background: rgba(139, 92, 246, 0.12);
-  color: var(--builder-v2-accent-strong);
-}
-
-.builder-v2-panel-scroll {
-  flex: 1;
-  overflow: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  /* Smoother scrolling */
-  scroll-behavior: smooth;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
-}
-
-.builder-v2-panel-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.builder-v2-panel-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.builder-v2-panel-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 3px;
-}
-
-.builder-v2-panel-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.builder-v2-preview-hint {
-  font-size: 12px;
-  color: var(--builder-v2-text-dim);
-  padding: 12px 14px;
-  border-radius: 12px;
-  /* Solid but soft border - less "alert" feel */
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.015);
-  line-height: 1.5;
-}
-
-.builder-v2-mode-toggle {
-  display: inline-flex;
-  padding: 3px;
-  border-radius: 999px;
-  /* Subtler container - almost invisible */
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  gap: 2px;
-}
-
-.builder-v2-mode-toggle button {
-  appearance: none;
-  border: none;
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-size: 11px;
-  color: var(--builder-v2-text-dim);
-  background: transparent;
-  cursor: pointer;
-  transition: all var(--builder-v2-transition);
-}
-
-.builder-v2-mode-toggle button:hover {
-  color: var(--builder-v2-text-muted);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.builder-v2-mode-toggle button[aria-pressed="true"] {
-  /* Soft glow, not hard box */
-  background: rgba(139, 92, 246, 0.12);
-  color: var(--builder-v2-text);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
-}
-
-.builder-v2-placeholder {
-  padding: 16px;
-  border-radius: 12px;
-  /* Soft solid border instead of dashed - calmer */
-  background: rgba(255, 255, 255, 0.015);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--builder-v2-text-dim);
-}
-
-.builder-v2-hidden {
-  display: none;
-}
-
-.builder-v2-shell--preview .builder-v2-panel--center {
-  box-shadow: none;
-}
-
-.builder-v2-inspector {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-height: 200px;
-}
-
-.builder-v2-inspector-header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.builder-v2-inspector-header-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.builder-v2-inspector-title {
-  margin: 0;
-  font-size: 18px;
-}
-
-/* 
- * Layout Intelligence Indicator
- * A subtle dot that appears when suggestions are available.
- * Intentionally minimal - this is infrastructure, not a feature launch.
- */
-.builder-v2-inspector-suggestion-indicator {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(99, 102, 241, 0.6);
-  flex-shrink: 0;
-  cursor: help;
-  transition: 
-    background var(--builder-v2-transition),
-    transform var(--builder-v2-transition);
-}
-
-.builder-v2-inspector-suggestion-indicator:hover {
-  background: rgba(99, 102, 241, 0.9);
-  transform: scale(1.2);
-}
-
-.builder-v2-inspector-subtitle {
-  margin: 0;
-  font-size: 13px;
-  color: var(--builder-v2-text-muted);
-}
-
-.builder-v2-inspector-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px;
-  border-radius: 14px;
-  /* Softer borders - less "boxed" */
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  background: rgba(255, 255, 255, 0.015);
-  transition: 
-    border-color var(--builder-v2-transition),
-    background var(--builder-v2-transition),
-    box-shadow var(--builder-v2-transition-slow);
-}
-
-/* Phase 37: Collapsed section state */
-.builder-v2-inspector-section--collapsed {
-  gap: 0;
-  padding: 10px 14px;
-}
-
-.builder-v2-inspector-section:hover {
-  border-color: rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.builder-v2-inspector-section-header {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* Phase 37: Clickable header for collapsible sections */
-.builder-v2-inspector-section-header--clickable {
-  appearance: none;
-  border: none;
-  background: transparent;
-  width: 100%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 0;
-  text-align: left;
-  border-radius: 6px;
-  transition: background var(--builder-v2-transition);
-}
-
-.builder-v2-inspector-section-header--clickable:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.builder-v2-inspector-section-header--clickable:focus-visible {
-  outline: none;
-  background: rgba(139, 92, 246, 0.08);
-}
-
-.builder-v2-inspector-section-header-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.builder-v2-inspector-section-chevron {
-  font-size: 10px;
-  color: var(--builder-v2-text-dim);
-  transition: transform var(--builder-v2-transition);
-}
-
-.builder-v2-inspector-section--collapsed .builder-v2-inspector-section-chevron {
-  transform: rotate(0deg);
-}
-
-.builder-v2-inspector-section:not(.builder-v2-inspector-section--collapsed) .builder-v2-inspector-section-chevron {
-  transform: rotate(0deg);
-}
-
-.builder-v2-inspector-section-title {
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--builder-v2-text-dim);
-}
-
-.builder-v2-inspector-section-description {
-  margin: 0;
-  font-size: 11px;
-  color: rgba(245, 247, 250, 0.35);
-  line-height: 1.4;
-}
-
-.builder-v2-inspector-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.builder-v2-inspector-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.builder-v2-inspector-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.builder-v2-inspector-label {
-  font-size: 13px;
-  color: var(--builder-v2-text-muted);
-}
-
-.builder-v2-inspector-reset {
-  appearance: none;
-  border: none;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--builder-v2-text);
-  border-radius: 6px;
-  padding: 2px 10px;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: opacity var(--builder-v2-transition), background var(--builder-v2-transition);
-}
-
-.builder-v2-inspector-reset:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.builder-v2-inspector-input {
-  background: rgba(6, 8, 14, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  color: var(--builder-v2-text);
-  padding: 10px 12px;
-  font-size: 13px;
-  transition: 
-    border-color var(--builder-v2-transition),
-    box-shadow var(--builder-v2-transition-slow),
-    background var(--builder-v2-transition);
-  resize: vertical;
-}
-
-.builder-v2-inspector-input:hover {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(8, 10, 16, 0.8);
-}
-
-.builder-v2-inspector-input:focus {
-  outline: none;
-  border-color: rgba(139, 92, 246, 0.3);
-  /* Soft glow instead of hard ring */
-  box-shadow: 
-    0 0 0 3px rgba(139, 92, 246, 0.08),
-    0 0 20px -4px rgba(139, 92, 246, 0.15);
-  background: rgba(10, 12, 20, 0.9);
-}
-
-.builder-v2-inspector-empty {
-  margin: 0;
-  font-size: 13px;
-  color: var(--builder-v2-text-muted);
-}
-
-.builder-v2-inspector--disabled {
-  /* Soft solid border instead of dashed */
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 14px;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.01);
-}
-
-.builder-v2-inspector-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  text-align: center;
-}
-
-.builder-v2-inspector-preview-title {
-  margin: 0;
-  font-size: 14px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--builder-v2-text);
-}
-
-.builder-v2-inspector-preview-description {
-  margin: 0;
-  font-size: 13px;
-  color: var(--builder-v2-text-muted);
-}
-
-.builder-v2-structure-tree {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.builder-v2-structure-node {
-  display: flex;
-  flex-direction: column;
-}
-
-.builder-v2-structure-row {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  margin-left: calc(var(--builder-v2-structure-depth, 0) * 8px);
-  /* Softer borders - almost invisible at rest */
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.01);
-  cursor: grab;
-  transition: 
-    border-color var(--builder-v2-transition),
-    box-shadow var(--builder-v2-transition-slow),
-    background var(--builder-v2-transition);
-}
-
-.builder-v2-structure-row[data-depth='0'] {
-  cursor: default;
-}
-
-.builder-v2-structure-row::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border-radius: inherit;
-  border: 1px solid transparent;
-  opacity: 0;
-  transition: 
-    opacity var(--builder-v2-transition),
-    border-color var(--builder-v2-transition);
-}
-
-.builder-v2-structure-row:hover {
-  background: rgba(255, 255, 255, 0.02);
-  border-color: rgba(255, 255, 255, 0.05);
-}
-
-.builder-v2-structure-row:hover::after {
-  border-color: rgba(255, 255, 255, 0.06);
-  opacity: 1;
+  /* Perspective-style content area */
+  --builder-content-bg: linear-gradient(180deg, #0f0f14 0%, #141419 100%);
+  --builder-content-surface: rgba(255, 255, 255, 0.03);
 }
 
 /* ============================================================================
-   PHASE 23: STRUCTURE TREE SELECTION FRAMING
-   Structure panel mirrors canvas focus mode - reinforces selection intent
+   DEVICE FRAMES - Dark preview inside white workspace
    ============================================================================ */
 
-/* All rows in a tree with selection: prepare for focus mode */
-.builder-v2-structure-tree:has(.builder-v2-structure-row[data-selected='true']) .builder-v2-structure-row {
-  transition:
-    opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
-    background 200ms cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Non-selected rows fade in structure tree */
-.builder-v2-structure-tree:has(.builder-v2-structure-row[data-selected='true']) .builder-v2-structure-row:not([data-selected='true']) {
-  opacity: 0.55;
-}
-
-/* Non-selected rows: hover restores visibility temporarily */
-.builder-v2-structure-tree:has(.builder-v2-structure-row[data-selected='true']) .builder-v2-structure-row:not([data-selected='true']):hover {
-  opacity: 0.85;
-}
-
-/* Parent rows containing selected: less fade for hierarchy awareness */
-.builder-v2-structure-tree:has(.builder-v2-structure-row[data-selected='true']) .builder-v2-structure-row:not([data-selected='true']):has(.builder-v2-structure-row[data-selected='true']) {
-  opacity: 0.75;
-}
-
-.builder-v2-structure-row[data-selected='true'] {
-  /* Soft selection glow - not harsh border */
-  border-color: rgba(139, 92, 246, 0.25);
-  background: rgba(139, 92, 246, 0.05);
+/* Phone Frame - Perspective-inspired realistic device */
+.device-frame--phone {
+  position: relative;
+  width: 375px;
+  background: #1c1c1e;
+  border-radius: 52px;
+  padding: 14px;
+  border: 3px solid #3a3a3c;
   box-shadow: 
-    0 0 16px -4px rgba(139, 92, 246, 0.15),
-    0 4px 12px -4px rgba(0, 0, 0, 0.2);
-  /* Phase 23: Selected row stays fully opaque */
-  opacity: 1 !important;
+    0 50px 100px -20px rgba(0, 0, 0, 0.5),
+    0 30px 60px -30px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.2);
 }
 
-.builder-v2-structure-row[data-selected='true']::after {
-  border-color: rgba(139, 92, 246, 0.3);
-  opacity: 1;
-}
-
-.builder-v2-structure-row-content {
+.device-frame--phone .device-notch {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  justify-content: center;
+  padding: 6px 0;
 }
 
-.builder-v2-structure-row-label {
-  font-size: 13px;
-  font-weight: 600;
+.device-frame--phone .device-notch-inner {
+  width: 90px;
+  height: 24px;
+  background: #000;
+  border-radius: 14px;
 }
 
-.builder-v2-structure-row-type {
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--builder-v2-text-dim);
+.device-frame--phone .device-screen {
+  position: relative;
+  background: var(--builder-content-bg);
+  border-radius: 42px;
+  overflow: hidden;
+  overflow-y: auto;
+  min-height: 600px;
+  max-height: 680px;
 }
 
-.builder-v2-structure-row-controls {
+/* Content wrapper inside screen */
+.device-frame--phone .device-screen-content {
+  min-height: 100%;
+  padding-top: 44px; /* Space for notch */
+}
+
+.device-frame--phone .device-home-bar {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 6px;
+  background: #1c1c1e;
+}
+
+.device-frame--phone .device-home-indicator {
+  width: 134px;
+  height: 5px;
+  background: #636366;
+  border-radius: 3px;
+}
+
+/* Tablet Frame - Perspective style */
+.device-frame--tablet {
+  position: relative;
+  width: 768px;
+  background: #1c1c1e;
+  border-radius: 28px;
+  padding: 16px;
+  border: 3px solid #3a3a3c;
+  box-shadow: 
+    0 50px 100px -20px rgba(0, 0, 0, 0.5),
+    0 30px 60px -30px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.device-frame--tablet .device-screen {
+  background: var(--builder-content-bg);
+  border-radius: 16px;
+  overflow: hidden;
+  overflow-y: auto;
+  min-height: 520px;
+  max-height: 640px;
+}
+
+.device-frame--tablet .device-screen-content {
+  min-height: 100%;
+}
+
+.device-frame--tablet .device-home-bar {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 8px;
+  background: #1c1c1e;
+}
+
+.device-frame--tablet .device-home-indicator {
+  width: 100px;
+  height: 5px;
+  background: #636366;
+  border-radius: 3px;
+}
+
+/* Desktop Frame - Browser window style */
+.device-frame--desktop {
+  position: relative;
+  width: 100%;
+  max-width: 1024px;
+  background: #1c1c1e;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 3px solid #3a3a3c;
+  box-shadow: 
+    0 50px 100px -20px rgba(0, 0, 0, 0.5),
+    0 30px 60px -30px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.device-frame--desktop .device-browser-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--builder-v2-transition);
+  gap: 12px;
+  padding: 12px 16px;
+  background: #2c2c2e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.builder-v2-structure-row:hover .builder-v2-structure-row-controls {
+.device-frame--desktop .device-browser-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.device-frame--desktop .device-browser-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.device-frame--desktop .device-browser-dot--red { background: #ff5f57; }
+.device-frame--desktop .device-browser-dot--yellow { background: #febc2e; }
+.device-frame--desktop .device-browser-dot--green { background: #28c840; }
+
+.device-frame--desktop .device-browser-url {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.device-frame--desktop .device-screen {
+  background: var(--builder-content-bg);
+  min-height: 500px;
+  max-height: 620px;
+  overflow-y: auto;
+}
+
+.device-frame--desktop .device-screen-content {
+  min-height: 100%;
+}
+
+/* ============================================================================
+   CANVAS STRUCTURE
+   ============================================================================ */
+
+.builder-root,
+.builder-canvas-frame,
+.builder-page,
+.builder-v2-canvas {
+  height: 100%;
+  min-height: 100%;
+}
+
+.builder-v2-canvas {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 24px;
+}
+
+.builder-v2-canvas--readonly {
+  pointer-events: none;
+}
+
+/* ============================================================================
+   NODE RENDERING & SELECTION - Perspective style (cyan outlines)
+   ============================================================================ */
+
+.builder-v2-node {
+  position: relative;
+  width: 100%;
+}
+
+.builder-v2-node-surface {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.builder-v2-node-overlay {
+  position: absolute;
+  inset: -1px;
+  border-radius: 8px;
+  pointer-events: none;
+  border: 2px solid transparent;
+  transition: border-color 120ms ease;
+  z-index: 2;
+}
+
+/* Hover state - subtle cyan outline like Perspective */
+.builder-v2-node:not([data-readonly]):hover > .builder-v2-node-overlay {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+/* Selected state - strong cyan outline */
+.builder-v2-node[data-selected="true"] > .builder-v2-node-overlay {
+  border-color: #38bdf8;
+}
+
+/* Nested selection - keep parent subtle */
+.builder-v2-node[data-selected="true"] .builder-v2-node:not([data-readonly]):hover > .builder-v2-node-overlay {
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+/* Highlighted state (for suggestions) */
+.builder-v2-node[data-highlighted="true"] > .builder-v2-node-overlay {
+  border-color: #22d3ee;
+  animation: pulse-highlight 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-highlight {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Node type label on selection - Perspective style badge */
+.builder-v2-node[data-selected="true"]::before {
+  content: attr(data-node-type);
+  position: absolute;
+  top: -24px;
+  left: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0c4a6e;
+  background: #38bdf8;
+  padding: 3px 10px;
+  border-radius: 4px;
+  z-index: 10;
+  text-transform: capitalize;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(56, 189, 248, 0.3);
+}
+
+/* ============================================================================
+   HOVER TOOLBAR - Simplified (no purple)
+   ============================================================================ */
+
+.builder-v2-hover-toolbar {
+  position: absolute;
+  top: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+  z-index: 100;
+  white-space: nowrap;
+}
+
+.builder-v2-node--leaf:hover > .builder-v2-hover-toolbar {
   opacity: 1;
   pointer-events: auto;
 }
 
-.builder-v2-structure-row-controls-group {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.builder-v2-structure-chip {
-  appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  padding: 4px 12px;
+.builder-v2-hover-toolbar-type {
   font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--builder-v2-text);
-  cursor: pointer;
-  transition: opacity var(--builder-v2-transition), border-color var(--builder-v2-transition);
-}
-
-.builder-v2-structure-chip:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.builder-v2-structure-chip--danger {
-  border-color: rgba(251, 113, 133, 0.5);
-  color: var(--builder-v2-danger);
-}
-
-.builder-v2-structure-children {
-  margin-left: 10px;
-  padding-left: 10px;
-  /* Softer connector line */
-  border-left: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.builder-v2-structure-tree--disabled .builder-v2-structure-row {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.builder-v2-structure-tree--disabled .builder-v2-structure-row-controls {
-  display: none;
-}
-
-.builder-v2-structure-disabled-banner {
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--builder-v2-text-dim);
-  padding: 10px 12px;
-  border-radius: 10px;
-  /* Softer border - not dashed */
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  margin-bottom: 8px;
-  background: rgba(255, 255, 255, 0.01);
-}
-
-.builder-v2-dnd-ghost {
-  position: fixed;
-  pointer-events: none;
-  opacity: 0.95;
-  /* Softer container with glow */
-  background: rgba(8, 10, 18, 0.95);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: 10px;
-  padding: 10px 14px;
-  color: var(--builder-v2-text);
-  box-shadow: 
-    0 12px 32px rgba(0, 0, 0, 0.4),
-    0 0 20px rgba(139, 92, 246, 0.15);
-  z-index: 9999;
-  font-size: 12px;
   font-weight: 600;
-  backdrop-filter: blur(8px);
+  color: #64748b;
+  padding-right: 8px;
+  border-right: 1px solid #e2e8f0;
 }
 
-@keyframes builder-v2-drop-line {
-  from {
-    opacity: 0;
-    transform: scaleX(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scaleX(1);
-  }
+.builder-v2-hover-toolbar-actions {
+  display: flex;
+  gap: 2px;
 }
 
-.builder-v2-dnd-line {
-  position: fixed;
-  height: 2px;
-  /* Softer glow */
-  background: linear-gradient(90deg, transparent, var(--builder-v2-accent), transparent);
-  border-radius: 999px;
-  z-index: 9998;
-  animation: builder-v2-drop-line 180ms ease;
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+.builder-v2-hover-toolbar-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #334155;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 150ms ease;
 }
 
-/* ==================================================
-   Phase 26: Suggestions Panel & Node Highlighting
-   ================================================== */
-
-/* Suggestions Panel Container */
-.builder-v2-suggestions-panel {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--builder-v2-panel-border);
+.builder-v2-hover-toolbar-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
-.builder-v2-suggestions-header {
+.builder-v2-hover-toolbar-btn--delete {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.builder-v2-hover-toolbar-btn--delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ============================================================================
+   EMPTY STATE
+   ============================================================================ */
+
+.builder-v2-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--builder-canvas-bg);
+}
+
+.builder-v2-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.builder-v2-empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 8px;
+}
+
+.builder-v2-empty-hint {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}
+
+/* Empty page state - Perspective-style centered prompt */
+.builder-v2-empty-page-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 500px;
+  gap: 16px;
+  padding: 48px 24px;
+}
+
+.builder-v2-empty-page-add-btn {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
+  border: 2px dashed rgba(99, 102, 241, 0.4);
+  border-radius: 16px;
+  color: rgba(99, 102, 241, 0.9);
   cursor: pointer;
-  user-select: none;
-  border-radius: 8px;
-  transition: background var(--builder-v2-transition-fast);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.builder-v2-suggestions-header:hover {
-  background: rgba(255, 255, 255, 0.03);
+.builder-v2-empty-page-add-btn:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.25) 100%);
+  border-color: rgba(99, 102, 241, 0.6);
+  color: rgba(99, 102, 241, 1);
+  transform: scale(1.05);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.2);
 }
 
-.builder-v2-suggestions-header-left {
+.builder-v2-empty-page-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.01em;
+}
+
+/* ============================================================================
+   STRUCTURE TREE
+   ============================================================================ */
+
+.builder-v2-structure-tree {
+  padding: 8px;
+}
+
+.builder-v2-structure-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 8px 12px;
+  padding-left: calc(12px + var(--depth, 0) * 16px);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms ease;
 }
 
-.builder-v2-suggestions-title {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--builder-v2-text-muted);
+.builder-v2-structure-row:hover {
+  background: #f1f5f9;
 }
 
-.builder-v2-suggestions-badge {
-  font-size: 10px;
+.builder-v2-structure-row[data-selected="true"] {
+  background: #eef2ff;
+}
+
+.builder-v2-structure-row-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.builder-v2-structure-row-label {
+  font-size: 13px;
   font-weight: 500;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: var(--builder-v2-accent-soft);
-  color: var(--builder-v2-accent-strong);
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.builder-v2-suggestions-chevron {
-  width: 12px;
-  height: 12px;
-  color: var(--builder-v2-text-dim);
-  transition: transform var(--builder-v2-transition-fast);
+.builder-v2-structure-row-type {
+  font-size: 11px;
+  color: #94a3b8;
 }
 
-.builder-v2-suggestions-chevron--expanded {
-  transform: rotate(180deg);
+/* ============================================================================
+   ELEMENT PALETTE
+   ============================================================================ */
+
+.element-palette {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 8px;
 }
 
-/* Suggestions List */
-.builder-v2-suggestions-list {
-  padding: 4px 8px 8px;
+.element-palette-item {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
+  padding: 12px 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  text-align: center;
 }
 
-/* Individual Suggestion Item */
-.builder-v2-suggestion-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  transition: 
-    background var(--builder-v2-transition-fast),
-    border-color var(--builder-v2-transition-fast);
-  cursor: default;
+.element-palette-item:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  transform: translateY(-1px);
 }
 
-.builder-v2-suggestion-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.06);
+.element-palette-item:active {
+  transform: translateY(0);
 }
 
-.builder-v2-suggestion-icon {
-  flex-shrink: 0;
+.element-palette-icon {
   width: 24px;
   height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  background: var(--builder-v2-accent-soft);
-  color: var(--builder-v2-accent);
-  font-size: 12px;
+  color: #6366f1;
 }
 
-.builder-v2-suggestion-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.builder-v2-suggestion-type {
-  font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--builder-v2-text-dim);
-}
-
-.builder-v2-suggestion-description {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--builder-v2-text-muted);
-}
-
-.builder-v2-suggestion-apply {
-  flex-shrink: 0;
-  padding: 6px 12px;
+.element-palette-label {
   font-size: 11px;
   font-weight: 500;
-  border-radius: 6px;
-  border: none;
-  background: var(--builder-v2-accent-soft);
-  color: var(--builder-v2-accent-strong);
-  cursor: pointer;
-  transition: 
-    background var(--builder-v2-transition-fast),
-    transform var(--builder-v2-transition-fast);
-  align-self: flex-start;
-  margin-top: 2px;
-}
-
-.builder-v2-suggestion-apply:hover {
-  background: rgba(139, 92, 246, 0.25);
-  transform: translateY(-1px);
-}
-
-.builder-v2-suggestion-apply:active {
-  transform: translateY(0);
-}
-
-.builder-v2-suggestion-apply:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Node Highlight Animation */
-@keyframes builder-v2-highlight-pulse {
-  0% {
-    box-shadow: 
-      0 0 0 0 rgba(139, 92, 246, 0.4),
-      0 0 20px rgba(139, 92, 246, 0.15);
-  }
-  50% {
-    box-shadow: 
-      0 0 0 3px rgba(139, 92, 246, 0.2),
-      0 0 30px rgba(139, 92, 246, 0.25);
-  }
-  100% {
-    box-shadow: 
-      0 0 0 0 rgba(139, 92, 246, 0),
-      0 0 0 rgba(139, 92, 246, 0);
-  }
-}
-
-[data-highlighted="true"] {
-  animation: builder-v2-highlight-pulse 600ms ease-out forwards;
-  /* Subtle outline during animation */
-  outline: 2px solid rgba(139, 92, 246, 0.3);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* Empty State */
-.builder-v2-suggestions-empty {
-  padding: 12px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--builder-v2-text-dim);
+  color: #475569;
 }
 
 /* ============================================================================
-   PHASE 27: LAYOUT PERSONALITY SELECTOR
-   Clean segmented control for personality selection
+   CANVAS GUIDES (optional)
    ============================================================================ */
 
-.builder-v2-personality-selector {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+.builder-v2-canvas-guides {
+  display: none;
 }
 
-.builder-v2-personality-option {
-  flex: 1;
-  padding: 8px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--builder-v2-text-muted);
-  background: transparent;
-  border: none;
-  border-radius: 7px;
-  cursor: pointer;
-  transition:
-    color var(--builder-v2-transition),
-    background var(--builder-v2-transition),
-    box-shadow var(--builder-v2-transition);
+/* ============================================================================
+   MAKE INPUTS INTERACTIVE IN EDIT MODE BUT NOT STEAL CLICK
+   ============================================================================ */
+
+/* In edit mode, let the overlay capture clicks but allow visual interaction */
+.builder-v2-node:not([data-readonly]) .builder-input,
+.builder-v2-node:not([data-readonly]) .builder-cta-button,
+.builder-v2-node:not([data-readonly]) .builder-option-item {
+  pointer-events: none;
 }
 
-.builder-v2-personality-option:hover {
-  color: var(--builder-v2-text);
-  background: rgba(255, 255, 255, 0.04);
+/* Selected element can have interactive children for testing */
+.builder-v2-node[data-selected="true"] .builder-input,
+.builder-v2-node[data-selected="true"] .builder-cta-button,
+.builder-v2-node[data-selected="true"] .builder-option-item {
+  pointer-events: auto;
 }
 
-.builder-v2-personality-option--active {
-  color: var(--builder-v2-text);
-  background: rgba(139, 92, 246, 0.15);
-  box-shadow:
-    0 0 0 1px rgba(139, 92, 246, 0.2),
-    0 2px 8px -2px rgba(139, 92, 246, 0.2);
+/* ============================================================================
+   BUILDER SHELL - 3-Column Layout
+   ============================================================================ */
+
+/* 3-Panel Layout - Perspective proportions */
+.builder-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr 280px;
+  height: 100vh;
+  background: var(--builder-bg);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  transition: grid-template-columns 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.builder-v2-personality-option--active:hover {
-  background: rgba(139, 92, 246, 0.2);
+.builder-shell--left-collapsed {
+  grid-template-columns: 0 1fr 280px;
 }
 
-/* Field container for personality (within inspector) */
-.builder-v2-field {
+.builder-shell--right-collapsed {
+  grid-template-columns: 240px 1fr 0;
+}
+
+.builder-shell--left-collapsed.builder-shell--right-collapsed {
+  grid-template-columns: 0 1fr 0;
+}
+
+.builder-panel {
   display: flex;
   flex-direction: column;
+  background: var(--builder-panel-bg);
+  border: 1px solid var(--builder-panel-border);
+  overflow: hidden;
+  transition: width 200ms ease, opacity 200ms ease;
+}
+
+.builder-panel--collapsed {
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.builder-panel--left {
+  border-right: 1px solid var(--builder-panel-border);
+  border-left: none;
+  border-top: none;
+  border-bottom: none;
+}
+
+.builder-panel--right {
+  border-left: 1px solid var(--builder-panel-border);
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
+}
+
+.builder-panel-header {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--builder-panel-border);
+  flex-shrink: 0;
 }
 
-.builder-v2-field-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--builder-v2-text-muted);
-  letter-spacing: 0.02em;
+.builder-panel-header--right {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
 }
 
-/* ============================================================================
-   PHASE 33: GUIDED MODES & PROGRESSIVE DISCLOSURE
-   Framer/Perspective-style authoring modes with CSS-driven behavior.
-   Uses [data-editor-mode] attribute for all mode-aware styling.
-   ============================================================================ */
-
-/* Guided Mode Switcher - 3-pill toggle */
-.builder-v2-guided-mode-switcher {
-  display: inline-flex;
-  padding: 2px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  gap: 1px;
+.builder-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--builder-text-primary);
 }
 
-.builder-v2-guided-mode-pill {
-  appearance: none;
-  border: none;
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--builder-v2-text-dim);
+.builder-panel-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #64748b;
   cursor: pointer;
-  transition:
-    color 180ms cubic-bezier(0.4, 0, 0.2, 1),
-    background 180ms cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 150ms ease;
+  flex-shrink: 0;
 }
 
-.builder-v2-guided-mode-pill:hover:not(:disabled) {
-  color: var(--builder-v2-text-muted);
-  background: rgba(255, 255, 255, 0.03);
+.builder-panel-collapse-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
-.builder-v2-guided-mode-pill--active {
-  color: var(--builder-v2-text);
-  background: rgba(139, 92, 246, 0.15);
-  box-shadow:
-    0 0 8px rgba(139, 92, 246, 0.2),
-    inset 0 0 0 1px rgba(139, 92, 246, 0.25);
+.builder-panel-toggle {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 48px;
+  background: #ffffff;
+  border: 1px solid var(--builder-panel-border);
+  border-radius: 0 8px 8px 0;
+  color: #64748b;
+  cursor: pointer;
+  z-index: 100;
+  transition: all 150ms ease;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
 }
 
-.builder-v2-guided-mode-pill--active:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.2);
+.builder-panel-toggle--left {
+  left: 0;
 }
 
-.builder-v2-guided-mode-pill:disabled {
+.builder-panel-toggle--right {
+  right: 0;
+  border-radius: 8px 0 0 8px;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+}
+
+.builder-panel-toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.builder-panel-tabs {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 8px;
+  flex: 1;
+}
+
+.builder-tab {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.builder-tab:hover {
+  color: #334155;
+}
+
+.builder-tab--active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.builder-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.builder-canvas-area {
+  display: flex;
+  flex-direction: column;
+  background: var(--builder-bg);
+  overflow: hidden;
+}
+
+.builder-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--builder-panel-border);
+  flex-shrink: 0;
+}
+
+.builder-canvas-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.builder-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.builder-nav-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.builder-nav-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* ---------------------------------------------------------------------------
-   MODE-AWARE UI: BUILD MODE
-   Structure-focused: tree visible, spacing guides, structure suggestions
-   --------------------------------------------------------------------------- */
-
-[data-editor-mode="build"] .builder-v2-panel--left {
-  opacity: 1;
+.builder-canvas-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
 }
 
-[data-editor-mode="build"] .builder-v2-structure-tree {
-  opacity: 1;
+/* Device Selector */
+.builder-device-selector {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 8px;
 }
 
-/* Inspector sections in Build mode: Content + Structure emphasized */
-[data-editor-mode="build"] .builder-v2-inspector-section[data-section="layout"],
-[data-editor-mode="build"] .builder-v2-inspector-section[data-section="style"] {
-  opacity: 0.6;
-  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+.builder-device-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
 }
 
-[data-editor-mode="build"] .builder-v2-inspector-section[data-section="layout"]:hover,
-[data-editor-mode="build"] .builder-v2-inspector-section[data-section="style"]:hover {
-  opacity: 1;
+.builder-device-btn:hover {
+  color: #334155;
 }
 
-/* ---------------------------------------------------------------------------
-   MODE-AWARE UI: REFINE MODE
-   Layout/style-focused: tree faded, composition guides, strong selection framing
-   --------------------------------------------------------------------------- */
-
-[data-editor-mode="refine"] .builder-v2-panel--left {
-  opacity: 0.85;
-  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+.builder-device-btn--active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-[data-editor-mode="refine"] .builder-v2-panel--left:hover {
-  opacity: 1;
+/* Canvas viewport - dark area where device sits */
+.builder-canvas-viewport {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  overflow-y: auto;
+  background: var(--builder-canvas-bg);
+  /* Subtle pattern for depth */
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.03) 0%, transparent 50%);
 }
 
-[data-editor-mode="refine"] .builder-v2-structure-tree {
-  opacity: 0.7;
-  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+/* Funnel editor canvas background (avoid hardcoded inline colors) */
+.funnel-editor-canvas-bg {
+  background: radial-gradient(
+    circle at 50% 0%,
+    hsl(var(--primary) / 0.08) 0%,
+    hsl(var(--background)) 55%
+  );
 }
 
-[data-editor-mode="refine"] .builder-v2-structure-tree:hover {
-  opacity: 1;
+.builder-step-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
 }
 
-/* Inspector sections in Refine mode: Layout + Style emphasized */
-[data-editor-mode="refine"] .builder-v2-inspector-section[data-section="content"] {
-  opacity: 0.6;
-  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+.builder-step-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
 }
 
-[data-editor-mode="refine"] .builder-v2-inspector-section[data-section="content"]:hover {
-  opacity: 1;
+.builder-step-nav-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
-/* Stronger selection framing in Refine mode */
-[data-editor-mode="refine"] .builder-v2-canvas-node--selected {
-  box-shadow:
-    0 0 0 2px rgba(139, 92, 246, 0.4),
-    0 0 20px rgba(139, 92, 246, 0.15);
+.builder-step-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
-/* ---------------------------------------------------------------------------
-   MODE-AWARE UI: CONVERT MODE  
-   CTA-focused: tree minimized, action zones emphasized, conversion suggestions
-   --------------------------------------------------------------------------- */
-
-[data-editor-mode="convert"] .builder-v2-panel--left {
-  opacity: 0.7;
-  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+.builder-step-nav-indicator {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
 }
 
-[data-editor-mode="convert"] .builder-v2-panel--left:hover {
-  opacity: 1;
+/* Pages List */
+.builder-pages {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-[data-editor-mode="convert"] .builder-v2-structure-tree {
+.builder-pages-list {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.builder-page-item-wrapper {
+  position: relative;
+  margin-bottom: 2px;
+}
+
+.builder-page-item-wrapper--dragging {
   opacity: 0.5;
-  max-height: 200px;
-  overflow: hidden;
-  transition:
-    opacity 180ms cubic-bezier(0.4, 0, 0.2, 1),
-    max-height 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-[data-editor-mode="convert"] .builder-v2-structure-tree:hover {
-  opacity: 0.9;
-  max-height: none;
+.builder-page-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  text-align: left;
 }
 
-/* Inspector sections in Convert mode: CTA fields prioritized */
-[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="content"],
-[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="layout"],
-[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="style"] {
-  opacity: 0.5;
-  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+.builder-page-item:hover {
+  background: #f1f5f9;
 }
 
-[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="content"]:hover,
-[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="layout"]:hover,
-[data-editor-mode="convert"] .builder-v2-inspector-section[data-section="style"]:hover {
+.builder-page-item--active {
+  background: #eef2ff;
+}
+
+.builder-page-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #94a3b8;
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 150ms ease;
+}
+
+.builder-page-item:hover .builder-page-drag-handle {
   opacity: 1;
 }
 
-/* Emphasize action zones (buttons, CTAs) in Convert mode */
-[data-editor-mode="convert"] [data-node-type="button"],
-[data-editor-mode="convert"] [data-node-type="cta"] {
-  outline: 2px solid rgba(139, 92, 246, 0.2);
-  outline-offset: 4px;
+.builder-page-drag-handle:active {
+  cursor: grabbing;
+}
+
+.builder-page-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #e2e8f0;
   border-radius: 4px;
-  transition:
-    outline-color 180ms cubic-bezier(0.4, 0, 0.2, 1),
-    outline-offset 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.builder-page-item--active .builder-page-index {
+  background: #6366f1;
+  color: #ffffff;
+}
+
+.builder-page-icon {
+  color: #94a3b8;
+}
+
+.builder-page-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.builder-page-drag-overlay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Page Context Menu */
+.page-context-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #94a3b8;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 150ms ease;
+}
+
+.builder-page-item:hover .page-context-trigger {
+  opacity: 1;
+}
+
+.page-context-trigger:hover {
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+.builder-add-step {
+  padding: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.builder-add-step-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.builder-add-step-btn:hover {
+  background: #f1f5f9;
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.builder-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
 }
 
 /* ============================================================================
-   PHASE 35: EDITOR EXPRESSIVE TOKENS — MICRO-EXPRESSION LAYER
-   Richer interaction feedback for editor workspace. CSS-only, no JS listeners.
-   Feel, not animation. Editor context allows slightly more expressiveness.
+   ELEMENT WRAPPER - Perspective-style Selection States
    ============================================================================ */
 
-/* Reduced motion: collapse all editor expression timing */
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --editor-expr-hover-lift: 0px;
-    --editor-expr-press-depth: 0px;
-    --editor-expr-transition-hover: 0ms;
-    --editor-expr-transition-focus: 0ms;
-    --editor-expr-transition-press: 0ms;
+.element-wrapper {
+  position: relative;
+  width: 100%;
+  cursor: pointer;
+}
+
+.element-wrapper-overlay {
+  position: absolute;
+  inset: -1px;
+  border-radius: 8px;
+  pointer-events: none;
+  border: 2px solid transparent;
+  transition: border-color 120ms ease;
+  z-index: 2;
+}
+
+/* Hover state - subtle cyan/blue outline like Perspective */
+.element-wrapper:hover:not(.element-wrapper--selected) .element-wrapper-overlay {
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+/* Selected state - strong cyan outline */
+.element-wrapper--selected .element-wrapper-overlay {
+  border-color: #38bdf8;
+}
+
+/* No background fill on selection - keep it clean */
+.element-wrapper--highlighted .element-wrapper-overlay {
+  border-color: #22d3ee;
+  animation: pulse-highlight 1.5s ease-in-out infinite;
+}
+
+/* Hide hover tooltip - not Perspective style */
+.element-wrapper-tooltip {
+  display: none;
+}
+
+/* Selected label - small pill badge above element */
+.element-wrapper-label {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  padding: 3px 10px;
+  background: #38bdf8;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0c4a6e;
+  letter-spacing: 0.02em;
+  z-index: 10;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(56, 189, 248, 0.3);
+}
+
+.element-wrapper-surface {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+/* ============================================================================
+   ELEMENT ACTION MENU - Perspective-style (outside right edge)
+   ============================================================================ */
+
+.element-action-menu {
+  position: absolute;
+  top: 0;
+  right: -44px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+}
+
+.element-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.element-action-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.element-action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.element-action-btn--delete {
+  color: #ef4444;
+}
+
+.element-action-btn--delete:hover:not(:disabled) {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* ============================================================================
+   INLINE TEXT EDITING - Click to edit with floating toolbar
+   ============================================================================ */
+
+.inline-editable-text {
+  cursor: text;
+  outline: none;
+  border-radius: 4px;
+  transition: box-shadow 150ms ease;
+}
+
+.inline-editable-text:focus {
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
+}
+
+.inline-editable-text--editing {
+  cursor: text;
+}
+
+/* Floating text toolbar */
+.text-edit-toolbar {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+  z-index: 9999;
+  animation: fadeInUp 150ms ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* -----------------------------------------------------------------------------
-   EDITOR PANEL CONTROLS — Workspace Surface Response
-   ----------------------------------------------------------------------------- */
-
-/* Panel buttons and interactive controls */
-.builder-v2-panel button,
-.builder-v2-panel [role="button"],
-.builder-v2-panel .builder-v2-mode-toggle button {
-  transition:
-    transform var(--editor-expr-transition-hover),
-    box-shadow var(--editor-expr-transition-hover),
-    background var(--editor-expr-transition-hover),
-    border-color var(--editor-expr-transition-hover),
-    color var(--editor-expr-transition-hover);
+.text-edit-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: #e2e8f0;
+  margin: 0 6px;
 }
 
-/* Panel button hover: workspace acknowledgment */
-.builder-v2-panel button:hover,
-.builder-v2-panel [role="button"]:hover {
-  transform: translateY(calc(-0.5 * var(--editor-expr-hover-lift)));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.text-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  transition: all 150ms ease;
+  gap: 4px;
 }
 
-/* Panel button focus: calm clarity */
-.builder-v2-panel button:focus-visible,
-.builder-v2-panel [role="button"]:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 var(--editor-expr-focus-ring-spread) rgba(139, 92, 246, var(--editor-expr-focus-ring-opacity)),
-    0 0 var(--editor-expr-focus-ring-blur) calc(var(--editor-expr-focus-ring-spread) + 2px) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 0.5));
+.text-edit-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
-/* Panel button press: grounded */
-.builder-v2-panel button:active,
-.builder-v2-panel [role="button"]:active {
-  transform: translateY(calc(0.5 * var(--editor-expr-press-depth)));
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  transition:
-    transform var(--editor-expr-transition-press),
-    box-shadow var(--editor-expr-transition-press);
+.text-edit-btn--active {
+  background: #e0f2fe;
+  color: #0284c7;
 }
 
-/* -----------------------------------------------------------------------------
-   EDITOR INPUT FIELDS — Workspace Form Clarity
-   ----------------------------------------------------------------------------- */
-
-/* Inspector inputs and form controls */
-.builder-v2-inspector input,
-.builder-v2-inspector textarea,
-.builder-v2-inspector select,
-.builder-v2-panel-scroll input,
-.builder-v2-panel-scroll textarea,
-.builder-v2-panel-scroll select {
-  transition:
-    background var(--editor-expr-transition-hover),
-    border-color var(--editor-expr-transition-hover),
-    box-shadow var(--editor-expr-transition-focus);
+.text-edit-btn--ai {
+  background: linear-gradient(135deg, #f0abfc 0%, #c084fc 100%);
+  color: white;
+  font-weight: 600;
 }
 
-/* Inspector input hover: surface acknowledgment */
-.builder-v2-inspector input:hover,
-.builder-v2-inspector textarea:hover,
-.builder-v2-inspector select:hover {
-  background: rgba(255, 255, 255, calc(0.03 + var(--editor-expr-hover-surface-brighten)));
-  border-color: rgba(255, 255, 255, calc(0.06 + var(--editor-expr-hover-border-reveal)));
+.text-edit-btn--ai:hover {
+  background: linear-gradient(135deg, #e879f9 0%, #a855f7 100%);
 }
 
-/* Inspector input focus: clarity emphasis */
-.builder-v2-inspector input:focus,
-.builder-v2-inspector textarea:focus,
-.builder-v2-inspector select:focus {
-  outline: none;
-  background: rgba(255, 255, 255, calc(0.04 + var(--editor-expr-focus-bg-clarity)));
-  border-color: rgba(139, 92, 246, 0.35);
-  box-shadow:
-    0 0 0 var(--editor-expr-focus-ring-spread) rgba(139, 92, 246, var(--editor-expr-focus-ring-opacity)),
-    0 0 var(--editor-expr-focus-ring-blur) calc(var(--editor-expr-focus-ring-spread) + 4px) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 0.4)),
-    inset 0 1px 2px rgba(0, 0, 0, 0.06);
+.text-edit-dropdown {
+  position: relative;
 }
 
-/* -----------------------------------------------------------------------------
-   STRUCTURE TREE — Workspace Navigation Feedback
-   ----------------------------------------------------------------------------- */
-
-/* Tree item hover: workspace guidance */
-.builder-v2-structure-tree-item {
-  transition:
-    background var(--editor-expr-transition-hover),
-    border-color var(--editor-expr-transition-hover),
-    box-shadow var(--editor-expr-transition-hover);
+.text-edit-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  min-width: 100px;
+  z-index: 10000;
 }
 
-.builder-v2-structure-tree-item:hover {
-  background: rgba(139, 92, 246, calc(0.04 + var(--editor-expr-hover-surface-brighten)));
-  border-color: rgba(139, 92, 246, calc(0.08 + var(--editor-expr-hover-border-reveal)));
+.text-edit-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease;
 }
 
-/* Tree item selected: workspace emphasis */
-.builder-v2-structure-tree-item--selected {
-  box-shadow:
-    0 0 0 1px rgba(139, 92, 246, 0.2),
-    0 0 var(--editor-expr-focus-ring-blur) var(--editor-expr-focus-ring-spread) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 0.6));
-}
-
-/* Tree item keyboard focus */
-.builder-v2-structure-tree-item:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 var(--editor-expr-focus-ring-spread) rgba(139, 92, 246, var(--editor-expr-focus-ring-opacity)),
-    0 0 var(--editor-expr-focus-ring-blur) calc(var(--editor-expr-focus-ring-spread) + 2px) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 0.4));
-}
-
-/* -----------------------------------------------------------------------------
-   INSPECTOR SECTIONS — Workspace Accordion Feedback
-   ----------------------------------------------------------------------------- */
-
-/* Inspector section headers */
-.builder-v2-inspector-section-header {
-  transition:
-    background var(--editor-expr-transition-hover),
-    color var(--editor-expr-transition-hover);
-}
-
-.builder-v2-inspector-section-header:hover {
-  background: rgba(255, 255, 255, calc(0.02 + var(--editor-expr-hover-surface-brighten)));
-}
-
-/* Inspector section toggle focus */
-.builder-v2-inspector-section-header:focus-visible {
-  outline: none;
-  background: rgba(139, 92, 246, 0.06);
-  box-shadow:
-    inset 0 0 0 1px rgba(139, 92, 246, var(--editor-expr-focus-ring-opacity));
-}
-
-/* -----------------------------------------------------------------------------
-   MODE TOGGLE — Workspace Mode Switching
-   ----------------------------------------------------------------------------- */
-
-/* Mode toggle enhanced expression */
-.builder-v2-mode-toggle button[aria-pressed="true"] {
-  box-shadow:
-    0 0 var(--editor-expr-focus-ring-blur) rgba(139, 92, 246, var(--editor-expr-focus-ring-opacity)),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.builder-v2-mode-toggle button:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 var(--editor-expr-focus-ring-spread) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 1.2)),
-    0 0 var(--editor-expr-focus-ring-blur) calc(var(--editor-expr-focus-ring-spread) + 4px) rgba(139, 92, 246, calc(var(--editor-expr-focus-ring-opacity) * 0.5));
-}
-
-/* -----------------------------------------------------------------------------
-   BADGE & INDICATOR EXPRESSION
-   ----------------------------------------------------------------------------- */
-
-/* Mode badge hover feedback */
-.builder-v2-mode-badge {
-  transition:
-    background var(--editor-expr-transition-hover),
-    border-color var(--editor-expr-transition-hover),
-    color var(--editor-expr-transition-hover),
-    transform var(--editor-expr-transition-hover);
-}
-
-.builder-v2-mode-badge:hover {
-  transform: translateY(-0.5px);
-}
-
-/* -----------------------------------------------------------------------------
-   CANVAS AREA — EDITOR-ENHANCED WORKSPACE FEEDBACK
-   Richer expression for the main editing canvas in editor context.
-   ----------------------------------------------------------------------------- */
-
-/* Editor shell enhanced expression tokens */
-.builder-v2-shell {
-  --expr-hover-lift: var(--editor-expr-hover-lift);
-  --expr-hover-shadow-grow: var(--editor-expr-hover-shadow-grow);
-  --expr-hover-surface-brighten: var(--editor-expr-hover-surface-brighten);
-  --expr-hover-border-reveal: var(--editor-expr-hover-border-reveal);
-  --expr-focus-ring-opacity: var(--editor-expr-focus-ring-opacity);
-  --expr-focus-ring-spread: var(--editor-expr-focus-ring-spread);
-  --expr-focus-ring-blur: var(--editor-expr-focus-ring-blur);
-  --expr-focus-bg-clarity: var(--editor-expr-focus-bg-clarity);
-  --expr-press-depth: var(--editor-expr-press-depth);
-  --expr-press-shadow-collapse: var(--editor-expr-press-shadow-collapse);
-  --expr-transition-hover: var(--editor-expr-transition-hover);
-  --expr-transition-focus: var(--editor-expr-transition-focus);
-  --expr-transition-press: var(--editor-expr-transition-press);
-}
-
-[data-editor-mode="convert"] [data-node-type="button"]:hover,
-[data-editor-mode="convert"] [data-node-type="cta"]:hover {
-  outline-color: rgba(139, 92, 246, 0.4);
-  outline-offset: 6px;
-}
-
-/* Calmer canvas background progression: Build → Convert */
-[data-editor-mode="build"] .builder-v2-panel--center::before {
-  background:
-    radial-gradient(ellipse 70% 50% at 50% 45%, rgba(139, 92, 246, 0.02) 0%, transparent 70%),
-    linear-gradient(90deg, rgba(3, 4, 8, 0.15) 0%, transparent 12%, transparent 88%, rgba(3, 4, 8, 0.15) 100%);
-}
-
-[data-editor-mode="refine"] .builder-v2-panel--center::before {
-  background:
-    radial-gradient(ellipse 70% 50% at 50% 45%, rgba(139, 92, 246, 0.025) 0%, transparent 70%),
-    linear-gradient(90deg, rgba(3, 4, 8, 0.12) 0%, transparent 15%, transparent 85%, rgba(3, 4, 8, 0.12) 100%);
-}
-
-[data-editor-mode="convert"] .builder-v2-panel--center::before {
-  background:
-    radial-gradient(ellipse 70% 50% at 50% 45%, rgba(139, 92, 246, 0.03) 0%, transparent 70%),
-    linear-gradient(90deg, rgba(3, 4, 8, 0.1) 0%, transparent 18%, transparent 82%, rgba(3, 4, 8, 0.1) 100%);
+.text-edit-dropdown-item:hover {
+  background: #f1f5f9;
 }

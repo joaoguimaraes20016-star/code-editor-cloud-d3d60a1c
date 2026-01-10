@@ -87,7 +87,7 @@ export function createLegacyEditorDocument(
         canvasRoot: {
           id: nodeId,
           type: 'legacy-funnel',
-          props: legacyPayload,
+          props: legacyPayload as unknown as Record<string, unknown>,
           children: [],
         },
       },
@@ -108,7 +108,7 @@ export function deriveLegacyPayloadFromDocument(
       if (!node) continue;
 
       if (node.type === 'legacy-funnel' && node.props) {
-        const payload = node.props as LegacySnapshotPayload;
+        const payload = node.props as unknown as LegacySnapshotPayload;
         if (payload?.funnel && payload?.steps) {
           return createLegacySnapshotPayload(payload.funnel, payload.steps);
         }

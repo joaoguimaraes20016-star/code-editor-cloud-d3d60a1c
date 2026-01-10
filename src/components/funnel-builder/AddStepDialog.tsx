@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Play, MessageSquare, List, Mail, Phone, Video, CheckCircle, UserCheck } from 'lucide-react';
-import { FunnelStep } from '@/pages/FunnelEditor';
+import type { FunnelStep } from '@/lib/funnel/editorTypes';
 
 interface AddStepDialogProps {
   open: boolean;

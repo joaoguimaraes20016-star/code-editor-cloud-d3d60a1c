@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react';
 
 import type { CanvasNode, EditorState } from '../types';
-
 import { ComponentRegistry, fallbackComponent } from '../registry/componentRegistry';
+import { getNodeLabel } from '../utils/nodeLabels';
 
 /**
  * Options for rendering the canvas tree.
@@ -20,6 +20,10 @@ export interface RenderOptions {
    * Highlighted nodes show a subtle glow/pulse animation.
    */
   highlightedNodeIds?: string[];
+  /**
+   * Callback when a node is deleted
+   */
+  onDeleteNode?: (nodeId: string) => void;
 }
 
 /**
@@ -36,7 +40,7 @@ export function renderNode(
   options: RenderOptions = {},
   depth = 0,
 ): JSX.Element {
-  const { readonly = false, highlightedNodeIds = [] } = options;
+  const { readonly = false, highlightedNodeIds = [], onDeleteNode } = options;
   
   const children = node.children.map((child) =>
     renderNode(child, editorState, onSelectNode, options, depth + 1),
@@ -57,6 +61,11 @@ export function renderNode(
   
   // Check if this node is highlighted (for suggestion feedback)
   const isHighlighted = highlightedNodeIds.includes(node.id);
+  
+  // Show hover toolbar on ALL elements for full editing capability
+  const showHoverToolbar = !readonly;
+  
+  const typeLabel = getNodeLabel(node.type);
 
   return (
     <div
@@ -67,12 +76,39 @@ export function renderNode(
       data-selected={isSelected}
       data-highlighted={isHighlighted || undefined}
       data-node-id={node.id}
+      data-node-type={typeLabel}
       data-readonly={readonly || undefined}
       data-has-children={canHaveChildren || undefined}
       data-depth={depth}
       style={surfaceStyle}
     >
       <div className="builder-v2-node-overlay" aria-hidden="true" />
+      
+      {/* Hover toolbar for leaf elements */}
+      {showHoverToolbar && (
+        <div className="builder-v2-hover-toolbar">
+          <span className="builder-v2-hover-toolbar-type">{typeLabel}</span>
+          <div className="builder-v2-hover-toolbar-actions">
+            <button 
+              className="builder-v2-hover-toolbar-btn"
+              onClick={(e) => { e.stopPropagation(); onSelectNode(node.id); }}
+              title="Edit"
+            >
+              Edit
+            </button>
+            {onDeleteNode && (
+              <button 
+                className="builder-v2-hover-toolbar-btn builder-v2-hover-toolbar-btn--delete"
+                onClick={(e) => { e.stopPropagation(); onDeleteNode(node.id); }}
+                title="Delete"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
       <div
         className="builder-v2-node-surface"
         onClick={readonly
