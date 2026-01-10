@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Page, SelectionState, StepIntent, AIsuggestion, AICopilotProps } from '@/types/infostack';
+import { Page, SelectionState, StepIntent, AIsuggestion, AICopilotProps } from '../../types/infostack';
 import { cn } from '@/lib/utils';
 import { 
   Sparkles, 

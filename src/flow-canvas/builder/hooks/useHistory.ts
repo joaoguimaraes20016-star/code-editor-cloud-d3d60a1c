@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Page } from '@/types/infostack';
+import { Page } from '../../types/infostack';
 import { deepClone } from '../utils/helpers';
 
 interface HistoryEntry {

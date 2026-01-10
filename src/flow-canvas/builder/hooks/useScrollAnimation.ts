@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { AnimationSettings } from '@/types/infostack';
+import type { AnimationSettings } from '../../types/infostack';
 
 interface UseScrollAnimationOptions {
   settings?: AnimationSettings;

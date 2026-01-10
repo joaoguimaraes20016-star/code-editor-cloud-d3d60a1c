@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { EditorShell, createSamplePage, Page, SelectionState } from '@/builder';
+import { EditorShell, createSamplePage, Page, SelectionState } from '../builder';
 
 const Index: React.FC = () => {
   // Initialize with sample page data

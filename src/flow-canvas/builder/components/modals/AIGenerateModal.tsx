@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Block } from '@/types/infostack';
+import { Block } from '../../../types/infostack';
 import { generateId } from '../../utils/helpers';
 import { toast } from 'sonner';
 

@@ -1,7 +1,7 @@
 // Human-readable labels for all builder types
 // This file maps internal developer terminology to user-friendly display text
 
-import { BlockType, ElementType, StepIntent, StepType, SubmitMode } from '@/types/infostack';
+import { BlockType, ElementType, StepIntent, StepType, SubmitMode } from '../../types/infostack';
 
 // Block type labels
 export const blockTypeLabels: Record<BlockType, string> = {

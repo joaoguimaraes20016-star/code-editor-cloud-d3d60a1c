@@ -12,7 +12,7 @@ import {
   ConditionalRule,
   VisibilitySettings,
   AnimationSettings
-} from '@/types/infostack';
+} from '../../types/infostack';
 import { findNodeByPath, findNodeById } from '../utils/helpers';
 import { collectFieldKeys } from '../hooks/useScrollAnimation';
 import { 

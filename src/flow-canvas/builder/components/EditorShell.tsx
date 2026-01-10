@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Page, SelectionState, StepIntent, AIsuggestion, Block, Element } from '@/types/infostack';
+import { Page, SelectionState, StepIntent, AIsuggestion, Block, Element } from '../../types/infostack';
 import { LeftPanel } from './LeftPanel';
 import { CanvasRenderer } from './CanvasRenderer';
 import { RightPanel } from './RightPanel';

@@ -1,4 +1,4 @@
-import { Page, Step, Frame, Stack, Block, Element, SelectionState } from '@/types/infostack';
+import { Page, Step, Frame, Stack, Block, Element, SelectionState } from '../../types/infostack';
 
 // Generate unique IDs
 export const generateId = (): string => {

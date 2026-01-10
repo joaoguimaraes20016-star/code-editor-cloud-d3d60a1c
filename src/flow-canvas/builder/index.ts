@@ -41,7 +41,10 @@ export type {
   AICopilotProps,
   TextStyles,
   BlockAction,
-} from '@/types/infostack';
+} from '../types/infostack';
+
+// Re-export sample page creator
+export { createSamplePage } from './utils/helpers';
 
 // Device mode type
 export type { DeviceMode } from './components/TopToolbar';

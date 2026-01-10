@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Step, Block, Element, SelectionState, StepIntent, Frame, Stack } from '@/types/infostack';
+import { Step, Block, Element, SelectionState, StepIntent, Frame, Stack } from '../../types/infostack';
 import { cn } from '@/lib/utils';
 import { 
   UserPlus, 

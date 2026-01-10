@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Block, Element, BlockType } from '@/types/infostack';
+import { Block, Element, BlockType } from '../../types/infostack';
 import { generateId } from '../utils/helpers';
 import { cn } from '@/lib/utils';
 import {

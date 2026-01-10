@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Search, Type, Image, Video, MessageSquare, ListChecks, Calendar, Upload, ChevronDown, Sparkles, LayoutGrid, MousePointer } from 'lucide-react';
-import { Block, BlockType } from '@/types/infostack';
+import { Block, BlockType } from '../../types/infostack';
 import { generateId } from '../utils/helpers';
 import {
   Popover,

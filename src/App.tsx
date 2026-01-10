@@ -24,6 +24,8 @@ import PublicFunnel from "./pages/PublicFunnel";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { EditorShell } from "./builder_v2/EditorShell";
 import { RuntimePage } from "./builder_v2/runtime";
+// Flow-canvas builder (new version)
+import FlowCanvasIndex from "./flow-canvas/pages/Index";
 // Dev-only funnel test route (dynamically imported so it is not included in production builds)
 let DevFunnelTest: React.LazyExoticComponent<any> | null = null;
 if (import.meta.env.DEV) {
@@ -56,6 +58,7 @@ const App = () => (
           <Routes>
             {/* 🔓 TEMP DEV ROUTE — must stay outside auth */}
             <Route path="/builder-v2" element={<EditorShell />} />
+            <Route path="/flow-canvas" element={<FlowCanvasIndex />} />
 
             {/* Public routes - no auth required */}
             <Route path="/onboard/:token" element={<OnboardingForm />} />
